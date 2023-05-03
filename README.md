@@ -3,5 +3,5 @@ Dieses Skript ermöglicht die automatisierte Installation von Programmpaketen au
 Auch die Installation nur eines einzelnen Programmpakets sowie das vollständige Entfernen eines Programmpakets, optional einschließlich seiner Konfiguration und sonstigen zugehörigen Daten, ist sehr einfach möglich.
 Darüber hinaus können weitere System-Komponenten wie Treiber und Schriftarten installiert werden, sowie zahlreiche Optimierungen des Systems durchgeführt werden.
 <br /><br />
-Weitere Infos, Screenshots und Anleitungen hier&nbsp;&raquo;&nbsp;<a href="https://migano.de/download/lissy/index.php">Lissy</a> bei migano.de.
+Weitere Infos, Screenshots und Anleitungen hier&nbsp;&raquo;&nbsp;<a href="https://migano.de/download/lissy/index.php">Lissy bei migano.de</a>.
 <br />
