@@ -35,8 +35,8 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.33"
-# Letzte Änderung: 01.04.2023
+VERSION="3.40"
+# Letzte Änderung: 04.05.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -683,9 +683,9 @@ declare -A KATEGORIE_TEXT # Angezeigte Bezeichnung der Kategorie
 declare -A KATEGORIE_PKGS # Liste mit den in der Kategorie enthaltenen Paketen
 
 # Alphabetische Reihenfolge
-KAT_KEY_LIST=(a b c f g i m n p q t u v w wg x z gx lx mx xx)
+KAT_KEY_LIST=(a b c f g i m n p q s t u v w wg x z gx lx mx xx)
 # Reihenfolge der Verarbeitung
-KAT_ORD_LIST=(x v b i n wg c m g t z u p a f q w gx lx mx xx)
+KAT_ORD_LIST=(x v b i n wg c m g t z u p a f q w s gx lx mx xx)
 
 # --- CATEGORIES START ---
 KATEGORIE_TEXT[a]="Webserver (Apache und PHP)"
@@ -698,6 +698,7 @@ KATEGORIE_TEXT[m]="Multimedia (Media-Player, Konverter und Brenn-Software)"
 KATEGORIE_TEXT[n]="Private Netzwerkverbindungen (OpenVPN, VPNC)"
 KATEGORIE_TEXT[p]="Programmierung (Editoren und Programmier-Werkzeuge)"
 KATEGORIE_TEXT[q]="Emulation u. Virtualisierung (Docker, KVM, QEMU und VBox)"
+KATEGORIE_TEXT[s]="Spiele (Michael's Auswahl)"
 KATEGORIE_TEXT[t]="Tonstudio (Audio-Bearbeitung und Musikproduktion)"
 KATEGORIE_TEXT[u]="USB-Firewall (Selektives Zulassen von USB-Geräten)"
 KATEGORIE_TEXT[v]="Systemverwaltung (Hilfsprogramme mit Benutzeroberfläche)"
@@ -849,10 +850,12 @@ KATEGORIE_PKGS[i]="anydesk ipscan chromium chromium-ffmpeg filezilla firefox ope
 KATEGORIE_PKGS[m]="asunder celluloid cheese easytag handbrake hypnotix k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mediainfo-gui mixxx mkvtoolnix mkvtoolnix-gui mpv parole openshot-qt rhythmbox smplayer vlc"
 # Netzwerkverbindungen
 KATEGORIE_PKGS[n]="openvpn network-manager-openvpn network-manager-openvpn-gnome vpnc vpnc-scripts network-manager-vpnc network-manager-vpnc-gnome"
-# Systemverwaltung
-KATEGORIE_PKGS[v]="baobab bleachbit blueman caja caja-actions caja-eiciel caja-extensions-common caja-gtkhash caja-image-converter caja-mediainfo caja-open-terminal caja-rename caja-seahorse caja-sendto caja-share caja-wallpaper caja-xattr-tags copyq czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted grsync grub-customizer gsmartcontrol gtkhash gufw hardinfo kwalletmanager mozo nemo plasma-discover seahorse synaptic system-config-printer tilda usbview xfce4-taskmanager zulumount-gui"
+# Spiele
+KATEGORIE_PKGS[s]="0ad alien-arena astromenace billard-gl blobwars blockout2 briquolo brutalchess caveexpress chromium-bsu code-the-classics criticalmass cuyo dreamchess pinball enigma extremetuxracer foobillardplus freedoom fs-uae fs-uae-launcher gbrainy gemdropx gnome-games gnubg gweled hedgewars jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter naev neverball neverputt nexuiz open-invaders pingus pokerth pybik rocksndiamonds sauerbraten sdl-ball supertux supertuxkart teeworlds torcs trigger-rally ufoai wesnoth zaz"
 # Systemerweiterungen
 KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dpkg-repack e2fsprogs ethtool exfat-fuse exfat-utils extundelete fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysstat tar tcptrack testdisk udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
+# Systemverwaltung
+KATEGORIE_PKGS[v]="baobab bleachbit blueman caja caja-actions caja-eiciel caja-extensions-common caja-gtkhash caja-image-converter caja-mediainfo caja-open-terminal caja-rename caja-seahorse caja-sendto caja-share caja-wallpaper caja-xattr-tags copyq czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted grsync grub-customizer gsmartcontrol gtkhash gufw hardinfo kwalletmanager mozo nemo plasma-discover seahorse synaptic system-config-printer tilda usbview xfce4-taskmanager zulumount-gui"
 # Tonstudio
 KATEGORIE_PKGS[t]="ardour audacity hydrogen lmms qjackctl qtractor yoshimi"
 # USB-Firewall
@@ -909,6 +912,7 @@ SIMILAR_PACK[pdfchain]="pdfmod"
 SIMILAR_PACK[pdfarranger]="pdfmod"
 SIMILAR_PACK[pinta]="drawing"
 SIMILAR_PACK[transmission]="transmission-common"
+SIMILAR_PACK[ubuntu-mate-welcome]="mintwelcome"
 
 ###############################################################################
 # Einige Programme sind nicht in jedem Repository enthalten und können dann
@@ -1225,6 +1229,18 @@ WEB_PKG_CSUM[czkawka_arm64]="" # Ab Ubuntu 21 nur als Snap
 WEB_PKG_FILE[czkawka_armhf]="" # NICHT verfügbar
 WEB_PKG_CSUM[czkawka_armhf]="" # NICHT verfügbar
 
+WEB_PKG_NAME[code-the-classics]="Code-the-Classics"
+WEB_PKG_VERS[code-the-classics]="1.00"
+WEB_PKG_CATY[code-the-classics]="Games"
+WEB_PKG_FILE[code-the-classics_amd64]="$RESSOURCE_SERVER_DIR/web/Code-the-Classics.tar.gz"
+WEB_PKG_CSUM[code-the-classics_amd64]="$RESSOURCE_SERVER_DIR/web/Code-the-Classics.tar.gz.sha"
+ WEB_PKG_FILE[code-the-classics_i386]="$RESSOURCE_SERVER_DIR/web/Code-the-Classics.tar.gz"
+ WEB_PKG_CSUM[code-the-classics_i386]="$RESSOURCE_SERVER_DIR/web/Code-the-Classics.tar.gz.sha"
+WEB_PKG_FILE[code-the-classics_arm64]="$RESSOURCE_SERVER_DIR/web/Code-the-Classics.tar.gz"
+WEB_PKG_CSUM[code-the-classics_arm64]="$RESSOURCE_SERVER_DIR/web/Code-the-Classics.tar.gz.sha"
+WEB_PKG_FILE[code-the-classics_armhf]="$RESSOURCE_SERVER_DIR/web/Code-the-Classics.tar.gz"
+WEB_PKG_CSUM[code-the-classics_armhf]="$RESSOURCE_SERVER_DIR/web/Code-the-Classics.tar.gz.sha"
+
 # Download von https://freefilesync.org/download.php
 WEB_PKG_NAME[freefilesync]="FreeFileSync"
 WEB_PKG_VERS[freefilesync]="11.23"
@@ -1271,7 +1287,7 @@ WEB_PKG_CSUM[tor-browser_armhf]="" # Auf ARM nur für Android verfügbar (Raspbe
 # im Repo haben und somit von apt auch nicht automatisch aktualisiert werden.
 # Dient als Basis für die Updates dieser Programme mit der Option "exupdate".
 ###############################################################################
-EXUPDATE_PKG_LIST=('balena-etcher-electron' 'czkawka' 'freefilesync' 'hypnotix' 'ipscan' 'nomachine' 'openshot-qt' 'tor-browser' 'veracrypt' 'xnview')
+EXUPDATE_PKG_LIST=('balena-etcher-electron' 'code-the-classics' 'czkawka' 'freefilesync' 'hypnotix' 'ipscan' 'nomachine' 'openshot-qt' 'tor-browser' 'veracrypt' 'xnview')
 
 ###############################################################################
 # Pakete, die warum auch immer vorzugsweise als Snap installiert werden sollen.
@@ -1327,6 +1343,7 @@ PRE_INST_CONF[anydesk]="$RESSOURCE_SERVER_DIR/scripts/anydesk_pre_inst"
 declare -A POST_INST_CONF
 
 POST_INST_CONF[anydesk]="$RESSOURCE_SERVER_DIR/scripts/anydesk_post_inst"
+POST_INST_CONF[code-the-classics]="$RESSOURCE_SERVER_DIR/scripts/code-the-classics_post_inst"
 POST_INST_CONF[czkawka]="$RESSOURCE_SERVER_DIR/scripts/czkawka_post_inst"
 POST_INST_CONF[freefilesync]="$RESSOURCE_SERVER_DIR/scripts/freefilesync_post_inst"
 POST_INST_CONF[hypnotix]="$RESSOURCE_SERVER_DIR/scripts/hypnotix_post_inst"
@@ -1340,12 +1357,26 @@ POST_INST_CONF[openssh-server]="echo -n Starte SSH-Dienste ... && service ssh re
 POST_INST_CONF[owncloud-client]="$RESSOURCE_SERVER_DIR/scripts/owncloud_post_inst"
 POST_INST_CONF[php]="$RESSOURCE_SERVER_DIR/scripts/php_post_inst"
 POST_INST_CONF[proftpd-basic]="$RESSOURCE_SERVER_DIR/scripts/proftpd_post_inst"
+POST_INST_CONF[rocksndiamonds]="dpkg-reconfigure rocksndiamonds"
 POST_INST_CONF[samba]="$RESSOURCE_SERVER_DIR/scripts/samba_post_inst"
 POST_INST_CONF[teamviewer]="$RESSOURCE_SERVER_DIR/scripts/teamviewer_post_inst"
 POST_INST_CONF[tor-browser]="$RESSOURCE_SERVER_DIR/scripts/tor-browser_post_inst"
 POST_INST_CONF[usbauth-notifier]="$RESSOURCE_SERVER_DIR/scripts/usbauth-notifier_post_inst"
 POST_INST_CONF[virtualbox]="usermod -aG vboxusers $USER_USERNAME"
 POST_INST_CONF[wireguard]="$RESSOURCE_SERVER_DIR/scripts/wireguard_post_inst"
+
+###############################################################################
+# Für Progamme, deren Starter / Desktop-Symbole nicht den gleichen Dateinamen
+# haben wie das Programm selbst, oder für Programmpakete, zu denen mehrere
+# Starter angelegt werden sollen, können deren Dateinamen in den folgenden
+# Listen angegeben werden (gesucht werden diese in /usr/share/applications).
+###############################################################################
+declare -A PKG_ICON_LIST
+
+PKG_ICON_LIST[code-the-classics]="boing bunner cavern myriapod soccer"
+PKG_ICON_LIST[extremetuxracer]="etr"
+PKG_ICON_LIST[freedoom]="io.github.freedoom.Phase1 io.github.freedoom.Phase2"
+PKG_ICON_LIST[gnome-games]="sol org.gnome.Chess org.gnome.five-or-more org.gnome.Four-in-a-row org.gnome.Hitori org.gnome.Klotski org.gnome.LightsOff org.gnome.Mahjongg org.gnome.Mines org.gnome.Nibbles org.gnome.Quadrapassel org.gnome.Reversi org.gnome.Robots org.gnome.Sudoku org.gnome.SwellFoop org.gnome.Tali org.gnome.Taquin org.gnome.Tetravex"
 
 ###############################################################################
 # Zusätzliche Desktop-Symbole zur Ergänzung des Ordners "Systemverwaltung".
@@ -1977,6 +2008,23 @@ function create_desktop_icon () {
           SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "(X-SnapInstanceName)=\b$SEARCH_NAME\b" /var/lib/snapd/desktop/applications/* 2>/dev/null)
           if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
+          # 10. Verwendung von Desktop-Dateien aus vordefinierter Liste
+          tmp_list=${PKG_ICON_LIST[$SEARCH_NAME]};
+          if [ "$tmp_list" != "" ]
+          then
+            for icon_file in ${tmp_list[@]};
+            do
+              icon_file_name="/usr/share/applications/$icon_file"
+              icon_file_name+=".desktop"
+              if [ -s "$icon_file_name" ];
+              then
+                SEARCH_RESULT_TMP+=$icon_file_name
+                SEARCH_RESULT_TMP+=$'\n'
+              fi
+            done
+            SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"
+          fi
+
           # Ergebnisliste in Array umwandeln
           IFS=$'\n' ICON_LIST_ARRAY=(${SEARCH_RESULT_ALL})
           IFS=' '
@@ -2299,6 +2347,7 @@ function extend_repo_ppa () {
 #            2 = installiert als Snap-Paket
 #            3 = Ordner mit ausführbaren Dateien in /opt gefunden
 #            4 = Ordner mit ausführbaren Dateien in /home/USER/apps gefunden
+#            5 = Ordner mit ausführbaren Dateien in /usr/share gefunden
 # ACHTUNG: Der Rückgabewert entspricht NICHT dem INSTALL_MODE!
 ###############################################################################
 function get_install_status () {
@@ -2328,7 +2377,7 @@ function get_install_status () {
   fi
 
   # ------------------------------------------------------------------
-  # 3. Prüfen ob es im System-Anwendungs-Ordner (/opt) einen
+  # 3. Prüfen ob es im System-Anwendungs-Ordner "/opt" einen
   # entsprechenden Programmordner mit ausführbaren Dateien gibt
   # ------------------------------------------------------------------
   if [ $PKG_INSTALL_STATUS -eq 0 ];
@@ -2356,13 +2405,6 @@ function get_install_status () {
           then
             PKG_VERSION=$(cat "$PKG_VERS_FILE" | xargs)
           else
-            # ALT:
-            # Wenn sich ein Programm selbst in einem anderen Ordner installiert hat und es dort keine Datei
-            # mit Versionsnummer gibt, auch im Benutzer-Ordner nach einer gespeicherten Versionsdatei suchen
-            # (gab es nur bei FreefileSync, nun wird die Versions-Datei per "_post-Skript" dahin verschoben)
-            # PKG_VERS_FILE="$WEB_PKG_DIR/${WEB_PKG_NAME[$1]}/.$1"
-            # PKG_VERS_FILE+="_version"
-            # if [ -s "$PKG_VERS_FILE" ]; then PKG_VERSION=$(cat "$PKG_VERS_FILE" | xargs); fi
             PKG_VERSION=""
           fi
         fi
@@ -2387,6 +2429,30 @@ function get_install_status () {
           PKG_VERS_FILE="$THE_PKG_INST_DIR/.$1"
           PKG_VERS_FILE+="_version"
           if [ -s "$PKG_VERS_FILE" ]; then PKG_VERSION=$(cat "$PKG_VERS_FILE" | xargs); fi
+        fi
+      fi
+    fi
+  fi
+
+  # ------------------------------------------------------------------
+  # 5. Prüfen ob es im System-Anwendungs-Ordner "/usr/share" einen
+  # entsprechenden Programmordner mit ausführbaren Dateien gibt
+  # ------------------------------------------------------------------
+  if [ $PKG_INSTALL_STATUS -eq 0 ];
+  then
+    THE_PKG_INST_DIR="/usr/share/$1"
+    if [ -d "$THE_PKG_INST_DIR" ];
+    then
+      if [ $(find "$THE_PKG_INST_DIR" -maxdepth 1 -executable 2>/dev/null | wc -l) -gt 1 ];
+      then
+        PKG_INSTALL_STATUS=5
+        PKG_VERS_FILE="$THE_PKG_INST_DIR/.$1"
+        PKG_VERS_FILE+="_version"
+        if [ -s "$PKG_VERS_FILE" ];
+        then
+          PKG_VERSION=$(cat "$PKG_VERS_FILE" | xargs)
+        else
+          PKG_VERSION=""
         fi
       fi
     fi
@@ -3881,6 +3947,7 @@ function install_pkg () {
         1) IMODE_MSG+="bereits" ;;
         2) IMODE_MSG+="als ${light_purple}Snap${colors_off}" ;;
       3|4) IMODE_MSG+="in ${light_purple}$THE_PKG_INST_DIR${colors_off}" ;;
+        5) IMODE_MSG+="in ${light_purple}$THE_PKG_INST_DIR${colors_off}" ;;
     esac
     e_and_l "$IMODE_MSG installiert"
 
