@@ -35,8 +35,8 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.40"
-# Letzte Änderung: 04.05.2023
+VERSION="3.41"
+# Letzte Änderung: 05.05.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -851,7 +851,7 @@ KATEGORIE_PKGS[m]="asunder celluloid cheese easytag handbrake hypnotix k3b kdenl
 # Netzwerkverbindungen
 KATEGORIE_PKGS[n]="openvpn network-manager-openvpn network-manager-openvpn-gnome vpnc vpnc-scripts network-manager-vpnc network-manager-vpnc-gnome"
 # Spiele
-KATEGORIE_PKGS[s]="0ad alien-arena astromenace billard-gl blobwars blockout2 briquolo brutalchess caveexpress chromium-bsu code-the-classics criticalmass cuyo dreamchess pinball enigma extremetuxracer foobillardplus freedoom fs-uae fs-uae-launcher gbrainy gemdropx gnome-games gnubg gweled hedgewars jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter naev neverball neverputt nexuiz open-invaders pingus pokerth pybik rocksndiamonds sauerbraten sdl-ball supertux supertuxkart teeworlds torcs trigger-rally ufoai wesnoth zaz"
+KATEGORIE_PKGS[s]="0ad alien-arena astromenace billard-gl blobwars blockout2 briquolo brutalchess caveexpress chromium-bsu code-the-classics criticalmass cuyo dreamchess pinball enigma extremetuxracer foobillardplus freedoom fs-uae fs-uae-launcher gbrainy gemdropx gnome-games gnubg gweled hedgewars jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter naev neverball neverputt nexuiz oolite open-invaders pingus pokerth pybik rocksndiamonds sauerbraten sdl-ball supertux supertuxkart teeworlds torcs trigger-rally ufoai wesnoth zaz"
 # Systemerweiterungen
 KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dpkg-repack e2fsprogs ethtool exfat-fuse exfat-utils extundelete fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysstat tar tcptrack testdisk udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
 # Systemverwaltung
@@ -1229,6 +1229,7 @@ WEB_PKG_CSUM[czkawka_arm64]="" # Ab Ubuntu 21 nur als Snap
 WEB_PKG_FILE[czkawka_armhf]="" # NICHT verfügbar
 WEB_PKG_CSUM[czkawka_armhf]="" # NICHT verfügbar
 
+# Eigene Zusammenstellung ;)
 WEB_PKG_NAME[code-the-classics]="Code-the-Classics"
 WEB_PKG_VERS[code-the-classics]="1.00"
 WEB_PKG_CATY[code-the-classics]="Games"
@@ -1253,6 +1254,19 @@ WEB_PKG_FILE[freefilesync_arm64]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[freefilesync_arm64]="" # NICHT für ARM verfügbar
 WEB_PKG_FILE[freefilesync_armhf]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[freefilesync_armhf]="" # NICHT für ARM verfügbar
+
+# Download von http://oolite.space oder https://github.com/OoliteProject
+WEB_PKG_NAME[oolite]="Oolite"
+WEB_PKG_VERS[oolite]="1.90"
+WEB_PKG_CATY[oolite]="Games"
+WEB_PKG_FILE[oolite_amd64]="$RESSOURCE_SERVER_DIR/web/oolite-1.90.linux-x86_64.tgz"
+WEB_PKG_CSUM[oolite_amd64]="$RESSOURCE_SERVER_DIR/web/oolite-1.90.linux-x86_64.tgz.sha"
+ WEB_PKG_FILE[oolite_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
+ WEB_PKG_CSUM[oolite_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
+WEB_PKG_FILE[oolite_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[oolite_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_FILE[oolite_armhf]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[oolite_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://www.openshot.org/de/download
 WEB_PKG_NAME[openshot-qt]="OpenShot"
@@ -1353,6 +1367,7 @@ POST_INST_CONF[makemkv-bin]="$RESSOURCE_SERVER_DIR/scripts/makemkv-bin_post_inst
 POST_INST_CONF[microsoft-edge-stable]="rm -f /etc/apt/sources.list.d/microsoft-edge-stable.list"
 POST_INST_CONF[microsoft-edge-dev]="rm -f /etc/apt/sources.list.d/microsoft-edge-dev.list"
 POST_INST_CONF[nextcloud-desktop]="$RESSOURCE_SERVER_DIR/scripts/nextcloud_post_inst"
+POST_INST_CONF[oolite]="$RESSOURCE_SERVER_DIR/scripts/oolite_post_inst"
 POST_INST_CONF[openssh-server]="echo -n Starte SSH-Dienste ... && service ssh restart &>/dev/null && systemctl enable ssh &>/dev/null && echo ok"
 POST_INST_CONF[owncloud-client]="$RESSOURCE_SERVER_DIR/scripts/owncloud_post_inst"
 POST_INST_CONF[php]="$RESSOURCE_SERVER_DIR/scripts/php_post_inst"
@@ -1377,6 +1392,7 @@ PKG_ICON_LIST[code-the-classics]="boing bunner cavern myriapod soccer"
 PKG_ICON_LIST[extremetuxracer]="etr"
 PKG_ICON_LIST[freedoom]="io.github.freedoom.Phase1 io.github.freedoom.Phase2"
 PKG_ICON_LIST[gnome-games]="sol org.gnome.Chess org.gnome.five-or-more org.gnome.Four-in-a-row org.gnome.Hitori org.gnome.Klotski org.gnome.LightsOff org.gnome.Mahjongg org.gnome.Mines org.gnome.Nibbles org.gnome.Quadrapassel org.gnome.Reversi org.gnome.Robots org.gnome.Sudoku org.gnome.SwellFoop org.gnome.Tali org.gnome.Taquin org.gnome.Tetravex"
+PKG_ICON_LIST[oolite]="oolite.org"
 
 ###############################################################################
 # Zusätzliche Desktop-Symbole zur Ergänzung des Ordners "Systemverwaltung".
@@ -3672,7 +3688,8 @@ function install_pkg () {
                   then
                     DOWNLOAD_FORMAT="ZIP"
                   else
-                    if [ $(echo -n "$LOCAL_DOWNLOAD_FILE" | grep -i -c ".tar") -ne 0 ];
+                    if [ $(echo -n "$LOCAL_DOWNLOAD_FILE" | grep -i -c ".tar") -ne 0 ] ||
+                       [ $(echo -n "$LOCAL_DOWNLOAD_FILE" | grep -i -c ".tgz") -ne 0 ];
                     then
                       DOWNLOAD_FORMAT="TAR"
                     else
