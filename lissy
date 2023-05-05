@@ -43,7 +43,6 @@ HEADLINE_TITLE="Linux Software Installer and System Configurator"
 # URL zum Download dieses Scriptes
 ###############################################################################
 THIS_SCRIPT_URL="https://migano.de/download/lissy/lissy"
-
 ###############################################################################
 # Schriftfarben und Textbausteine
 # Bei Änderungen der Farbnamen auch die COL_VAR_LIST anpassen!
@@ -99,13 +98,11 @@ colors_off='\033[0m'
 colors_invers='\033[7m'
 # Linienfarbe
 line_color='\033[0;90m'
-
 if [ -x "/usr/bin/tput" ] && tput setaf 1 &>/dev/null;
 then
   # clear_this_line=$(tput el) # Aktuell nicht benötigt
   clear_last_line=$(tput cuu 1 && tput el)
 fi
-
 # --------------
 # Textbausteine
 # --------------
@@ -114,14 +111,12 @@ HALF_LINE="${line_color}$(printf '─%.0s' {1..40})${colors_off}"
 HALF_MINUS_LINE="${line_color}$(printf '\x2D%.0s' {1..40})${colors_off}"
 PRE_SPACE=$(printf ' %.0s' {1..5})
 FULLSPACE=$(printf '\x20%.0s' {1..80})
-
 NF_TXT="nicht gefunden"
 NA_TXT="nicht verfügbar"
 NV_TXT="nicht vorhanden"
 NR_TXT="nicht für root"
 RASPY_TXT="nur Raspberry Pi"
 PIOS_TXT="nur bei Pi OS"
-
 OK_TAG="${bold_green}ok${colors_off}"
 OA_TAG="${bold_green}ok${colors_off} ${dark_grey}(Autostart aktiv)${colors_off}"
 NC_TAG="${bold_green}ok${colors_off} ${dark_grey}(keine Änderung)${colors_off}"
@@ -133,7 +128,6 @@ HINWEIS_TAG="${bold_yellow}Hinweis${colors_off}"
 WARN_TAG="${bold_yellow}Warnung${colors_off}"
 ACHTUNG_TAG="${bold_red}Achtung${colors_off}"
 ERROR_TAG="${bold_red}Fehler${colors_off}"
-
 USER_CHOICE_YES="OK, Du hast es so gewollt ..."
 USER_CHOICE_NO="Sicherheit geht vor!"
 
@@ -317,10 +311,8 @@ function gsettings_set() {
 ###############################################################################
 if [ $SHOW_HELP -eq 0 ];
 then
-
   echo -e ""
   echo -e -n " Initialisierung, bitte warten ... "
-
   SOURCES_LIST_FILE="/etc/apt/sources.list"
   SOURCES_LIST_DIR="/etc/apt/sources.list.d"
   ANZ_SOURCE_ENTRIES=0
@@ -734,8 +726,8 @@ declare -A OPTION_MENU # Index des Menüpunktes, in dem die Option erscheint
 
 OPTION_LIST=()
 OPTION_LIST+=(nosnap norepo foreign force quiet status listonly addicons) # Menu 2
-OPTION_LIST+=(extras exupdate udrivers kuplock kunlock optimize notrim cleaning nopkgsrv personal dsave dload) # Menu 3
-OPTION_LIST+=(infoonly noinfo log logfull noupdate nocolor saveconf) # Menu 4
+OPTION_LIST+=(extras exupdate udrivers kuplock kunlock optimize notrim cleaning nopkgsrv personal dsave dload) # Menu 4
+OPTION_LIST+=(infoonly noinfo log logfull noupdate nocolor saveconf cleartmp) # Menu 5
 
 OPTION_TEXT[addicons]="Desktop-Symbole (Icons) für Paketauswahl erstellen"
 OPTION_TEXT[cleaning]="Reparaturen und diverse Bereinigungen durchführen"
@@ -747,6 +739,7 @@ OPTION_TEXT[force]="Ja/Nein-Abfrage vor jeder Installation überspringen"
 OPTION_TEXT[foreign]="Auch Pakete für Fremd-Architekturen installieren"
 OPTION_TEXT[infoonly]="Nur Systeminformationen anzeigen (sonst nichts tun)"
 OPTION_TEXT[instonly]="Ein einzelnes Programmpaket installieren"
+OPTION_TEXT[cleartmp]="Alle temporären Dateien bei Programmende löschen"
 OPTION_TEXT[kuplock]="Aktualisierungen (Updates) des Kernels blockieren"
 OPTION_TEXT[kunlock]="Aktualisierungen (Updates) des Kernels freigeben"
 OPTION_TEXT[listonly]="Nur Pakete je Kategorie auflisten (sonst nichts tun)"
@@ -806,6 +799,7 @@ OPTION_MENU[personal]=4
 OPTION_MENU[udrivers]=4
 
 OPTION_MENU[infoonly]=5
+OPTION_MENU[cleartmp]=5
 OPTION_MENU[log]=5
 OPTION_MENU[logfull]=5
 OPTION_MENU[nocolor]=5
@@ -1814,10 +1808,21 @@ function check_url_file () {
 ###############################################################################
 function clean_on_exit () {
   remove_file "$LOG_TEMP"
-  if [ -d "$DOWNLOAD_DIR" ] &&
-     [ $(ls -A "$DOWNLOAD_DIR" | wc -w) -eq 0 ];
+  # Wenn gewünscht alle temporären Dateien im Download-Verzeichnis löschen ...
+  if [ "$DOWNLOAD_DIR" != "" ] &&
+     [ "$DOWNLOAD_DIR" != "/" ] &&
+     [ "$DOWNLOAD_DIR" != "/tmp" ] &&
+     [ -d "$DOWNLOAD_DIR" ] &&
+     [ ${OPTION_FLAG[cleartmp]} -eq 1 ];
   then
-    rmdir "$DOWNLOAD_DIR" &>/dev/null
+    rm -r -f "$DOWNLOAD_DIR" &>/dev/null
+  else
+    # ... oder Verzeichnis nur löschen wenn es leer ist
+    if [ -d "$DOWNLOAD_DIR" ] &&
+       [ $(ls -A "$DOWNLOAD_DIR" | wc -w) -eq 0 ];
+    then
+      rmdir "$DOWNLOAD_DIR" &>/dev/null
+    fi
   fi
   setterm -cursor on 2>/dev/null
 }
@@ -10835,7 +10840,6 @@ then
   # ---------------------------------------------------------------------------
   if [ $REMOVE_ACTION -gt 0 ];
   then
-
     # Nicht installiertes Paket, "nur" hinterbliebene Daten löschen
     if [ $INST_STATUS -eq 0 ];
     then
@@ -10858,7 +10862,6 @@ then
       remove_cfg "$REMOVE_PKG_NAME" 1
       remove_dat "$REMOVE_PKG_NAME"
     fi
-
     # Standard-Paketverwaltung (apt) und Snaps
     if [ $INST_STATUS -eq 1 ] ||
        [ $INST_STATUS -eq 2 ];
@@ -10894,7 +10897,6 @@ then
         fi
       fi
     fi
-
     # Ordner mit ausführbaren Dateien
     if [ $INST_STATUS -eq 3 ] ||
        [ $INST_STATUS -eq 4 ];
@@ -10951,7 +10953,6 @@ then
         fi
       fi
     fi
-
     echo -e ""
   fi
   # ---------------------------------------------------------------------------
@@ -10996,14 +10997,12 @@ else
   e_and_l " alle anderen angegebenen Optionen außer der Kategorieauswahl ignoriert."
 fi
 e_and_l "$FULL_LINE"
-
 if [ $NO_MENU -eq 0 ];
 then
   echo -e " Aufruf per Kommandozeile:"
   echo -e " ${light_yellow}$SCRIPT_NAME $COMMAND_LINE_STRING nomenu${colors_off}"
   echo -e "$FULL_LINE"
 fi
-
 e_and_l " ${bold_green}Alles erledigt${colors_off}. Auf Wiedersehen ..."
 e_and_l "$FULL_LINE"
 
