@@ -731,6 +731,7 @@ OPTION_LIST+=(infoonly noinfo log logfull noupdate nocolor saveconf cleartmp) # 
 
 OPTION_TEXT[addicons]="Desktop-Symbole (Icons) für Paketauswahl erstellen"
 OPTION_TEXT[cleaning]="Reparaturen und diverse Bereinigungen durchführen"
+OPTION_TEXT[cleartmp]="Alle temporären Dateien bei Programmende löschen"
 OPTION_TEXT[dload]="Gespeicherte Desktop-Einstellungen laden (dconf)"
 OPTION_TEXT[dsave]="Aktuelle Desktop-Einstellungen speichern (dconf)"
 OPTION_TEXT[extras]="Extras (Schriftarten, Mauszeiger etc.) installieren"
@@ -739,7 +740,6 @@ OPTION_TEXT[force]="Ja/Nein-Abfrage vor jeder Installation überspringen"
 OPTION_TEXT[foreign]="Auch Pakete für Fremd-Architekturen installieren"
 OPTION_TEXT[infoonly]="Nur Systeminformationen anzeigen (sonst nichts tun)"
 OPTION_TEXT[instonly]="Ein einzelnes Programmpaket installieren"
-OPTION_TEXT[cleartmp]="Alle temporären Dateien bei Programmende löschen"
 OPTION_TEXT[kuplock]="Aktualisierungen (Updates) des Kernels blockieren"
 OPTION_TEXT[kunlock]="Aktualisierungen (Updates) des Kernels freigeben"
 OPTION_TEXT[listonly]="Nur Pakete je Kategorie auflisten (sonst nichts tun)"
@@ -813,7 +813,6 @@ OPTION_MENU[saveconf]=5
 # Sollen aus irgendeinem Grund Snap- oder externe Pakete bevorzugt werden, dann
 # können diese in FORCE_SNAPPY_LIST und FORCE_EXTERN_LIST eingetragen werden.
 ###############################################################################
-
 # Apache und PHP (Webserver)- mit vielen PHP-Modulen in aktueller Version ;)
 PHP_VERSION=$(LANG=en apt show "php" 2>/dev/null | grep -i -E "depends\:\s*")
 PHP_VERSION=$(echo -n "${PHP_VERSION##* }" | xargs)
@@ -1668,7 +1667,6 @@ function ask_yes_no_info () {
     e_and_l -n "$PRE_SPACE"
     TROTZDEM=" trotzdem"
   fi
-
   # -------------------------------------------------------------------------
   # Wenn es so gewollt ist (Option force) und nicht bereits ein alternatives
   # Programmpaket installiert ist (welches eventuell in Konflikt steht), dann
@@ -5465,6 +5463,13 @@ then
   e_and_l ""
   e_and_l "  cleaning  Bereinigt nicht benötigte Daten des Benutzers und"
   e_and_l "            repariert diverse Einstellungen des Systems"
+  e_and_l ""
+  e_and_l "  cleartmp  Alle temporär erstellten Dateien werden automatisch wieder"
+  e_and_l "            gelöscht. Heruntergeladene Dateien wie Setups und Skripte"
+  e_and_l "            sowie Listen bleiben hingegen zur Nachvollziehbarkeit auch"
+  e_and_l "            nach Ende des Programms im Download-Verzeichnis erhalten."
+  e_and_l "            Bei Verwendung dieser Option werden auch diese Dateien"
+  e_and_l "            alle vollständig aus dem Download-Verzeichnis entfernt."
   e_and_l ""
   e_and_l "     dload  Stellt gespeicherte Desktop- und Anwendungs-Einstellungen"
   e_and_l "            aus einer Sicherung wieder her (dconf)"
@@ -10308,7 +10313,6 @@ then
   fi
 
   e_and_l "$FULL_LINE"
-
 fi
 
 ###############################################################################
@@ -10452,7 +10456,6 @@ then
       USER_CONF_COM[teamview]="teamviewer daemon disable &>/dev/null"
       USER_CONF_MAO[teamview]=""
       USER_CONF_MSG[teamview]=""
-
       # ---------------------------------------------------------------------
       # Einstellungen durchführen
       # (Datei downloaden und zugehörigen Befehl ausführen)
@@ -10613,7 +10616,6 @@ then
       e_and_l " ${bold_blue}Desktop- und Anwendungs-Einstellungen${colors_off}"
       e_and_l " $ERROR_TAG: Die Aktionen ${bold_white}dload${colors_off} und ${bold_white}dsave${colors_off} können nicht zusammen ausgeführt werden!"
     else
-
       # -----------------------------------------------------------------------
       # Speichern
       # -----------------------------------------------------------------------
@@ -10643,7 +10645,6 @@ then
           fi
         fi
       fi
-
       # -----------------------------------------------------------------------
       # Laden
       # -----------------------------------------------------------------------
@@ -10680,7 +10681,6 @@ then
           e_and_l " $ERROR_TAG: Keine Sicherungsdaten gefunden!"
         fi
       fi
-
     fi
     e_and_l "$FULL_LINE"
   fi
