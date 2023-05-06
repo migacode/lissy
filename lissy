@@ -35,7 +35,7 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.41"
+VERSION="3.50"
 # Letzte Änderung: 06.05.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
@@ -5453,7 +5453,7 @@ then
   e_and_l "  cleansys  Bereinigt nicht benötigte Daten des Benutzers und"
   e_and_l "            repariert diverse Einstellungen des Systems"
   e_and_l ""
-  e_and_l "  cleantmp  Alle temporär erstellten Dateien werden automatisch wieder"
+  e_and_l "  cleantmp  Alle temporären Dateien von Lissy werden automatisch wieder"
   e_and_l "            gelöscht. Heruntergeladene Dateien wie Setups und Skripte"
   e_and_l "            sowie Listen bleiben hingegen zur Nachvollziehbarkeit auch"
   e_and_l "            nach Ende des Programms im Download-Verzeichnis erhalten."
