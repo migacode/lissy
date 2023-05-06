@@ -36,7 +36,7 @@
 #                                                                             #
 ###############################################################################
 VERSION="3.41"
-# Letzte Änderung: 05.05.2023
+# Letzte Änderung: 06.05.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -361,7 +361,6 @@ then
     echo -e " Quellen und starte $SCRIPT_NAME dann neu."
     exit 1
   fi
-
   # ---------
   # Hardware
   # ---------
@@ -376,7 +375,6 @@ then
   fi
   IFS=' '
   MACHINE_MODEL=$(echo -n "${MACHINE_MODEL:0:32}" | xargs)
-
   # ----------
   # Prozessor
   # ----------
@@ -387,10 +385,8 @@ then
     CPU_MODEL=$(cat /proc/cpuinfo 2>/dev/null | grep -i -E "^model\s*\:")
   fi
   CPU_MODEL=$(echo -n "${CPU_MODEL##*\:}" | xargs)
-
   # Anzahl Kerne
   CPU_CORES=$(cat /proc/cpuinfo 2>/dev/null | grep -i -c -E "^processor\s*\:")
-
   # Code
   CPU_CODE=$(cat /proc/cpuinfo 2>/dev/null | grep -i -E "^hardware\s*\:")
   CPU_CODE=$(echo -n "${CPU_CODE##*\:}" | xargs)
@@ -726,12 +722,12 @@ declare -A OPTION_MENU # Index des Menüpunktes, in dem die Option erscheint
 
 OPTION_LIST=()
 OPTION_LIST+=(nosnap norepo foreign force quiet status listonly addicons) # Menu 2
-OPTION_LIST+=(extras exupdate udrivers kuplock kunlock optimize notrim cleaning nopkgsrv personal dsave dload) # Menu 4
-OPTION_LIST+=(infoonly noinfo log logfull noupdate nocolor saveconf cleartmp) # Menu 5
+OPTION_LIST+=(extras exupdate udrivers kuplock kunlock optimize notrim cleansys nopkgsrv personal dsave dload) # Menu 4
+OPTION_LIST+=(infoonly noinfo log logfull noupdate nocolor saveconf cleantmp) # Menu 5
 
 OPTION_TEXT[addicons]="Desktop-Symbole (Icons) für Paketauswahl erstellen"
-OPTION_TEXT[cleaning]="Reparaturen und diverse Bereinigungen durchführen"
-OPTION_TEXT[cleartmp]="Alle temporären Dateien bei Programmende löschen"
+OPTION_TEXT[cleansys]="Reparaturen und diverse Bereinigungen durchführen"
+OPTION_TEXT[cleantmp]="Alle temporären Dateien bei Programmende löschen"
 OPTION_TEXT[dload]="Gespeicherte Desktop-Einstellungen laden (dconf)"
 OPTION_TEXT[dsave]="Aktuelle Desktop-Einstellungen speichern (dconf)"
 OPTION_TEXT[extras]="Extras (Schriftarten, Mauszeiger etc.) installieren"
@@ -779,7 +775,7 @@ OPTION_MENU[status]=2
 
 OPTION_MENU[remove]=3 # Wird nicht tatsächlich verwendet, Prüfung erfolgt auf REMOVE_PKG_NAME
 
-OPTION_MENU[cleaning]=4
+OPTION_MENU[cleansys]=4
 OPTION_MENU[dload]=4
 OPTION_MENU[dsave]=4
 OPTION_MENU[extras]=4
@@ -799,7 +795,7 @@ OPTION_MENU[personal]=4
 OPTION_MENU[udrivers]=4
 
 OPTION_MENU[infoonly]=5
-OPTION_MENU[cleartmp]=5
+OPTION_MENU[cleantmp]=5
 OPTION_MENU[log]=5
 OPTION_MENU[logfull]=5
 OPTION_MENU[nocolor]=5
@@ -995,9 +991,9 @@ declare -A DEB_PKG_CSUM # Prüfsumme ODER URL zu Prüfsummen-Datei
 # Download von https://github.com/balena-io/etcher/releases/latest (https://www.balena.io/etcher/)
 # ACHTUNG: Auch als WEB-Version eingetragen (s.u.)!
 DEB_PKG_NAME[balena-etcher-electron]="balenaEtcher"
-DEB_PKG_VERS[balena-etcher-electron]="1.7.9"
-DEB_PKG_FILE[balena-etcher-electron_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher-electron_1.7.9_amd64.deb"
-DEB_PKG_CSUM[balena-etcher-electron_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher-electron_1.7.9_amd64.deb.sha"
+DEB_PKG_VERS[balena-etcher-electron]="1.18.4"
+DEB_PKG_FILE[balena-etcher-electron_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.4_amd64.deb"
+DEB_PKG_CSUM[balena-etcher-electron_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.4_amd64.deb.sha"
  DEB_PKG_FILE[balena-etcher-electron_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
  DEB_PKG_CSUM[balena-etcher-electron_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
 DEB_PKG_FILE[balena-etcher-electron_arm64]="" # NICHT für ARM verfügbar
@@ -1019,39 +1015,39 @@ DEB_PKG_CSUM[grub-customizer_armhf]="" # Nur für amd64 als eigenes .deb erstell
 
 # Download von https://ftp5.gwdg.de/pub/linux/debian/mint/packages/pool/main/h/hypnotix
 DEB_PKG_NAME[hypnotix]="Hypnotix"
-DEB_PKG_VERS[hypnotix]="2.6"
-DEB_PKG_FILE[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_2.6_all.deb"
-DEB_PKG_CSUM[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_2.6_all.deb.sha"
+DEB_PKG_VERS[hypnotix]="3.2"
+DEB_PKG_FILE[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.2_all.deb"
+DEB_PKG_CSUM[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.2_all.deb.sha"
  DEB_PKG_FILE[hypnotix_i386]="" # NUR für 64-bit verfügbar
  DEB_PKG_CSUM[hypnotix_i386]="" # NUR für 64-bit verfügbar
-DEB_PKG_FILE[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_2.6_all.deb"
-DEB_PKG_CSUM[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_2.6_all.deb.sha"
+DEB_PKG_FILE[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.2_all.deb"
+DEB_PKG_CSUM[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.2_all.deb.sha"
 DEB_PKG_FILE[hypnotix_armhf]="" # NUR für 64-bit verfügbar
 DEB_PKG_CSUM[hypnotix_armhf]="" # NUR für 64-bit verfügbar
 
 # Download von https://angryip.org/download/#linux
 DEB_PKG_NAME[ipscan]="Angry IP Scanner"
-DEB_PKG_VERS[ipscan]="3.8.2"
-DEB_PKG_FILE[ipscan_amd64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.8.2_amd64.deb"
-DEB_PKG_CSUM[ipscan_amd64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.8.2_amd64.deb.sha"
- DEB_PKG_FILE[ipscan_i386]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.8.2_all.deb"
- DEB_PKG_CSUM[ipscan_i386]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.8.2_all.deb.sha"
-DEB_PKG_FILE[ipscan_arm64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.8.2_all.deb"
-DEB_PKG_CSUM[ipscan_arm64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.8.2_all.deb.sha"
-DEB_PKG_FILE[ipscan_armhf]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.8.2_all.deb"
-DEB_PKG_CSUM[ipscan_armhf]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.8.2_all.deb.sha"
+DEB_PKG_VERS[ipscan]="3.9.1"
+DEB_PKG_FILE[ipscan_amd64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_amd64.deb"
+DEB_PKG_CSUM[ipscan_amd64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_amd64.deb.sha"
+ DEB_PKG_FILE[ipscan_i386]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_all.deb"
+ DEB_PKG_CSUM[ipscan_i386]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_all.deb.sha"
+DEB_PKG_FILE[ipscan_arm64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_all.deb"
+DEB_PKG_CSUM[ipscan_arm64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_all.deb.sha"
+DEB_PKG_FILE[ipscan_armhf]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_all.deb"
+DEB_PKG_CSUM[ipscan_armhf]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_all.deb.sha"
 
 # Download von https://www.nomachine.com/download/linux&id=1
 DEB_PKG_NAME[nomachine]="NoMachine"
-DEB_PKG_VERS[nomachine]="7.9.2"
-DEB_PKG_FILE[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_7.9.2_1_amd64.deb"
-DEB_PKG_CSUM[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_7.9.2_1_amd64.deb.sha"
- DEB_PKG_FILE[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_7.9.2_1_i386.deb"
- DEB_PKG_CSUM[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_7.9.2_1_i386.deb.sha"
-DEB_PKG_FILE[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_7.9.2_1_arm64.deb"
-DEB_PKG_CSUM[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_7.9.2_1_arm64.deb.sha"
-DEB_PKG_FILE[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_7.9.2_1_armhf.deb"
-DEB_PKG_CSUM[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_7.9.2_1_armhf.deb.sha"
+DEB_PKG_VERS[nomachine]="8.4.2"
+DEB_PKG_FILE[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_amd64.deb"
+DEB_PKG_CSUM[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_amd64.deb.sha"
+ DEB_PKG_FILE[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_i386.deb"
+ DEB_PKG_CSUM[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_i386.deb.sha"
+DEB_PKG_FILE[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_arm64.deb"
+DEB_PKG_CSUM[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_arm64.deb.sha"
+DEB_PKG_FILE[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_armhf.deb"
+DEB_PKG_CSUM[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_armhf.deb.sha"
 
 # Downloads automatisch von der Herstellerseite (manuell: https://www.teamviewer.com/de/download/linux)
 DEB_PKG_NAME[teamviewer]="TeamViewer"
@@ -1142,9 +1138,9 @@ DEB_PKG_CSUM[realvnc-vnc-viewer_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-6.2
 
 # Download von https://www.xnview.com/de/xnviewmp/#downloads
 DEB_PKG_NAME[xnview]="XnView MP"
-DEB_PKG_VERS[xnview]="1.00.0"
-DEB_PKG_FILE[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.00-linux-x64.deb"
-DEB_PKG_CSUM[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.00-linux-x64.deb.sha"
+DEB_PKG_VERS[xnview]="1.4.4"
+DEB_PKG_FILE[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.4.4-linux-x64.deb"
+DEB_PKG_CSUM[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.4.4-linux-x64.deb.sha"
  DEB_PKG_FILE[xnview_i386]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_0.89-linux-x32.deb"
  DEB_PKG_CSUM[xnview_i386]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_0.89-linux-x32.deb.sha"
 DEB_PKG_FILE[xnview_arm64]="" # NICHT für ARM verfügbar
@@ -1198,10 +1194,10 @@ declare -A WEB_PKG_CATY # Kategorie für den Linux-Menü-Eintrag (NICHT unsere K
 # Download von https://github.com/balena-io/etcher/releases/latest (https://www.balena.io/etcher/)
 # ACHTUNG: Auch als DEB eingetragen (s.o.)!
 WEB_PKG_NAME[balena-etcher-electron]="balenaEtcher"
-WEB_PKG_VERS[balena-etcher-electron]="1.7.9"
+WEB_PKG_VERS[balena-etcher-electron]="1.18.4"
 WEB_PKG_CATY[balena-etcher-electron]="System;Utility"
-WEB_PKG_FILE[balena-etcher-electron_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.7.9-x64.AppImage"
-WEB_PKG_CSUM[balena-etcher-electron_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.7.9-x64.AppImage.sha"
+WEB_PKG_FILE[balena-etcher-electron_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.4-x64.AppImage"
+WEB_PKG_CSUM[balena-etcher-electron_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.4-x64.AppImage.sha"
  WEB_PKG_FILE[balena-etcher-electron_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
  WEB_PKG_CSUM[balena-etcher-electron_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
 WEB_PKG_FILE[balena-etcher-electron_arm64]="" # NICHT für ARM verfügbar
@@ -1211,12 +1207,12 @@ WEB_PKG_CSUM[balena-etcher-electron_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://github.com/qarmin/czkawka/releases
 WEB_PKG_NAME[czkawka]="Czkawka"
-WEB_PKG_VERS[czkawka]="4.1.0"
+WEB_PKG_VERS[czkawka]="5.1.0"
 WEB_PKG_CATY[czkawka]="System;Utility"
-WEB_PKG_FILE[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_4.1.0"
-WEB_PKG_CSUM[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_4.1.0.sha"
- WEB_PKG_FILE[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_4.1.0"
- WEB_PKG_CSUM[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_4.1.0.sha"
+WEB_PKG_FILE[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_5.1.0"
+WEB_PKG_CSUM[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_5.1.0.sha"
+ WEB_PKG_FILE[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_5.1.0"
+ WEB_PKG_CSUM[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_5.1.0.sha"
 WEB_PKG_FILE[czkawka_arm64]="" # Ab Ubuntu 21 nur als Snap
 WEB_PKG_CSUM[czkawka_arm64]="" # Ab Ubuntu 21 nur als Snap
 WEB_PKG_FILE[czkawka_armhf]="" # NICHT verfügbar
@@ -1237,10 +1233,10 @@ WEB_PKG_CSUM[code-the-classics_armhf]="$RESSOURCE_SERVER_DIR/web/Code-the-Classi
 
 # Download von https://freefilesync.org/download.php
 WEB_PKG_NAME[freefilesync]="FreeFileSync"
-WEB_PKG_VERS[freefilesync]="11.23"
+WEB_PKG_VERS[freefilesync]="12.2"
 WEB_PKG_CATY[freefilesync]="System;Utility"
-WEB_PKG_FILE[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_11.23_Linux.tar.gz"
-WEB_PKG_CSUM[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_11.23_Linux.tar.gz.sha"
+WEB_PKG_FILE[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_12.2_Linux.tar.gz"
+WEB_PKG_CSUM[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_12.2_Linux.tar.gz.sha"
  WEB_PKG_FILE[freefilesync_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
  WEB_PKG_CSUM[freefilesync_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
 WEB_PKG_FILE[freefilesync_arm64]="" # NICHT für ARM verfügbar
@@ -1263,10 +1259,10 @@ WEB_PKG_CSUM[oolite_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://www.openshot.org/de/download
 WEB_PKG_NAME[openshot-qt]="OpenShot"
-WEB_PKG_VERS[openshot-qt]="2.6.1"
+WEB_PKG_VERS[openshot-qt]="3.1.1"
 WEB_PKG_CATY[openshot-qt]="AudioVideo;Video"
-WEB_PKG_FILE[openshot-qt_amd64]="$RESSOURCE_SERVER_DIR/web/OpenShot-v2.6.1-x86_64.AppImage"
-WEB_PKG_CSUM[openshot-qt_amd64]="$RESSOURCE_SERVER_DIR/web/OpenShot-v2.6.1-x86_64.AppImage.sha"
+WEB_PKG_FILE[openshot-qt_amd64]="$RESSOURCE_SERVER_DIR/web/OpenShot-v3.1.1-x86_64.AppImage"
+WEB_PKG_CSUM[openshot-qt_amd64]="$RESSOURCE_SERVER_DIR/web/OpenShot-v3.1.1-x86_64.AppImage.sha"
  WEB_PKG_FILE[openshot-qt_i386]="" # Für Linux nur als 64-bit verfügbar
  WEB_PKG_CSUM[openshot-qt_i386]="" # Für Linux nur als 64-bit verfügbar
 WEB_PKG_FILE[openshot-qt_arm64]="" # NICHT für ARM verfügbar
@@ -1276,10 +1272,10 @@ WEB_PKG_CSUM[openshot-qt_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://www.torproject.org/de/download/
 WEB_PKG_NAME[tor-browser]="Tor Browser"
-WEB_PKG_VERS[tor-browser]="11.0.15"
+WEB_PKG_VERS[tor-browser]="12.0.5"
 WEB_PKG_CATY[tor-browser]="Network;WebBrowser"
-WEB_PKG_FILE[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux64-11.0.15_en-US.tar.xz"
-WEB_PKG_CSUM[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux64-11.0.15_en-US.tar.xz.sha"
+WEB_PKG_FILE[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux64-12.0.5_ALL.tar.xz"
+WEB_PKG_CSUM[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux64-12.0.5_ALL.tar.xz.sha"
  WEB_PKG_FILE[tor-browser_i386]="" # Für Linux nur als 64-bit verfügbar
  WEB_PKG_CSUM[tor-browser_i386]="" # Für Linux nur als 64-bit verfügbar
 WEB_PKG_FILE[tor-browser_arm64]="" # Auf ARM nur für Android verfügbar (Raspberry hat kein SSE2)
@@ -1637,7 +1633,6 @@ function ask_yes_or_no () {
 #            1 = true (Ja)
 ###############################################################################
 function ask_yes_no_info () {
-
   # ------------------------------------------------------
   # Hinweis auf bereits installierte Alternative anzeigen
   # ------------------------------------------------------
@@ -1755,9 +1750,7 @@ function ask_yes_no_info () {
 #            1 = true (überspringen)
 ###############################################################################
 function check_skip_raspi () {
-
   SKIP_RASPI=0
-
   # -------------------------------------------------------
   # Auf dem Raspberry Pi wegzulassende Pakete überspringen
   # -------------------------------------------------------
@@ -1806,18 +1799,21 @@ function check_url_file () {
 ###############################################################################
 function clean_on_exit () {
   remove_file "$LOG_TEMP"
-  # Wenn gewünscht alle temporären Dateien im Download-Verzeichnis löschen ...
   if [ "$DOWNLOAD_DIR" != "" ] &&
      [ "$DOWNLOAD_DIR" != "/" ] &&
      [ "$DOWNLOAD_DIR" != "/tmp" ] &&
-     [ -d "$DOWNLOAD_DIR" ] &&
-     [ ${OPTION_FLAG[cleartmp]} -eq 1 ];
+     [ -d "$DOWNLOAD_DIR" ];
   then
-    rm -r -f "$DOWNLOAD_DIR" &>/dev/null
-  else
-    # ... oder Verzeichnis nur löschen wenn es leer ist
-    if [ -d "$DOWNLOAD_DIR" ] &&
-       [ $(ls -A "$DOWNLOAD_DIR" | wc -w) -eq 0 ];
+    # Wenn gewünscht alle Dateien im Download-Verzeichnis löschen
+    # (dabei eigene Log-Dateien auslassen)
+    if [ ${OPTION_FLAG[cleantmp]} -eq 1 ];
+    then
+      find "$DOWNLOAD_DIR" -type f -not -name "${LOG_FILE##*/}" -delete
+    fi
+    # Alle verbliebenen Dateien dem Benutzer zu eigen machen
+    chown -R "$USER_USERNAME:$USER_USERNAME" "$DOWNLOAD_DIR" &>/dev/null
+    # Download-Verzeichnis ganz löschen wenn keine Dateien mehr darin sind
+    if [ $(ls -A "$DOWNLOAD_DIR" | wc -w) -eq 0 ];
     then
       rmdir "$DOWNLOAD_DIR" &>/dev/null
     fi
@@ -1909,7 +1905,6 @@ function create_autostart_file () {
 #            1 = Fehler, Desktop-Symbol NICHT erstellt
 ###############################################################################
 function create_desktop_icon () {
-
   if [ "$DESKTOP_ENVIRONMENT" = "GNOME" ] ||
      [ ${OPTION_FLAG[addicons]} -ne 1 ];
   then
@@ -2033,11 +2028,10 @@ function create_desktop_icon () {
           then
             for icon_file in ${tmp_list[@]};
             do
-              icon_file_name="/usr/share/applications/$icon_file"
-              icon_file_name+=".desktop"
-              if [ -s "$icon_file_name" ];
+              full_icon_file_path="/usr/share/applications/$icon_file.desktop"
+              if [ -s "$full_icon_file_path" ];
               then
-                SEARCH_RESULT_TMP+=$icon_file_name
+                SEARCH_RESULT_TMP+=$full_icon_file_path
                 SEARCH_RESULT_TMP+=$'\n'
               fi
             done
@@ -2210,8 +2204,7 @@ function clear_text () {
 ###############################################################################
 # Schreibt einen Text nur in die Log-Datei
 ###############################################################################
-function do_log ()
-{
+function do_log () {
   if [ ${OPTION_FLAG[log]} -eq 1 ];
   then
     if [ "$1" = "-n" ];
@@ -2370,10 +2363,8 @@ function extend_repo_ppa () {
 # ACHTUNG: Der Rückgabewert entspricht NICHT dem INSTALL_MODE!
 ###############################################################################
 function get_install_status () {
-
   PKG_INSTALL_STATUS=0
   PKG_VERSION=""
-
   # ---------------------------------------------------------------------
   # 1. Prüfen ob in der Standard dpkg-Datenbank als installiert vermerkt
   # ---------------------------------------------------------------------
@@ -2382,7 +2373,6 @@ function get_install_status () {
     PKG_INSTALL_STATUS=1
     PKG_VERSION=$(get_pkg_apt_version "$1" 1)
   fi
-
   # ----------------------------------------
   # 2. Prüfen ob als Snap-Paket installiert
   # ----------------------------------------
@@ -2394,7 +2384,6 @@ function get_install_status () {
       PKG_VERSION=$(get_pkg_snap_version "$1" 1)
     fi
   fi
-
   # ------------------------------------------------------------------
   # 3. Prüfen ob es im System-Anwendungs-Ordner "/opt" einen
   # entsprechenden Programmordner mit ausführbaren Dateien gibt
@@ -2430,7 +2419,6 @@ function get_install_status () {
       fi
     fi
   fi
-
   # ------------------------------------------------------------------
   # 4. Prüfen ob es im eigenen Anwendungs-Ordner (siehe WEB_PKG_DIR)
   # einen entsprechenden Programmordner mit ausführbaren Dateien gibt
@@ -2452,7 +2440,6 @@ function get_install_status () {
       fi
     fi
   fi
-
   # ------------------------------------------------------------------
   # 5. Prüfen ob es im System-Anwendungs-Ordner "/usr/share" einen
   # entsprechenden Programmordner mit ausführbaren Dateien gibt
@@ -2477,7 +2464,6 @@ function get_install_status () {
     fi
   fi
   # -----------------------------------------------------------------
-
   return $PKG_INSTALL_STATUS
 }
 
@@ -2494,9 +2480,7 @@ function get_install_status () {
 #            "NONE" = unvollständige Angaben in den alternativen Quell-Listen
 ###############################################################################
 function get_package_type () {
-
   if [ "$PACKAGE_TYPE" = "" ]; then PACKAGE_TYPE="STD"; fi
-
   # ------------------------------------------------------------------
   # 1. Paket-Typ ERW
   # ------------------------------------------------------------------
@@ -2514,7 +2498,6 @@ function get_package_type () {
       fi
     fi
   fi
-
   # --------------------------------------------------------------
   # 2. Paket-Typ PPA
   # --------------------------------------------------------------
@@ -2526,7 +2509,6 @@ function get_package_type () {
       PACKAGE_TYPE="PPA"
     fi
   fi
-
   # --------------------------------------------------------------
   # 3. Paket-Typ DEB
   # --------------------------------------------------------------
@@ -2550,7 +2532,6 @@ function get_package_type () {
       PACKAGE_TYPE="DEB"
     fi
   fi
-
   # -----------------------------------------------------
   # 4. Paket-Typ WEB
   # -----------------------------------------------------
@@ -2572,14 +2553,12 @@ function get_package_type () {
           break
         fi
       done
-
       if [ $FOUND_PKG -eq 1 ];
       then
         PACKAGE_TYPE="WEB"
       else
         PACKAGE_TYPE="NONE"
       fi
-
     fi
   fi
 
@@ -2824,7 +2803,6 @@ function insert_spaces () {
 # Haupt-Funktion zur Installation eines Programmpakets
 ###############################################################################
 function install_pkg () {
-
   PAKET=$1
   INSTALL_TRY=$2
   IS_SIMILAR_PKG=$3
@@ -4008,7 +3986,7 @@ function ready_for_action () {
   # echo -e "SKIP:${SKIP_LIST[@]} (${#SKIP_LIST[@]})" # NUR ZUM TESTEN
   # exit # NUR ZUM TESTEN
   if [[ $TOTAL_PACKS             -eq 0 &&
-        ${OPTION_FLAG[cleaning]} -eq 0 &&
+        ${OPTION_FLAG[cleansys]} -eq 0 &&
         ${OPTION_FLAG[dload]}    -eq 0 &&
         ${OPTION_FLAG[dsave]}    -eq 0 &&
         ${OPTION_FLAG[extras]}   -eq 0 &&
@@ -4237,9 +4215,20 @@ function do_remove_items () {
 ###############################################################################
 function remove_ico {
   THE_PKG_REAL_NAME="$1"
-  do_log " Lösche Starter zu $THE_PKG_REAL_NAME ..."
+  do_log " Lösche Starter zu $THE_PKG_REAL_NAME"
+  # Starter mit dem gleichen Dateinamen wie das Programm selbst
   remove_file "/usr/share/applications/$THE_PKG_REAL_NAME.desktop"
   find "$USER_HOME_DIR" -type f -iname "$THE_PKG_REAL_NAME.desktop" -delete &>"$LOG_TEMP"
+  # Starter mit anderem Dateinamen als das Programm selbst
+  tmp_list=${PKG_ICON_LIST[$THE_PKG_REAL_NAME]};
+  if [ "$tmp_list" != "" ]
+  then
+    for icon_file in ${tmp_list[@]};
+    do
+      remove_file "/usr/share/applications/$icon_file.desktop"
+      find "$USER_HOME_DIR" -type f -iname "$icon_file.desktop" -delete &>"$LOG_TEMP"
+    done
+  fi
   add_full_log
 }
 
@@ -5461,10 +5450,10 @@ then
   e_and_l "            ausgewählten Kategorien auf dem Desktop des Benutzers"
   e_and_l "            (wird bei GNOME-Desktops ab der Version 3 ignoriert)"
   e_and_l ""
-  e_and_l "  cleaning  Bereinigt nicht benötigte Daten des Benutzers und"
+  e_and_l "  cleansys  Bereinigt nicht benötigte Daten des Benutzers und"
   e_and_l "            repariert diverse Einstellungen des Systems"
   e_and_l ""
-  e_and_l "  cleartmp  Alle temporär erstellten Dateien werden automatisch wieder"
+  e_and_l "  cleantmp  Alle temporär erstellten Dateien werden automatisch wieder"
   e_and_l "            gelöscht. Heruntergeladene Dateien wie Setups und Skripte"
   e_and_l "            sowie Listen bleiben hingegen zur Nachvollziehbarkeit auch"
   e_and_l "            nach Ende des Programms im Download-Verzeichnis erhalten."
@@ -5527,7 +5516,7 @@ then
   e_and_l "            und berücksichtigt so nur die Kommandozeilen-Parameter"
   e_and_l ""
   e_and_l "  nopkgsrv  Überspringt die Prüfung der Erreichbarkeit von Servern"
-  e_and_l "            wenn die Option cleaning ausgewählt wurde"
+  e_and_l "            wenn die Option cleansys ausgewählt wurde"
   e_and_l ""
   e_and_l "    norepo  Fügt dem Repository keine Einträge für externe Quellen"
   e_and_l "            hinzu und überspringt die Aktualisierung des Repository"
@@ -9459,7 +9448,7 @@ fi
 # Reparaturen und diverse Bereinigungen
 ###############################################################################
 if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
-   [ ${OPTION_FLAG[cleaning]} -eq 1 ];
+   [ ${OPTION_FLAG[cleansys]} -eq 1 ];
 then
 
   e_and_l " ${bold_blue}Durchführung von Reparaturen und Bereinigungen${colors_off}"
