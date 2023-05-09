@@ -36,7 +36,7 @@
 #                                                                             #
 ###############################################################################
 VERSION="3.50"
-# Letzte Änderung: 06.05.2023
+# Letzte Änderung: 08.05.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -850,7 +850,7 @@ KATEGORIE_PKGS[t]="ardour audacity hydrogen lmms qjackctl qtractor yoshimi"
 # USB-Firewall
 KATEGORIE_PKGS[u]="usbauth usbauth-notifier"
 # Zubehör
-KATEGORIE_PKGS[z]="balena-etcher-electron barrier clamav clamtk doublecmd-common doublecmd-gtk engrampa freefilesync galculator gedit gnome-characters gucharmap keepass2 kfind ktouch magnus mousepad nmapsi4 onboard pdfmod pluma putty redshift-gtk rpi-imager usb-creator-gtk veracrypt"
+KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk doublecmd-common doublecmd-gtk engrampa freefilesync galculator gedit gnome-characters gucharmap keepass2 kfind ktouch magnus mousepad nmapsi4 onboard pdfmod pluma putty redshift-gtk rpi-imager usb-creator-gtk veracrypt"
 # Windows-API"Wine"
 KATEGORIE_PKGS[w]="wine wine64 wine64-preloader wine64-tools winetricks zenity playonlinux"
 # WireGuard
@@ -983,6 +983,8 @@ declare -A DEB_PKG_NAME # Angezeigter Name des Programms
 declare -A DEB_PKG_VERS # Auf migano.de zum Download bereitgestellte Version
 declare -A DEB_PKG_FILE # Download-URL
 declare -A DEB_PKG_CSUM # Prüfsumme ODER URL zu Prüfsummen-Datei
+declare -A DEB_PKG_OLDV # Nummer der Vorgänger-Version (nur amd64)
+declare -A DEB_PKG_OLDF # Download-URL der Vorgänger-Version (nur amd64)
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # ACHTUNG: ÄNDERUNGEN AUCH IN DEN POST-SCRIPTEN UND "EXUPDATE_PKG_LIST" ABGLEICHEN !
@@ -990,19 +992,23 @@ declare -A DEB_PKG_CSUM # Prüfsumme ODER URL zu Prüfsummen-Datei
 
 # Download von https://github.com/balena-io/etcher/releases/latest (https://www.balena.io/etcher/)
 # ACHTUNG: Auch als WEB-Version eingetragen (s.u.)!
-DEB_PKG_NAME[balena-etcher-electron]="balenaEtcher"
-DEB_PKG_VERS[balena-etcher-electron]="1.18.4"
-DEB_PKG_FILE[balena-etcher-electron_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.4_amd64.deb"
-DEB_PKG_CSUM[balena-etcher-electron_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.4_amd64.deb.sha"
- DEB_PKG_FILE[balena-etcher-electron_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
- DEB_PKG_CSUM[balena-etcher-electron_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
-DEB_PKG_FILE[balena-etcher-electron_arm64]="" # NICHT für ARM verfügbar
-DEB_PKG_CSUM[balena-etcher-electron_arm64]="" # NICHT für ARM verfügbar
-DEB_PKG_FILE[balena-etcher-electron_armhf]="" # NICHT für ARM verfügbar
-DEB_PKG_CSUM[balena-etcher-electron_armhf]="" # NICHT für ARM verfügbar
+DEB_PKG_NAME[balena-etcher]="balenaEtcher"
+DEB_PKG_OLDV[balena-etcher]=""
+DEB_PKG_OLDF[balena-etcher]=""
+DEB_PKG_VERS[balena-etcher]="1.18.4"
+DEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.4_amd64.deb"
+DEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.4_amd64.deb.sha"
+ DEB_PKG_FILE[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
+ DEB_PKG_CSUM[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
+DEB_PKG_FILE[balena-etcher_arm64]="" # NICHT für ARM verfügbar
+DEB_PKG_CSUM[balena-etcher_arm64]="" # NICHT für ARM verfügbar
+DEB_PKG_FILE[balena-etcher_armhf]="" # NICHT für ARM verfügbar
+DEB_PKG_CSUM[balena-etcher_armhf]="" # NICHT für ARM verfügbar
 
 # Erstellt mittels dpkg-repack :)
 DEB_PKG_NAME[grub-customizer]="Grub Customizer"
+DEB_PKG_OLDV[grub-customizer]=""
+DEB_PKG_OLDF[grub-customizer]=""
 DEB_PKG_VERS[grub-customizer]="5.1.0"
 DEB_PKG_FILE[grub-customizer_amd64]="$RESSOURCE_SERVER_DIR/deb/grub-customizer_5.1.0-3build1_amd64.deb"
 DEB_PKG_CSUM[grub-customizer_amd64]="$RESSOURCE_SERVER_DIR/deb/grub-customizer_5.1.0-3build1_amd64.deb.sha"
@@ -1014,7 +1020,10 @@ DEB_PKG_FILE[grub-customizer_armhf]="" # Nur für amd64 als eigenes .deb erstell
 DEB_PKG_CSUM[grub-customizer_armhf]="" # Nur für amd64 als eigenes .deb erstellt
 
 # Download von https://ftp5.gwdg.de/pub/linux/debian/mint/packages/pool/main/h/hypnotix
+# oder https://github.com/linuxmint/hypnotix/releases
 DEB_PKG_NAME[hypnotix]="Hypnotix"
+DEB_PKG_OLDV[hypnotix]="2.6"
+DEB_PKG_OLDF[hypnotix]="$RESSOURCE_SERVER_DIR/deb/hypnotix_2.6_all.deb"
 DEB_PKG_VERS[hypnotix]="3.2"
 DEB_PKG_FILE[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.2_all.deb"
 DEB_PKG_CSUM[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.2_all.deb.sha"
@@ -1027,6 +1036,8 @@ DEB_PKG_CSUM[hypnotix_armhf]="" # NUR für 64-bit verfügbar
 
 # Download von https://angryip.org/download/#linux
 DEB_PKG_NAME[ipscan]="Angry IP Scanner"
+DEB_PKG_OLDV[ipscan]=""
+DEB_PKG_OLDF[ipscan]=""
 DEB_PKG_VERS[ipscan]="3.9.1"
 DEB_PKG_FILE[ipscan_amd64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_amd64.deb"
 DEB_PKG_CSUM[ipscan_amd64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_amd64.deb.sha"
@@ -1039,6 +1050,8 @@ DEB_PKG_CSUM[ipscan_armhf]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_all.deb.sha"
 
 # Download von https://www.nomachine.com/download/linux&id=1
 DEB_PKG_NAME[nomachine]="NoMachine"
+DEB_PKG_OLDV[nomachine]=""
+DEB_PKG_OLDF[nomachine]=""
 DEB_PKG_VERS[nomachine]="8.4.2"
 DEB_PKG_FILE[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_amd64.deb"
 DEB_PKG_CSUM[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_amd64.deb.sha"
@@ -1051,6 +1064,8 @@ DEB_PKG_CSUM[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_armhf
 
 # Downloads automatisch von der Herstellerseite (manuell: https://www.teamviewer.com/de/download/linux)
 DEB_PKG_NAME[teamviewer]="TeamViewer"
+DEB_PKG_OLDV[teamviewer]=""
+DEB_PKG_OLDF[teamviewer]=""
 DEB_PKG_VERS[teamviewer]=""
 DEB_PKG_FILE[teamviewer_amd64]="https://download.teamviewer.com/download/linux/teamviewer_amd64.deb"
 DEB_PKG_CSUM[teamviewer_amd64]=""
@@ -1100,6 +1115,8 @@ fi
 if [ "$OPSYS_PART" != "" ];
 then
   DEB_PKG_NAME[veracrypt]="VeraCrypt"
+  DEB_PKG_OLDV[veracrypt]=""
+  DEB_PKG_OLDF[veracrypt]=""
   DEB_PKG_VERS[veracrypt]="1.25.9"
   DEB_PKG_FILE[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.25.9-$OPSYS_PART-amd64.deb"
   DEB_PKG_CSUM[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.25.9-sha256sum.sha"
@@ -1114,6 +1131,8 @@ fi
 
 # Download von https://www.realvnc.com/de/connect/download/vnc/linux
 DEB_PKG_NAME[realvnc-vnc-server]="VNC Server"
+DEB_PKG_OLDV[realvnc-vnc-server]=""
+DEB_PKG_OLDF[realvnc-vnc-server]=""
 DEB_PKG_VERS[realvnc-vnc-server]="6.9.1"
 DEB_PKG_FILE[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-6.9.1-Linux-x64.deb"
 DEB_PKG_CSUM[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-6.9.1-Linux-x64.deb.sha"
@@ -1126,6 +1145,8 @@ DEB_PKG_CSUM[realvnc-vnc-server_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-6.9
 
 # Download von https://www.realvnc.com/de/connect/download/viewer/linux
 DEB_PKG_NAME[realvnc-vnc-viewer]="VNC Viewer"
+DEB_PKG_OLDV[realvnc-vnc-viewer]=""
+DEB_PKG_OLDF[realvnc-vnc-viewer]=""
 DEB_PKG_VERS[realvnc-vnc-viewer]="6.22.315"
 DEB_PKG_FILE[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-6.22.315-Linux-x64.deb"
 DEB_PKG_CSUM[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-6.22.315-Linux-x64.deb.sha"
@@ -1138,6 +1159,8 @@ DEB_PKG_CSUM[realvnc-vnc-viewer_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-6.2
 
 # Download von https://www.xnview.com/de/xnviewmp/#downloads
 DEB_PKG_NAME[xnview]="XnView MP"
+DEB_PKG_OLDV[xnview]="1.0.0"
+DEB_PKG_OLDF[xnview]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.00-linux-x64.deb"
 DEB_PKG_VERS[xnview]="1.4.4"
 DEB_PKG_FILE[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.4.4-linux-x64.deb"
 DEB_PKG_CSUM[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.4.4-linux-x64.deb.sha"
@@ -1186,6 +1209,8 @@ declare -A WEB_PKG_VERS # Auf migano.de zum Download bereitgestellte Version
 declare -A WEB_PKG_FILE # Download-URL
 declare -A WEB_PKG_CSUM # Prüfsumme ODER URL zu Prüfsummen-Datei
 declare -A WEB_PKG_CATY # Kategorie für den Linux-Menü-Eintrag (NICHT unsere Kategorien)
+declare -A WEB_PKG_OLDV # Nummer der Vorgänger-Version (nur amd64)
+declare -A WEB_PKG_OLDF # Download-URL der Vorgänger-Version (nur amd64)
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # ACHTUNG: ÄNDERUNGEN AUCH IN DEN POST-SCRIPTEN UND "EXUPDATE_PKG_LIST" ABGLEICHEN !
@@ -1193,26 +1218,30 @@ declare -A WEB_PKG_CATY # Kategorie für den Linux-Menü-Eintrag (NICHT unsere K
 
 # Download von https://github.com/balena-io/etcher/releases/latest (https://www.balena.io/etcher/)
 # ACHTUNG: Auch als DEB eingetragen (s.o.)!
-WEB_PKG_NAME[balena-etcher-electron]="balenaEtcher"
-WEB_PKG_VERS[balena-etcher-electron]="1.18.4"
-WEB_PKG_CATY[balena-etcher-electron]="System;Utility"
-WEB_PKG_FILE[balena-etcher-electron_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.4-x64.AppImage"
-WEB_PKG_CSUM[balena-etcher-electron_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.4-x64.AppImage.sha"
- WEB_PKG_FILE[balena-etcher-electron_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
- WEB_PKG_CSUM[balena-etcher-electron_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
-WEB_PKG_FILE[balena-etcher-electron_arm64]="" # NICHT für ARM verfügbar
-WEB_PKG_CSUM[balena-etcher-electron_arm64]="" # NICHT für ARM verfügbar
-WEB_PKG_FILE[balena-etcher-electron_armhf]="" # NICHT für ARM verfügbar
-WEB_PKG_CSUM[balena-etcher-electron_armhf]="" # NICHT für ARM verfügbar
+WEB_PKG_NAME[balena-etcher]="balenaEtcher"
+WEB_PKG_CATY[balena-etcher]="System;Utility"
+WEB_PKG_OLDV[balena-etcher]=""
+WEB_PKG_OLDF[balena-etcher]=""
+WEB_PKG_VERS[balena-etcher]="1.18.4"
+WEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.4-x64.AppImage"
+WEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.4-x64.AppImage.sha"
+ WEB_PKG_FILE[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
+ WEB_PKG_CSUM[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
+WEB_PKG_FILE[balena-etcher_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[balena-etcher_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_FILE[balena-etcher_armhf]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[balena-etcher_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://github.com/qarmin/czkawka/releases
 WEB_PKG_NAME[czkawka]="Czkawka"
-WEB_PKG_VERS[czkawka]="5.1.0"
 WEB_PKG_CATY[czkawka]="System;Utility"
-WEB_PKG_FILE[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_5.1.0"
-WEB_PKG_CSUM[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_5.1.0.sha"
- WEB_PKG_FILE[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_5.1.0"
- WEB_PKG_CSUM[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_5.1.0.sha"
+WEB_PKG_OLDV[czkawka]=""
+WEB_PKG_OLDF[czkawka]=""
+WEB_PKG_VERS[czkawka]="4.1.0"
+WEB_PKG_FILE[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_4.1.0"
+WEB_PKG_CSUM[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_4.1.0.sha"
+ WEB_PKG_FILE[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_4.1.0"
+ WEB_PKG_CSUM[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_4.1.0.sha"
 WEB_PKG_FILE[czkawka_arm64]="" # Ab Ubuntu 21 nur als Snap
 WEB_PKG_CSUM[czkawka_arm64]="" # Ab Ubuntu 21 nur als Snap
 WEB_PKG_FILE[czkawka_armhf]="" # NICHT verfügbar
@@ -1220,8 +1249,10 @@ WEB_PKG_CSUM[czkawka_armhf]="" # NICHT verfügbar
 
 # Eigene Zusammenstellung ;)
 WEB_PKG_NAME[code-the-classics]="Code-the-Classics"
-WEB_PKG_VERS[code-the-classics]="1.00"
 WEB_PKG_CATY[code-the-classics]="Games"
+WEB_PKG_OLDV[code-the-classics]=""
+WEB_PKG_OLDF[code-the-classics]=""
+WEB_PKG_VERS[code-the-classics]="1.00"
 WEB_PKG_FILE[code-the-classics_amd64]="$RESSOURCE_SERVER_DIR/web/Code-the-Classics.tar.gz"
 WEB_PKG_CSUM[code-the-classics_amd64]="$RESSOURCE_SERVER_DIR/web/Code-the-Classics.tar.gz.sha"
  WEB_PKG_FILE[code-the-classics_i386]="$RESSOURCE_SERVER_DIR/web/Code-the-Classics.tar.gz"
@@ -1233,8 +1264,10 @@ WEB_PKG_CSUM[code-the-classics_armhf]="$RESSOURCE_SERVER_DIR/web/Code-the-Classi
 
 # Download von https://freefilesync.org/download.php
 WEB_PKG_NAME[freefilesync]="FreeFileSync"
-WEB_PKG_VERS[freefilesync]="12.2"
 WEB_PKG_CATY[freefilesync]="System;Utility"
+WEB_PKG_OLDV[freefilesync]=""
+WEB_PKG_OLDF[freefilesync]=""
+WEB_PKG_VERS[freefilesync]="12.2"
 WEB_PKG_FILE[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_12.2_Linux.tar.gz"
 WEB_PKG_CSUM[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_12.2_Linux.tar.gz.sha"
  WEB_PKG_FILE[freefilesync_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
@@ -1246,8 +1279,10 @@ WEB_PKG_CSUM[freefilesync_armhf]="" # NICHT für ARM verfügbar
 
 # Download von http://oolite.space oder https://github.com/OoliteProject
 WEB_PKG_NAME[oolite]="Oolite"
-WEB_PKG_VERS[oolite]="1.90"
 WEB_PKG_CATY[oolite]="Games"
+WEB_PKG_OLDV[oolite]=""
+WEB_PKG_OLDF[oolite]=""
+WEB_PKG_VERS[oolite]="1.90"
 WEB_PKG_FILE[oolite_amd64]="$RESSOURCE_SERVER_DIR/web/oolite-1.90.linux-x86_64.tgz"
 WEB_PKG_CSUM[oolite_amd64]="$RESSOURCE_SERVER_DIR/web/oolite-1.90.linux-x86_64.tgz.sha"
  WEB_PKG_FILE[oolite_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
@@ -1259,8 +1294,10 @@ WEB_PKG_CSUM[oolite_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://www.openshot.org/de/download
 WEB_PKG_NAME[openshot-qt]="OpenShot"
-WEB_PKG_VERS[openshot-qt]="3.1.1"
 WEB_PKG_CATY[openshot-qt]="AudioVideo;Video"
+WEB_PKG_OLDV[openshot-qt]="2.6.1"
+WEB_PKG_OLDF[openshot-qt]="$RESSOURCE_SERVER_DIR/web/OpenShot-v2.6.1-x86_64.AppImage"
+WEB_PKG_VERS[openshot-qt]="3.1.1"
 WEB_PKG_FILE[openshot-qt_amd64]="$RESSOURCE_SERVER_DIR/web/OpenShot-v3.1.1-x86_64.AppImage"
 WEB_PKG_CSUM[openshot-qt_amd64]="$RESSOURCE_SERVER_DIR/web/OpenShot-v3.1.1-x86_64.AppImage.sha"
  WEB_PKG_FILE[openshot-qt_i386]="" # Für Linux nur als 64-bit verfügbar
@@ -1272,8 +1309,10 @@ WEB_PKG_CSUM[openshot-qt_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://www.torproject.org/de/download/
 WEB_PKG_NAME[tor-browser]="Tor Browser"
-WEB_PKG_VERS[tor-browser]="12.0.5"
 WEB_PKG_CATY[tor-browser]="Network;WebBrowser"
+WEB_PKG_OLDV[tor-browser]=""
+WEB_PKG_OLDF[tor-browser]=""
+WEB_PKG_VERS[tor-browser]="12.0.5"
 WEB_PKG_FILE[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux64-12.0.5_ALL.tar.xz"
 WEB_PKG_CSUM[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux64-12.0.5_ALL.tar.xz.sha"
  WEB_PKG_FILE[tor-browser_i386]="" # Für Linux nur als 64-bit verfügbar
@@ -1290,7 +1329,7 @@ WEB_PKG_CSUM[tor-browser_armhf]="" # Auf ARM nur für Android verfügbar (Raspbe
 # im Repo haben und somit von apt auch nicht automatisch aktualisiert werden.
 # Dient als Basis für die Updates dieser Programme mit der Option "exupdate".
 ###############################################################################
-EXUPDATE_PKG_LIST=('balena-etcher-electron' 'code-the-classics' 'czkawka' 'freefilesync' 'hypnotix' 'ipscan' 'nomachine' 'openshot-qt' 'tor-browser' 'veracrypt' 'xnview')
+EXUPDATE_PKG_LIST=('balena-etcher' 'code-the-classics' 'czkawka' 'freefilesync' 'hypnotix' 'ipscan' 'nomachine' 'openshot-qt' 'tor-browser' 'veracrypt' 'xnview')
 
 ###############################################################################
 # Pakete, die warum auch immer vorzugsweise als Snap installiert werden sollen.
@@ -2540,7 +2579,6 @@ function get_package_type () {
   then
     if [ "${WEB_PKG_NAME[$1]}" != "" ];
     then
-
       FOUND_PKG=0
       for arch_name in ${ARCH_NAME_LIST[@]};
       do
@@ -2561,7 +2599,6 @@ function get_package_type () {
       fi
     fi
   fi
-
 }
 
 ###############################################################################
@@ -4305,8 +4342,22 @@ function remove_pkg () {
         REMOVE_HOME_RESULT=$?
       fi
     fi
+    # Dateien und Paket-Ordner in /usr/share löschen
+    REMOVE_SHARE_RESULT=0
+    if [ $INST_STATUS -eq 5 ] &&
+       [ "$THE_PKG_REAL_NAME" != "" ];
+    then
+      TMP_PKG_INST_DIR="/usr/share/$THE_PKG_REAL_NAME"
+      if [ -d "$TMP_PKG_INST_DIR" ];
+      then
+        rm -d -f -r "$TMP_PKG_INST_DIR" &>"$LOG_TEMP"
+        REMOVE_SHARE_RESULT=$?
+      fi
+    fi
+    # ---
     if [ $REMOVE_OPT_RESULT -eq 0 ] &&
-       [ $REMOVE_HOME_RESULT -eq 0 ];
+       [ $REMOVE_HOME_RESULT -eq 0 ] &&
+       [ $REMOVE_SHARE_RESULT -eq 0 ];
     then
       REMOVE_RESULT=0
       e_and_l "$OK_TAG"
