@@ -35,14 +35,15 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.50"
-# Letzte Änderung: 08.05.2023
+VERSION="3.51"
+# Letzte Änderung: 11.05.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
 # URL zum Download dieses Scriptes
 ###############################################################################
 THIS_SCRIPT_URL="https://migano.de/download/lissy/lissy"
+THIS_SCRIPT_ICO="https://migano.de/download/lissy/lissy.png"
 ###############################################################################
 # Schriftfarben und Textbausteine
 # Bei Änderungen der Farbnamen auch die COL_VAR_LIST anpassen!
@@ -154,6 +155,7 @@ USER_UID=$(id -u $USER_USERNAME)
 # ACHTUNG: Angaben OHNE Slash(/) am Ende!
 ###############################################################################
 # Ordner des Benutzers
+SCRIPT_PATH="$(pwd)"
 SCRIPT_NAME="${0##*/}"
 if [ "$USER_USERNAME" = "root" ];
 then
@@ -1923,12 +1925,12 @@ function create_autostart_file () {
     chown "$USER_USERNAME:$USER_USERNAME" "$USER_CONFIG_DIR/autostart" &>/dev/null
   fi
   echo -e "[Desktop Entry]" > "$1" 2>/dev/null
+  echo -e "Type=Application" >> "$1" 2>/dev/null
   echo -e "Name=$2" >> "$1" 2>/dev/null
   echo -e "Comment=$3" >> "$1" 2>/dev/null
   echo -e "Exec=$4" >> "$1" 2>/dev/null
   echo -e "Icon=$5" >> "$1" 2>/dev/null
   echo -e "Terminal=false" >> "$1" 2>/dev/null
-  echo -e "Type=Application" >> "$1" 2>/dev/null
   echo -e "NoDisplay=false" >> "$1" 2>/dev/null
   echo -e "Hidden=false" >> "$1" 2>/dev/null
   echo -e "X-GNOME-Autostart-enabled=true" >> "$1" 2>/dev/null
@@ -3765,12 +3767,13 @@ function install_pkg () {
                           then
                             echo -e "Type=Application" >> "$DESKTOP_FILE" 2>/dev/null
                             echo -e "Name=${WEB_PKG_NAME[$PAKET]}" >> "$DESKTOP_FILE" 2>/dev/null
-                            echo -e "Categories=${WEB_PKG_CATY[$PAKET]};" >> "$DESKTOP_FILE" 2>/dev/null
-                            echo -e "Icon=$ICON_TARGET_FILE" >> "$DESKTOP_FILE" 2>/dev/null
+                            echo -e "Comment=${WEB_PKG_NAME[$PAKET]} starten" >> "$DESKTOP_FILE" 2>/dev/null
                             echo -e "Exec=$PACKAGE_INST_DIR/$APPIMG_FILE_NAME" >> "$DESKTOP_FILE" 2>/dev/null
-                            echo -e "NoDisplay=false" >> "$DESKTOP_FILE" 2>/dev/null
+                            echo -e "Icon=$ICON_TARGET_FILE" >> "$DESKTOP_FILE" 2>/dev/null
+                            echo -e "Categories=${WEB_PKG_CATY[$PAKET]};" >> "$DESKTOP_FILE" 2>/dev/null
                             echo -e "Terminal=false" >> "$DESKTOP_FILE" 2>/dev/null
                             echo -e "StartupNotify=true" >> "$DESKTOP_FILE" 2>/dev/null
+                            echo -e "NoDisplay=false" >> "$DESKTOP_FILE" 2>/dev/null
                             chown "root:root" "$DESKTOP_FILE" &>/dev/null
                             chmod 0644 "$DESKTOP_FILE" &>/dev/null
                           fi
@@ -4645,6 +4648,61 @@ function wget_dir () {
 # Listen zur Auswahl der Kategorien und Optionen initialisieren
 reset_categories_selection
 reset_options_selection 0
+
+# -----------------------------------------------------------------------------
+# Starter für uns selbst auf dem Desktop anlegen
+# -----------------------------------------------------------------------------
+STARTER_FILE="$DESKTOP_DIR/$SCRIPT_NAME.desktop"
+if [ ! -s "$STARTER_FILE" ];
+then
+  echo -e ""
+  echo -e ""
+  e_and_l " $HINWEIS_TAG: Es scheint kein ${light_cyan}Starter${colors_off} für Lissy v$VERSION angelegt zu sein."
+  ask_yes_or_no " Jetzt Starter (Symbol) auf dem Desktop anlegen"
+  if [ $? -eq 1 ];
+  then
+    e_and_l -n " Erstelle Starter ... "
+    echo -e "[Desktop Entry]" > "$STARTER_FILE" 2>/dev/null
+    if [ $? -eq 0 ];
+    then
+      echo -e "Type=Application" >> "$STARTER_FILE" 2>/dev/null
+      echo -e "Name=Lissy\\\n(Terminal)" >> "$STARTER_FILE" 2>/dev/null
+      echo -e "Comment=Lissy im Terminal starten" >> "$STARTER_FILE" 2>/dev/null
+      echo -e "Exec=bash -c 'cd $SCRIPT_PATH && sudo ./lissy;\$SHELL'" >> "$STARTER_FILE" 2>/dev/null
+      echo -e "Icon=lissy" >> "$STARTER_FILE" 2>/dev/null
+      echo -e "Categories=Application;" >> "$STARTER_FILE" 2>/dev/null
+      echo -e "Terminal=true" >> "$STARTER_FILE" 2>/dev/null
+      echo -e "StartupNotify=true" >> "$STARTER_FILE" 2>/dev/null
+      echo -e "NoDisplay=false" >> "$STARTER_FILE" 2>/dev/null
+      chown "$USER_USERNAME:$USER_USERNAME" "$STARTER_FILE" &>/dev/null
+      chmod 0755 "$STARTER_FILE" &>/dev/null
+      e_and_l "$OK_TAG"
+    else
+      e_and_l "$ERROR_TAG"
+    fi
+  fi
+fi
+# -----------------------------------------------------------------------------
+# Aktuelles Icon für den Starter downloaden (immer)
+# -----------------------------------------------------------------------------
+PKG_PICTURE_NAME="lissy.png"
+PKG_PICTURE_DIR="/usr/share/pixmaps"
+if [ -d "$PKG_PICTURE_DIR" ] &&
+   [ ! -s "$PKG_PICTURE_FILE" ];
+then
+  LOCAL_DOWNLOAD_FILE="$DOWNLOAD_DIR/$PKG_PICTURE_NAME"
+  wget -nv -O "$LOCAL_DOWNLOAD_FILE" "$THIS_SCRIPT_ICO" &>/dev/null
+  DOWNLOAD_RESULT=$?
+  if [ $DOWNLOAD_RESULT -eq 0 ] &&
+     [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
+     [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
+  then
+    mv -f "$LOCAL_DOWNLOAD_FILE" "$PKG_PICTURE_DIR/$PKG_PICTURE_NAME" &>/dev/null
+    chmod 0644 "$PKG_PICTURE_DIR/$PKG_PICTURE_NAME" &>/dev/null
+  fi
+  remove_file "$LOCAL_DOWNLOAD_FILE"
+fi
+echo -e ""
 
 # -----------------------------------------------------------------------------
 # Laufzeit-Parameter ermitteln
