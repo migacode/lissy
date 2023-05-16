@@ -35,8 +35,8 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.51"
-# Letzte Änderung: 11.05.2023
+VERSION="3.52"
+# Letzte Änderung: 15.05.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -4740,7 +4740,7 @@ fi
 ARGUMENT_LIST=()
 for arg in $@;
 do
-  arg=$(echo -n "${arg}" | tr A-Z a-z)
+  arg=$(printf %b "${arg}" | tr A-Z a-z)
   ARGUMENT_LIST+=("$arg")
 done
 ARG_ANZ=${#ARGUMENT_LIST[@]}
@@ -4842,7 +4842,7 @@ do
     s=$((ARG_POS+1))
     while [ $s -le $ARG_ANZ ] && [ $BREAK_FOUND -eq 0 ]
     do
-      ARG_TXT=$(echo "${!s}" | tr A-Z a-z)
+      ARG_TXT=$(printf %b "${!s}" | tr A-Z a-z)
       for exclude_arg in ${SKIP_BREAK_ARGS[@]};
       do
         if [ "$ARG_TXT" = "$exclude_arg" ];
@@ -5504,7 +5504,7 @@ then
   do_log " $SCRIPT_NAME Log $(date +%d.%m.%Y) $(date +%H:%M:%S)"
   do_log "$FULL_LINE"
   PARAMETER="$@"
-  PARAMETER=$(echo -n "${PARAMETER}" | tr A-Z a-z)
+  PARAMETER=$(printf %b "${PARAMETER}" | tr A-Z a-z)
   do_log " Aufruf : ${PARAMETER[@]}"
   do_log " Auswahl: $COMMAND_LINE_STRING"
   do_log "$FULL_LINE"
