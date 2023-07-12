@@ -35,8 +35,8 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.53"
-# Letzte Änderung: 25.05.2023
+VERSION="3.54"
+# Letzte Änderung: 12.07.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -834,25 +834,25 @@ KATEGORIE_PKGS[q]="docker.io qemu-system-common qemu-system-data qemu-system-x86
 # FTP-Server
 KATEGORIE_PKGS[f]="proftpd-basic"
 # Grafik
-KATEGORIE_PKGS[g]="blender darktable digikam drawing eom fraqtive geeqie gimp gpicview gpick gwenview imagemagick inkscape krita krita-l10n mandelbulber2 pinta rawtherapee shotwell simple-scan xnview"
+KATEGORIE_PKGS[g]="blender darktable digikam drawing eom fraqtive geeqie gimp gpicview gpick gwenview imagemagick inkscape krita krita-l10n mandelbulber2 mtpaint pinta rawtherapee shotwell simple-scan xnview"
 # Internet
 KATEGORIE_PKGS[i]="anydesk ipscan chromium chromium-ffmpeg filezilla firefox opera microsoft-edge-stable nomachine realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission virt-viewer wireshark"
 # Multimedia
-KATEGORIE_PKGS[m]="asunder celluloid cheese easytag handbrake hypnotix k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mediainfo-gui mixxx mkvtoolnix mkvtoolnix-gui mpv parole openshot-qt rhythmbox smplayer vlc"
+KATEGORIE_PKGS[m]="asunder celluloid cheese easytag handbrake hypnotix k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mediainfo-gui mixxx mkvtoolnix mkvtoolnix-gui mpv parole openshot-qt rhythmbox smplayer vlc youtube-dl youtubedl-gui"
 # Netzwerkverbindungen
 KATEGORIE_PKGS[n]="openvpn network-manager-openvpn network-manager-openvpn-gnome vpnc vpnc-scripts network-manager-vpnc network-manager-vpnc-gnome"
 # Spiele
-KATEGORIE_PKGS[s]="0ad alien-arena astromenace billard-gl blobwars blockout2 briquolo brutalchess caveexpress chromium-bsu code-the-classics criticalmass cuyo dreamchess pinball enigma extremetuxracer foobillardplus freedoom fs-uae fs-uae-launcher gbrainy gemdropx gnome-games gnubg gweled hedgewars jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter naev neverball neverputt nexuiz oolite open-invaders pingus pokerth pybik rocksndiamonds sauerbraten sdl-ball supertux supertuxkart teeworlds torcs trigger-rally ufoai wesnoth zaz"
+KATEGORIE_PKGS[s]="0ad alien-arena astromenace atomix billard-gl biniax2 blobwars blockout2 briquolo brutalchess caveexpress chromium-bsu code-the-classics criticalmass cuyo dreamchess enigma extremetuxracer foobillardplus freedoom frogatto frozen-bubble fs-uae fs-uae-launcher gbrainy gcompris gemdropx gnome-games gnubg gweled hedgewars jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter morris naev neverball neverputt nexuiz numptyphysics oolite open-invaders pinball pingus pokerth pybik rocksndiamonds sauerbraten sdl-ball supertux supertuxkart teeworlds torcs trigger-rally tuxmath ufoai wesnoth widelands zaz"
 # Systemerweiterungen
-KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dpkg-repack e2fsprogs ethtool exfat-fuse exfat-utils extundelete fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysstat tar tcptrack testdisk udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
+KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dirmngr dpkg-repack e2fsprogs ethtool exfat-fuse exfat-utils extundelete fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysstat tar tcptrack testdisk udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
 # Systemverwaltung
-KATEGORIE_PKGS[v]="baobab bleachbit blueman caja caja-actions caja-eiciel caja-extensions-common caja-gtkhash caja-image-converter caja-mediainfo caja-open-terminal caja-rename caja-seahorse caja-sendto caja-share caja-wallpaper caja-xattr-tags copyq czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted grsync grub-customizer gsmartcontrol gtkhash gufw hardinfo kwalletmanager mozo nemo plasma-discover seahorse synaptic system-config-printer tilda usbview xfce4-taskmanager zulumount-gui"
+KATEGORIE_PKGS[v]="backintime-common baobab bleachbit blueman caja caja-actions caja-eiciel caja-extensions-common caja-gtkhash caja-image-converter caja-mediainfo caja-open-terminal caja-rename caja-seahorse caja-sendto caja-share caja-wallpaper caja-xattr-tags copyq czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted grsync grub-customizer gsmartcontrol gtkhash gufw hardinfo kwalletmanager mozo nemo plasma-discover seahorse synaptic system-config-printer tilda usbview xfce4-taskmanager zulumount-gui"
 # Tonstudio
 KATEGORIE_PKGS[t]="ardour audacity hydrogen lmms qjackctl qtractor yoshimi"
 # USB-Firewall
 KATEGORIE_PKGS[u]="usbauth usbauth-notifier"
 # Zubehör
-KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk doublecmd-common doublecmd-gtk engrampa freefilesync galculator gedit gnome-characters gucharmap keepass2 kfind ktouch magnus mousepad nmapsi4 onboard pdfmod pluma putty redshift-gtk rpi-imager usb-creator-gtk veracrypt"
+KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk doublecmd-common doublecmd-gtk engrampa freefilesync galculator gedit gnome-characters gucharmap keepass2 kfind klavaro ktouch magnus mousepad nmapsi4 onboard pdfmod pluma putty redshift-gtk rpi-imager usb-creator-gtk veracrypt xournal"
 # Windows-API"Wine"
 KATEGORIE_PKGS[w]="wine wine64 wine64-preloader wine64-tools winetricks zenity playonlinux"
 # WireGuard
@@ -904,6 +904,7 @@ SIMILAR_PACK[pdfarranger]="pdfmod"
 SIMILAR_PACK[pinta]="drawing"
 SIMILAR_PACK[transmission]="transmission-common"
 SIMILAR_PACK[ubuntu-mate-welcome]="mintwelcome"
+SIMILAR_PACK[usb-creator-gtk]="balena-etcher"
 
 ###############################################################################
 # Einige Programme sind nicht in jedem Repository enthalten und können dann
@@ -8826,64 +8827,69 @@ EOF
   # Asiatische Schriftarten ausblenden (nur für den aktuellen Benutzer)
   # ===========================================================================
   ACTION_MESSAGE=" Ausblenden der ${light_cyan}asiatischen Schriftarten${colors_off}    ... "
-  FONT_CONF_DIR="$USER_CONFIG_DIR/fontconfig"
-  FONT_CFG_FILE="$FONT_CONF_DIR/fonts.conf"
-  COPY_FONTS_FILE=0
-  DOWNLOAD_FILE_URL="$RESSOURCE_SERVER_DIR/cfg/fonts.conf"
-  DOWNLOAD_FILE_NAME="${DOWNLOAD_FILE_URL##*/}"
-  LOCAL_DOWNLOAD_FILE="$DOWNLOAD_DIR/$DOWNLOAD_FILE_NAME"
-  wget -nv -O "$LOCAL_DOWNLOAD_FILE" "$DOWNLOAD_FILE_URL" &>"$LOG_TEMP"
-  if [ $? -eq 0 ] &&
-     [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
-     [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
+  if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "ubuntu") -gt 0 ];
   then
-    if [ -s "$FONT_CFG_FILE" ];
+    FONT_CONF_DIR="$USER_CONFIG_DIR/fontconfig"
+    FONT_CFG_FILE="$FONT_CONF_DIR/fonts.conf"
+    COPY_FONTS_FILE=0
+    DOWNLOAD_FILE_URL="$RESSOURCE_SERVER_DIR/cfg/fonts.conf"
+    DOWNLOAD_FILE_NAME="${DOWNLOAD_FILE_URL##*/}"
+    LOCAL_DOWNLOAD_FILE="$DOWNLOAD_DIR/$DOWNLOAD_FILE_NAME"
+    wget -nv -O "$LOCAL_DOWNLOAD_FILE" "$DOWNLOAD_FILE_URL" &>"$LOG_TEMP"
+    if [ $? -eq 0 ] &&
+      [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
+      [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
     then
-      # ALT: SIZE_NEW_FONTS_FILE=$(ls -l "$LOCAL_DOWNLOAD_FILE" | awk '{print $5}' | xargs)
-      SIZE_NEW_FONTS_FILE=$(stat -c %s "$LOCAL_DOWNLOAD_FILE")
-      # ALT: SIZE_OLD_FONTS_FILE=$(ls -l "$FONT_CFG_FILE" | awk '{print $5}' | xargs)
-      SIZE_OLD_FONTS_FILE=$(stat -c %s "$FONT_CFG_FILE")
-      if [ $SIZE_NEW_FONTS_FILE -ne $SIZE_OLD_FONTS_FILE ];
+      if [ -s "$FONT_CFG_FILE" ];
       then
-        COPY_FONTS_FILE=1
+        # ALT: SIZE_NEW_FONTS_FILE=$(ls -l "$LOCAL_DOWNLOAD_FILE" | awk '{print $5}' | xargs)
+        SIZE_NEW_FONTS_FILE=$(stat -c %s "$LOCAL_DOWNLOAD_FILE")
+        # ALT: SIZE_OLD_FONTS_FILE=$(ls -l "$FONT_CFG_FILE" | awk '{print $5}' | xargs)
+        SIZE_OLD_FONTS_FILE=$(stat -c %s "$FONT_CFG_FILE")
+        if [ $SIZE_NEW_FONTS_FILE -ne $SIZE_OLD_FONTS_FILE ];
+        then
+          COPY_FONTS_FILE=1
+        else
+          e_and_l "$ACTION_MESSAGE$NC_TAG"
+        fi
       else
-        e_and_l "$ACTION_MESSAGE$NC_TAG"
+        COPY_FONTS_FILE=1
       fi
     else
-      COPY_FONTS_FILE=1
+      e_and_l "$ACTION_MESSAGE$ERROR_TAG $LINENO"
+      add_full_log
     fi
-  else
-    e_and_l "$ACTION_MESSAGE$ERROR_TAG $LINENO"
-    add_full_log
-  fi
-  if [ $COPY_FONTS_FILE -eq 1 ];
-  then
-    ask_yes_or_no " Sollen ${light_cyan}asiatische Schriftarten${colors_off} ausgeblendet werden"
-    if [ $? -eq 1 ];
+    if [ $COPY_FONTS_FILE -eq 1 ];
     then
-      e_and_l -n "${ACTION_MESSAGE//96m/93m}"
-      chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
-      if [ ! -d "$FONT_CONF_DIR" ];
+      ask_yes_or_no " Sollen ${light_cyan}asiatische Schriftarten${colors_off} ausgeblendet werden"
+      if [ $? -eq 1 ];
       then
-        mkdir -p "$FONT_CONF_DIR" &>/dev/null
-      fi
-      create_backup_file "$FONT_CFG_FILE"
-      cp -f "$LOCAL_DOWNLOAD_FILE" "$FONT_CFG_FILE" &>"$LOG_TEMP"
-      if [ $? -eq 0 ];
-      then
-        chown -R "$USER_USERNAME:$USER_USERNAME" "$FONT_CONF_DIR" &>/dev/null
-        fc-cache &>/dev/null
-        dpkg-reconfigure fontconfig &>/dev/null
-        e_and_l "$OK_TAG"
-        CHANGES_MADE=1
-      else
-        restore_backup_file "$FONT_CFG_FILE"
-        e_and_l "$ERROR_TAG $LINENO"
-        add_full_log
+        e_and_l -n "${ACTION_MESSAGE//96m/93m}"
+        chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+        if [ ! -d "$FONT_CONF_DIR" ];
+        then
+          mkdir -p "$FONT_CONF_DIR" &>/dev/null
+        fi
+        create_backup_file "$FONT_CFG_FILE"
+        cp -f "$LOCAL_DOWNLOAD_FILE" "$FONT_CFG_FILE" &>"$LOG_TEMP"
+        if [ $? -eq 0 ];
+        then
+          chown -R "$USER_USERNAME:$USER_USERNAME" "$FONT_CONF_DIR" &>/dev/null
+          fc-cache &>/dev/null
+          dpkg-reconfigure fontconfig &>/dev/null
+          e_and_l "$OK_TAG"
+          CHANGES_MADE=1
+        else
+          restore_backup_file "$FONT_CFG_FILE"
+          e_and_l "$ERROR_TAG $LINENO"
+          add_full_log
+        fi
       fi
     fi
+    remove_file "$LOCAL_DOWNLOAD_FILE"
+  else
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "nur mit Ubuntu")"
   fi
-  remove_file "$LOCAL_DOWNLOAD_FILE"
 
   # ===========================================================================
   # Sichtbarkeit der Scrollbalken verbessern (nur für den aktuellen Benutzer)
