@@ -35,8 +35,8 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.54"
-# Letzte Änderung: 12.07.2023
+VERSION="3.56"
+# Letzte Änderung: 24.07.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -844,7 +844,7 @@ KATEGORIE_PKGS[n]="openvpn network-manager-openvpn network-manager-openvpn-gnome
 # Spiele
 KATEGORIE_PKGS[s]="0ad alien-arena astromenace atomix billard-gl biniax2 blobwars blockout2 briquolo brutalchess caveexpress chromium-bsu code-the-classics criticalmass cuyo dreamchess enigma extremetuxracer foobillardplus freedoom frogatto frozen-bubble fs-uae fs-uae-launcher gbrainy gcompris gemdropx gnome-games gnubg gweled hedgewars jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter morris naev neverball neverputt nexuiz numptyphysics oolite open-invaders pinball pingus pokerth pybik rocksndiamonds sauerbraten sdl-ball supertux supertuxkart teeworlds torcs trigger-rally tuxmath ufoai wesnoth widelands zaz"
 # Systemerweiterungen
-KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dirmngr dpkg-repack e2fsprogs ethtool exfat-fuse exfat-utils extundelete fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysstat tar tcptrack testdisk udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
+KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dirmngr dpkg-repack e2fsprogs ethtool exfat-fuse exfat-utils extundelete fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysstat tar tcptrack testdisk traceroute udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
 # Systemverwaltung
 KATEGORIE_PKGS[v]="backintime-common baobab bleachbit blueman caja caja-actions caja-eiciel caja-extensions-common caja-gtkhash caja-image-converter caja-mediainfo caja-open-terminal caja-rename caja-seahorse caja-sendto caja-share caja-wallpaper caja-xattr-tags copyq czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted grsync grub-customizer gsmartcontrol gtkhash gufw hardinfo kwalletmanager mozo nemo plasma-discover seahorse synaptic system-config-printer tilda usbview xfce4-taskmanager zulumount-gui"
 # Tonstudio
@@ -10105,6 +10105,8 @@ then
   e_and_l "$FULL_LINE"
   e_and_l " ${bold_blue}Bereinigung des Systems${colors_off}"
   e_and_l "$HALF_LINE"
+  e_and_l " ${bold_blue}Kernel${colors_off}"
+  e_and_l "$HALF_LINE"
 
   # ===========================================================================
   # Löschen nicht verwendeter Kernel-Versionen
@@ -10218,6 +10220,64 @@ then
     e_and_l " Löschen nicht verwendeter ${light_cyan}Kernel-Versionen${colors_off} ... $NF_TAG"
   fi
   remove_file "$OLD_KERNEL_LIST"
+
+  # ===========================================================================
+  # Erhöhung der initramfs-Kompressions-Rate
+  # ===========================================================================
+  ACTION_MESSAGE=" Erhöhung der ${light_cyan}initramfs-Kompressions-Rate${colors_off}  "
+  IRFS_CONF_FILE="/etc/initramfs-tools/initramfs.conf"
+  if [ -s "$IRFS_CONF_FILE" ];
+  then
+    if [ $(cat "$IRFS_CONF_FILE" | grep -i -c -E "^\s*COMPRESS\s*=") -ne 0 ];
+    then
+      IRFS_COMP=$(cat ${IRFS_CONF_FILE} | grep -i -E "^\s*COMPRESS\s*=" | sed -E "s/^\s*COMPRESS\s*=\s*//i")
+      if [ "$IRFS_COMP" != "xz" ] &&
+         [ "$IRFS_COMP" != "zstd" ];
+      then
+        e_and_l " Die aktuelle Kompressions-Methode des initramfs ist nur ${bold_white}$IRFS_COMP${colors_off}."
+        ask_yes_or_no " Soll die ${light_cyan}Kompressions-Rate${colors_off} mit Methode ${bold_white}xz${colors_off} erhöht werden"
+        if [ $? -eq 1 ];
+        then
+          e_and_l " $ACHTUNG_TAG: Dieser Vorgang verändert wichtige Boot-Dateien und sollte nur nach"
+          e_and_l " einem vollständigen System-Backup durchgeführt werden! Soll jetzt wirklich die"
+          e_and_l -n " Kompressions-Methode des initramfs geändert werden? [Bestätigung mit ${bold_yellow}ja${colors_off}]: "
+          read -r CONFIRM_TEXT
+          if [ "$CONFIRM_TEXT" == "ja" ] ||
+             [ "$CONFIRM_TEXT" == "JA" ];
+          then
+            e_and_l " $USER_CHOICE_YES"
+            create_backup_file "$IRFS_CONF_FILE"
+            e_and_l -n "${ACTION_MESSAGE//96m/93m}"
+            sed -i -E "s/^\s*COMPRESS\s*=\s*[0-9a-zA-Z]*\s*$/COMPRESS=xz/gi" "$IRFS_CONF_FILE"
+            if [ $? -eq 0 ];
+            then
+              e_and_l " ... $OK_TAG"
+              e_and_l " Erneuerung des ${light_yellow}initramfs${colors_off} ... bitte warten!"
+              update-initramfs -u -k all
+              if [ $? -eq 0 ];
+              then
+                CHANGES_MADE=1
+              fi
+            else
+              e_and_l " ... $ERROR_TAG $LINENO"
+            fi
+          else
+            e_and_l " $USER_CHOICE_NO"
+          fi
+        fi
+      else # Schon optimiert
+        e_and_l "$ACTION_MESSAGE ... $NC_TAG"
+      fi
+    else # Kein COMPRESS-Eintrag
+      e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
+    fi
+  else # Keine initramfs.conf
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
+  fi
+
+  e_and_l "$HALF_LINE"
+  e_and_l " ${bold_blue}Veraltete und temporäre Daten${colors_off}"
+  e_and_l "$HALF_LINE"
 
   # ===========================================================================
   # Löschen veralteter APT-Paket-Listen und APT-Cache-Dateien
