@@ -1131,7 +1131,7 @@ DEB_PKG_OLDV[lix]=""
 DEB_PKG_OLDF[lix]=""
 DEB_PKG_VERS[lix]="0.9.29"
 DEB_PKG_MESG[lix]=""
-DEB_PKG_FILE[lix_amd64]="$RESSOURCE_SERVER_DIR/deb/lix_0.9.29-1_amd64.deb.deb"
+DEB_PKG_FILE[lix_amd64]="$RESSOURCE_SERVER_DIR/deb/lix_0.9.29-1_amd64.deb"
 DEB_PKG_CSUM[lix_amd64]="$RESSOURCE_SERVER_DIR/deb/lix_0.9.29-1_amd64.deb.sha"
 
 # Download von https://www.nomachine.com/download/linux&id=1
