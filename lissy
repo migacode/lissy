@@ -35,8 +35,8 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.57"
-# Letzte Änderung: 24.07.2023
+VERSION="3.60"
+# Letzte Änderung: 03.10.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -389,7 +389,7 @@ then
   CPU_MODEL=$(echo -n "${CPU_MODEL##*\:}" | xargs)
   # Anzahl Kerne
   CPU_CORES=$(cat /proc/cpuinfo 2>/dev/null | grep -i -c -E "^processor\s*\:")
-  # Code
+  # CPU-Code
   CPU_CODE=$(cat /proc/cpuinfo 2>/dev/null | grep -i -E "^hardware\s*\:")
   CPU_CODE=$(echo -n "${CPU_CODE##*\:}" | xargs)
 
@@ -491,31 +491,43 @@ then
   # ---------------
   RASPBERRY=$(LANG=en dmesg 2>/dev/null | grep -i -v -E "hostname" | grep -i -c -E "raspberry")
   if [ $RASPBERRY -eq 0 ] &&
-    [ -f "/proc/cpuinfo" ];
+     [ -f "/proc/cpuinfo" ];
   then
     RASPBERRY=$(cat "/proc/cpuinfo" | grep -i -c -E "raspberry")
   fi
   RASPBIAN=0
+  OS_V_CODENAME=""
+  OS_U_CODENAME=""
   if [ -s '/etc/os-release' ];
   then
     OS_NAME=$(cat "/etc/os-release" | grep -i -E "^NAME\s*=")
+    # OS_NAME=$(echo -n "${OS_NAME//\(/}")
+    # OS_NAME=$(echo -n "${OS_NAME//\)/}")
     OS_NAME=$(echo -n "${OS_NAME##*\=}" | xargs)
-    OS_NAME=$(echo -n "${OS_NAME//\(/}")
-    OS_NAME=$(echo -n "${OS_NAME//\)/}")
+
     OS_VERSION=$(cat "/etc/os-release" | grep -i -E "^VERSION\s*=")
+    # OS_VERSION=$(echo -n "${OS_VERSION//\(/}")
+    # OS_VERSION=$(echo -n "${OS_VERSION//\)/}")
     OS_VERSION=$(echo -n "${OS_VERSION##*\=}" | xargs)
-    OS_VERSION=$(echo -n "${OS_VERSION//\(/}")
-    OS_VERSION=$(echo -n "${OS_VERSION//\)/}")
-    OS_CODENAME=$(cat "/etc/os-release" | grep  -i -E "CODENAME\s*=" | cut -d'"' -f 2 | cut -d'"' -f 1)
-    OS_CODENAME=$(echo -n "${OS_CODENAME##*\=}" | xargs)
-    OPERATION_SYSTEM="$OS_NAME $OS_VERSION ($OS_CODENAME)"
-    if [ "$OS_NAME" = "" ] &&
-      [ "$OS_VERSION" = "" ];
-    then
-      IFS='"' OPERATION_SYSTEM=($(cat "/etc/os-release" | grep -E "PRETTY_NAME"))
-      IFS=' '
-      OPERATION_SYSTEM=$(echo -n "${OPERATION_SYSTEM[1]}" | xargs)
-    fi
+
+    OS_V_CODENAME=$(cat "/etc/os-release" | grep  -i -E "^VERSION_CODENAME\s*=" | cut -d'"' -f 2 | cut -d'"' -f 1)
+    # OS_V_CODENAME=$(echo -n "${OS_V_CODENAME//\(/}")
+    # OS_V_CODENAME=$(echo -n "${OS_V_CODENAME//\)/}")
+    OS_V_CODENAME=$(echo -n "${OS_V_CODENAME##*\=}" | xargs)
+
+    OS_U_CODENAME=$(cat "/etc/os-release" | grep  -i -E "^UBUNTU_CODENAME\s*=" | cut -d'"' -f 2 | cut -d'"' -f 1)
+    # OS_U_CODENAME=$(echo -n "${OS_U_CODENAME//\(/}")
+    # OS_U_CODENAME=$(echo -n "${OS_U_CODENAME//\)/}")
+    OS_U_CODENAME=$(echo -n "${OS_U_CODENAME##*\=}" | xargs)
+
+    OS_PRETTY_NAME=$(cat "/etc/os-release" | grep -i -E "^PRETTY_NAME\s*=")
+    # OS_PRETTY_NAME=$(echo -n "${OS_PRETTY_NAME//\(/}")
+    # OS_PRETTY_NAME=$(echo -n "${OS_PRETTY_NAME//\)/}")
+    OS_PRETTY_NAME=$(echo -n "${OS_PRETTY_NAME##*\=}" | xargs)
+
+    OPERATION_SYSTEM="$OS_NAME $OS_VERSION"
+
+    # Check if Raspbian
     RASPBIAN=$(cat "/etc/os-release" | grep -i -c -E "raspbian")
     if [ $RASPBIAN -eq 0 ];
     then
@@ -526,6 +538,45 @@ then
       RASPBIAN=$(ps -def | grep -i -c -E "lxde-pi")
       if [ $RASPBIAN -eq 1 ]; then RASPBIAN=0; fi
     fi
+
+  fi
+  DEBIAN_CODE=""
+  if [ -s "/etc/debian_version" ];
+  then
+    DEBIAN_CODE="$(cat /etc/debian_version)"
+    DEBIAN_CODE="${DEBIAN_CODE%%/*}"
+    TEST_CODE=$(echo "$DEBIAN_CODE" | sed 's/[^a-z]*//g' | xargs)
+    if [ "$TEST_CODE" = "" ];
+    then
+      DEBIAN_CODE="$OS_V_CODENAME"
+    fi
+  fi
+  UBUNTU_VERSION=""
+  DEBIAN_VERSION=""
+  if [ "$OS_U_CODENAME" != "" ];
+  then
+    if [ $(echo "$OS_U_CODENAME" | grep -i -c -E "bionic") -gt 0 ];   then UBUNTU_VERSION="18.04"; DEBIAN_VERSION="10"; fi
+    if [ $(echo "$OS_U_CODENAME" | grep -i -c -E "cosmic") -gt 0 ];   then UBUNTU_VERSION="18.10"; DEBIAN_VERSION="10"; fi
+    if [ $(echo "$OS_U_CODENAME" | grep -i -c -E "disco") -gt 0 ];    then UBUNTU_VERSION="19.04"; DEBIAN_VERSION="10"; fi
+    if [ $(echo "$OS_U_CODENAME" | grep -i -c -E "eoan") -gt 0 ];     then UBUNTU_VERSION="19.10"; DEBIAN_VERSION="10"; fi
+    if [ $(echo "$OS_U_CODENAME" | grep -i -c -E "focal") -gt 0 ];    then UBUNTU_VERSION="20.04"; DEBIAN_VERSION="11"; fi
+    if [ $(echo "$OS_U_CODENAME" | grep -i -c -E "groovy") -gt 0 ];   then UBUNTU_VERSION="20.10"; DEBIAN_VERSION="11"; fi
+    if [ $(echo "$OS_U_CODENAME" | grep -i -c -E "hirsute") -gt 0 ];  then UBUNTU_VERSION="21.04"; DEBIAN_VERSION="11"; fi
+    if [ $(echo "$OS_U_CODENAME" | grep -i -c -E "impish") -gt 0 ];   then UBUNTU_VERSION="21.10"; DEBIAN_VERSION="11"; fi
+    if [ $(echo "$OS_U_CODENAME" | grep -i -c -E "jammy") -gt 0 ];    then UBUNTU_VERSION="22.04"; DEBIAN_VERSION="12"; fi
+    if [ $(echo "$OS_U_CODENAME" | grep -i -c -E "kinetic") -gt 0 ];  then UBUNTU_VERSION="22.10"; DEBIAN_VERSION="12"; fi
+    if [ $(echo "$OS_U_CODENAME" | grep -i -c -E "lunar") -gt 0 ];    then UBUNTU_VERSION="23.04"; fi
+    if [ $(echo "$OS_U_CODENAME" | grep -i -c -E "mantic") -gt 0 ];   then UBUNTU_VERSION="23.10"; fi
+  fi
+  if [ $(uname -a 2>/dev/null | grep -i -c -E "debian") -gt 0 ] &&
+     [ "$DEBIAN_VERSION" = "" ];
+  then
+    if [ $(echo "$OS_V_CODENAME" | grep -i -c -E "stretch") -gt 0 ];  then DEBIAN_VERSION="9";  fi
+    if [ $(echo "$OS_V_CODENAME" | grep -i -c -E "buster") -gt 0 ];   then DEBIAN_VERSION="10"; fi
+    if [ $(echo "$OS_V_CODENAME" | grep -i -c -E "bullseye") -gt 0 ]; then DEBIAN_VERSION="11"; fi
+    if [ $(echo "$OS_V_CODENAME" | grep -i -c -E "bookworm") -gt 0 ]; then DEBIAN_VERSION="12"; fi
+    if [ $(echo "$OS_V_CODENAME" | grep -i -c -E "trixie") -gt 0 ];   then DEBIAN_VERSION="13"; fi
+    if [ $(echo "$OS_V_CODENAME" | grep -i -c -E "forky") -gt 0 ];    then DEBIAN_VERSION="14"; fi
   fi
   OS_BIT_WIDTH=$(getconf LONG_BIT) 2>/dev/null
   if [ $(uname -a 2>/dev/null | grep -i -c -E "debian") -eq 0 ] &&
@@ -673,9 +724,9 @@ declare -A KATEGORIE_TEXT # Angezeigte Bezeichnung der Kategorie
 declare -A KATEGORIE_PKGS # Liste mit den in der Kategorie enthaltenen Paketen
 
 # Alphabetische Reihenfolge
-KAT_KEY_LIST=(a b c f g i m n p q s t u v w wg x z gx lx mx xx)
+KAT_KEY_LIST=(a b c f g i m n p q s t u v w wg x z mt gx lx mx xx)
 # Reihenfolge der Verarbeitung
-KAT_ORD_LIST=(x v b i n wg c m g t z u p a f q w s gx lx mx xx)
+KAT_ORD_LIST=(x v b i n wg c m g t z u p a f q w s mt gx lx mx xx)
 
 # --- CATEGORIES START ---
 KATEGORIE_TEXT[a]="Webserver (Apache und PHP)"
@@ -696,6 +747,7 @@ KATEGORIE_TEXT[w]="Windows API (Wine, Winetricks und PlayOnLinux)"
 KATEGORIE_TEXT[wg]="WireGuard VPN (Kernel Version)"
 KATEGORIE_TEXT[x]="Systemerweiterungen (Treiber und CLI-Hilfsprogramme)"
 KATEGORIE_TEXT[z]="Zubehör (Datei-Manager, Packer und diverse Desktop-Tools)"
+KATEGORIE_TEXT[mt]="Mint Tools (Erweiterungen für Linux Mint)"
 KATEGORIE_TEXT[gx]="GNOME Tools (Erweiterungen für das GNOME-Desktop)"
 KATEGORIE_TEXT[lx]="LXDE Tools (Erweiterungen für das LXDE-Desktop)"
 KATEGORIE_TEXT[mx]="MATE Tools (Erweiterungen für das MATE-Desktop)"
@@ -815,7 +867,7 @@ OPTION_MENU[saveconf]=5
 PHP_VERSION=$(LANG=en apt show "php" 2>/dev/null | grep -i -E "depends\:\s*")
 PHP_VERSION=$(echo -n "${PHP_VERSION##* }" | xargs)
 KATEGORIE_PKGS[a]="apache2 php libapache2-mod-php"
-PHP_MODULES=(bcmath cli curl dev gd imap intl json mbstring mysql opcache readline soap sqlite3 xml xmlrpc zip)
+PHP_MODULES=(bcmath cli curl dev gd imap intl mbstring mysql opcache readline soap sqlite3 xml xmlrpc zip)
 if [ "$PHP_VERSION" != "" ];
 then
   for php_mod_name in ${PHP_MODULES[@]};
@@ -825,44 +877,58 @@ then
 fi
 # Büro
 KATEGORIE_PKGS[b]="calibre evolution libreoffice okular pdfarranger pdfchain qpdfview scribus scribus-template"
+if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[b]+=" thingy xreader"; fi
 # Cloud-Clients"Online-Datenspeicher"
 KATEGORIE_PKGS[c]="owncloud-client nextcloud-desktop"
 # Programmierung
-KATEGORIE_PKGS[p]="bless closure-compiler code geany ghex kate kdiff3 kompare meld mu-editor python3 scratch thonny"
+KATEGORIE_PKGS[p]="bless closure-compiler geany ghex kate kdiff3 kompare meld mu-editor python3 scratch thonny vscodium"
 # Emulation und Virtualisierung
-KATEGORIE_PKGS[q]="docker.io qemu-system-common qemu-system-data qemu-system-x86 qemu-system-arm qemu-system-gui qemu-efi-aarch64 qemu-efi-arm qemu-utils qemu-block-extra qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virtualbox virtualbox-ext-pack virtualbox-guest-additions-iso virt-manager"
+KATEGORIE_PKGS[q]="docker.io qemu-system-common qemu-system-data qemu-system-x86 qemu-system-arm qemu-system-gui qemu-efi-aarch64 qemu-efi-arm qemu-utils qemu-block-extra libvirt-daemon-system libvirt-clients bridge-utils virtualbox virtualbox-ext-pack virtualbox-guest-additions-iso virt-manager"
 # FTP-Server
 KATEGORIE_PKGS[f]="proftpd-basic"
 # Grafik
 KATEGORIE_PKGS[g]="blender darktable digikam drawing eom fraqtive geeqie gimp gpicview gpick gwenview imagemagick inkscape krita krita-l10n mandelbulber2 mtpaint pinta rawtherapee shotwell simple-scan xnview"
+if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[g]+=" pix xviewer"; fi
 # Internet
 KATEGORIE_PKGS[i]="anydesk ipscan chromium chromium-ffmpeg filezilla firefox opera microsoft-edge-stable nomachine realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission virt-viewer wireshark"
+if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[i]+=" hexchat warpinator"; fi
 # Multimedia
-KATEGORIE_PKGS[m]="asunder celluloid cheese easytag handbrake hypnotix k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mediainfo-gui mixxx mkvtoolnix mkvtoolnix-gui mpv parole openshot-qt rhythmbox smplayer vlc youtube-dl youtubedl-gui"
+KATEGORIE_PKGS[m]="asunder celluloid cheese easytag handbrake hypnotix k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mediainfo-gui mixxx mkvtoolnix mkvtoolnix-gui mpv parole openshot-qt rhythmbox smplayer vlc yt-dlp youtube-dl youtubedl-gui youplay"
 # Netzwerkverbindungen
 KATEGORIE_PKGS[n]="openvpn network-manager-openvpn network-manager-openvpn-gnome vpnc vpnc-scripts network-manager-vpnc network-manager-vpnc-gnome"
 # Spiele
-KATEGORIE_PKGS[s]="0ad alien-arena astromenace atomix billard-gl biniax2 blobwars blockout2 briquolo brutalchess caveexpress chromium-bsu code-the-classics criticalmass cuyo dreamchess enigma extremetuxracer foobillardplus freedoom frogatto frozen-bubble fs-uae fs-uae-launcher gbrainy gcompris gemdropx gnome-games gnubg gweled hedgewars jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter morris naev neverball neverputt nexuiz numptyphysics oolite open-invaders pinball pingus pokerth pybik rocksndiamonds sauerbraten sdl-ball supertux supertuxkart teeworlds torcs trigger-rally tuxmath ufoai wesnoth widelands zaz"
+KATEGORIE_PKGS[s]="0ad alien-arena astromenace atomix billard-gl biniax2 blobwars blockout2 briquolo brutalchess caveexpress chromium-bsu code-the-classics criticalmass cuyo dreamchess enigma extremetuxracer foobillardplus freedoom frogatto frozen-bubble fs-uae fs-uae-launcher gbrainy gcompris-qt gemdropx gnome-games gnubg gweled hedgewars jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter morris naev neverball neverputt nexuiz numptyphysics oolite open-invaders pinball pingus pokerth pybik rocksndiamonds sauerbraten sdl-ball supertux supertuxkart teeworlds torcs trigger-rally tuxmath ufoai wesnoth widelands zaz"
 # Systemerweiterungen
 KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dirmngr dpkg-repack e2fsprogs ethtool exfat-fuse exfat-utils extundelete fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysstat tar tcptrack testdisk traceroute udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
 # Systemverwaltung
-KATEGORIE_PKGS[v]="backintime-common baobab bleachbit blueman caja caja-actions caja-eiciel caja-extensions-common caja-gtkhash caja-image-converter caja-mediainfo caja-open-terminal caja-rename caja-seahorse caja-sendto caja-share caja-wallpaper caja-xattr-tags copyq czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted grsync grub-customizer gsmartcontrol gtkhash gufw hardinfo kwalletmanager mozo nemo plasma-discover seahorse synaptic system-config-printer tilda usbview xfce4-taskmanager zulumount-gui"
+KATEGORIE_PKGS[v]="backintime-common baobab bleachbit blueman caja caja-actions caja-eiciel caja-extensions-common caja-gtkhash caja-image-converter caja-mediainfo caja-open-terminal caja-rename caja-seahorse caja-sendto caja-share caja-wallpaper caja-xattr-tags copyq czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted grsync grub-customizer gsmartcontrol gtkhash gufw hardinfo kwalletmanager mozo nemo plasma-discover seahorse synaptic system-config-printer timeshift tilda usbview xfce4-taskmanager zulumount-gui"
+if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[v]+=" bulky qt5ct webapp-manager"; fi
 # Tonstudio
 KATEGORIE_PKGS[t]="ardour audacity hydrogen lmms qjackctl qtractor yoshimi"
 # USB-Firewall
 KATEGORIE_PKGS[u]="usbauth usbauth-notifier"
 # Zubehör
 KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk doublecmd-common doublecmd-gtk engrampa freefilesync galculator gedit gnome-characters gucharmap keepass2 kfind klavaro ktouch magnus mousepad nmapsi4 onboard pdfmod pluma putty redshift-gtk rpi-imager usb-creator-gtk veracrypt xournal"
-# Windows-API"Wine"
-KATEGORIE_PKGS[w]="wine wine64 wine64-preloader wine64-tools winetricks zenity playonlinux"
+if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[z]+=" sticky xed"; fi
+# Windows-API "Wine"
+if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ];
+then
+  KATEGORIE_PKGS[w]="wine-installer"
+else
+  KATEGORIE_PKGS[w]="wine wine64 wine64-preloader wine64-tools"
+fi
+KATEGORIE_PKGS[w]+=" winetricks zenity playonlinux"
 # WireGuard
 KATEGORIE_PKGS[wg]="wireguard wireguard-tools"
+# Mint Tools
+KATEGORIE_PKGS[mt]="mintbackup mintdesktop mintdrivers mintinstall mintlocale mintreport mintsources mintstick mintupdate mintwelcome"
 # GNOME Tools
 KATEGORIE_PKGS[gx]="gnome-control-center gnome-disk-utility gnome-software gnome-system-tools gnome-terminal gnome-tweaks"
 # LXDE Tools
 KATEGORIE_PKGS[lx]="lxappearance lxhotkey-gtk lxinput lxrandr lxsession-edit lxtask lxterminal"
 # MATE Tools
-KATEGORIE_PKGS[mx]="mate-applets mate-control-center mate-desktop-environment-extras mate-indicator-applet mate-media mate-sensors-applet mate-terminal mate-tweak mate-utils software-boutique ubuntu-mate-welcome"
+KATEGORIE_PKGS[mx]="mate-applets mate-control-center mate-desktop-environment-extras mate-indicator-applet mate-media mate-sensors-applet mate-terminal mate-tweak mate-utils"
+if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "ubuntu") -gt 0 ]; then KATEGORIE_PKGS[mx]+=" software-boutique ubuntu-mate-welcome"; fi
 # XFCE Tools
 KATEGORIE_PKGS[xx]=""
 
@@ -883,7 +949,6 @@ declare -A SIMILAR_PACK
 SIMILAR_PACK[blender]="blender-tpaw"
 SIMILAR_PACK[brasero]="xfburn"
 SIMILAR_PACK[celluloid]="parole"
-SIMILAR_PACK[parole]="mpv"
 SIMILAR_PACK[chromium]="chromium-browser"
 SIMILAR_PACK[chromium-browser]="chromium-common"
 SIMILAR_PACK[czkawka]="fslint"
@@ -891,6 +956,7 @@ SIMILAR_PACK[engrampa]="file-roller"
 SIMILAR_PACK[exfat-utils]="exfatprogs"
 SIMILAR_PACK[file-roller]="xarchiver"
 SIMILAR_PACK[firefox]="firefox-esr"
+SIMILAR_PACK[gcompris-qt]="gcompris"
 SIMILAR_PACK[gnome-tweaks]="gnome-tweak-tool"
 SIMILAR_PACK[k3b]="brasero"
 SIMILAR_PACK[kid3]="exfalso"
@@ -899,11 +965,11 @@ SIMILAR_PACK[magnus]="kmag"
 SIMILAR_PACK[microsoft-edge-stable]="microsoft-edge-dev"
 SIMILAR_PACK[opera]="opera-stable"
 SIMILAR_PACK[p7zip-full]="p7zip"
+SIMILAR_PACK[parole]="mpv"
 SIMILAR_PACK[pdfchain]="pdfmod"
 SIMILAR_PACK[pdfarranger]="pdfmod"
 SIMILAR_PACK[pinta]="drawing"
 SIMILAR_PACK[transmission]="transmission-common"
-SIMILAR_PACK[ubuntu-mate-welcome]="mintwelcome"
 SIMILAR_PACK[usb-creator-gtk]="balena-etcher"
 
 ###############################################################################
@@ -994,15 +1060,24 @@ declare -A DEB_PKG_OLDF # Download-URL der Vorgänger-Version (nur amd64)
 # ACHTUNG: ÄNDERUNGEN AUCH IN DEN POST-SCRIPTEN UND "EXUPDATE_PKG_LIST" ABGLEICHEN !
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+# Erstellt mittels dpkg-repack :)
+DEB_PKG_NAME[apturl]="AptUrl"
+DEB_PKG_OLDV[apturl]=""
+DEB_PKG_OLDF[apturl]=""
+DEB_PKG_VERS[apturl]="0.5.2"
+DEB_PKG_MESG[apturl]=""
+DEB_PKG_FILE[apturl_amd64]="$RESSOURCE_SERVER_DIR/deb/apturl_0.5.2_amd64.deb"
+DEB_PKG_CSUM[apturl_amd64]="$RESSOURCE_SERVER_DIR/deb/apturl_0.5.2_amd64.deb.sha"
+
 # Download von https://github.com/balena-io/etcher/releases/latest (https://www.balena.io/etcher/)
 # ACHTUNG: Auch als WEB-Version eingetragen (s.u.)!
 DEB_PKG_NAME[balena-etcher]="balenaEtcher"
-DEB_PKG_OLDV[balena-etcher]=""
-DEB_PKG_OLDF[balena-etcher]=""
-DEB_PKG_VERS[balena-etcher]="1.18.4"
+DEB_PKG_OLDV[balena-etcher]="1.18.4"
+DEB_PKG_OLDF[balena-etcher]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.4_amd64.deb"
+DEB_PKG_VERS[balena-etcher]="1.18.11"
 DEB_PKG_MESG[balena-etcher]=""
-DEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.4_amd64.deb"
-DEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.4_amd64.deb.sha"
+DEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.11_amd64.deb"
+DEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.11_amd64.deb.sha"
  DEB_PKG_FILE[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
  DEB_PKG_CSUM[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
 DEB_PKG_FILE[balena-etcher_arm64]="" # NICHT für ARM verfügbar
@@ -1018,26 +1093,20 @@ DEB_PKG_VERS[grub-customizer]="5.1.0"
 DEB_PKG_MESG[grub-customizer]=""
 DEB_PKG_FILE[grub-customizer_amd64]="$RESSOURCE_SERVER_DIR/deb/grub-customizer_5.1.0-3build1_amd64.deb"
 DEB_PKG_CSUM[grub-customizer_amd64]="$RESSOURCE_SERVER_DIR/deb/grub-customizer_5.1.0-3build1_amd64.deb.sha"
- DEB_PKG_FILE[grub-customizer_i386]="" # Nur für amd64 als eigenes .deb erstellt
- DEB_PKG_CSUM[grub-customizer_i386]="" # Nur für amd64 als eigenes .deb erstellt
-DEB_PKG_FILE[grub-customizer_arm64]="" # Nur für amd64 als eigenes .deb erstellt
-DEB_PKG_CSUM[grub-customizer_arm64]="" # Nur für amd64 als eigenes .deb erstellt
-DEB_PKG_FILE[grub-customizer_armhf]="" # Nur für amd64 als eigenes .deb erstellt
-DEB_PKG_CSUM[grub-customizer_armhf]="" # Nur für amd64 als eigenes .deb erstellt
 
 # Download von https://ftp5.gwdg.de/pub/linux/debian/mint/packages/pool/main/h/hypnotix
 # oder https://github.com/linuxmint/hypnotix/releases
 DEB_PKG_NAME[hypnotix]="Hypnotix"
 DEB_PKG_OLDV[hypnotix]="2.6"
-DEB_PKG_OLDF[hypnotix]="$RESSOURCE_SERVER_DIR/deb/hypnotix_2.6_all.deb"
-DEB_PKG_VERS[hypnotix]="3.2"
+DEB_PKG_OLDF[hypnotix]="$RESSOURCE_SERVER_DIR/deb/hypnotix_2.6_LAST_20.04_all.deb"
+DEB_PKG_VERS[hypnotix]="3.7"
 DEB_PKG_MESG[hypnotix]="Benötigt mindestens GTK 4!"
-DEB_PKG_FILE[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.2_all.deb"
-DEB_PKG_CSUM[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.2_all.deb.sha"
+DEB_PKG_FILE[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb"
+DEB_PKG_CSUM[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb.sha"
  DEB_PKG_FILE[hypnotix_i386]="" # NUR für 64-bit verfügbar
  DEB_PKG_CSUM[hypnotix_i386]="" # NUR für 64-bit verfügbar
-DEB_PKG_FILE[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.2_all.deb"
-DEB_PKG_CSUM[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.2_all.deb.sha"
+DEB_PKG_FILE[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb"
+DEB_PKG_CSUM[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb.sha"
 DEB_PKG_FILE[hypnotix_armhf]="" # NUR für 64-bit verfügbar
 DEB_PKG_CSUM[hypnotix_armhf]="" # NUR für 64-bit verfügbar
 
@@ -1056,20 +1125,89 @@ DEB_PKG_CSUM[ipscan_arm64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_all.deb.sha"
 DEB_PKG_FILE[ipscan_armhf]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_all.deb"
 DEB_PKG_CSUM[ipscan_armhf]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_all.deb.sha"
 
+# Erstellt mittels dpkg-repack :)
+DEB_PKG_NAME[lix]="lix"
+DEB_PKG_OLDV[lix]=""
+DEB_PKG_OLDF[lix]=""
+DEB_PKG_VERS[lix]="0.9.29"
+DEB_PKG_MESG[lix]=""
+DEB_PKG_FILE[lix_amd64]="$RESSOURCE_SERVER_DIR/deb/lix_0.9.29-1_amd64.deb.deb"
+DEB_PKG_CSUM[lix_amd64]="$RESSOURCE_SERVER_DIR/deb/lix_0.9.29-1_amd64.deb.sha"
+
 # Download von https://www.nomachine.com/download/linux&id=1
 DEB_PKG_NAME[nomachine]="NoMachine"
-DEB_PKG_OLDV[nomachine]=""
-DEB_PKG_OLDF[nomachine]=""
-DEB_PKG_VERS[nomachine]="8.4.2"
+DEB_PKG_OLDV[nomachine]="8.4.2"
+DEB_PKG_OLDF[nomachine]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_amd64.deb"
+DEB_PKG_VERS[nomachine]="8.8.1"
 DEB_PKG_MESG[nomachine]=""
-DEB_PKG_FILE[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_amd64.deb"
-DEB_PKG_CSUM[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_amd64.deb.sha"
- DEB_PKG_FILE[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_i386.deb"
- DEB_PKG_CSUM[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_i386.deb.sha"
-DEB_PKG_FILE[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_arm64.deb"
-DEB_PKG_CSUM[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_arm64.deb.sha"
-DEB_PKG_FILE[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_armhf.deb"
-DEB_PKG_CSUM[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_armhf.deb.sha"
+DEB_PKG_FILE[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_amd64.deb"
+DEB_PKG_CSUM[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_amd64.deb.sha"
+ DEB_PKG_FILE[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_i386.deb"
+ DEB_PKG_CSUM[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_i386.deb.sha"
+DEB_PKG_FILE[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_arm64.deb"
+DEB_PKG_CSUM[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_arm64.deb.sha"
+DEB_PKG_FILE[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_armhf.deb"
+DEB_PKG_CSUM[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_armhf.deb.sha"
+
+# Download von https://www.opera.com/de/download
+DEB_PKG_NAME[opera-stable]="Opera"
+DEB_PKG_OLDV[opera-stable]=""
+DEB_PKG_OLDF[opera-stable]=""
+DEB_PKG_VERS[opera-stable]="102.0.4880.70"
+DEB_PKG_MESG[opera-stable]=""
+DEB_PKG_FILE[opera-stable_amd64]="$RESSOURCE_SERVER_DIR/deb/opera-stable_102.0.4880.70_amd64.deb"
+DEB_PKG_CSUM[opera-stable_amd64]="$RESSOURCE_SERVER_DIR/deb/opera-stable_102.0.4880.70_amd64.deb.sha"
+ DEB_PKG_FILE[opera-stable_i386]="" # NUR für 64-bit verfügbar
+ DEB_PKG_CSUM[opera-stable_i386]="" # NUR für 64-bit verfügbar
+DEB_PKG_FILE[opera-stable_arm64]="" # NICHT für ARM verfügbar
+DEB_PKG_CSUM[opera-stable_arm64]="" # NICHT für ARM verfügbar
+DEB_PKG_FILE[opera-stable_armhf]="" # NICHT für ARM verfügbar
+DEB_PKG_CSUM[opera-stable_armhf]="" # NICHT für ARM verfügbar
+
+# Download von https://www.realvnc.com/de/connect/download/vnc/linux
+DEB_PKG_NAME[realvnc-vnc-server]="VNC Server"
+DEB_PKG_OLDV[realvnc-vnc-server]="6.9.1"
+DEB_PKG_OLDF[realvnc-vnc-server]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-6.9.1-Linux-x64.deb"
+DEB_PKG_VERS[realvnc-vnc-server]="7.6.1"
+DEB_PKG_MESG[realvnc-vnc-server]=""
+DEB_PKG_FILE[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.6.1-Linux-x64.deb"
+DEB_PKG_CSUM[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.6.1-Linux-x64.deb.sha"
+ DEB_PKG_FILE[realvnc-vnc-server_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
+ DEB_PKG_CSUM[realvnc-vnc-server_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
+DEB_PKG_FILE[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.6.1-Linux-ARM64.deb"
+DEB_PKG_CSUM[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.6.1-Linux-ARM64.deb.sha"
+DEB_PKG_FILE[realvnc-vnc-server_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.6.1-Linux-ARMHF.deb"
+DEB_PKG_CSUM[realvnc-vnc-server_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.6.1-Linux-ARMHF.deb.sha"
+
+# Download von https://www.realvnc.com/de/connect/download/viewer/linux
+DEB_PKG_NAME[realvnc-vnc-viewer]="VNC Viewer"
+DEB_PKG_OLDV[realvnc-vnc-viewer]="6.22.315"
+DEB_PKG_OLDF[realvnc-vnc-viewer]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-6.22.315-Linux-x64.deb"
+DEB_PKG_VERS[realvnc-vnc-viewer]="7.6.1"
+DEB_PKG_MESG[realvnc-vnc-viewer]=""
+DEB_PKG_FILE[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.6.1-Linux-x64.deb"
+DEB_PKG_CSUM[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.6.1-Linux-x64.deb.sha"
+ DEB_PKG_FILE[realvnc-vnc-viewer_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
+ DEB_PKG_CSUM[realvnc-vnc-viewer_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
+DEB_PKG_FILE[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.6.1-Linux-ARM64.deb"
+DEB_PKG_CSUM[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.6.1-Linux-ARM64.deb.sha"
+DEB_PKG_FILE[realvnc-vnc-viewer_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.6.1-Linux-ARMHF.deb"
+DEB_PKG_CSUM[realvnc-vnc-viewer_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.6.1-Linux-ARMHF.deb.sha"
+
+# Download von https://github.com/raspberrypi/rpi-imager
+DEB_PKG_NAME[rpi-imager]="RPi-Imager"
+DEB_PKG_OLDV[rpi-imager]=""
+DEB_PKG_OLDF[rpi-imager]=""
+DEB_PKG_VERS[rpi-imager]="1.7.5"
+DEB_PKG_MESG[rpi-imager]=""
+DEB_PKG_FILE[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/deb/rpi-imager_1.7.5_amd64.deb"
+DEB_PKG_CSUM[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/deb/rpi-imager_1.7.5_amd64.deb.sha"
+ DEB_PKG_FILE[rpi-imager_i386]="" # NUR für 64-bit verfügbar
+ DEB_PKG_CSUM[rpi-imager_i386]="" # NUR für 64-bit verfügbar
+DEB_PKG_FILE[rpi-imager_arm64]="" # NICHT für ARM verfügbar
+DEB_PKG_CSUM[rpi-imager_arm64]="" # NICHT für ARM verfügbar
+DEB_PKG_FILE[rpi-imager_armhf]="" # NICHT für ARM verfügbar
+DEB_PKG_CSUM[rpi-imager_armhf]="" # NICHT für ARM verfügbar
 
 # Downloads automatisch von der Herstellerseite (manuell: https://www.teamviewer.com/de/download/linux)
 DEB_PKG_NAME[teamviewer]="TeamViewer"
@@ -1086,40 +1224,36 @@ DEB_PKG_CSUM[teamviewer_arm64]=""
 DEB_PKG_FILE[teamviewer_armhf]="https://download.teamviewer.com/download/linux/teamviewer_armhf.deb"
 DEB_PKG_CSUM[teamviewer_armhf]=""
 
+# Download von https://pkgs.org/download/usb-creator-gtk
+DEB_PKG_NAME[usb-creator-gtk]="USB-Creator"
+DEB_PKG_OLDV[usb-creator-gtk]=""
+DEB_PKG_OLDF[usb-creator-gtk]=""
+DEB_PKG_VERS[usb-creator-gtk]="0.0.3.13"
+DEB_PKG_MESG[usb-creator-gtk]=""
+DEB_PKG_FILE[usb-creator-gtk_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-gtk_0.3.13_all.deb"
+DEB_PKG_CSUM[usb-creator-gtk_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-gtk_0.3.13_all.deb.sha"
+ DEB_PKG_FILE[usb-creator-gtk_i386]="$RESSOURCE_SERVER_DIR/deb/usb-creator-gtk_0.3.13_all.deb"
+ DEB_PKG_CSUM[usb-creator-gtk_i386]="$RESSOURCE_SERVER_DIR/deb/usb-creator-gtk_0.3.13_all.deb.sha"
+DEB_PKG_FILE[usb-creator-gtk_arm64]="" # NICHT für ARM verfügbar
+DEB_PKG_CSUM[usb-creator-gtk_arm64]="" # NICHT für ARM verfügbar
+DEB_PKG_FILE[usb-creator-gtk_armhf]="" # NICHT für ARM verfügbar
+DEB_PKG_CSUM[usb-creator-gtk_armhf]="" # NICHT für ARM verfügbar
+
+# -----------------------------------------------------------------------------
 # Download von https://veracrypt.fr/en/Downloads.html
 # ACHTUNG: BEI ÄNDERUNGEN AUCH DIE DATEI "veracrypt-1.25.9-sha256sum.txt" DOWNLOADEN
 #          UND AUF DEM SERVER ALS "veracrypt-1.25.9-sha256sum.sha" SPEICHERN !!!
 # VeraCrypt bietet weiter differenzierte Pakete an ----------------------------
 OPSYS_PART=""
-if [ "$ARCHITECTURE_MAIN" = "amd64" ] &&
-   [ $(echo "$OS_CODENAME" | grep -i -c -E "impish") -gt 0 ];
+# Zuerst testen ob Ubuntu ...
+if [ $(uname -a 2>/dev/null | grep -i -c -E "ubuntu") -gt 0 ];
 then
-  OPSYS_PART="Ubuntu-21.10"
+  OPSYS_PART="Ubuntu-$UBUNTU_VERSION"
 else
-  if [ $(echo "$OS_CODENAME" | grep -i -c -E "jammy") -gt 0 ];
+  # ... danach ob Debian
+  if [ $(uname -a 2>/dev/null | grep -i -c -E "debian") -gt 0 ]
   then
-    if [ "$ARCHITECTURE_MAIN" = "arm64" ];
-    then
-      OPSYS_PART="Debian-11"
-    else
-      OPSYS_PART="Ubuntu-22.04"
-    fi
-  else
-    if [ $(echo "$OS_CODENAME" | grep -i -c -E "focal") -gt 0 ];
-    then
-      OPSYS_PART="Ubuntu-20.04"
-    else
-      if [ $(echo "$OS_CODENAME" | grep -i -c -E "bullseye") -gt 0 ] ||
-         [ $(echo "$OS_CODENAME" | grep -i -c -E "impish") -gt 0 ];
-      then
-        OPSYS_PART="Debian-11"
-      else
-        if [ $(echo "$OS_CODENAME" | grep -i -c -E "buster") -gt 0 ];
-        then
-          OPSYS_PART="Debian-10"
-        fi
-      fi
-    fi
+    OPSYS_PART="Debian-$DEBIAN_VERSION"
   fi
 fi
 if [ "$OPSYS_PART" != "" ];
@@ -1140,50 +1274,169 @@ then
 fi
 # -----------------------------------------------------------------------------
 
-# Download von https://www.realvnc.com/de/connect/download/vnc/linux
-DEB_PKG_NAME[realvnc-vnc-server]="VNC Server"
-DEB_PKG_OLDV[realvnc-vnc-server]=""
-DEB_PKG_OLDF[realvnc-vnc-server]=""
-DEB_PKG_VERS[realvnc-vnc-server]="6.9.1"
-DEB_PKG_MESG[realvnc-vnc-server]=""
-DEB_PKG_FILE[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-6.9.1-Linux-x64.deb"
-DEB_PKG_CSUM[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-6.9.1-Linux-x64.deb.sha"
- DEB_PKG_FILE[realvnc-vnc-server_i386]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-6.9.1-Linux-x86.deb"
- DEB_PKG_CSUM[realvnc-vnc-server_i386]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-6.9.1-Linux-x86.deb.sha"
-DEB_PKG_FILE[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-6.9.1-Linux-ARM64.deb"
-DEB_PKG_CSUM[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-6.9.1-Linux-ARM64.deb.sha"
-DEB_PKG_FILE[realvnc-vnc-server_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-6.9.1-Linux-ARMHF.deb"
-DEB_PKG_CSUM[realvnc-vnc-server_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-6.9.1-Linux-ARMHF.deb.sha"
-
-# Download von https://www.realvnc.com/de/connect/download/viewer/linux
-DEB_PKG_NAME[realvnc-vnc-viewer]="VNC Viewer"
-DEB_PKG_OLDV[realvnc-vnc-viewer]=""
-DEB_PKG_OLDF[realvnc-vnc-viewer]=""
-DEB_PKG_VERS[realvnc-vnc-viewer]="6.22.315"
-DEB_PKG_MESG[realvnc-vnc-viewer]=""
-DEB_PKG_FILE[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-6.22.315-Linux-x64.deb"
-DEB_PKG_CSUM[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-6.22.315-Linux-x64.deb.sha"
- DEB_PKG_FILE[realvnc-vnc-viewer_i386]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-6.22.315-Linux-x86.deb"
- DEB_PKG_CSUM[realvnc-vnc-viewer_i386]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-6.22.315-Linux-x86.deb.sha"
-DEB_PKG_FILE[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-6.22.315-Linux-ARM64.deb"
-DEB_PKG_CSUM[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-6.22.315-Linux-ARM64.deb.sha"
-DEB_PKG_FILE[realvnc-vnc-viewer_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-6.22.315-Linux-ARMHF.deb"
-DEB_PKG_CSUM[realvnc-vnc-viewer_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-6.22.315-Linux-ARMHF.deb.sha"
+# Download von https://github.com/VSCodium/vscodium
+DEB_PKG_NAME[vscodium]="VSCodium"
+DEB_PKG_OLDV[vscodium]=""
+DEB_PKG_OLDF[vscodium]=""
+DEB_PKG_VERS[vscodium]="1.82.2.23257"
+DEB_PKG_MESG[vscodium]=""
+DEB_PKG_FILE[vscodium_amd64]="$RESSOURCE_SERVER_DIR/deb/vscodium_1.82.2.23257_amd64.deb"
+DEB_PKG_CSUM[vscodium_amd64]="$RESSOURCE_SERVER_DIR/deb/vscodium_1.82.2.23257_amd64.deb.sha"
+ DEB_PKG_FILE[vscodium_i386]="" # NUR für 64-bit verfügbar
+ DEB_PKG_CSUM[vscodium_i386]="" # NUR für 64-bit verfügbar
+DEB_PKG_FILE[vscodium_arm64]="$RESSOURCE_SERVER_DIR/deb/vscodium_1.82.2.23257_arm64.deb"
+DEB_PKG_CSUM[vscodium_arm64]="$RESSOURCE_SERVER_DIR/deb/vscodium_1.82.2.23257_arm64.deb.sha"
+DEB_PKG_FILE[vscodium_armhf]="" # NUR für 64-bit verfügbar
+DEB_PKG_CSUM[vscodium_armhf]="" # NUR für 64-bit verfügbar
 
 # Download von https://www.xnview.com/de/xnviewmp/#downloads
 DEB_PKG_NAME[xnview]="XnView MP"
-DEB_PKG_OLDV[xnview]="1.0.0"
+DEB_PKG_OLDV[xnview]="1.4.4"
 DEB_PKG_OLDF[xnview]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.00-linux-x64.deb"
-DEB_PKG_VERS[xnview]="1.4.4"
+DEB_PKG_VERS[xnview]="1.5.5"
 DEB_PKG_MESG[xnview]=""
-DEB_PKG_FILE[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.4.4-linux-x64.deb"
-DEB_PKG_CSUM[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.4.4-linux-x64.deb.sha"
+DEB_PKG_FILE[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.5.5-linux-x64.deb"
+DEB_PKG_CSUM[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.5.5-linux-x64.deb.sha"
  DEB_PKG_FILE[xnview_i386]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_0.89-linux-x32.deb"
  DEB_PKG_CSUM[xnview_i386]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_0.89-linux-x32.deb.sha"
 DEB_PKG_FILE[xnview_arm64]="" # NICHT für ARM verfügbar
 DEB_PKG_CSUM[xnview_arm64]="" # NICHT für ARM verfügbar
 DEB_PKG_FILE[xnview_armhf]="" # NICHT für ARM verfügbar
 DEB_PKG_CSUM[xnview_armhf]="" # NICHT für ARM verfügbar
+
+# -----------------------------------------------------------------------------
+# Zusätzliche Pakete, die zwar im Standard-Repository von Ubuntu, aber nicht
+# in dem von Debian enthalten sind. Da die betroffenen Pakete vermutlich nur
+# auf neueren Rechnern laufen, werden diese zudem nur für amd64 angeboten.
+# Manche Pakete sind obwohl nicht im Repo trotzdem auf den Debian-Servern
+# verfügbar unter: https://www.debian.org/distrib/packages#search_packages
+# -----------------------------------------------------------------------------
+if [ $(echo "$DEBIAN_CODE" | grep -i -c -E "bookworm") -gt 0 ];
+then
+
+  DEB_PKG_NAME[alien-arena]="Alien Arena"
+  DEB_PKG_OLDV[alien-arena]=""
+  DEB_PKG_OLDF[alien-arena]=""
+  DEB_PKG_VERS[alien-arena]="7.71.3"
+  DEB_PKG_MESG[alien-arena]=""
+  DEB_PKG_FILE[alien-arena_amd64]="$RESSOURCE_SERVER_DIR/deb/alien-arena_7.71.3+dfsg-3_amd64.deb"
+  DEB_PKG_CSUM[alien-arena_amd64]="$RESSOURCE_SERVER_DIR/deb/alien-arena_7.71.3+dfsg-3_amd64.deb.sha"
+
+  DEB_PKG_NAME[astromenace]="Astromenace"
+  DEB_PKG_OLDV[astromenace]=""
+  DEB_PKG_OLDF[astromenace]=""
+  DEB_PKG_VERS[astromenace]="1.3.2"
+  DEB_PKG_MESG[astromenace]=""
+  DEB_PKG_FILE[astromenace_amd64]="$RESSOURCE_SERVER_DIR/deb/astromenace_1.3.2+repack-7_amd64.deb"
+  DEB_PKG_CSUM[astromenace_amd64]="$RESSOURCE_SERVER_DIR/deb/astromenace_1.3.2+repack-7_amd64.deb.sha"
+
+  DEB_PKG_NAME[frogatto]="Frogatto"
+  DEB_PKG_OLDV[frogatto]=""
+  DEB_PKG_OLDF[frogatto]=""
+  DEB_PKG_VERS[frogatto]="1.3.1"
+  DEB_PKG_MESG[frogatto]=""
+  DEB_PKG_FILE[frogatto_amd64]="$RESSOURCE_SERVER_DIR/deb/frogatto_1.3.1+dfsg-6+b2_amd64.deb"
+  DEB_PKG_CSUM[frogatto_amd64]="$RESSOURCE_SERVER_DIR/deb/frogatto_1.3.1+dfsg-6+b2_amd64.deb.sha"
+
+  DEB_PKG_NAME[gcompris-qt]="GCompris"
+  DEB_PKG_OLDV[gcompris-qt]=""
+  DEB_PKG_OLDF[gcompris-qt]=""
+  DEB_PKG_VERS[gcompris-qt]="3.1.2"
+  DEB_PKG_MESG[gcompris-qt]=""
+  DEB_PKG_FILE[gcompris-qt_amd64]="$RESSOURCE_SERVER_DIR/deb/gcompris-qt_3.1-2_amd64.deb"
+  DEB_PKG_CSUM[gcompris-qt_amd64]="$RESSOURCE_SERVER_DIR/deb/gcompris-qt_3.1-2_amd64.deb.sha"
+
+  DEB_PKG_NAME[libdvd-pkg]="libdvd-pkg"
+  DEB_PKG_OLDV[libdvd-pkg]=""
+  DEB_PKG_OLDF[libdvd-pkg]=""
+  DEB_PKG_VERS[libdvd-pkg]="1.4.3"
+  DEB_PKG_MESG[libdvd-pkg]=""
+  DEB_PKG_FILE[libdvd-pkg_amd64]="$RESSOURCE_SERVER_DIR/deb/libdvd-pkg_1.4.3-1-1_all.deb"
+  DEB_PKG_CSUM[libdvd-pkg_amd64]="$RESSOURCE_SERVER_DIR/deb/libdvd-pkg_1.4.3-1-1_all.deb.sha"
+
+  DEB_PKG_NAME[pdfmod]="PDF Mod"
+  DEB_PKG_OLDV[pdfmod]=""
+  DEB_PKG_OLDF[pdfmod]=""
+  DEB_PKG_VERS[pdfmod]="0.9.1"
+  DEB_PKG_MESG[pdfmod]=""
+  DEB_PKG_FILE[pdfmod_amd64]="$RESSOURCE_SERVER_DIR/deb/pdfmod_0.9.1-8.2_all.deb"
+  DEB_PKG_CSUM[pdfmod_amd64]="$RESSOURCE_SERVER_DIR/deb/pdfmod_0.9.1-8.2_all.deb.sha"
+
+  DEB_PKG_NAME[pinta]="Pinta"
+  DEB_PKG_OLDV[pinta]=""
+  DEB_PKG_OLDF[pinta]=""
+  DEB_PKG_VERS[pinta]="1.6"
+  DEB_PKG_MESG[pinta]=""
+  DEB_PKG_FILE[pinta_amd64]="$RESSOURCE_SERVER_DIR/deb/pinta_1.6-2.1_all.deb"
+  DEB_PKG_CSUM[pinta_amd64]="$RESSOURCE_SERVER_DIR/deb/pinta_1.6-2.1_all.deb.sha"
+
+  DEB_PKG_NAME[playonlinux]="PlayOnLinux"
+  DEB_PKG_OLDV[playonlinux]=""
+  DEB_PKG_OLDF[playonlinux]=""
+  DEB_PKG_VERS[playonlinux]="4.3.4"
+  DEB_PKG_MESG[playonlinux]=""
+  DEB_PKG_FILE[playonlinux_amd64]="$RESSOURCE_SERVER_DIR/deb/playonlinux_4.3.4-3_all.deb"
+  DEB_PKG_CSUM[playonlinux_amd64]="$RESSOURCE_SERVER_DIR/deb/playonlinux_4.3.4-3_all.deb.sha"
+
+  DEB_PKG_NAME[rocksndiamonds]="Rocks n Diamonds"
+  DEB_PKG_OLDV[rocksndiamonds]=""
+  DEB_PKG_OLDF[rocksndiamonds]=""
+  DEB_PKG_VERS[rocksndiamonds]="4.3.5.1"
+  DEB_PKG_MESG[rocksndiamonds]=""
+  DEB_PKG_FILE[rocksndiamonds_amd64]="$RESSOURCE_SERVER_DIR/deb/rocksndiamonds_4.3.5.1+dfsg-1_amd64.deb"
+  DEB_PKG_CSUM[rocksndiamonds_amd64]="$RESSOURCE_SERVER_DIR/deb/rocksndiamonds_4.3.5.1+dfsg-1_amd64.deb.sha"
+
+  DEB_PKG_NAME[sauerbraten]="Sauerbraten"
+  DEB_PKG_OLDV[sauerbraten]=""
+  DEB_PKG_OLDF[sauerbraten]=""
+  DEB_PKG_VERS[sauerbraten]="0.0.20021227"
+  DEB_PKG_MESG[sauerbraten]=""
+  DEB_PKG_FILE[sauerbraten_amd64]="$RESSOURCE_SERVER_DIR/deb/sauerbraten_0.0.20201227-1_all.deb"
+  DEB_PKG_CSUM[sauerbraten_amd64]="$RESSOURCE_SERVER_DIR/deb/sauerbraten_0.0.20201227-1_all.deb.sha"
+
+  DEB_PKG_NAME[winetricks]="Winetricks"
+  DEB_PKG_OLDV[winetricks]=""
+  DEB_PKG_OLDF[winetricks]=""
+  DEB_PKG_VERS[winetricks]="20230212"
+  DEB_PKG_MESG[winetricks]=""
+  DEB_PKG_FILE[winetricks_amd64]="$RESSOURCE_SERVER_DIR/deb/winetricks_20230212-2_all.deb"
+  DEB_PKG_CSUM[winetricks_amd64]="$RESSOURCE_SERVER_DIR/deb/winetricks_20230212-2_all.deb.sha"
+
+  DEB_PKG_NAME[youtube-dl]="Youtube-Dl"
+  DEB_PKG_OLDV[youtube-dl]=""
+  DEB_PKG_OLDF[youtube-dl]=""
+  DEB_PKG_VERS[youtube-dl]="2021.12.17"
+  DEB_PKG_MESG[youtube-dl]=""
+  DEB_PKG_FILE[youtube-dl_amd64]="$RESSOURCE_SERVER_DIR/deb/youtube-dl_2021.12.17-2_all.deb"
+  DEB_PKG_CSUM[youtube-dl_amd64]="$RESSOURCE_SERVER_DIR/deb/youtube-dl_2021.12.17-2_all.deb.sha"
+
+  DEB_PKG_NAME[youtubedl-gui]="YoutubeDl-GUI"
+  DEB_PKG_OLDV[youtubedl-gui]=""
+  DEB_PKG_OLDF[youtubedl-gui]=""
+  DEB_PKG_VERS[youtubedl-gui]="3.0"
+  DEB_PKG_MESG[youtubedl-gui]=""
+  DEB_PKG_FILE[youtubedl-gui_amd64]="$RESSOURCE_SERVER_DIR/deb/youtubedl-gui_3.0-2_amd64.deb"
+  DEB_PKG_CSUM[youtubedl-gui_amd64]="$RESSOURCE_SERVER_DIR/deb/youtubedl-gui_3.0-2_amd64.deb.sha"
+
+  DEB_PKG_NAME[yt-dlp]="Yt-Dlp"
+  DEB_PKG_OLDV[yt-dlp]=""
+  DEB_PKG_OLDF[yt-dlp]=""
+  DEB_PKG_VERS[yt-dlp]="2023.03.04"
+  DEB_PKG_MESG[yt-dlp]=""
+  DEB_PKG_FILE[yt-dlp_amd64]="$RESSOURCE_SERVER_DIR/deb/yt-dlp_2023.03.04-1_all.deb"
+  DEB_PKG_CSUM[yt-dlp_amd64]="$RESSOURCE_SERVER_DIR/deb/yt-dlp_2023.03.04-1_all.deb.sha"
+
+  # Download von https://www.virtualbox.org/wiki/Linux_Downloads
+  DEB_PKG_NAME[virtualbox]="VirtualBox"
+  DEB_PKG_OLDV[virtualbox]=""
+  DEB_PKG_OLDF[virtualbox]=""
+  DEB_PKG_VERS[virtualbox]="7.0.10"
+  DEB_PKG_MESG[virtualbox]=""
+  DEB_PKG_FILE[virtualbox_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.10-158379~Debian~bookworm_amd64.deb"
+  DEB_PKG_CSUM[virtualbox_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.10-158379~Debian~bookworm_amd64.deb.sha"
+
+fi
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 
@@ -1235,34 +1488,18 @@ declare -A WEB_PKG_OLDF # Download-URL der Vorgänger-Version (nur amd64)
 # ACHTUNG: Auch als DEB eingetragen (s.o.)!
 WEB_PKG_NAME[balena-etcher]="balenaEtcher"
 WEB_PKG_CATY[balena-etcher]="System;Utility"
-WEB_PKG_OLDV[balena-etcher]=""
-WEB_PKG_OLDF[balena-etcher]=""
-WEB_PKG_VERS[balena-etcher]="1.18.4"
+WEB_PKG_OLDV[balena-etcher]="1.18.4"
+WEB_PKG_OLDF[balena-etcher]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.4-x64.AppImage"
+WEB_PKG_VERS[balena-etcher]="1.18.11"
 WEB_PKG_MESG[balena-etcher]=""
-WEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.4-x64.AppImage"
-WEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.4-x64.AppImage.sha"
+WEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.11-x64.AppImage"
+WEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.11-x64.AppImage.sha"
  WEB_PKG_FILE[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
  WEB_PKG_CSUM[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
 WEB_PKG_FILE[balena-etcher_arm64]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[balena-etcher_arm64]="" # NICHT für ARM verfügbar
 WEB_PKG_FILE[balena-etcher_armhf]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[balena-etcher_armhf]="" # NICHT für ARM verfügbar
-
-# Download von https://github.com/qarmin/czkawka/releases
-WEB_PKG_NAME[czkawka]="Czkawka"
-WEB_PKG_CATY[czkawka]="System;Utility"
-WEB_PKG_OLDV[czkawka]=""
-WEB_PKG_OLDF[czkawka]=""
-WEB_PKG_VERS[czkawka]="4.1.0"
-WEB_PKG_MESG[czkawka]=""
-WEB_PKG_FILE[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_4.1.0"
-WEB_PKG_CSUM[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_4.1.0.sha"
- WEB_PKG_FILE[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_4.1.0"
- WEB_PKG_CSUM[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_4.1.0.sha"
-WEB_PKG_FILE[czkawka_arm64]="" # Ab Ubuntu 21 nur als Snap
-WEB_PKG_CSUM[czkawka_arm64]="" # Ab Ubuntu 21 nur als Snap
-WEB_PKG_FILE[czkawka_armhf]="" # NICHT verfügbar
-WEB_PKG_CSUM[czkawka_armhf]="" # NICHT verfügbar
 
 # Eigene Zusammenstellung ;)
 WEB_PKG_NAME[code-the-classics]="Code-the-Classics"
@@ -1280,21 +1517,69 @@ WEB_PKG_CSUM[code-the-classics_arm64]="$RESSOURCE_SERVER_DIR/web/Code-the-Classi
 WEB_PKG_FILE[code-the-classics_armhf]="$RESSOURCE_SERVER_DIR/web/Code-the-Classics.tar.gz"
 WEB_PKG_CSUM[code-the-classics_armhf]="$RESSOURCE_SERVER_DIR/web/Code-the-Classics.tar.gz.sha"
 
+# Download von https://github.com/qarmin/czkawka/releases
+WEB_PKG_NAME[czkawka]="Czkawka"
+WEB_PKG_CATY[czkawka]="System;Utility"
+WEB_PKG_OLDV[czkawka]="4.1.0"
+WEB_PKG_OLDF[czkawka]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_4.1.0"
+WEB_PKG_VERS[czkawka]="6.0.0"
+WEB_PKG_MESG[czkawka]="Benötigt mindestens GTK 4!"
+WEB_PKG_FILE[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.0.0"
+WEB_PKG_CSUM[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.0.0.sha"
+ WEB_PKG_FILE[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.0.0"
+ WEB_PKG_CSUM[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.0.0.sha"
+WEB_PKG_FILE[czkawka_arm64]="" # Ab Ubuntu 21 nur als Snap
+WEB_PKG_CSUM[czkawka_arm64]="" # Ab Ubuntu 21 nur als Snap
+WEB_PKG_FILE[czkawka_armhf]="" # NICHT verfügbar
+WEB_PKG_CSUM[czkawka_armhf]="" # NICHT verfügbar
+
 # Download von https://freefilesync.org/download.php
 WEB_PKG_NAME[freefilesync]="FreeFileSync"
 WEB_PKG_CATY[freefilesync]="System;Utility"
-WEB_PKG_OLDV[freefilesync]=""
-WEB_PKG_OLDF[freefilesync]=""
-WEB_PKG_VERS[freefilesync]="12.2"
+WEB_PKG_OLDV[freefilesync]="12.2"
+WEB_PKG_OLDF[freefilesync]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_12.2_Linux.tar.gz"
+WEB_PKG_VERS[freefilesync]="13.0"
 WEB_PKG_MESG[freefilesync]=""
-WEB_PKG_FILE[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_12.2_Linux.tar.gz"
-WEB_PKG_CSUM[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_12.2_Linux.tar.gz.sha"
+WEB_PKG_FILE[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_13.0_Linux.tar.gz"
+WEB_PKG_CSUM[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_13.0_Linux.tar.gz.sha"
  WEB_PKG_FILE[freefilesync_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
  WEB_PKG_CSUM[freefilesync_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
 WEB_PKG_FILE[freefilesync_arm64]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[freefilesync_arm64]="" # NICHT für ARM verfügbar
 WEB_PKG_FILE[freefilesync_armhf]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[freefilesync_armhf]="" # NICHT für ARM verfügbar
+
+# Download von https://fs-uae.net/download#linux
+WEB_PKG_NAME[fs-uae]="FS-UAE"
+WEB_PKG_CATY[fs-uae]="Games"
+WEB_PKG_OLDV[fs-uae]=""
+WEB_PKG_OLDF[fs-uae]=""
+WEB_PKG_VERS[fs-uae]="3.1.66"
+WEB_PKG_MESG[fs-uae]=""
+WEB_PKG_FILE[fs-uae_amd64]="$RESSOURCE_SERVER_DIR/web/FS-UAE_3.1.66_Linux_x86-64.tar.xz"
+WEB_PKG_CSUM[fs-uae_amd64]="$RESSOURCE_SERVER_DIR/web/FS-UAE_3.1.66_Linux_x86-64.tar.xz.sha"
+ WEB_PKG_FILE[fs-uae_i386]="$RESSOURCE_SERVER_DIR/web/FS-UAE_3.1.66_Linux_x86-64.tar.xz"
+ WEB_PKG_CSUM[fs-uae_i386]="$RESSOURCE_SERVER_DIR/web/FS-UAE_3.1.66_Linux_x86-64.tar.xz.sha"
+WEB_PKG_FILE[fs-uae_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[fs-uae_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_FILE[fs-uae_armhf]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[fs-uae_armhf]="" # NICHT für ARM verfügbar
+
+# Download von https://fs-uae.net/download#linux
+WEB_PKG_NAME[fs-uae-launcher]="FS-UAE Launcher"
+WEB_PKG_CATY[fs-uae-launcher]="Games"
+WEB_PKG_OLDV[fs-uae-launcher]=""
+WEB_PKG_OLDF[fs-uae-launcher]=""
+WEB_PKG_VERS[fs-uae-launcher]="3.1.68"
+WEB_PKG_MESG[fs-uae-launcher]=""
+WEB_PKG_FILE[fs-uae-launcher_amd64]="$RESSOURCE_SERVER_DIR/web/FS-UAE-Launcher_3.1.68_Linux_x86-64.tar.xz"
+WEB_PKG_CSUM[fs-uae-launcher_amd64]="$RESSOURCE_SERVER_DIR/web/FS-UAE-Launcher_3.1.68_Linux_x86-64.tar.xz.sha"
+ WEB_PKG_FILE[fs-uae-launcher_i386]="$RESSOURCE_SERVER_DIR/web/FS-UAE-Launcher_3.1.68_Linux_x86-64.tar.xz"
+ WEB_PKG_CSUM[fs-uae-launcher_i386]="$RESSOURCE_SERVER_DIR/web/FS-UAE-Launcher_3.1.68_Linux_x86-64.tar.xz.sha"
+WEB_PKG_FILE[fs-uae-launcher_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[fs-uae-launcher_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_FILE[fs-uae-launcher_armhf]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[fs-uae-launcher_armhf]="" # NICHT für ARM verfügbar
 
 # Download von http://oolite.space oder https://github.com/OoliteProject
 WEB_PKG_NAME[oolite]="Oolite"
@@ -1331,18 +1616,34 @@ WEB_PKG_CSUM[openshot-qt_armhf]="" # NICHT für ARM verfügbar
 # Download von https://www.torproject.org/de/download/
 WEB_PKG_NAME[tor-browser]="Tor Browser"
 WEB_PKG_CATY[tor-browser]="Network;WebBrowser"
-WEB_PKG_OLDV[tor-browser]=""
-WEB_PKG_OLDF[tor-browser]=""
-WEB_PKG_VERS[tor-browser]="12.0.5"
+WEB_PKG_OLDV[tor-browser]="12.0.5"
+WEB_PKG_OLDF[tor-browser]="tor-browser-linux64-12.0.5_ALL.tar.xz"
+WEB_PKG_VERS[tor-browser]="12.5.5"
 WEB_PKG_MESG[tor-browser]=""
-WEB_PKG_FILE[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux64-12.0.5_ALL.tar.xz"
-WEB_PKG_CSUM[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux64-12.0.5_ALL.tar.xz.sha"
+WEB_PKG_FILE[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux64-12.5.5_ALL.tar.xz"
+WEB_PKG_CSUM[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux64-12.5.5_ALL.tar.xz.sha"
  WEB_PKG_FILE[tor-browser_i386]="" # Für Linux nur als 64-bit verfügbar
  WEB_PKG_CSUM[tor-browser_i386]="" # Für Linux nur als 64-bit verfügbar
 WEB_PKG_FILE[tor-browser_arm64]="" # Auf ARM nur für Android verfügbar (Raspberry hat kein SSE2)
 WEB_PKG_CSUM[tor-browser_arm64]="" # Auf ARM nur für Android verfügbar (Raspberry hat kein SSE2)
 WEB_PKG_FILE[tor-browser_armhf]="" # Auf ARM nur für Android verfügbar (Raspberry hat kein SSE2)
 WEB_PKG_CSUM[tor-browser_armhf]="" # Auf ARM nur für Android verfügbar (Raspberry hat kein SSE2)
+
+# Download von https://codeberg.org/ralfhersel/youplay
+WEB_PKG_NAME[youplay]="YouPlay"
+WEB_PKG_CATY[youplay]="AudioVideo;Video"
+WEB_PKG_OLDV[youplay]=""
+WEB_PKG_OLDF[youplay]=""
+WEB_PKG_VERS[youplay]="0.46"
+WEB_PKG_MESG[youplay]="Benötigt mindestens GTK 4!"
+WEB_PKG_FILE[youplay_amd64]="$RESSOURCE_SERVER_DIR/web/youplay_v0.46-GTK4-x86_64.AppImage"
+WEB_PKG_CSUM[youplay_amd64]="$RESSOURCE_SERVER_DIR/web/youplay_v0.46-GTK4-x86_64.AppImage.sha"
+ WEB_PKG_FILE[youplay_i386]="" # Für Linux nur als 64-bit verfügbar
+ WEB_PKG_CSUM[youplay_i386]="" # Für Linux nur als 64-bit verfügbar
+WEB_PKG_FILE[youplay_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[youplay_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_FILE[youplay_armhf]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[youplay_armhf]="" # NICHT für ARM verfügbar
 
 ###############################################################################
 
@@ -1351,7 +1652,7 @@ WEB_PKG_CSUM[tor-browser_armhf]="" # Auf ARM nur für Android verfügbar (Raspbe
 # im Repo haben und somit von apt auch nicht automatisch aktualisiert werden.
 # Dient als Basis für die Updates dieser Programme mit der Option "exupdate".
 ###############################################################################
-EXUPDATE_PKG_LIST=('balena-etcher' 'code-the-classics' 'czkawka' 'freefilesync' 'hypnotix' 'ipscan' 'nomachine' 'openshot-qt' 'tor-browser' 'veracrypt' 'xnview')
+EXUPDATE_PKG_LIST=('balena-etcher' 'code-the-classics' 'czkawka' 'freefilesync' 'hypnotix' 'ipscan' 'nomachine' 'openshot-qt' 'tor-browser' 'veracrypt' 'vscodium' 'xnview')
 
 ###############################################################################
 # Pakete, die warum auch immer vorzugsweise als Snap installiert werden sollen.
@@ -1451,7 +1752,7 @@ PKG_ICON_LIST[oolite]="oolite.org"
 # Das betrifft bspw. Programme aus den Systemerweiterungen oder Tools (GUIs)
 # für die Konfiguration von Kernel-Modulen sowie externen Treibern.
 ###############################################################################
-ADD_SYS_ICONS=( 'caja-file-management-properties' 'htop' 'nvidia-settings' 'nm-connection-editor' 'org.gnome.DiskUtility' 'software-properties-gtk' 'time-admin' 'update-manager' 'users-admin' 'xarchiver' 'xscreensaver-properties' )
+ADD_SYS_ICONS=( 'caja-file-management-properties' 'ccsm' 'htop' 'nvidia-settings' 'nm-connection-editor' 'org.gnome.DiskUtility' 'software-properties-gtk' 'time-admin' 'update-manager' 'users-admin' 'xarchiver' 'xscreensaver-properties' )
 
 ###############################################################################
 # Raspbian Tools - Namen der Symbole (vollständige Dateinamen ohne Pfadangabe
@@ -2504,22 +2805,28 @@ function get_install_status () {
   # ------------------------------------------------------------------
   # 5. Prüfen ob es im System-Anwendungs-Ordner "/usr/share" einen
   # entsprechenden Programmordner mit ausführbaren Dateien gibt
+  # (nur für externe DEB/WEB-Pakete, da es für einige Pakete aus dem Repo
+  # bereits vorkonfigurierte Ordner sogar mit ausführbaren Dateien gibt!)
   # ------------------------------------------------------------------
   if [ $PKG_INSTALL_STATUS -eq 0 ];
   then
-    THE_PKG_INST_DIR="/usr/share/$1"
-    if [ -d "$THE_PKG_INST_DIR" ];
+    if [ "${DEB_PKG_NAME[$1]}" != "" ] ||
+       [ "${WEB_PKG_NAME[$1]}" != "" ];
     then
-      if [ $(find "$THE_PKG_INST_DIR" -maxdepth 1 -executable 2>/dev/null | wc -l) -gt 1 ];
+      THE_PKG_INST_DIR="/usr/share/$1"
+      if [ -d "$THE_PKG_INST_DIR" ];
       then
-        PKG_INSTALL_STATUS=5
-        PKG_VERS_FILE="$THE_PKG_INST_DIR/.$1"
-        PKG_VERS_FILE+="_version"
-        if [ -s "$PKG_VERS_FILE" ];
+        if [ $(find "$THE_PKG_INST_DIR" -maxdepth 1 -executable 2>/dev/null | wc -l) -gt 1 ];
         then
-          PKG_VERSION=$(cat "$PKG_VERS_FILE" | xargs)
-        else
-          PKG_VERSION=""
+          PKG_INSTALL_STATUS=5
+          PKG_VERS_FILE="$THE_PKG_INST_DIR/.$1"
+          PKG_VERS_FILE+="_version"
+          if [ -s "$PKG_VERS_FILE" ];
+          then
+            PKG_VERSION=$(cat "$PKG_VERS_FILE" | xargs)
+          else
+            PKG_VERSION=""
+          fi
         fi
       fi
     fi
@@ -3304,7 +3611,7 @@ function install_pkg () {
                   chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_CONFIG_FILE" &>/dev/null
                   chmod a+x "$LOCAL_CONFIG_FILE" &>/dev/null
                   echo -e ""
-                  ( "$LOCAL_CONFIG_FILE" ${USER_USERNAME} ${DOWNLOAD_DIR} ${RESSOURCE_SERVER_DIR} ${OS_CODENAME} 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; ) | tee "$LOG_TEMP"
+                  ( "$LOCAL_CONFIG_FILE" ${USER_USERNAME} ${DOWNLOAD_DIR} ${RESSOURCE_SERVER_DIR} ${OS_V_CODENAME} 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; ) | tee "$LOG_TEMP"
                   if [ $(cat "$LAST_EXIT_CODE") -eq 0 ];
                   then
                     do_log "$OK_TAG"
@@ -3858,7 +4165,7 @@ function install_pkg () {
                     chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_CONFIG_FILE" &>/dev/null
                     chmod a+x "$LOCAL_CONFIG_FILE" &>/dev/null
                     echo -e ""
-                    ( "$LOCAL_CONFIG_FILE" ${USER_USERNAME} ${DOWNLOAD_DIR} ${RESSOURCE_SERVER_DIR} ${OS_CODENAME} 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; ) | tee "$LOG_TEMP"
+                    ( "$LOCAL_CONFIG_FILE" ${USER_USERNAME} ${DOWNLOAD_DIR} ${RESSOURCE_SERVER_DIR} ${OS_V_CODENAME} 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; ) | tee "$LOG_TEMP"
                     if [ $(cat "$LAST_EXIT_CODE") -eq 0 ];
                     then
                       do_log "$OK_TAG"
@@ -3944,7 +4251,7 @@ function install_pkg () {
           # dann diese Quelle auch benennen
           if [ ${#INST_MODE_LIST} -gt 3 ]; # "0,n" z.B. "0,2,4"
           then
-            IMODE_MSG+=" mehrfach"
+            IMODE_MSG+=" ${light_purple}mehrfach${colors_off}"
           else
             case "$INSTALL_MODE" in
               1) IMODE_MSG+="" ;;
@@ -4815,6 +5122,7 @@ then
       # "all" beinhaltet jedoch nicht die individuellen Desktop-Tools
       KATEGORIE_FLAG[gx]=0
       KATEGORIE_FLAG[lx]=0
+      KATEGORIE_FLAG[mt]=0
       KATEGORIE_FLAG[mx]=0
       KATEGORIE_FLAG[xx]=0
     fi
@@ -5338,6 +5646,7 @@ EOF
       then
         if [[ ${KATEGORIE_FLAG[gx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "GNOME" ]] ||
            [[ ${KATEGORIE_FLAG[lx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "LXDE"  ]] ||
+           [[ ${KATEGORIE_FLAG[mt]} -eq 1 && $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -eq 0  ]] ||
            [[ ${KATEGORIE_FLAG[mx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "MATE"  ]] ||
            [[ ${KATEGORIE_FLAG[xx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "XFCE"  ]];
         then
@@ -5712,7 +6021,7 @@ fi
 ###############################################################################
 # Dateien zur Speicherung von dconf-Daten
 ###############################################################################
-DCONF_BASE_NAME="dconf_$(hostname)_${OS_CODENAME}"
+DCONF_BASE_NAME="dconf_$(hostname)_${OS_V_CODENAME}"
 
 # Sicherungsdatei zum Speichern UND Laden von benutzerdefinierten Einstellungen
 DCONF_USER_FILE="$DOWNLOAD_DIR/$DCONF_BASE_NAME.conf"
@@ -5769,6 +6078,13 @@ then
     SYS_INFO_TXT+=" Grafik: ${bold_yellow}$GPU_MODEL${colors_off}"$'\n'
   fi
 
+  SYS_INFO_TXT+=" Kernel-Version: ${bold_yellow}$(uname -r)${colors_off}"$'\n'
+
+  if [ "$DEBIAN_VERSION" != "" ];
+  then
+    SYS_INFO_TXT+=" Debian-Version: ${bold_yellow}$DEBIAN_VERSION ($DEBIAN_CODE)${colors_off}"$'\n'
+  fi
+
   if [ "$OPERATION_SYSTEM" != "" ];
   then
     SYS_INFO_TXT+=" Betriebssystem: ${bold_yellow}$OPERATION_SYSTEM${colors_off}"
@@ -5778,18 +6094,6 @@ then
     fi
     SYS_INFO_TXT+=$'\n'
   fi
-
-  boot_device="$(findmnt -n / 2>/dev/null | awk '{ print $2 }' | sed -E "s/\/dev\///" | sed -E "s/[0-9]//")" # util-linux
-  SYS_INFO_TXT+=" Systempartition: ${bold_yellow}$boot_device${colors_off}"$'\n'
-
-  if [ "$CUR_SYS_LANG" != "" ];
-  then
-    SYS_INFO_TXT+=" Sprachumgebung: ${bold_yellow}$CUR_SYS_LANG${colors_off}"
-    if [ "$CUR_LANG_NAME" != "" ]; then SYS_INFO_TXT+=" ${bold_cyan}($CUR_LANG_NAME)${colors_off}"; fi
-    SYS_INFO_TXT+=$'\n'
-  fi
-
-  SYS_INFO_TXT+=" Kernel-Version: ${bold_yellow}$(uname -r)${colors_off}"$'\n'
 
   if [ "$ARCHITECTURE_MAIN" != "" ] ||
      [ "$ARCHITECTURE_OTHER" != "" ];
@@ -5802,6 +6106,16 @@ then
     fi
     SYS_INFO_TXT+=$'\n'
   fi
+
+  if [ "$CUR_SYS_LANG" != "" ];
+  then
+    SYS_INFO_TXT+=" Sprachumgebung: ${bold_yellow}$CUR_SYS_LANG${colors_off}"
+    if [ "$CUR_LANG_NAME" != "" ]; then SYS_INFO_TXT+=" ${bold_cyan}($CUR_LANG_NAME)${colors_off}"; fi
+    SYS_INFO_TXT+=$'\n'
+  fi
+
+  boot_device="$(findmnt -n / 2>/dev/null | awk '{ print $2 }' | sed -E "s/\/dev\///" | sed -E "s/[0-9]//")" # util-linux
+  SYS_INFO_TXT+=" Systempartition: ${bold_yellow}$boot_device${colors_off}"$'\n'
 
   if [ "$DISPLAY_MANAGER" != "" ];
   then
@@ -6742,6 +7056,7 @@ then
         then
           THE_TEMP_FILE="$DOWNLOAD_DIR/missing-driver-list"
           MISSING_DRIVER_LIST=$(ubuntu-drivers list | grep -v "nvidia" 2>/dev/null)
+          NVIDIA_DRIVER_LIST=$(ubuntu-drivers list | grep -i -E "nvidia" 2>/dev/null)
           if [ "$MISSING_DRIVER_LIST" != "" ];
           then
             e_and_l "${bold_green}ok, Treiber gefunden${colors_off}"
@@ -6758,6 +7073,11 @@ then
             remove_file "$THE_TEMP_FILE"
           else
             e_and_l "$NF_TAG"
+          fi
+          if [ "$NVIDIA_DRIVER_LIST" != "" ];
+          then
+            e_and_l " $HINWEIS_TAG: Es stehen zusätzliche ${light_yellow}NVIDIA-Treiber${colors_off} zur Verfügung. Um die Stabilität"
+            e_and_l " des Systems nicht zu gefährden, wurden diese ${bold_white}nicht${colors_off} automatisch installiert."
           fi
         else
           e_and_l "$ERROR_TAG $LINENO"
@@ -6776,6 +7096,18 @@ then
       # Zusätzliche Sprachpakete (fehlende Sprachunterstützung) installieren
       # ===========================================================================
       ACTION_MESSAGE=" Zusätzliche ${light_cyan}Sprachpakete${colors_off} installieren"
+      if [ $(LANG=en dpkg-query -W -f='${Status}' "language-selector-common" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+      then
+        e_and_l -n " Installiere ${light_yellow}Sprachauswahl${colors_off} für Ubuntu       ... "
+        apt install language-selector-common -y &>"$LOG_TEMP"
+        if [ $? -eq 0 ];
+        then
+          e_and_l "$OK_TAG"
+        else
+          e_and_l "$ERROR_TAG $LINENO"
+        fi
+        add_full_log
+      fi
       if check-language-support --help  &>/dev/null;
       then
         CHECK_LANGUAGES="$CUR_SYS_LANG en"
@@ -7117,6 +7449,7 @@ then
       AUTOSTART_ACTIVATE_NAME=('CopyQ' 'Redshift' 'Tilda')
       AUTOSTART_ACTIVATE_DESC=('Zwischenablage-Manager ' 'Farbtemperaturanpassung' 'Ausklapp-Terminal (F12)')
       AUTOSTART_ACTIVATE_ICON=('copyq' 'redshift' 'tilda')
+      AUTOSTART_ACTIVATE_ONLY=('all' 'all' 'ubuntu')
       anz_entries=${#AUTOSTART_ACTIVATE_LIST[@]}
       a=0
       while [ $a -lt $anz_entries ];
@@ -7127,8 +7460,9 @@ then
         ((ANZ_SPACES-=${#AUTOSTART_ACTIVATE_DESC[$a]}))
         ((ANZ_SPACES-=${#PACKET_NAME_TO_SHOW}))
         i=1; while [ $i -lt $ANZ_SPACES ]; do ACTION_MESSAGE+=" "; ((i+=1)); done
-        # if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "ubuntu") -gt 0 ];
-        # then
+        if [ "${AUTOSTART_ACTIVATE_ONLY[$a]}" = "all" ] ||
+           [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "${AUTOSTART_ACTIVATE_ONLY[$a]}") -gt 0 ];
+        then
           INSTALL_STATUS=0
           NEW_INSTALLED=0
           ANSWER_INST_NO=0
@@ -7229,9 +7563,9 @@ then
           else
             add_full_log
           fi
-        # else
-        #   e_and_l "$(skip_text "$ACTION_MESSAGE" "nur mit Ubuntu")"
-        # fi
+        else
+          e_and_l "$(skip_text "$ACTION_MESSAGE" "nur mit Ubuntu")"
+        fi
         ((a+=1))
       done
 
@@ -8826,8 +9160,10 @@ EOF
   # ===========================================================================
   # Asiatische Schriftarten ausblenden (nur für den aktuellen Benutzer)
   # ===========================================================================
+
   ACTION_MESSAGE=" Ausblenden der ${light_cyan}asiatischen Schriftarten${colors_off}    ... "
-  if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "ubuntu") -gt 0 ];
+  if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "ubuntu") -gt 0 ] ||
+     [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ];
   then
     FONT_CONF_DIR="$USER_CONFIG_DIR/fontconfig"
     FONT_CFG_FILE="$FONT_CONF_DIR/fonts.conf"
