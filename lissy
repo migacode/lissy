@@ -7365,6 +7365,64 @@ then
       fi
 
       # ===========================================================================
+      # Themen Ubuntu-MATE installieren
+      # ===========================================================================
+      ACTION_MESSAGE=" Themen ${light_cyan}Ubuntu-MATE${colors_off} installieren"
+      if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "ubuntu") -gt 0 ] ||
+         [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ];
+      then
+        if [ $(LANG=en dpkg-query -W -f='${Status}' "ubuntu-mate-themes" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+        then
+          ask_yes_or_no "$ACTION_MESSAGE"
+          if [ $? -eq 1 ];
+          then
+            e_and_l -n " Installiere Desktop-Themen ${light_yellow}Ubuntu-MATE${colors_off}     ... "
+            apt install "ubuntu-mate-themes" -y &>"$LOG_TEMP"
+            if [ $? -eq 0 ];
+            then
+              e_and_l "$OK_TAG"
+            else
+              e_and_l "$ERROR_TAG"
+            fi
+            add_full_log
+          fi
+        else
+          e_and_l "$ACTION_MESSAGE            ... $NC_TAG"
+        fi
+      else
+        e_and_l "$(skip_text "$ACTION_MESSAGE           " "nur Ubuntu")"
+      fi
+
+      # ===========================================================================
+      # Thema Yaru installieren
+      # ===========================================================================
+      ACTION_MESSAGE=" Themen ${light_cyan}Yaru-Desktop${colors_off} installieren"
+      if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "ubuntu") -gt 0 ] ||
+         [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ];
+      then
+        if [ $(LANG=en dpkg-query -W -f='${Status}' "yaru-theme-gtk" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+        then
+          ask_yes_or_no "$ACTION_MESSAGE"
+          if [ $? -eq 1 ];
+          then
+            e_and_l -n " Installiere Desktop-Themen ${light_yellow}Yaru-Desktop${colors_off}    ... "
+            apt install "yaru-theme-gtk" -y &>"$LOG_TEMP"
+            if [ $? -eq 0 ];
+            then
+              e_and_l "$OK_TAG"
+            else
+              e_and_l "$ERROR_TAG"
+            fi
+            add_full_log
+          fi
+        else
+          e_and_l "$ACTION_MESSAGE           ... $NC_TAG"
+        fi
+      else
+        e_and_l "$(skip_text "$ACTION_MESSAGE          " "nur Ubuntu")"
+      fi
+
+      # ===========================================================================
       # Zusätzliche Bildschirmschoner (Screensaver-Module) installieren
       # ===========================================================================
       XSCRSAVER_EPKG_LIST=('xscreensaver-data' 'xscreensaver-data-extra' 'xscreensaver-gl' 'xscreensaver-gl-extra' 'rss-glx')
