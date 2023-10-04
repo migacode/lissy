@@ -7265,13 +7265,110 @@ then
         e_and_l "$ACTION_MESSAGE   ... $NC_TAG"
       fi
 
-      # ========================================================================
+      # ===========================================================================
       # Themen Ambiant und Radiant installieren
-      # ========================================================================
-      # ------------------------------------------------------------------------
-      # A) Bei Ubuntu-Systemen über das Paket "ubuntu-mate-themes" ...
-      # ------------------------------------------------------------------------
+      # ===========================================================================
       ACTION_MESSAGE=" Themen ${light_cyan}Ambiant und Radiant${colors_off} installieren"
+      if [ "$DESKTOP_ENVIRONMENT" = "MATE" ];
+      then
+        THEME_TARGET_HOME="/usr/share"
+        declare -A THEME_DIR
+        THEME_DIR[0]="icons/Ambiant-MATE"
+        THEME_DIR[1]="icons/Radiant-MATE"
+        THEME_DIR[2]="themes/Ambiant-MATE"
+        THEME_DIR[3]="themes/Ambiant-MATE-Dark"
+        THEME_DIR[4]="themes/Radiant-MATE"
+        ANZ_THEMES=${#THEME_DIR[@]}
+        DIRS_FOUND=0
+        tnr=0
+        while [ $tnr -lt $ANZ_THEMES ];
+        do
+          if [ -d "$THEME_TARGET_HOME/${THEME_DIR[$tnr]}" ];
+          then
+            ((DIRS_FOUND+=1))
+          fi
+          ((tnr+=1))
+        done
+        if [ $DIRS_FOUND -lt $ANZ_THEMES ];
+        then
+          ask_yes_or_no "$ACTION_MESSAGE"
+          if [ $? -eq 1 ];
+          then
+            e_and_l " Installiere Themen ${light_yellow}Ambiant und Radiant${colors_off}:"
+            e_and_l -n " - Extrahiere Master-Archiv, bitte warten   ... "
+            DOWNLOAD_FILE_URL="$RESSOURCE_SERVER_DIR/Ambiant-MATE-master.zip"
+            DOWNLOAD_FILE_NAME="${DOWNLOAD_FILE_URL##*/}"
+            LOCAL_DOWNLOAD_FILE="$DOWNLOAD_DIR/$DOWNLOAD_FILE_NAME"
+            wget -nv -O "$LOCAL_DOWNLOAD_FILE" "$DOWNLOAD_FILE_URL" &>"$LOG_TEMP"
+            if [ $? -eq 0 ] &&
+              [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
+              [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
+            then
+              chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+              unzip -o -qq "$LOCAL_DOWNLOAD_FILE" 'Ambiant-MATE-master/usr/share/icons/*' -d "$DOWNLOAD_DIR/MATE" &>"$LOG_TEMP"
+              ICON_RESULT=$?
+              unzip -o -qq "$LOCAL_DOWNLOAD_FILE" 'Ambiant-MATE-master/usr/share/themes/*' -d "$DOWNLOAD_DIR/MATE" &>"$LOG_TEMP"
+              THEME_RESULT=$?
+              if [ $ICON_RESULT -eq 0 ] &&
+                [ $THEME_RESULT -eq 0 ];
+              then
+                e_and_l "$OK_TAG"
+                chown -R "$USER_USERNAME:$USER_USERNAME" "$DOWNLOAD_DIR/MATE" &>/dev/null
+                NEW_THEMES=0
+                tnr=0
+                while [ $tnr -lt $ANZ_THEMES ];
+                do
+                  THEME_TARGET_DIR="$THEME_TARGET_HOME/${THEME_DIR[$tnr]}"
+                  THEME_NAME=${THEME_TARGET_DIR##*/}
+                  THEME_TYPE=""
+                  if [ $(echo "$THEME_TARGET_DIR" | grep -c -E "icons") -gt 0 ];
+                  then
+                    THEME_TYPE="Icons "
+                  fi
+                  if [ $(echo "$THEME_TARGET_DIR" | grep -c -E "themes") -gt 0 ];
+                  then
+                    THEME_TYPE="Thema "
+                  fi
+                  e_and_l -n " - Kopiere $THEME_TYPE${light_yellow}$THEME_NAME${colors_off} "
+                  ((ANZ_SPACES=27-${#THEME_NAME}))
+                  insert_spaces $ANZ_SPACES
+                  cp -r -u "$DOWNLOAD_DIR/MATE/Ambiant-MATE-master$THEME_TARGET_DIR" "$THEME_TARGET_DIR" &>$LOG_TEMP
+                  if [ $? -eq 0 ];
+                  then
+                    chown -R "root:root" "$THEME_TARGET_DIR" &>/dev/null
+                    e_and_l "... $OK_TAG"
+                    ((NEW_THEMES+=1))
+                  else
+                    e_and_l "... $ERROR_TAG $LINENO"
+                  fi
+                  ((tnr+=1))
+                done
+                if [ $NEW_THEMES -gt 0 ];
+                then
+                  e_and_l " $HINWEIS_TAG: Die Themen sind nun zur Einrichtung des Erscheinungsbilds verfügbar."
+                fi
+              else
+                e_and_l "$ERROR_TAG $LINENO"
+                add_full_log
+              fi
+            else
+              e_and_l "$ERROR_TAG $LINENO"
+              add_full_log
+            fi
+            remove_file "$LOCAL_DOWNLOAD_FILE"
+            rm -f -r "$DOWNLOAD_DIR/MATE" &>/dev/null
+          fi
+        else
+          e_and_l "$ACTION_MESSAGE    ... $NC_TAG"
+        fi
+      else # kein MATE
+        e_and_l "$(skip_text "$ACTION_MESSAGE   " "nur MATE-Desktop")"
+      fi
+
+      # ===========================================================================
+      # Themen Ubuntu-MATE installieren
+      # ===========================================================================
+      ACTION_MESSAGE=" Desktop-Themen ${light_cyan}MATE${colors_off} installieren"
       if [ $(apt list "ubuntu-mate-themes" 2>/dev/null | grep -i -c "ubuntu-mate-themes") -gt 0 ];
       then
         if [ $(LANG=en dpkg-query -W -f='${Status}' "ubuntu-mate-themes" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
@@ -7279,124 +7376,28 @@ then
           ask_yes_or_no "$ACTION_MESSAGE"
           if [ $? -eq 1 ];
           then
-            e_and_l -n " Installiere Themen ${light_yellow}Ambiant und Radiant${colors_off}     ... "
+            e_and_l -n " Installiere Desktop-Themen ${light_yellow}Ubuntu-MATE${colors_off}     ... "
             apt install "ubuntu-mate-themes" -y &>"$LOG_TEMP"
             if [ $? -eq 0 ];
             then
               e_and_l "$OK_TAG"
+              CHANGES_MADE=1
             else
               e_and_l "$ERROR_TAG"
             fi
             add_full_log
           fi
         else
-          e_and_l "$ACTION_MESSAGE    ... $NC_TAG"
+          e_and_l "$ACTION_MESSAGE           ... $NC_TAG"
         fi
-      # ------------------------------------------------------------------------
-      # B) ... oder ohne Ubuntu-Basis mit eigenen Ressourcen ;)
-      # ------------------------------------------------------------------------
       else
-        if [ "$DESKTOP_ENVIRONMENT" = "MATE" ];
-        then
-          THEME_TARGET_HOME="/usr/share"
-          declare -A THEME_DIR
-          THEME_DIR[0]="icons/Ambiant-MATE"
-          THEME_DIR[1]="icons/Radiant-MATE"
-          THEME_DIR[2]="themes/Ambiant-MATE"
-          THEME_DIR[3]="themes/Ambiant-MATE-Dark"
-          THEME_DIR[4]="themes/Radiant-MATE"
-          ANZ_THEMES=${#THEME_DIR[@]}
-          DIRS_FOUND=0
-          tnr=0
-          while [ $tnr -lt $ANZ_THEMES ];
-          do
-            if [ -d "$THEME_TARGET_HOME/${THEME_DIR[$tnr]}" ];
-            then
-              ((DIRS_FOUND+=1))
-            fi
-            ((tnr+=1))
-          done
-          if [ $DIRS_FOUND -lt $ANZ_THEMES ];
-          then
-            ask_yes_or_no "$ACTION_MESSAGE"
-            if [ $? -eq 1 ];
-            then
-              e_and_l " Installiere Themen ${light_yellow}Ambiant und Radiant${colors_off}:"
-              e_and_l -n " - Extrahiere Master-Archiv, bitte warten   ... "
-              DOWNLOAD_FILE_URL="$RESSOURCE_SERVER_DIR/Ambiant-MATE-master.zip"
-              DOWNLOAD_FILE_NAME="${DOWNLOAD_FILE_URL##*/}"
-              LOCAL_DOWNLOAD_FILE="$DOWNLOAD_DIR/$DOWNLOAD_FILE_NAME"
-              wget -nv -O "$LOCAL_DOWNLOAD_FILE" "$DOWNLOAD_FILE_URL" &>"$LOG_TEMP"
-              if [ $? -eq 0 ] &&
-                [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
-                [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
-              then
-                chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
-                unzip -o -qq "$LOCAL_DOWNLOAD_FILE" 'Ambiant-MATE-master/usr/share/icons/*' -d "$DOWNLOAD_DIR/MATE" &>"$LOG_TEMP"
-                ICON_RESULT=$?
-                unzip -o -qq "$LOCAL_DOWNLOAD_FILE" 'Ambiant-MATE-master/usr/share/themes/*' -d "$DOWNLOAD_DIR/MATE" &>"$LOG_TEMP"
-                THEME_RESULT=$?
-                if [ $ICON_RESULT -eq 0 ] &&
-                  [ $THEME_RESULT -eq 0 ];
-                then
-                  e_and_l "$OK_TAG"
-                  chown -R "$USER_USERNAME:$USER_USERNAME" "$DOWNLOAD_DIR/MATE" &>/dev/null
-                  NEW_THEMES=0
-                  tnr=0
-                  while [ $tnr -lt $ANZ_THEMES ];
-                  do
-                    THEME_TARGET_DIR="$THEME_TARGET_HOME/${THEME_DIR[$tnr]}"
-                    THEME_NAME=${THEME_TARGET_DIR##*/}
-                    THEME_TYPE=""
-                    if [ $(echo "$THEME_TARGET_DIR" | grep -c -E "icons") -gt 0 ];
-                    then
-                      THEME_TYPE="Icons "
-                    fi
-                    if [ $(echo "$THEME_TARGET_DIR" | grep -c -E "themes") -gt 0 ];
-                    then
-                      THEME_TYPE="Thema "
-                    fi
-                    e_and_l -n " - Kopiere $THEME_TYPE${light_yellow}$THEME_NAME${colors_off} "
-                    ((ANZ_SPACES=27-${#THEME_NAME}))
-                    insert_spaces $ANZ_SPACES
-                    cp -r -u "$DOWNLOAD_DIR/MATE/Ambiant-MATE-master$THEME_TARGET_DIR" "$THEME_TARGET_DIR" &>$LOG_TEMP
-                    if [ $? -eq 0 ];
-                    then
-                      chown -R "root:root" "$THEME_TARGET_DIR" &>/dev/null
-                      e_and_l "... $OK_TAG"
-                      ((NEW_THEMES+=1))
-                    else
-                      e_and_l "... $ERROR_TAG $LINENO"
-                    fi
-                    ((tnr+=1))
-                  done
-                  if [ $NEW_THEMES -gt 0 ];
-                  then
-                    e_and_l " $HINWEIS_TAG: Die Themen sind nun zur Einrichtung des Erscheinungsbilds verfügbar."
-                  fi
-                else
-                  e_and_l "$ERROR_TAG $LINENO"
-                  add_full_log
-                fi
-              else
-                e_and_l "$ERROR_TAG $LINENO"
-                add_full_log
-              fi
-              remove_file "$LOCAL_DOWNLOAD_FILE"
-              rm -f -r "$DOWNLOAD_DIR/MATE" &>/dev/null
-            fi
-          else
-            e_and_l "$ACTION_MESSAGE    ... $NC_TAG"
-          fi
-        else # kein MATE
-          e_and_l "$(skip_text "$ACTION_MESSAGE   " "nur MATE-Desktop")"
-        fi
+        e_and_l "$(skip_text "$ACTION_MESSAGE          " "$NA_TXT")"
       fi
 
       # ===========================================================================
       # Thema Yaru installieren
       # ===========================================================================
-      ACTION_MESSAGE=" Themen ${light_cyan}Yaru-Desktop${colors_off} installieren"
+      ACTION_MESSAGE=" Desktop-Themen ${light_cyan}Yaru${colors_off} installieren"
       if [ $(apt list "yaru-theme-gtk" 2>/dev/null | grep -i -c "yaru-theme-gtk") -gt 0 ];
       then
         if [ $(LANG=en dpkg-query -W -f='${Status}' "yaru-theme-gtk" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
@@ -7404,11 +7405,12 @@ then
           ask_yes_or_no "$ACTION_MESSAGE"
           if [ $? -eq 1 ];
           then
-            e_and_l -n " Installiere Desktop-Themen ${light_yellow}Yaru-Desktop${colors_off}    ... "
+            e_and_l -n " Installiere Desktop-Themen ${light_yellow}Yaru${colors_off}            ... "
             apt install "yaru-theme-gtk" -y &>"$LOG_TEMP"
             if [ $? -eq 0 ];
             then
               e_and_l "$OK_TAG"
+              CHANGES_MADE=1
             else
               e_and_l "$ERROR_TAG"
             fi
