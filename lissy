@@ -9132,34 +9132,50 @@ EOF
       else
         TEMP_MSG+="$NC_TAG"
       fi
-    else # ... sonst versuchen die DCONF-Settings zu erweitern
-      if [ "$DESKTOP_ENVIRONMENT" = "MATE" ];
+    else # .... sonst unter lightdm eine neue Datei anlegen
+      if [ "$DISPLAY_MANAGER" = "lightdm" ];
       then
-        CURRENT_MATE_NUMLOCK_SETTING="$(gsettings_get org.mate.peripherals-keyboard numlock-state)"
-        # echo -e "$CURRENT_MATE_NUMLOCK_SETTING" # NUR ZUM TESTEN
-        if [ "$CURRENT_MATE_NUMLOCK_SETTING" != "on" ] &&
-           [ "$CURRENT_MATE_NUMLOCK_SETTING" != "true" ];
+        echo -e "[Greeter]"$'\n' > "$NUMLOCK_FILE" 2>/dev/null
+        echo -e "activate-numlock=true"$'\n' >> "$NUMLOCK_FILE" 2>/dev/null
+        if [ $? -eq 0 ];
         then
-          gsettings_set "org.mate.peripherals-keyboard" "remember-numlock-state" "true"
-          gsettings_set "org.mate.peripherals-keyboard" "numlock-state" "on"
           TEMP_MSG+="$OK_TAG"
           CHANGES_MADE=1
         else
-          TEMP_MSG+="$NC_TAG"
+          TEMP_MSG+="$ERROR_TAG $LINENO"
         fi
       else
-        CURRENT_GNOME_NUMLOCK_SETTING="$(gsettings_get org.gnome.desktop.peripherals.keyboard numlock-state)"
-        # echo -e "$CURRENT_GNOME_NUMLOCK_SETTING" # NUR ZUM TESTEN
-        if [ "$CURRENT_GNOME_NUMLOCK_SETTING" != "on" ] &&
-           [ "$CURRENT_GNOME_NUMLOCK_SETTING" != "true" ];
-        then
-          gsettings_set "org.gnome.desktop.peripherals.keyboard" "remember-numlock-state" "true"
-          gsettings_set "org.gnome.desktop.peripherals.keyboard" "numlock-state" "true"
-          TEMP_MSG+="$OK_TAG"
-          CHANGES_MADE=1
-        else
-          TEMP_MSG+="$NC_TAG"
-        fi
+        TEMP_MSG+="$NA_TXT"
+      fi
+    fi
+    # Sicherheitshalber zusätzlich die DCONF-Settings erweitern
+    # (dabei keine weitere Ausgabe erzeugen)
+    if [ "$DESKTOP_ENVIRONMENT" = "MATE" ];
+    then
+      CURRENT_MATE_NUMLOCK_SETTING="$(gsettings_get org.mate.peripherals-keyboard numlock-state)"
+      # echo -e "$CURRENT_MATE_NUMLOCK_SETTING" # NUR ZUM TESTEN
+      if [ "$CURRENT_MATE_NUMLOCK_SETTING" != "on" ] &&
+         [ "$CURRENT_MATE_NUMLOCK_SETTING" != "true" ];
+      then
+        gsettings_set "org.mate.peripherals-keyboard" "remember-numlock-state" "true"
+        gsettings_set "org.mate.peripherals-keyboard" "numlock-state" "on"
+        # TEMP_MSG+="$OK_TAG"
+        CHANGES_MADE=1
+      # else
+        # TEMP_MSG+="$NC_TAG"
+      fi
+    else
+      CURRENT_GNOME_NUMLOCK_SETTING="$(gsettings_get org.gnome.desktop.peripherals.keyboard numlock-state)"
+      # echo -e "$CURRENT_GNOME_NUMLOCK_SETTING" # NUR ZUM TESTEN
+      if [ "$CURRENT_GNOME_NUMLOCK_SETTING" != "on" ] &&
+         [ "$CURRENT_GNOME_NUMLOCK_SETTING" != "true" ];
+      then
+        gsettings_set "org.gnome.desktop.peripherals.keyboard" "remember-numlock-state" "true"
+        gsettings_set "org.gnome.desktop.peripherals.keyboard" "numlock-state" "true"
+        # TEMP_MSG+="$OK_TAG"
+        CHANGES_MADE=1
+      # else
+        # TEMP_MSG+="$NC_TAG"
       fi
       # In neueren Ubuntu-Versionen gibt es zudem folgende Einträge,
       # deren Wirkung jedoch noch nicht zuverlässig verifiziert ist:
