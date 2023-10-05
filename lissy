@@ -36,7 +36,7 @@
 #                                                                             #
 ###############################################################################
 VERSION="3.60"
-# Letzte Änderung: 04.10.2023
+# Letzte Änderung: 05.10.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -112,18 +112,19 @@ HALF_LINE="${line_color}$(printf '─%.0s' {1..40})${colors_off}"
 HALF_MINUS_LINE="${line_color}$(printf '\x2D%.0s' {1..40})${colors_off}"
 PRE_SPACE=$(printf ' %.0s' {1..5})
 FULLSPACE=$(printf '\x20%.0s' {1..80})
-NF_TXT="nicht gefunden"
 NA_TXT="nicht verfügbar"
-NV_TXT="nicht vorhanden"
+NF_TXT="nicht gefunden"
 NR_TXT="nicht für root"
+NU_TXT="nur mit Ubuntu"
+NV_TXT="nicht vorhanden"
 RASPY_TXT="nur Raspberry Pi"
 PIOS_TXT="nur bei Pi OS"
-OK_TAG="${bold_green}ok${colors_off}"
-OA_TAG="${bold_green}ok${colors_off} ${dark_grey}(Autostart aktiv)${colors_off}"
+KF_TAG="${bold_green}ok${colors_off} ${dark_grey}(keine fehlenden gefunden)${colors_off}"
 NC_TAG="${bold_green}ok${colors_off} ${dark_grey}(keine Änderung)${colors_off}"
 ND_TAG="${bold_green}ok${colors_off} ${dark_grey}(keine Dateien gefunden)${colors_off}"
 NF_TAG="${bold_green}ok${colors_off} ${dark_grey}(keine gefunden)${colors_off}"
-KF_TAG="${bold_green}ok${colors_off} ${dark_grey}(keine fehlenden gefunden)${colors_off}"
+OA_TAG="${bold_green}ok${colors_off} ${dark_grey}(Autostart aktiv)${colors_off}"
+OK_TAG="${bold_green}ok${colors_off}"
 FERTIG_TAG="${bold_green}fertig${colors_off}"
 HINWEIS_TAG="${bold_yellow}Hinweis${colors_off}"
 WARN_TAG="${bold_yellow}Warnung${colors_off}"
@@ -7084,7 +7085,7 @@ then
           e_and_l "$ERROR_TAG $LINENO"
         fi
       else
-        e_and_l "$(skip_text "$ACTION_MESSAGE  " "nur mit Ubuntu")"
+        e_and_l "$(skip_text "$ACTION_MESSAGE  " "$NU_TXT")"
       fi
     else
       e_and_l "$(skip_text "$ACTION_MESSAGE  " "nicht ausgewählt")"
@@ -7099,15 +7100,18 @@ then
       ACTION_MESSAGE=" Zusätzliche ${light_cyan}Sprachpakete${colors_off} installieren"
       if [ $(LANG=en dpkg-query -W -f='${Status}' "language-selector-common" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
       then
-        e_and_l -n " Installiere ${light_yellow}Sprachauswahl${colors_off} für Ubuntu       ... "
-        apt install language-selector-common -y &>"$LOG_TEMP"
-        if [ $? -eq 0 ];
+        if [ $(apt list "language-selector-common" 2>/dev/null | grep -i -c "language-selector-common") -gt 0 ];
         then
-          e_and_l "$OK_TAG"
-        else
-          e_and_l "$ERROR_TAG $LINENO"
+          e_and_l -n " Installiere ${light_yellow}Sprachauswahl${colors_off} für Ubuntu       ... "
+          apt install language-selector-common -y &>"$LOG_TEMP"
+          if [ $? -eq 0 ];
+          then
+            e_and_l "$OK_TAG"
+          else
+            e_and_l "$ERROR_TAG $LINENO"
+          fi
+          add_full_log
         fi
-        add_full_log
       fi
       if check-language-support --help  &>/dev/null;
       then
@@ -7366,7 +7370,7 @@ then
       fi
 
       # ===========================================================================
-      # Themen Ubuntu-MATE installieren
+      # Desktop-Themen Ubuntu-MATE installieren
       # ===========================================================================
       ACTION_MESSAGE=" Desktop-Themen ${light_cyan}MATE${colors_off} installieren"
       if [ $(apt list "ubuntu-mate-themes" 2>/dev/null | grep -i -c "ubuntu-mate-themes") -gt 0 ];
@@ -7395,19 +7399,38 @@ then
       fi
 
       # ===========================================================================
-      # Thema Yaru installieren
+      # Desktop-Themen Yaru installieren
       # ===========================================================================
       ACTION_MESSAGE=" Desktop-Themen ${light_cyan}Yaru${colors_off} installieren"
-      if [ $(apt list "yaru-theme-gtk" 2>/dev/null | grep -i -c "yaru-theme-gtk") -gt 0 ];
+      YARU_THEME_PARTS="gtk icon sound"
+      YARU_AVAILS=""
+      YARU_MISSING=""
+      for yp in ${YARU_THEME_PARTS[@]};
+      do
+        if [ $(apt list "yaru-theme-$yp" 2>/dev/null | grep -i -c "yaru-theme-$yp") -gt 0 ];
+        then
+          YARU_AVAILS+="$yp"
+          if [ $(LANG=en dpkg-query -W -f='${Status}' "yaru-theme-$yp" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+          then
+            YARU_MISSING+="yaru-theme-$yp "
+          fi
+        fi
+      done
+      if [ "$YARU_AVAILS" != "" ];
       then
-        if [ $(LANG=en dpkg-query -W -f='${Status}' "yaru-theme-gtk" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+        if [ "$YARU_MISSING" != "" ];
         then
           ask_yes_or_no "$ACTION_MESSAGE"
           if [ $? -eq 1 ];
           then
-            e_and_l -n " Installiere Desktop-Themen ${light_yellow}Yaru${colors_off}            ... "
-            apt install "yaru-theme-gtk" -y &>"$LOG_TEMP"
-            if [ $? -eq 0 ];
+            e_and_l -n " Installiere ${light_yellow}Yaru-Themen${colors_off}, bitte warten      ... "
+            YARU_ERRORS=0
+            for ym in ${YARU_MISSING[@]};
+            do
+              apt install "$ym" -y &>"$LOG_TEMP"
+              if [ $? -ne 0 ]; then ((YARU_ERRORS+=1)); fi
+            done
+            if [ $YARU_ERRORS -eq 0 ]
             then
               e_and_l "$OK_TAG"
               CHANGES_MADE=1
@@ -7623,7 +7646,7 @@ then
             add_full_log
           fi
         else
-          e_and_l "$(skip_text "$ACTION_MESSAGE" "nur mit Ubuntu")"
+          e_and_l "$(skip_text "$ACTION_MESSAGE" "$NU_TXT")"
         fi
         ((a+=1))
       done
@@ -9299,7 +9322,7 @@ EOF
     fi
     remove_file "$LOCAL_DOWNLOAD_FILE"
   else
-    e_and_l "$(skip_text "$ACTION_MESSAGE" "nur mit Ubuntu")"
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "$NU_TXT")"
   fi
 
   # ===========================================================================
