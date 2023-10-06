@@ -35,8 +35,8 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.60"
-# Letzte Änderung: 05.10.2023
+VERSION="3.68"
+# Letzte Änderung: 06.10.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -882,7 +882,7 @@ if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORI
 # Cloud-Clients"Online-Datenspeicher"
 KATEGORIE_PKGS[c]="owncloud-client nextcloud-desktop"
 # Programmierung
-KATEGORIE_PKGS[p]="bless closure-compiler geany ghex kate kdiff3 kompare meld mu-editor python3 scratch thonny vscodium"
+KATEGORIE_PKGS[p]="bless closure-compiler codium geany ghex kate kdiff3 kompare meld mu-editor python3 scratch thonny"
 # Emulation und Virtualisierung
 KATEGORIE_PKGS[q]="docker.io qemu-system-common qemu-system-data qemu-system-x86 qemu-system-arm qemu-system-gui qemu-efi-aarch64 qemu-efi-arm qemu-utils qemu-block-extra libvirt-daemon-system libvirt-clients bridge-utils virtualbox virtualbox-ext-pack virtualbox-guest-additions-iso virt-manager"
 # FTP-Server
@@ -900,7 +900,7 @@ KATEGORIE_PKGS[n]="openvpn network-manager-openvpn network-manager-openvpn-gnome
 # Spiele
 KATEGORIE_PKGS[s]="0ad alien-arena astromenace atomix billard-gl biniax2 blobwars blockout2 briquolo brutalchess caveexpress chromium-bsu code-the-classics criticalmass cuyo dreamchess enigma extremetuxracer foobillardplus freedoom frogatto frozen-bubble fs-uae fs-uae-launcher gbrainy gcompris-qt gemdropx gnome-games gnubg gweled hedgewars jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter morris naev neverball neverputt nexuiz numptyphysics oolite open-invaders pinball pingus pokerth pybik rocksndiamonds sauerbraten sdl-ball supertux supertuxkart teeworlds torcs trigger-rally tuxmath ufoai wesnoth widelands zaz"
 # Systemerweiterungen
-KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dirmngr dpkg-repack e2fsprogs ethtool exfat-fuse exfat-utils extundelete fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysstat tar tcptrack testdisk traceroute udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
+KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dirmngr dpkg-repack e2fsprogs ethtool exfat-fuse exfatprogs extundelete fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysstat tar tcptrack testdisk traceroute udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
 # Systemverwaltung
 KATEGORIE_PKGS[v]="backintime-common baobab bleachbit blueman caja caja-actions caja-eiciel caja-extensions-common caja-gtkhash caja-image-converter caja-mediainfo caja-open-terminal caja-rename caja-seahorse caja-sendto caja-share caja-wallpaper caja-xattr-tags copyq czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted grsync grub-customizer gsmartcontrol gtkhash gufw hardinfo kwalletmanager mozo nemo plasma-discover seahorse synaptic system-config-printer timeshift tilda usbview xfce4-taskmanager zulumount-gui"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[v]+=" bulky qt5ct webapp-manager"; fi
@@ -909,7 +909,7 @@ KATEGORIE_PKGS[t]="ardour audacity hydrogen lmms qjackctl qtractor yoshimi"
 # USB-Firewall
 KATEGORIE_PKGS[u]="usbauth usbauth-notifier"
 # Zubehör
-KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk doublecmd-common doublecmd-gtk engrampa freefilesync galculator gedit gnome-characters gucharmap keepass2 kfind klavaro ktouch magnus mousepad nmapsi4 onboard pdfmod pluma putty redshift-gtk rpi-imager usb-creator-gtk veracrypt xournal"
+KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk doublecmd-common doublecmd-gtk engrampa freefilesync galculator gedit gnome-characters gucharmap keepass2 kfind klavaro ktouch magnus mousepad nmapsi4 onboard pdfmod pluma putty redshift-gtk rpi-imager usb-creator-common usb-creator-gtk veracrypt xournal"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[z]+=" sticky xed"; fi
 # Windows-API "Wine"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ];
@@ -954,7 +954,7 @@ SIMILAR_PACK[chromium]="chromium-browser"
 SIMILAR_PACK[chromium-browser]="chromium-common"
 SIMILAR_PACK[czkawka]="fslint"
 SIMILAR_PACK[engrampa]="file-roller"
-SIMILAR_PACK[exfat-utils]="exfatprogs"
+SIMILAR_PACK[exfatprogs]="exfat-utils"
 SIMILAR_PACK[file-roller]="xarchiver"
 SIMILAR_PACK[firefox]="firefox-esr"
 SIMILAR_PACK[gcompris-qt]="gcompris"
@@ -971,7 +971,7 @@ SIMILAR_PACK[pdfchain]="pdfmod"
 SIMILAR_PACK[pdfarranger]="pdfmod"
 SIMILAR_PACK[pinta]="drawing"
 SIMILAR_PACK[transmission]="transmission-common"
-SIMILAR_PACK[usb-creator-gtk]="balena-etcher"
+SIMILAR_PACK[usb-creator-common]="balena-etcher"
 
 ###############################################################################
 # Einige Programme sind nicht in jedem Repository enthalten und können dann
@@ -982,14 +982,15 @@ SIMILAR_PACK[usb-creator-gtk]="balena-etcher"
 ###############################################################################
 declare -A DEPENDS_PACK
 
+DEPENDS_PACK[doublecmd-gtk]="doublecmd-common"
 DEPENDS_PACK[krita-l10n]="krita"
+DEPENDS_PACK[mediainfo-gui]="mediainfo"
+DEPENDS_PACK[mkvtoolnix-gui]="mkvtoolnix"
 DEPENDS_PACK[scribus-template]="scribus"
+DEPENDS_PACK[usbauth-notifier]="usbauth"
+DEPENDS_PACK[usb-creator-gtk]="usb-creator-common"
 DEPENDS_PACK[virtualbox-ext-pack]="virtualbox"
 DEPENDS_PACK[virtualbox-guest-additions-iso]="virtualbox"
-DEPENDS_PACK[mkvtoolnix-gui]="mkvtoolnix"
-DEPENDS_PACK[mediainfo-gui]="mediainfo"
-DEPENDS_PACK[usbauth-notifier]="usbauth"
-DEPENDS_PACK[doublecmd-gtk]="doublecmd-common"
 
 ###############################################################################
 # Alternative Quellen "ERW": Programmpakete aus den oben stehenden Paketlisten,
@@ -1061,15 +1062,6 @@ declare -A DEB_PKG_OLDF # Download-URL der Vorgänger-Version (nur amd64)
 # ACHTUNG: ÄNDERUNGEN AUCH IN DEN POST-SCRIPTEN UND "EXUPDATE_PKG_LIST" ABGLEICHEN !
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-# Erstellt mittels dpkg-repack :)
-DEB_PKG_NAME[apturl]="AptUrl"
-DEB_PKG_OLDV[apturl]=""
-DEB_PKG_OLDF[apturl]=""
-DEB_PKG_VERS[apturl]="0.5.2"
-DEB_PKG_MESG[apturl]=""
-DEB_PKG_FILE[apturl_amd64]="$RESSOURCE_SERVER_DIR/deb/apturl_0.5.2_amd64.deb"
-DEB_PKG_CSUM[apturl_amd64]="$RESSOURCE_SERVER_DIR/deb/apturl_0.5.2_amd64.deb.sha"
-
 # Download von https://github.com/balena-io/etcher/releases/latest (https://www.balena.io/etcher/)
 # ACHTUNG: Auch als WEB-Version eingetragen (s.u.)!
 DEB_PKG_NAME[balena-etcher]="balenaEtcher"
@@ -1086,14 +1078,29 @@ DEB_PKG_CSUM[balena-etcher_arm64]="" # NICHT für ARM verfügbar
 DEB_PKG_FILE[balena-etcher_armhf]="" # NICHT für ARM verfügbar
 DEB_PKG_CSUM[balena-etcher_armhf]="" # NICHT für ARM verfügbar
 
+# Download von https://github.com/VSCodium/vscodium
+DEB_PKG_NAME[codium]="VSCodium"
+DEB_PKG_OLDV[codium]=""
+DEB_PKG_OLDF[codium]=""
+DEB_PKG_VERS[codium]="1.83.0"
+DEB_PKG_MESG[codium]=""
+DEB_PKG_FILE[codium_amd64]="$RESSOURCE_SERVER_DIR/deb/codium_1.83.0.23277_amd64.deb"
+DEB_PKG_CSUM[codium_amd64]="$RESSOURCE_SERVER_DIR/deb/codium_1.83.0.23277_amd64.deb.sha"
+ DEB_PKG_FILE[codium_i386]="" # NUR für 64-bit verfügbar
+ DEB_PKG_CSUM[codium_i386]="" # NUR für 64-bit verfügbar
+DEB_PKG_FILE[codium_arm64]="$RESSOURCE_SERVER_DIR/deb/codium_1.83.0.23277_arm64.deb"
+DEB_PKG_CSUM[codium_arm64]="$RESSOURCE_SERVER_DIR/deb/codium_1.83.0.23277_arm64.deb.sha"
+DEB_PKG_FILE[codium_armhf]="" # NUR für 64-bit verfügbar
+DEB_PKG_CSUM[codium_armhf]="" # NUR für 64-bit verfügbar
+
 # Erstellt mittels dpkg-repack :)
 DEB_PKG_NAME[grub-customizer]="Grub Customizer"
-DEB_PKG_OLDV[grub-customizer]=""
-DEB_PKG_OLDF[grub-customizer]=""
-DEB_PKG_VERS[grub-customizer]="5.1.0"
+DEB_PKG_OLDV[grub-customizer]="5.1.0"
+DEB_PKG_OLDF[grub-customizer]="$RESSOURCE_SERVER_DIR/deb/grub-customizer_5.1.0-3build1_amd64.deb"
+DEB_PKG_VERS[grub-customizer]="5.2.2"
 DEB_PKG_MESG[grub-customizer]=""
-DEB_PKG_FILE[grub-customizer_amd64]="$RESSOURCE_SERVER_DIR/deb/grub-customizer_5.1.0-3build1_amd64.deb"
-DEB_PKG_CSUM[grub-customizer_amd64]="$RESSOURCE_SERVER_DIR/deb/grub-customizer_5.1.0-3build1_amd64.deb.sha"
+DEB_PKG_FILE[grub-customizer_amd64]="$RESSOURCE_SERVER_DIR/deb/grub-customizer_5.2.2-2_amd64.deb"
+DEB_PKG_CSUM[grub-customizer_amd64]="$RESSOURCE_SERVER_DIR/deb/grub-customizer_5.2.2-2_amd64.deb.sha"
 
 # Download von https://ftp5.gwdg.de/pub/linux/debian/mint/packages/pool/main/h/hypnotix
 # oder https://github.com/linuxmint/hypnotix/releases
@@ -1226,16 +1233,33 @@ DEB_PKG_CSUM[teamviewer_arm64]=""
 DEB_PKG_FILE[teamviewer_armhf]="https://download.teamviewer.com/download/linux/teamviewer_armhf.deb"
 DEB_PKG_CSUM[teamviewer_armhf]=""
 
-# Download von https://pkgs.org/download/usb-creator-gtk
-DEB_PKG_NAME[usb-creator-gtk]="USB-Creator"
+# Erstellt mittels dpkg-repack :)
+# (Ginge aber auch per Download von https://pkgs.org/download/usb-creator-common)
+DEB_PKG_NAME[usb-creator-common]="USB-Creator-Common"
+DEB_PKG_OLDV[usb-creator-common]=""
+DEB_PKG_OLDF[usb-creator-common]=""
+DEB_PKG_VERS[usb-creator-common]="0.0.3.13"
+DEB_PKG_MESG[usb-creator-common]=""
+DEB_PKG_FILE[usb-creator-common_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-common_0.3.13_amd64.deb"
+DEB_PKG_CSUM[usb-creator-common_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-common_0.3.13_amd64.deb.sha"
+ DEB_PKG_FILE[usb-creator-common_i386]="" # NUR für 64-bit gepackt
+ DEB_PKG_CSUM[usb-creator-common_i386]="" # NUR für 64-bit gepackt
+DEB_PKG_FILE[usb-creator-common_arm64]="" # NICHT für ARM verfügbar
+DEB_PKG_CSUM[usb-creator-common_arm64]="" # NICHT für ARM verfügbar
+DEB_PKG_FILE[usb-creator-common_armhf]="" # NICHT für ARM verfügbar
+DEB_PKG_CSUM[usb-creator-common_armhf]="" # NICHT für ARM verfügbar
+
+# Erstellt mittels dpkg-repack :)
+# (Ginge aber auch per Download von https://pkgs.org/download/usb-creator-gtk)
+DEB_PKG_NAME[usb-creator-gtk]="USB-Creator-GTK"
 DEB_PKG_OLDV[usb-creator-gtk]=""
 DEB_PKG_OLDF[usb-creator-gtk]=""
 DEB_PKG_VERS[usb-creator-gtk]="0.0.3.13"
 DEB_PKG_MESG[usb-creator-gtk]=""
-DEB_PKG_FILE[usb-creator-gtk_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-gtk_0.3.13_all.deb"
-DEB_PKG_CSUM[usb-creator-gtk_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-gtk_0.3.13_all.deb.sha"
- DEB_PKG_FILE[usb-creator-gtk_i386]="$RESSOURCE_SERVER_DIR/deb/usb-creator-gtk_0.3.13_all.deb"
- DEB_PKG_CSUM[usb-creator-gtk_i386]="$RESSOURCE_SERVER_DIR/deb/usb-creator-gtk_0.3.13_all.deb.sha"
+DEB_PKG_FILE[usb-creator-gtk_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-gtk_0.3.13_amd64.deb"
+DEB_PKG_CSUM[usb-creator-gtk_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-gtk_0.3.13_amd64.deb.sha"
+ DEB_PKG_FILE[usb-creator-gtk_i386]="" # NUR für 64-bit gepackt
+ DEB_PKG_CSUM[usb-creator-gtk_i386]="" # NUR für 64-bit gepackt
 DEB_PKG_FILE[usb-creator-gtk_arm64]="" # NICHT für ARM verfügbar
 DEB_PKG_CSUM[usb-creator-gtk_arm64]="" # NICHT für ARM verfügbar
 DEB_PKG_FILE[usb-creator-gtk_armhf]="" # NICHT für ARM verfügbar
@@ -1275,21 +1299,6 @@ then
   DEB_PKG_CSUM[veracrypt_armhf]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.25.9-sha256sum.sha"
 fi
 # -----------------------------------------------------------------------------
-
-# Download von https://github.com/VSCodium/vscodium
-DEB_PKG_NAME[vscodium]="VSCodium"
-DEB_PKG_OLDV[vscodium]=""
-DEB_PKG_OLDF[vscodium]=""
-DEB_PKG_VERS[vscodium]="1.82.2.23257"
-DEB_PKG_MESG[vscodium]=""
-DEB_PKG_FILE[vscodium_amd64]="$RESSOURCE_SERVER_DIR/deb/vscodium_1.82.2.23257_amd64.deb"
-DEB_PKG_CSUM[vscodium_amd64]="$RESSOURCE_SERVER_DIR/deb/vscodium_1.82.2.23257_amd64.deb.sha"
- DEB_PKG_FILE[vscodium_i386]="" # NUR für 64-bit verfügbar
- DEB_PKG_CSUM[vscodium_i386]="" # NUR für 64-bit verfügbar
-DEB_PKG_FILE[vscodium_arm64]="$RESSOURCE_SERVER_DIR/deb/vscodium_1.82.2.23257_arm64.deb"
-DEB_PKG_CSUM[vscodium_arm64]="$RESSOURCE_SERVER_DIR/deb/vscodium_1.82.2.23257_arm64.deb.sha"
-DEB_PKG_FILE[vscodium_armhf]="" # NUR für 64-bit verfügbar
-DEB_PKG_CSUM[vscodium_armhf]="" # NUR für 64-bit verfügbar
 
 # Download von https://www.xnview.com/de/xnviewmp/#downloads
 DEB_PKG_NAME[xnview]="XnView MP"
@@ -1428,14 +1437,36 @@ then
   DEB_PKG_FILE[yt-dlp_amd64]="$RESSOURCE_SERVER_DIR/deb/yt-dlp_2023.03.04-1_all.deb"
   DEB_PKG_CSUM[yt-dlp_amd64]="$RESSOURCE_SERVER_DIR/deb/yt-dlp_2023.03.04-1_all.deb.sha"
 
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # ACHTUNG: VirtualBox läuft derzeit nicht sauber auf reinem Debian 12 !!!
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Download von https://www.virtualbox.org/wiki/Linux_Downloads
-  DEB_PKG_NAME[virtualbox]="VirtualBox"
-  DEB_PKG_OLDV[virtualbox]=""
-  DEB_PKG_OLDF[virtualbox]=""
-  DEB_PKG_VERS[virtualbox]="7.0.10"
-  DEB_PKG_MESG[virtualbox]=""
-  DEB_PKG_FILE[virtualbox_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.10-158379~Debian~bookworm_amd64.deb"
-  DEB_PKG_CSUM[virtualbox_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.10-158379~Debian~bookworm_amd64.deb.sha"
+  # DEB_PKG_NAME[virtualbox]="VirtualBox"
+  # DEB_PKG_OLDV[virtualbox]=""
+  # DEB_PKG_OLDF[virtualbox]=""
+  # DEB_PKG_VERS[virtualbox]="7.0.10"
+  # DEB_PKG_MESG[virtualbox]=""
+  # DEB_PKG_FILE[virtualbox_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.10-158379~Debian~bookworm_amd64.deb"
+  # DEB_PKG_CSUM[virtualbox_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.10-158379~Debian~bookworm_amd64.deb.sha"
+
+  # Download von https://www.virtualbox.org/wiki/Downloads
+  # DEB_PKG_NAME[virtualbox-ext-pack]="VirtualBox Extension Pack"
+  # DEB_PKG_OLDV[virtualbox-ext-pack]=""
+  # DEB_PKG_OLDF[virtualbox-ext-pack]=""
+  # DEB_PKG_VERS[virtualbox-ext-pack]="7.0.10"
+  # DEB_PKG_MESG[virtualbox-ext-pack]=""
+  # DEB_PKG_FILE[virtualbox-ext-pack_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualBox_Extension_Pack-7.0.10.vbox-extpack"
+  # DEB_PKG_CSUM[virtualbox-ext-pack_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualBox_Extension_Pack-7.0.10.vbox-extpack.sha"
+
+  # Download von https://packages.debian.org/sid/virtualbox-guest-additions-iso
+  # DEB_PKG_NAME[virtualbox-guest-additions-iso]="VirtualBox Guest Additions"
+  # DEB_PKG_OLDV[virtualbox-guest-additions-iso]=""
+  # DEB_PKG_OLDF[virtualbox-guest-additions-iso]=""
+  # DEB_PKG_VERS[virtualbox-guest-additions-iso]="7.0.10"
+  # DEB_PKG_MESG[virtualbox-guest-additions-iso]=""
+  # DEB_PKG_FILE[virtualbox-guest-additions-iso_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-guest-additions-iso_7.0.10-1_all.deb"
+  # DEB_PKG_CSUM[virtualbox-guest-additions-iso_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-guest-additions-iso_7.0.10-1_all.deb.sha"
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 fi
 # -----------------------------------------------------------------------------
@@ -1654,7 +1685,7 @@ WEB_PKG_CSUM[youplay_armhf]="" # NICHT für ARM verfügbar
 # im Repo haben und somit von apt auch nicht automatisch aktualisiert werden.
 # Dient als Basis für die Updates dieser Programme mit der Option "exupdate".
 ###############################################################################
-EXUPDATE_PKG_LIST=('balena-etcher' 'code-the-classics' 'czkawka' 'freefilesync' 'hypnotix' 'ipscan' 'nomachine' 'openshot-qt' 'tor-browser' 'veracrypt' 'vscodium' 'xnview')
+EXUPDATE_PKG_LIST=('balena-etcher' 'code-the-classics' 'codium' 'czkawka' 'freefilesync' 'hypnotix' 'ipscan' 'nomachine' 'openshot-qt' 'tor-browser' 'veracrypt' 'xnview' 'youplay')
 
 ###############################################################################
 # Pakete, die warum auch immer vorzugsweise als Snap installiert werden sollen.
@@ -6577,11 +6608,11 @@ then
         e_and_l " Eventuell bestehende Konfigurationsdaten werden zuvor natürlich gesichert."
         if [ "${DEB_PKG_MESG[$pkg_name]}" != "" ];
         then
-          e_and_l " ${bold_yellow}Achtung${colors_off}: ${DEB_PKG_MESG[$pkg_name]}"
+          e_and_l " ${bold_red}Achtung:${colors_off} ${light_yellow}${DEB_PKG_MESG[$pkg_name]}${colors_off}"
         fi
         if [ "${WEB_PKG_MESG[$pkg_name]}" != "" ];
         then
-          e_and_l " ${bold_yellow}Achtung${colors_off}: ${WEB_PKG_MESG[$pkg_name]}"
+          e_and_l " ${bold_red}Achtung:${colors_off} ${light_yellow}${WEB_PKG_MESG[$pkg_name]}${colors_off}"
         fi
         ask_yes_or_no " ${light_cyan}$pkg_name${colors_off} jetzt auf Version ${light_yellow}$NEW_PKG_INST_VERS${colors_off} updaten"
         if [ $? -eq 1 ];
@@ -9158,7 +9189,7 @@ EOF
     else # .... sonst unter lightdm eine neue Datei anlegen
       if [ "$DISPLAY_MANAGER" = "lightdm" ];
       then
-        echo -e "[Greeter]"$'\n' > "$NUMLOCK_FILE" 2>/dev/null
+        echo -e "[Greeter]" > "$NUMLOCK_FILE" 2>/dev/null
         echo -e "activate-numlock=true"$'\n' >> "$NUMLOCK_FILE" 2>/dev/null
         if [ $? -eq 0 ];
         then
@@ -9260,9 +9291,9 @@ EOF
   # ===========================================================================
 
   ACTION_MESSAGE=" Ausblenden der ${light_cyan}asiatischen Schriftarten${colors_off}    ... "
-  if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "ubuntu") -gt 0 ] ||
-     [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ];
-  then
+  # if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "ubuntu") -gt 0 ] ||
+  #    [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ];
+  # then
     FONT_CONF_DIR="$USER_CONFIG_DIR/fontconfig"
     FONT_CFG_FILE="$FONT_CONF_DIR/fonts.conf"
     COPY_FONTS_FILE=0
@@ -9321,9 +9352,9 @@ EOF
       fi
     fi
     remove_file "$LOCAL_DOWNLOAD_FILE"
-  else
-    e_and_l "$(skip_text "$ACTION_MESSAGE" "$NU_TXT")"
-  fi
+  # else
+  #   e_and_l "$(skip_text "$ACTION_MESSAGE" "$NU_TXT")"
+  # fi
 
   # ===========================================================================
   # Sichtbarkeit der Scrollbalken verbessern (nur für den aktuellen Benutzer)
