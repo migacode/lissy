@@ -35,7 +35,7 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.68"
+VERSION="3.69"
 # Letzte Änderung: 06.10.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
@@ -1104,19 +1104,23 @@ DEB_PKG_CSUM[grub-customizer_amd64]="$RESSOURCE_SERVER_DIR/deb/grub-customizer_5
 
 # Download von https://ftp5.gwdg.de/pub/linux/debian/mint/packages/pool/main/h/hypnotix
 # oder https://github.com/linuxmint/hypnotix/releases
-DEB_PKG_NAME[hypnotix]="Hypnotix"
-DEB_PKG_OLDV[hypnotix]="2.6"
-DEB_PKG_OLDF[hypnotix]="$RESSOURCE_SERVER_DIR/deb/hypnotix_2.6_LAST_20.04_all.deb"
-DEB_PKG_VERS[hypnotix]="3.7"
-DEB_PKG_MESG[hypnotix]="Benötigt mindestens GTK 4!"
-DEB_PKG_FILE[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb"
-DEB_PKG_CSUM[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb.sha"
- DEB_PKG_FILE[hypnotix_i386]="" # NUR für 64-bit verfügbar
- DEB_PKG_CSUM[hypnotix_i386]="" # NUR für 64-bit verfügbar
-DEB_PKG_FILE[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb"
-DEB_PKG_CSUM[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb.sha"
-DEB_PKG_FILE[hypnotix_armhf]="" # NUR für 64-bit verfügbar
-DEB_PKG_CSUM[hypnotix_armhf]="" # NUR für 64-bit verfügbar
+# Nicht bei reinen Debian-Systemen, da diesen einige benötigte Libraries fehlen :(
+if [ $(uname -a 2>/dev/null | grep -i -c -E "debian") -eq 0 ];
+then
+  DEB_PKG_NAME[hypnotix]="Hypnotix"
+  DEB_PKG_OLDV[hypnotix]="2.6"
+  DEB_PKG_OLDF[hypnotix]="$RESSOURCE_SERVER_DIR/deb/hypnotix_2.6_LAST_20.04_all.deb"
+  DEB_PKG_VERS[hypnotix]="3.7"
+  DEB_PKG_MESG[hypnotix]="Benötigt mindestens GTK 4!"
+  DEB_PKG_FILE[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb"
+  DEB_PKG_CSUM[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb.sha"
+  DEB_PKG_FILE[hypnotix_i386]="" # NUR für 64-bit verfügbar
+  DEB_PKG_CSUM[hypnotix_i386]="" # NUR für 64-bit verfügbar
+  DEB_PKG_FILE[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb"
+  DEB_PKG_CSUM[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb.sha"
+  DEB_PKG_FILE[hypnotix_armhf]="" # NUR für 64-bit verfügbar
+  DEB_PKG_CSUM[hypnotix_armhf]="" # NUR für 64-bit verfügbar
+fi
 
 # Download von https://angryip.org/download/#linux
 DEB_PKG_NAME[ipscan]="Angry IP Scanner"
@@ -3607,11 +3611,38 @@ function install_pkg () {
           # -------------------------------------------------------------------
           # Ja/Nein-Abfrage (wird automatisch mit Ja beantwortet, wenn die
           # Option "force" gewählt wurde und es auch keinen Konflikt gibt)
+          # Wird alles in "ask_yes_no_info" überprüft ;)
           # -------------------------------------------------------------------
           if [ $CONTINUE_INSTALL -eq 1 ];
           then
             ask_yes_no_info "$PAKET"
             CONTINUE_INSTALL=$?
+          fi
+
+          # -------------------------------------------------------------------
+          # Wenn ein Voraussetzungs-Hinweis existiert, diesen vorher anzeigen
+          # -------------------------------------------------------------------
+          if [ "${DEB_PKG_MESG["$PAKET"]}" != "" ] ||
+             [ "${WEB_PKG_MESG["$PAKET"]}" != "" ];
+          then
+            if [ ${OPTION_FLAG[force]} -ne 0 ];
+            then
+              e_and_l " Installation von ${light_yellow}$PAKET${colors_off} ..."
+              e_and_l -n "$PRE_SPACE"
+            fi
+            TMP_MESG="${bold_red}Achtung:${colors_off} ${light_yellow}"
+            if [ "${DEB_PKG_MESG["$PAKET"]}" != "" ];
+            then
+              TMP_MESG+="${DEB_PKG_MESG["$PAKET"]}"
+            else
+              TMP_MESG+="${WEB_PKG_MESG["$PAKET"]}"
+            fi
+            TMP_MESG+="${colors_off}"
+            e_and_l " $TMP_MESG"
+            e_and_l " ${PRE_SPACE}Bitte prüfe vor der Installation, ob diese Voraussetzung erfüllt ist."
+            ask_yes_or_no " ${PRE_SPACE}Dieses Programmpaket jetzt wirklich installieren"
+            CONTINUE_INSTALL=$?
+            if [ $CONTINUE_INSTALL -eq 1 ]; then e_and_l -n "${PRE_SPACE}"; fi
           fi
 
           # -------------------------------------------------------------------
