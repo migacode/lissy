@@ -35,7 +35,7 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.73"
+VERSION="3.72"
 # Letzte Änderung: 07.10.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
@@ -891,7 +891,7 @@ KATEGORIE_PKGS[f]="proftpd-basic"
 KATEGORIE_PKGS[g]="blender darktable digikam drawing eom fraqtive geeqie gimp gpicview gpick gwenview imagemagick inkscape krita krita-l10n mandelbulber2 mtpaint pinta rawtherapee shotwell simple-scan xnview"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[g]+=" pix xviewer"; fi
 # Internet
-KATEGORIE_PKGS[i]="anydesk ipscan chromium filezilla firefox opera-stable microsoft-edge-stable nomachine realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission virt-viewer wireshark"
+KATEGORIE_PKGS[i]="anydesk ipscan chromium filezilla firefox opera-stable microsoft-edge-stable nomachine realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission-common virt-viewer wireshark"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[i]+=" hexchat warpinator"; fi
 # Multimedia
 KATEGORIE_PKGS[m]="asunder celluloid cheese easytag handbrake hypnotix k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mediainfo-gui mixxx mkvtoolnix mkvtoolnix-gui mpv parole openshot-qt rhythmbox smplayer vlc yt-dlp youtube-dl youtubedl-gui youplay"
@@ -976,7 +976,7 @@ SIMILAR_PACK[parole]="mpv"
 SIMILAR_PACK[pdfchain]="pdfmod"
 SIMILAR_PACK[pdfarranger]="pdfmod"
 SIMILAR_PACK[pinta]="drawing"
-SIMILAR_PACK[transmission]="transmission-common"
+SIMILAR_PACK[transmission-common]="transmission"
 SIMILAR_PACK[usb-creator-common]="balena-etcher"
 
 ###############################################################################
