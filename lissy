@@ -35,8 +35,8 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.69"
-# Letzte Änderung: 06.10.2023
+VERSION="3.72"
+# Letzte Änderung: 07.10.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -539,8 +539,8 @@ then
       RASPBIAN=$(ps -def | grep -i -c -E "lxde-pi")
       if [ $RASPBIAN -eq 1 ]; then RASPBIAN=0; fi
     fi
-
   fi
+
   DEBIAN_CODE=""
   if [ -s "/etc/debian_version" ];
   then
@@ -891,10 +891,10 @@ KATEGORIE_PKGS[f]="proftpd-basic"
 KATEGORIE_PKGS[g]="blender darktable digikam drawing eom fraqtive geeqie gimp gpicview gpick gwenview imagemagick inkscape krita krita-l10n mandelbulber2 mtpaint pinta rawtherapee shotwell simple-scan xnview"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[g]+=" pix xviewer"; fi
 # Internet
-KATEGORIE_PKGS[i]="anydesk ipscan chromium chromium-ffmpeg filezilla firefox opera microsoft-edge-stable nomachine realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission virt-viewer wireshark"
+KATEGORIE_PKGS[i]="anydesk ipscan chromium filezilla firefox opera-stable microsoft-edge-stable nomachine realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission virt-viewer wireshark"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[i]+=" hexchat warpinator"; fi
 # Multimedia
-KATEGORIE_PKGS[m]="asunder celluloid cheese easytag handbrake hypnotix k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mediainfo-gui mixxx mkvtoolnix mkvtoolnix-gui mpv parole openshot-qt rhythmbox smplayer vlc yt-dlp youtube-dl youtubedl-gui youplay"
+KATEGORIE_PKGS[m]="asunder brasero celluloid cheese easytag handbrake hypnotix k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mediainfo-gui mixxx mkvtoolnix mkvtoolnix-gui mpv parole openshot-qt rhythmbox smplayer vlc yt-dlp youtube-dl youtubedl-gui youplay"
 # Netzwerkverbindungen
 KATEGORIE_PKGS[n]="openvpn network-manager-openvpn network-manager-openvpn-gnome vpnc vpnc-scripts network-manager-vpnc network-manager-vpnc-gnome"
 # Spiele
@@ -902,7 +902,7 @@ KATEGORIE_PKGS[s]="0ad alien-arena astromenace atomix billard-gl biniax2 blobwar
 # Systemerweiterungen
 KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dirmngr dpkg-repack e2fsprogs ethtool exfat-fuse exfatprogs extundelete fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysstat tar tcptrack testdisk traceroute udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
 # Systemverwaltung
-KATEGORIE_PKGS[v]="backintime-common baobab bleachbit blueman caja caja-actions caja-eiciel caja-extensions-common caja-gtkhash caja-image-converter caja-mediainfo caja-open-terminal caja-rename caja-seahorse caja-sendto caja-share caja-wallpaper caja-xattr-tags copyq czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted grsync grub-customizer gsmartcontrol gtkhash gufw hardinfo kwalletmanager mozo nemo plasma-discover seahorse synaptic system-config-printer timeshift tilda usbview xfce4-taskmanager zulumount-gui"
+KATEGORIE_PKGS[v]="backintime-common baobab bleachbit blueman caja caja-actions caja-eiciel caja-extensions-common caja-gtkhash caja-image-converter caja-mediainfo caja-open-terminal caja-rename caja-seahorse caja-sendto caja-share caja-wallpaper caja-xattr-tags copyq czkawka dconf-editor deja-dup filelight font-manager gdebi gdebi-gtk gnome-disk-utility gnome-software gparted grsync grub-customizer gsmartcontrol gtkhash gufw hardinfo kwalletmanager mozo nemo plasma-discover seahorse synaptic system-config-printer timeshift tilda usbview xfce4-taskmanager zulumount-gui"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[v]+=" bulky qt5ct webapp-manager"; fi
 # Tonstudio
 KATEGORIE_PKGS[t]="ardour audacity hydrogen lmms qjackctl qtractor yoshimi"
@@ -924,11 +924,17 @@ KATEGORIE_PKGS[wg]="wireguard wireguard-tools"
 # Mint Tools
 KATEGORIE_PKGS[mt]="mintbackup mintdesktop mintdrivers mintinstall mintlocale mintreport mintsources mintstick mintupdate mintwelcome"
 # GNOME Tools
-KATEGORIE_PKGS[gx]="gnome-control-center gnome-disk-utility gnome-software gnome-system-tools gnome-terminal gnome-tweaks"
+KATEGORIE_PKGS[gx]="gnome-control-center gnome-disk-utility gnome-firmware gnome-software gnome-system-tools gnome-terminal gnome-tweaks"
 # LXDE Tools
 KATEGORIE_PKGS[lx]="lxappearance lxhotkey-gtk lxinput lxrandr lxsession-edit lxtask lxterminal"
 # MATE Tools
-KATEGORIE_PKGS[mx]="mate-applets mate-control-center mate-desktop-environment-extras mate-indicator-applet mate-media mate-sensors-applet mate-terminal mate-tweak mate-utils"
+KATEGORIE_PKGS[mx]="mate-applets mate-control-center mate-indicator-applet mate-media mate-sensors-applet mate-terminal mate-utils"
+if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ];
+then
+  KATEGORIE_PKGS[mx]+=" mate-calc mate-dock-applet mate-menu mate-tweak mate-user-share"
+else
+  KATEGORIE_PKGS[mx]+=" mate-desktop-environment-extras"
+fi
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "ubuntu") -gt 0 ]; then KATEGORIE_PKGS[mx]+=" software-boutique ubuntu-mate-welcome"; fi
 # XFCE Tools
 KATEGORIE_PKGS[xx]=""
@@ -964,7 +970,7 @@ SIMILAR_PACK[kid3]="exfalso"
 SIMILAR_PACK[libreoffice]="libreoffice-common"
 SIMILAR_PACK[magnus]="kmag"
 SIMILAR_PACK[microsoft-edge-stable]="microsoft-edge-dev"
-SIMILAR_PACK[opera]="opera-stable"
+SIMILAR_PACK[opera-stable]="opera"
 SIMILAR_PACK[p7zip-full]="p7zip"
 SIMILAR_PACK[parole]="mpv"
 SIMILAR_PACK[pdfchain]="pdfmod"
@@ -983,6 +989,7 @@ SIMILAR_PACK[usb-creator-common]="balena-etcher"
 declare -A DEPENDS_PACK
 
 DEPENDS_PACK[doublecmd-gtk]="doublecmd-common"
+DEPENDS_PACK[gdebi-gtk]="gdebi"
 DEPENDS_PACK[krita-l10n]="krita"
 DEPENDS_PACK[mediainfo-gui]="mediainfo"
 DEPENDS_PACK[mkvtoolnix-gui]="mkvtoolnix"
@@ -1053,6 +1060,7 @@ PPA_REPO_SRC[makemkv-bin]="heyarje-ubuntu-makemkv-beta*"
 declare -A DEB_PKG_NAME # Angezeigter Name des Programms
 declare -A DEB_PKG_VERS # Auf migano.de zum Download bereitgestellte Version
 declare -A DEB_PKG_MESG # Hinweis zur Installation der neuen Version
+declare -A DEB_PKG_EVAL # Kommando zum Testen der Voraussetzungen
 declare -A DEB_PKG_FILE # Download-URL
 declare -A DEB_PKG_CSUM # Prüfsumme ODER URL zu Prüfsummen-Datei
 declare -A DEB_PKG_OLDV # Nummer der Vorgänger-Version (nur amd64)
@@ -1069,6 +1077,7 @@ DEB_PKG_OLDV[balena-etcher]="1.18.4"
 DEB_PKG_OLDF[balena-etcher]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.4_amd64.deb"
 DEB_PKG_VERS[balena-etcher]="1.18.11"
 DEB_PKG_MESG[balena-etcher]=""
+DEB_PKG_EVAL[balena-etcher]=""
 DEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.11_amd64.deb"
 DEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.11_amd64.deb.sha"
  DEB_PKG_FILE[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
@@ -1084,6 +1093,7 @@ DEB_PKG_OLDV[codium]=""
 DEB_PKG_OLDF[codium]=""
 DEB_PKG_VERS[codium]="1.83.0"
 DEB_PKG_MESG[codium]=""
+DEB_PKG_EVAL[codium]=""
 DEB_PKG_FILE[codium_amd64]="$RESSOURCE_SERVER_DIR/deb/codium_1.83.0.23277_amd64.deb"
 DEB_PKG_CSUM[codium_amd64]="$RESSOURCE_SERVER_DIR/deb/codium_1.83.0.23277_amd64.deb.sha"
  DEB_PKG_FILE[codium_i386]="" # NUR für 64-bit verfügbar
@@ -1099,6 +1109,7 @@ DEB_PKG_OLDV[grub-customizer]="5.1.0"
 DEB_PKG_OLDF[grub-customizer]="$RESSOURCE_SERVER_DIR/deb/grub-customizer_5.1.0-3build1_amd64.deb"
 DEB_PKG_VERS[grub-customizer]="5.2.2"
 DEB_PKG_MESG[grub-customizer]=""
+DEB_PKG_EVAL[grub-customizer]=""
 DEB_PKG_FILE[grub-customizer_amd64]="$RESSOURCE_SERVER_DIR/deb/grub-customizer_5.2.2-2_amd64.deb"
 DEB_PKG_CSUM[grub-customizer_amd64]="$RESSOURCE_SERVER_DIR/deb/grub-customizer_5.2.2-2_amd64.deb.sha"
 
@@ -1112,6 +1123,7 @@ then
   DEB_PKG_OLDF[hypnotix]="$RESSOURCE_SERVER_DIR/deb/hypnotix_2.6_LAST_20.04_all.deb"
   DEB_PKG_VERS[hypnotix]="3.7"
   DEB_PKG_MESG[hypnotix]="Benötigt mindestens GTK 4!"
+  DEB_PKG_EVAL[hypnotix]=""
   DEB_PKG_FILE[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb"
   DEB_PKG_CSUM[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb.sha"
   DEB_PKG_FILE[hypnotix_i386]="" # NUR für 64-bit verfügbar
@@ -1128,6 +1140,7 @@ DEB_PKG_OLDV[ipscan]=""
 DEB_PKG_OLDF[ipscan]=""
 DEB_PKG_VERS[ipscan]="3.9.1"
 DEB_PKG_MESG[ipscan]=""
+DEB_PKG_EVAL[ipscan]=""
 DEB_PKG_FILE[ipscan_amd64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_amd64.deb"
 DEB_PKG_CSUM[ipscan_amd64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_amd64.deb.sha"
  DEB_PKG_FILE[ipscan_i386]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_all.deb"
@@ -1144,6 +1157,7 @@ DEB_PKG_CSUM[ipscan_armhf]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_all.deb.sha"
 # DEB_PKG_OLDF[lix]=""
 # DEB_PKG_VERS[lix]="0.9.29"
 # DEB_PKG_MESG[lix]=""
+# DEB_PKG_EVAL[lix]=""
 # DEB_PKG_FILE[lix_amd64]="$RESSOURCE_SERVER_DIR/deb/lix_0.9.29-1_amd64.deb"
 # DEB_PKG_CSUM[lix_amd64]="$RESSOURCE_SERVER_DIR/deb/lix_0.9.29-1_amd64.deb.sha"
 
@@ -1153,6 +1167,7 @@ DEB_PKG_OLDV[nomachine]="8.4.2"
 DEB_PKG_OLDF[nomachine]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_amd64.deb"
 DEB_PKG_VERS[nomachine]="8.8.1"
 DEB_PKG_MESG[nomachine]=""
+DEB_PKG_EVAL[nomachine]=""
 DEB_PKG_FILE[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_amd64.deb"
 DEB_PKG_CSUM[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_amd64.deb.sha"
  DEB_PKG_FILE[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_i386.deb"
@@ -1168,6 +1183,7 @@ DEB_PKG_OLDV[opera-stable]=""
 DEB_PKG_OLDF[opera-stable]=""
 DEB_PKG_VERS[opera-stable]="102.0.4880.70"
 DEB_PKG_MESG[opera-stable]=""
+DEB_PKG_EVAL[opera-stable]=""
 DEB_PKG_FILE[opera-stable_amd64]="$RESSOURCE_SERVER_DIR/deb/opera-stable_102.0.4880.70_amd64.deb"
 DEB_PKG_CSUM[opera-stable_amd64]="$RESSOURCE_SERVER_DIR/deb/opera-stable_102.0.4880.70_amd64.deb.sha"
  DEB_PKG_FILE[opera-stable_i386]="" # NUR für 64-bit verfügbar
@@ -1183,6 +1199,7 @@ DEB_PKG_OLDV[realvnc-vnc-server]="6.9.1"
 DEB_PKG_OLDF[realvnc-vnc-server]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-6.9.1-Linux-x64.deb"
 DEB_PKG_VERS[realvnc-vnc-server]="7.6.1"
 DEB_PKG_MESG[realvnc-vnc-server]=""
+DEB_PKG_EVAL[realvnc-vnc-server]=""
 DEB_PKG_FILE[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.6.1-Linux-x64.deb"
 DEB_PKG_CSUM[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.6.1-Linux-x64.deb.sha"
  DEB_PKG_FILE[realvnc-vnc-server_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
@@ -1198,6 +1215,7 @@ DEB_PKG_OLDV[realvnc-vnc-viewer]="6.22.315"
 DEB_PKG_OLDF[realvnc-vnc-viewer]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-6.22.315-Linux-x64.deb"
 DEB_PKG_VERS[realvnc-vnc-viewer]="7.6.1"
 DEB_PKG_MESG[realvnc-vnc-viewer]=""
+DEB_PKG_EVAL[realvnc-vnc-viewer]=""
 DEB_PKG_FILE[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.6.1-Linux-x64.deb"
 DEB_PKG_CSUM[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.6.1-Linux-x64.deb.sha"
  DEB_PKG_FILE[realvnc-vnc-viewer_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
@@ -1213,6 +1231,7 @@ DEB_PKG_OLDV[rpi-imager]=""
 DEB_PKG_OLDF[rpi-imager]=""
 DEB_PKG_VERS[rpi-imager]="1.7.5"
 DEB_PKG_MESG[rpi-imager]=""
+DEB_PKG_EVAL[rpi-imager]=""
 DEB_PKG_FILE[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/deb/rpi-imager_1.7.5_amd64.deb"
 DEB_PKG_CSUM[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/deb/rpi-imager_1.7.5_amd64.deb.sha"
  DEB_PKG_FILE[rpi-imager_i386]="" # NUR für 64-bit verfügbar
@@ -1228,6 +1247,7 @@ DEB_PKG_OLDV[teamviewer]=""
 DEB_PKG_OLDF[teamviewer]=""
 DEB_PKG_VERS[teamviewer]=""
 DEB_PKG_MESG[teamviewer]=""
+DEB_PKG_EVAL[teamviewer]=""
 DEB_PKG_FILE[teamviewer_amd64]="https://download.teamviewer.com/download/linux/teamviewer_amd64.deb"
 DEB_PKG_CSUM[teamviewer_amd64]=""
  DEB_PKG_FILE[teamviewer_i386]="https://download.teamviewer.com/download/linux/teamviewer_i386.deb"
@@ -1244,6 +1264,7 @@ DEB_PKG_OLDV[usb-creator-common]=""
 DEB_PKG_OLDF[usb-creator-common]=""
 DEB_PKG_VERS[usb-creator-common]="0.0.3.13"
 DEB_PKG_MESG[usb-creator-common]=""
+DEB_PKG_EVAL[usb-creator-common]=""
 DEB_PKG_FILE[usb-creator-common_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-common_0.3.13_amd64.deb"
 DEB_PKG_CSUM[usb-creator-common_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-common_0.3.13_amd64.deb.sha"
  DEB_PKG_FILE[usb-creator-common_i386]="" # NUR für 64-bit gepackt
@@ -1260,6 +1281,7 @@ DEB_PKG_OLDV[usb-creator-gtk]=""
 DEB_PKG_OLDF[usb-creator-gtk]=""
 DEB_PKG_VERS[usb-creator-gtk]="0.0.3.13"
 DEB_PKG_MESG[usb-creator-gtk]=""
+DEB_PKG_EVAL[usb-creator-gtk]=""
 DEB_PKG_FILE[usb-creator-gtk_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-gtk_0.3.13_amd64.deb"
 DEB_PKG_CSUM[usb-creator-gtk_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-gtk_0.3.13_amd64.deb.sha"
  DEB_PKG_FILE[usb-creator-gtk_i386]="" # NUR für 64-bit gepackt
@@ -1293,6 +1315,7 @@ then
   DEB_PKG_OLDF[veracrypt]=""
   DEB_PKG_VERS[veracrypt]="1.25.9"
   DEB_PKG_MESG[veracrypt]=""
+  DEB_PKG_EVAL[veracrypt]=""
   DEB_PKG_FILE[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.25.9-$OPSYS_PART-amd64.deb"
   DEB_PKG_CSUM[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.25.9-sha256sum.sha"
    DEB_PKG_FILE[veracrypt_i386]="" # Nur als generischer Installer verfügbar (nicht aufgenommen)
@@ -1310,6 +1333,7 @@ DEB_PKG_OLDV[xnview]="1.4.4"
 DEB_PKG_OLDF[xnview]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.00-linux-x64.deb"
 DEB_PKG_VERS[xnview]="1.5.5"
 DEB_PKG_MESG[xnview]=""
+DEB_PKG_EVAL[xnview]=""
 DEB_PKG_FILE[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.5.5-linux-x64.deb"
 DEB_PKG_CSUM[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.5.5-linux-x64.deb.sha"
  DEB_PKG_FILE[xnview_i386]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_0.89-linux-x32.deb"
@@ -1334,6 +1358,7 @@ then
   DEB_PKG_OLDF[alien-arena]=""
   DEB_PKG_VERS[alien-arena]="7.71.3"
   DEB_PKG_MESG[alien-arena]=""
+  DEB_PKG_EVAL[alien-arena]=""
   DEB_PKG_FILE[alien-arena_amd64]="$RESSOURCE_SERVER_DIR/deb/alien-arena_7.71.3+dfsg-3_amd64.deb"
   DEB_PKG_CSUM[alien-arena_amd64]="$RESSOURCE_SERVER_DIR/deb/alien-arena_7.71.3+dfsg-3_amd64.deb.sha"
 
@@ -1342,6 +1367,7 @@ then
   DEB_PKG_OLDF[astromenace]=""
   DEB_PKG_VERS[astromenace]="1.3.2"
   DEB_PKG_MESG[astromenace]=""
+  DEB_PKG_EVAL[astromenace]=""
   DEB_PKG_FILE[astromenace_amd64]="$RESSOURCE_SERVER_DIR/deb/astromenace_1.3.2+repack-7_amd64.deb"
   DEB_PKG_CSUM[astromenace_amd64]="$RESSOURCE_SERVER_DIR/deb/astromenace_1.3.2+repack-7_amd64.deb.sha"
 
@@ -1350,6 +1376,7 @@ then
   DEB_PKG_OLDF[frogatto]=""
   DEB_PKG_VERS[frogatto]="1.3.1"
   DEB_PKG_MESG[frogatto]=""
+  DEB_PKG_EVAL[frogatto]=""
   DEB_PKG_FILE[frogatto_amd64]="$RESSOURCE_SERVER_DIR/deb/frogatto_1.3.1+dfsg-6+b2_amd64.deb"
   DEB_PKG_CSUM[frogatto_amd64]="$RESSOURCE_SERVER_DIR/deb/frogatto_1.3.1+dfsg-6+b2_amd64.deb.sha"
 
@@ -1358,6 +1385,7 @@ then
   DEB_PKG_OLDF[gcompris-qt]=""
   DEB_PKG_VERS[gcompris-qt]="3.1.2"
   DEB_PKG_MESG[gcompris-qt]=""
+  DEB_PKG_EVAL[gcompris-qt]=""
   DEB_PKG_FILE[gcompris-qt_amd64]="$RESSOURCE_SERVER_DIR/deb/gcompris-qt_3.1-2_amd64.deb"
   DEB_PKG_CSUM[gcompris-qt_amd64]="$RESSOURCE_SERVER_DIR/deb/gcompris-qt_3.1-2_amd64.deb.sha"
 
@@ -1366,6 +1394,7 @@ then
   DEB_PKG_OLDF[libdvd-pkg]=""
   DEB_PKG_VERS[libdvd-pkg]="1.4.3"
   DEB_PKG_MESG[libdvd-pkg]=""
+  DEB_PKG_EVAL[libdvd-pkg]=""
   DEB_PKG_FILE[libdvd-pkg_amd64]="$RESSOURCE_SERVER_DIR/deb/libdvd-pkg_1.4.3-1-1_all.deb"
   DEB_PKG_CSUM[libdvd-pkg_amd64]="$RESSOURCE_SERVER_DIR/deb/libdvd-pkg_1.4.3-1-1_all.deb.sha"
 
@@ -1374,6 +1403,7 @@ then
   DEB_PKG_OLDF[pdfmod]=""
   DEB_PKG_VERS[pdfmod]="0.9.1"
   DEB_PKG_MESG[pdfmod]=""
+  DEB_PKG_EVAL[pdfmod]=""
   DEB_PKG_FILE[pdfmod_amd64]="$RESSOURCE_SERVER_DIR/deb/pdfmod_0.9.1-8.2_all.deb"
   DEB_PKG_CSUM[pdfmod_amd64]="$RESSOURCE_SERVER_DIR/deb/pdfmod_0.9.1-8.2_all.deb.sha"
 
@@ -1382,6 +1412,7 @@ then
   DEB_PKG_OLDF[pinta]=""
   DEB_PKG_VERS[pinta]="1.6"
   DEB_PKG_MESG[pinta]=""
+  DEB_PKG_EVAL[pinta]=""
   DEB_PKG_FILE[pinta_amd64]="$RESSOURCE_SERVER_DIR/deb/pinta_1.6-2.1_all.deb"
   DEB_PKG_CSUM[pinta_amd64]="$RESSOURCE_SERVER_DIR/deb/pinta_1.6-2.1_all.deb.sha"
 
@@ -1390,6 +1421,7 @@ then
   DEB_PKG_OLDF[playonlinux]=""
   DEB_PKG_VERS[playonlinux]="4.3.4"
   DEB_PKG_MESG[playonlinux]=""
+  DEB_PKG_EVAL[playonlinux]=""
   DEB_PKG_FILE[playonlinux_amd64]="$RESSOURCE_SERVER_DIR/deb/playonlinux_4.3.4-3_all.deb"
   DEB_PKG_CSUM[playonlinux_amd64]="$RESSOURCE_SERVER_DIR/deb/playonlinux_4.3.4-3_all.deb.sha"
 
@@ -1398,6 +1430,7 @@ then
   DEB_PKG_OLDF[rocksndiamonds]=""
   DEB_PKG_VERS[rocksndiamonds]="4.3.5.1"
   DEB_PKG_MESG[rocksndiamonds]=""
+  DEB_PKG_EVAL[rocksndiamonds]=""
   DEB_PKG_FILE[rocksndiamonds_amd64]="$RESSOURCE_SERVER_DIR/deb/rocksndiamonds_4.3.5.1+dfsg-1_amd64.deb"
   DEB_PKG_CSUM[rocksndiamonds_amd64]="$RESSOURCE_SERVER_DIR/deb/rocksndiamonds_4.3.5.1+dfsg-1_amd64.deb.sha"
 
@@ -1406,6 +1439,7 @@ then
   DEB_PKG_OLDF[sauerbraten]=""
   DEB_PKG_VERS[sauerbraten]="0.0.20021227"
   DEB_PKG_MESG[sauerbraten]=""
+  DEB_PKG_EVAL[sauerbraten]=""
   DEB_PKG_FILE[sauerbraten_amd64]="$RESSOURCE_SERVER_DIR/deb/sauerbraten_0.0.20201227-1_all.deb"
   DEB_PKG_CSUM[sauerbraten_amd64]="$RESSOURCE_SERVER_DIR/deb/sauerbraten_0.0.20201227-1_all.deb.sha"
 
@@ -1414,6 +1448,7 @@ then
   DEB_PKG_OLDF[winetricks]=""
   DEB_PKG_VERS[winetricks]="20230212"
   DEB_PKG_MESG[winetricks]=""
+  DEB_PKG_EVAL[winetricks]=""
   DEB_PKG_FILE[winetricks_amd64]="$RESSOURCE_SERVER_DIR/deb/winetricks_20230212-2_all.deb"
   DEB_PKG_CSUM[winetricks_amd64]="$RESSOURCE_SERVER_DIR/deb/winetricks_20230212-2_all.deb.sha"
 
@@ -1422,6 +1457,7 @@ then
   DEB_PKG_OLDF[youtube-dl]=""
   DEB_PKG_VERS[youtube-dl]="2021.12.17"
   DEB_PKG_MESG[youtube-dl]=""
+  DEB_PKG_EVAL[youtube-dl]=""
   DEB_PKG_FILE[youtube-dl_amd64]="$RESSOURCE_SERVER_DIR/deb/youtube-dl_2021.12.17-2_all.deb"
   DEB_PKG_CSUM[youtube-dl_amd64]="$RESSOURCE_SERVER_DIR/deb/youtube-dl_2021.12.17-2_all.deb.sha"
 
@@ -1430,6 +1466,7 @@ then
   DEB_PKG_OLDF[youtubedl-gui]=""
   DEB_PKG_VERS[youtubedl-gui]="3.0"
   DEB_PKG_MESG[youtubedl-gui]=""
+  DEB_PKG_EVAL[youtubedl-gui]=""
   DEB_PKG_FILE[youtubedl-gui_amd64]="$RESSOURCE_SERVER_DIR/deb/youtubedl-gui_3.0-2_amd64.deb"
   DEB_PKG_CSUM[youtubedl-gui_amd64]="$RESSOURCE_SERVER_DIR/deb/youtubedl-gui_3.0-2_amd64.deb.sha"
 
@@ -1438,6 +1475,7 @@ then
   DEB_PKG_OLDF[yt-dlp]=""
   DEB_PKG_VERS[yt-dlp]="2023.03.04"
   DEB_PKG_MESG[yt-dlp]=""
+  DEB_PKG_EVAL[yt-dlp]=""
   DEB_PKG_FILE[yt-dlp_amd64]="$RESSOURCE_SERVER_DIR/deb/yt-dlp_2023.03.04-1_all.deb"
   DEB_PKG_CSUM[yt-dlp_amd64]="$RESSOURCE_SERVER_DIR/deb/yt-dlp_2023.03.04-1_all.deb.sha"
 
@@ -1450,6 +1488,7 @@ then
   # DEB_PKG_OLDF[virtualbox]=""
   # DEB_PKG_VERS[virtualbox]="7.0.10"
   # DEB_PKG_MESG[virtualbox]=""
+  # DEB_PKG_EVAL[virtualbox]=""
   # DEB_PKG_FILE[virtualbox_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.10-158379~Debian~bookworm_amd64.deb"
   # DEB_PKG_CSUM[virtualbox_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.10-158379~Debian~bookworm_amd64.deb.sha"
 
@@ -1459,6 +1498,7 @@ then
   # DEB_PKG_OLDF[virtualbox-ext-pack]=""
   # DEB_PKG_VERS[virtualbox-ext-pack]="7.0.10"
   # DEB_PKG_MESG[virtualbox-ext-pack]=""
+  # DEB_PKG_EVAL[virtualbox-ext-pack]=""
   # DEB_PKG_FILE[virtualbox-ext-pack_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualBox_Extension_Pack-7.0.10.vbox-extpack"
   # DEB_PKG_CSUM[virtualbox-ext-pack_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualBox_Extension_Pack-7.0.10.vbox-extpack.sha"
 
@@ -1468,6 +1508,7 @@ then
   # DEB_PKG_OLDF[virtualbox-guest-additions-iso]=""
   # DEB_PKG_VERS[virtualbox-guest-additions-iso]="7.0.10"
   # DEB_PKG_MESG[virtualbox-guest-additions-iso]=""
+  # DEB_PKG_EVAL[virtualbox-guest-additions-iso]=""
   # DEB_PKG_FILE[virtualbox-guest-additions-iso_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-guest-additions-iso_7.0.10-1_all.deb"
   # DEB_PKG_CSUM[virtualbox-guest-additions-iso_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-guest-additions-iso_7.0.10-1_all.deb.sha"
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1511,6 +1552,7 @@ declare -A WEB_PKG_NAME # Angezeigter Name des Programms und zugleich der Ordner
                         # ACHTUNG: Nur der Ordnername, nicht der vollständge Pfad (siehe WEB_PKG_DIR)!
 declare -A WEB_PKG_VERS # Auf migano.de zum Download bereitgestellte Version
 declare -A WEB_PKG_MESG # Hinweis zur Installation der neuen Version
+declare -A WEB_PKG_EVAL # Kommando zum Testen der Voraussetzungen
 declare -A WEB_PKG_FILE # Download-URL
 declare -A WEB_PKG_CSUM # Prüfsumme ODER URL zu Prüfsummen-Datei
 declare -A WEB_PKG_CATY # Kategorie für den Linux-Menü-Eintrag (NICHT unsere Kategorien)
@@ -1529,6 +1571,7 @@ WEB_PKG_OLDV[balena-etcher]="1.18.4"
 WEB_PKG_OLDF[balena-etcher]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.4-x64.AppImage"
 WEB_PKG_VERS[balena-etcher]="1.18.11"
 WEB_PKG_MESG[balena-etcher]=""
+WEB_PKG_EVAL[balena-etcher]=""
 WEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.11-x64.AppImage"
 WEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.11-x64.AppImage.sha"
  WEB_PKG_FILE[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
@@ -1545,6 +1588,7 @@ WEB_PKG_OLDV[code-the-classics]=""
 WEB_PKG_OLDF[code-the-classics]=""
 WEB_PKG_VERS[code-the-classics]="1.00"
 WEB_PKG_MESG[code-the-classics]=""
+WEB_PKG_EVAL[code-the-classics]=""
 WEB_PKG_FILE[code-the-classics_amd64]="$RESSOURCE_SERVER_DIR/web/Code-the-Classics.tar.gz"
 WEB_PKG_CSUM[code-the-classics_amd64]="$RESSOURCE_SERVER_DIR/web/Code-the-Classics.tar.gz.sha"
  WEB_PKG_FILE[code-the-classics_i386]="$RESSOURCE_SERVER_DIR/web/Code-the-Classics.tar.gz"
@@ -1561,6 +1605,7 @@ WEB_PKG_OLDV[czkawka]="4.1.0"
 WEB_PKG_OLDF[czkawka]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_4.1.0"
 WEB_PKG_VERS[czkawka]="6.0.0"
 WEB_PKG_MESG[czkawka]="Benötigt mindestens GTK 4!"
+WEB_PKG_EVAL[czkawka]=""
 WEB_PKG_FILE[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.0.0"
 WEB_PKG_CSUM[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.0.0.sha"
  WEB_PKG_FILE[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.0.0"
@@ -1577,6 +1622,7 @@ WEB_PKG_OLDV[freefilesync]="12.2"
 WEB_PKG_OLDF[freefilesync]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_12.2_Linux.tar.gz"
 WEB_PKG_VERS[freefilesync]="13.0"
 WEB_PKG_MESG[freefilesync]=""
+WEB_PKG_EVAL[freefilesync]=""
 WEB_PKG_FILE[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_13.0_Linux.tar.gz"
 WEB_PKG_CSUM[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_13.0_Linux.tar.gz.sha"
  WEB_PKG_FILE[freefilesync_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
@@ -1593,6 +1639,7 @@ WEB_PKG_OLDV[fs-uae]=""
 WEB_PKG_OLDF[fs-uae]=""
 WEB_PKG_VERS[fs-uae]="3.1.66"
 WEB_PKG_MESG[fs-uae]=""
+WEB_PKG_EVAL[fs-uae]=""
 WEB_PKG_FILE[fs-uae_amd64]="$RESSOURCE_SERVER_DIR/web/FS-UAE_3.1.66_Linux_x86-64.tar.xz"
 WEB_PKG_CSUM[fs-uae_amd64]="$RESSOURCE_SERVER_DIR/web/FS-UAE_3.1.66_Linux_x86-64.tar.xz.sha"
  WEB_PKG_FILE[fs-uae_i386]="$RESSOURCE_SERVER_DIR/web/FS-UAE_3.1.66_Linux_x86-64.tar.xz"
@@ -1609,6 +1656,7 @@ WEB_PKG_OLDV[fs-uae-launcher]=""
 WEB_PKG_OLDF[fs-uae-launcher]=""
 WEB_PKG_VERS[fs-uae-launcher]="3.1.68"
 WEB_PKG_MESG[fs-uae-launcher]=""
+WEB_PKG_EVAL[fs-uae-launcher]=""
 WEB_PKG_FILE[fs-uae-launcher_amd64]="$RESSOURCE_SERVER_DIR/web/FS-UAE-Launcher_3.1.68_Linux_x86-64.tar.xz"
 WEB_PKG_CSUM[fs-uae-launcher_amd64]="$RESSOURCE_SERVER_DIR/web/FS-UAE-Launcher_3.1.68_Linux_x86-64.tar.xz.sha"
  WEB_PKG_FILE[fs-uae-launcher_i386]="$RESSOURCE_SERVER_DIR/web/FS-UAE-Launcher_3.1.68_Linux_x86-64.tar.xz"
@@ -1625,6 +1673,7 @@ WEB_PKG_OLDV[oolite]=""
 WEB_PKG_OLDF[oolite]=""
 WEB_PKG_VERS[oolite]="1.90"
 WEB_PKG_MESG[oolite]=""
+WEB_PKG_EVAL[oolite]=""
 WEB_PKG_FILE[oolite_amd64]="$RESSOURCE_SERVER_DIR/web/oolite-1.90.linux-x86_64.tgz"
 WEB_PKG_CSUM[oolite_amd64]="$RESSOURCE_SERVER_DIR/web/oolite-1.90.linux-x86_64.tgz.sha"
  WEB_PKG_FILE[oolite_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
@@ -1641,6 +1690,7 @@ WEB_PKG_OLDV[openshot-qt]="2.6.1"
 WEB_PKG_OLDF[openshot-qt]="$RESSOURCE_SERVER_DIR/web/OpenShot-v2.6.1-x86_64.AppImage"
 WEB_PKG_VERS[openshot-qt]="3.1.1"
 WEB_PKG_MESG[openshot-qt]="Mindestens 4GB RAM erforderlich!"
+WEB_PKG_EVAL[openshot-qt]=""
 WEB_PKG_FILE[openshot-qt_amd64]="$RESSOURCE_SERVER_DIR/web/OpenShot-v3.1.1-x86_64.AppImage"
 WEB_PKG_CSUM[openshot-qt_amd64]="$RESSOURCE_SERVER_DIR/web/OpenShot-v3.1.1-x86_64.AppImage.sha"
  WEB_PKG_FILE[openshot-qt_i386]="" # Für Linux nur als 64-bit verfügbar
@@ -1657,6 +1707,7 @@ WEB_PKG_OLDV[tor-browser]="12.0.5"
 WEB_PKG_OLDF[tor-browser]="tor-browser-linux64-12.0.5_ALL.tar.xz"
 WEB_PKG_VERS[tor-browser]="12.5.5"
 WEB_PKG_MESG[tor-browser]=""
+WEB_PKG_EVAL[tor-browser]=""
 WEB_PKG_FILE[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux64-12.5.5_ALL.tar.xz"
 WEB_PKG_CSUM[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux64-12.5.5_ALL.tar.xz.sha"
  WEB_PKG_FILE[tor-browser_i386]="" # Für Linux nur als 64-bit verfügbar
@@ -1673,6 +1724,7 @@ WEB_PKG_OLDV[youplay]=""
 WEB_PKG_OLDF[youplay]=""
 WEB_PKG_VERS[youplay]="0.46"
 WEB_PKG_MESG[youplay]="Benötigt mindestens GTK 4!"
+WEB_PKG_EVAL[youplay]=""
 WEB_PKG_FILE[youplay_amd64]="$RESSOURCE_SERVER_DIR/web/youplay_v0.46-GTK4-x86_64.AppImage"
 WEB_PKG_CSUM[youplay_amd64]="$RESSOURCE_SERVER_DIR/web/youplay_v0.46-GTK4-x86_64.AppImage.sha"
  WEB_PKG_FILE[youplay_i386]="" # Für Linux nur als 64-bit verfügbar
@@ -1694,7 +1746,7 @@ EXUPDATE_PKG_LIST=('balena-etcher' 'code-the-classics' 'codium' 'czkawka' 'freef
 ###############################################################################
 # Pakete, die warum auch immer vorzugsweise als Snap installiert werden sollen.
 ###############################################################################
-FORCE_SNAPPY_LIST=('chromium' 'chromium-ffmpeg')
+FORCE_SNAPPY_LIST=('chromium')
 
 ###############################################################################
 # Pakete, die warum auch immer aus externen Quellen installiert werden sollen.
@@ -1789,7 +1841,7 @@ PKG_ICON_LIST[oolite]="oolite.org"
 # Das betrifft bspw. Programme aus den Systemerweiterungen oder Tools (GUIs)
 # für die Konfiguration von Kernel-Modulen sowie externen Treibern.
 ###############################################################################
-ADD_SYS_ICONS=( 'caja-file-management-properties' 'ccsm' 'htop' 'nvidia-settings' 'nm-connection-editor' 'org.gnome.DiskUtility' 'software-properties-gtk' 'time-admin' 'update-manager' 'users-admin' 'xarchiver' 'xscreensaver-properties' )
+ADD_SYS_ICONS=( 'caja-file-management-properties' 'ccsm' 'htop' 'nvidia-settings' 'nm-connection-editor' 'org.gnome.DiskUtility' 'software-properties-gtk' 'software-properties-qt' 'time-admin' 'update-manager' 'users-admin' 'xarchiver' 'xscreensaver-properties' )
 
 ###############################################################################
 # Raspbian Tools - Namen der Symbole (vollständige Dateinamen ohne Pfadangabe
@@ -6142,13 +6194,6 @@ then
     SYS_INFO_TXT+=" Grafik: ${bold_yellow}$GPU_MODEL${colors_off}"$'\n'
   fi
 
-  SYS_INFO_TXT+=" Kernel-Version: ${bold_yellow}$(uname -r)${colors_off}"$'\n'
-
-  if [ "$DEBIAN_VERSION" != "" ];
-  then
-    SYS_INFO_TXT+=" Debian-Version: ${bold_yellow}$DEBIAN_VERSION ($DEBIAN_CODE)${colors_off}"$'\n'
-  fi
-
   if [ "$OPERATION_SYSTEM" != "" ];
   then
     SYS_INFO_TXT+=" Betriebssystem: ${bold_yellow}$OPERATION_SYSTEM${colors_off}"
@@ -6158,6 +6203,13 @@ then
     fi
     SYS_INFO_TXT+=$'\n'
   fi
+
+  if [ "$DEBIAN_VERSION" != "" ];
+  then
+    SYS_INFO_TXT+=" Debian-Version: ${bold_yellow}$DEBIAN_VERSION ($DEBIAN_CODE)${colors_off}"$'\n'
+  fi
+
+  SYS_INFO_TXT+=" Kernel-Version: ${bold_yellow}$(uname -r)${colors_off}"$'\n'
 
   if [ "$ARCHITECTURE_MAIN" != "" ] ||
      [ "$ARCHITECTURE_OTHER" != "" ];
