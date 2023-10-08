@@ -35,7 +35,7 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.74"
+VERSION="3.80"
 # Letzte Änderung: 08.10.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
@@ -1876,12 +1876,18 @@ FORCE_ICONS=( 'caja' 'pi-gpk-prefs' 'pi-gpk-log' 'pi-gpk-update-viewer' )
 REJECT_ICONS=( 'alacarte-made' 'caja-autorun-software' 'caja-browser' 'caja-computer' 'caja-folder-handler' 'caja-home' 'clamtk-kde' 'mate-panel' 'mate-network-scheme' 'mate-theme-installer' 'mozo-made' 'NoMachine-base-' 'NoMachine-status-' 'org.gnome.Evolution-alarm-notify')
 
 ###############################################################################
+# Desktop-Icons die bspw. aufgrund ihres Dateinamens unvermeidbar zusätzlich
+# falsch angelegt werden und am Ende des Scriptes gelöscht werden sollen.
+###############################################################################
+WRONG_ICONS=('Internet/chromium-bsu.desktop')
+
+###############################################################################
 # Zu manchen Programmpaketen werden keine Desktop-Symbolbilder installiert oder
 # nicht an einem Ort abgelegt, an welchem das System diese findet. Zu den in
 # dem Array "LOAD_PIXMAP_ICONS" stehenden Paketnamen wird eine gleichnamige
 # Bilddatei im Format .png heruntergeladen und in /usr/share/pixmaps abgelegt.
 ###############################################################################
-LOAD_PIXMAP_ICONS=( 'hydrogen' 'mandelbulber2' )
+LOAD_PIXMAP_ICONS=('alien-arena' 'hydrogen' 'mandelbulber2')
 
 ###############################################################################
 # Desktop-Ordner des Benutzers (zur Erstellung der Programmsymbole / Icons)
@@ -7129,6 +7135,20 @@ then
     e_and_l "$FULL_LINE"
     ((ALL_ICON_COUNTER+=NEW_ICON_COUNTER))
   fi
+
+  # ---------------------------------------------------------------------------
+  # Falsch zugeordnete Icons entfernen
+  # ---------------------------------------------------------------------------
+  DESKTOP_ICON_DIR="$DESKTOP_DIR/Neue Icons"
+  for desktop_icon in ${WRONG_ICONS[@]};
+  do
+    THE_WRONG_FILE="$DESKTOP_ICON_DIR/$desktop_icon"
+    if [ -s "$THE_WRONG_FILE" ];
+    then
+      rm -f "$THE_WRONG_FILE" &>/dev/null
+      ((ALL_ICON_COUNTER-=1))
+    fi
+  done
 
 fi
 
