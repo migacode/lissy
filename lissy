@@ -35,8 +35,8 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.72"
-# Letzte Änderung: 07.10.2023
+VERSION="3.74"
+# Letzte Änderung: 08.10.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -1811,6 +1811,11 @@ POST_INST_CONF[openssh-server]="echo -n Starte SSH-Dienste ... && service ssh re
 POST_INST_CONF[owncloud-client]="$RESSOURCE_SERVER_DIR/scripts/owncloud_post_inst"
 POST_INST_CONF[php]="$RESSOURCE_SERVER_DIR/scripts/php_post_inst"
 POST_INST_CONF[proftpd-basic]="$RESSOURCE_SERVER_DIR/scripts/proftpd_post_inst"
+# Workaround für VNC-Server auf Linux Mint
+if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ];
+then
+  POST_INST_CONF[realvnc-vnc-server]="apt install xterm -y"
+fi
 POST_INST_CONF[rocksndiamonds]="dpkg-reconfigure rocksndiamonds"
 POST_INST_CONF[samba]="$RESSOURCE_SERVER_DIR/scripts/samba_post_inst"
 POST_INST_CONF[teamviewer]="$RESSOURCE_SERVER_DIR/scripts/teamviewer_post_inst"
@@ -1826,12 +1831,18 @@ POST_INST_CONF[wireguard]="$RESSOURCE_SERVER_DIR/scripts/wireguard_post_inst"
 # Listen angegeben werden (gesucht werden diese in /usr/share/applications).
 ###############################################################################
 declare -A PKG_ICON_LIST
+declare -A PKG_ICON_XDIR # Extra Verzeichnis, falls dieses angelegt werden soll
 
 PKG_ICON_LIST[code-the-classics]="boing bunner cavern myriapod soccer"
+PKG_ICON_XDIR[code-the-classics]="Code the Classics"
 PKG_ICON_LIST[extremetuxracer]="etr"
+PKG_ICON_XDIR[extremetuxracer]=""
 PKG_ICON_LIST[freedoom]="io.github.freedoom.Phase1 io.github.freedoom.Phase2"
-PKG_ICON_LIST[gnome-games]="sol org.gnome.Chess org.gnome.five-or-more org.gnome.Four-in-a-row org.gnome.Hitori org.gnome.Klotski org.gnome.LightsOff org.gnome.Mahjongg org.gnome.Mines org.gnome.Nibbles org.gnome.Quadrapassel org.gnome.Reversi org.gnome.Robots org.gnome.Sudoku org.gnome.SwellFoop org.gnome.Tali org.gnome.Taquin org.gnome.Tetravex"
+PKG_ICON_XDIR[freedoom]=""
+PKG_ICON_LIST[gnome-games]="aisleriot sol org.gnome.Chess org.gnome.five-or-more org.gnome.Four-in-a-row org.gnome.Hitori org.gnome.Klotski org.gnome.LightsOff org.gnome.Mahjongg org.gnome.Mines org.gnome.Nibbles org.gnome.Quadrapassel org.gnome.Reversi org.gnome.Robots org.gnome.Sudoku org.gnome.SwellFoop org.gnome.Tali org.gnome.Taquin org.gnome.Tetravex org.gnome.TwentyFortyEight"
+PKG_ICON_XDIR[gnome-games]="Gnome Games"
 PKG_ICON_LIST[oolite]="oolite.org"
+PKG_ICON_XDIR[oolite]=""
 
 ###############################################################################
 # Zusätzliche Desktop-Symbole zur Ergänzung des Ordners "Systemverwaltung".
@@ -2303,8 +2314,8 @@ function copy_icon_list () {
     do
       DESKTOP_ICON_NAME="${desktop_icon##*/}"
       DESKTOP_ICON_NAME="${DESKTOP_ICON_NAME/.desktop/}"
-      # Nur nicht per Angabe im Script auszulassende Dateien kopieren
       REJECT_THIS=0
+      # Grundsätzlich auszulassende Icons prüfen
       for reject_file in ${REJECT_ICONS[@]};
       do
         if [ "$reject_file" = "$DESKTOP_ICON_NAME" ];
@@ -2313,6 +2324,19 @@ function copy_icon_list () {
           break
         fi
       done
+      # Individuell (in dieser Kategorie) auszulassende Icons prüfen
+      if [ "$EXCLUDE_ICON_LIST" != "" ];
+      then
+        for reject_file in ${EXCLUDE_ICON_LIST[@]};
+        do
+          if [ "$reject_file" = "$DESKTOP_ICON_NAME" ];
+          then
+            REJECT_THIS=1
+            break
+          fi
+        done
+      fi
+      # Auszulassende Dateien nicht kopieren
       if [ $REJECT_THIS -eq 0 ];
       then
         create_extra_icon "$DESKTOP_ICON_NAME"
@@ -2485,6 +2509,27 @@ function create_desktop_icon () {
                 SEARCH_RESULT_TMP+=$'\n'
               fi
             done
+            # Wenn Icons aus vordefinierter Liste gefunden wurden,
+            # dann auch Extra-Verzeichnis prüfen und ggf. anlegen
+            if [ "$SEARCH_RESULT_TMP" != "" ];
+            then
+              if [ "${PKG_ICON_XDIR[$SEARCH_NAME]}" != "" ];
+              then
+                ICON_TARGET_DIR+="/${PKG_ICON_XDIR[$SEARCH_NAME]}"
+                if [ ! -d "$ICON_TARGET_DIR" ];
+                then
+                  ORG_ICON_TARGET_DIR="$ICON_TARGET_DIR"
+                  mkdir "$ICON_TARGET_DIR" &>/dev/null
+                  if [ $? -eq 0 ];
+                  then
+                    chown "$USER_USERNAME:$USER_USERNAME" "$ICON_TARGET_DIR" &>/dev/null
+                    chmod 0755 "$ICON_TARGET_DIR" &>/dev/null
+                  else
+                    ICON_TARGET_DIR="$ORG_ICON_TARGET_DIR"
+                  fi
+                fi
+              fi
+            fi
             SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"
           fi
 
@@ -7002,6 +7047,7 @@ then
       SEARCH_RESULT_SNAP=$(ls "/var/lib/snapd/desktop/applications" | grep -i -E "gnome.*\.desktop")
     fi
     SEARCH_ICON_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]}"
+    EXCLUDE_ICON_LIST="${PKG_ICON_LIST[gnome-games]}"
     copy_icon_list
   fi
 
@@ -7022,6 +7068,7 @@ then
     fi
     SEARCH_ICON_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]}"
     create_extra_icon "matecc" # Control-Center / Steuerzentrale separat ("-" fehlt im Namen)
+    EXCLUDE_ICON_LIST=""
     copy_icon_list
   fi
 
@@ -7041,6 +7088,7 @@ then
       SEARCH_RESULT_SNAP=$(ls "/var/lib/snapd/desktop/applications" | grep -i -E "^lx.*\.desktop")
     fi
     SEARCH_ICON_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]}"
+    EXCLUDE_ICON_LIST=""
     copy_icon_list
   fi
 
@@ -7060,6 +7108,7 @@ then
       SEARCH_RESULT_SNAP=$(ls "/var/lib/snapd/desktop/applications" | grep -i -E "^xfce.*\.desktop")
     fi
     SEARCH_ICON_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]}"
+    EXCLUDE_ICON_LIST=""
     copy_icon_list
   fi
 
