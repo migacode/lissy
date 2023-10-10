@@ -35,8 +35,8 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.79"
-# Letzte Änderung: 09.10.2023
+VERSION="3.80"
+# Letzte Änderung: 10.10.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -551,7 +551,11 @@ then
     then
       DEBIAN_CODE="$OS_V_CODENAME"
     fi
+    # Von LMDE eigene Namen anpassen an die zugrunde liegende Debian-Version
+    if [ $(echo "$DEBIAN_CODE" | grep -i -c -E "faye") -gt 0 ]; then DEBIAN_CODE="bookworm"; fi
+    # ----
   fi
+
   UBUNTU_VERSION=""
   DEBIAN_VERSION=""
   if [ "$OS_U_CODENAME" != "" ];
@@ -572,6 +576,9 @@ then
   if [ $(uname -a 2>/dev/null | grep -i -c -E "debian") -gt 0 ] &&
      [ "$DEBIAN_VERSION" = "" ];
   then
+    # Von LMDE eigene Namen anpassen an die zugrunde liegende Debian-Version
+    if [ $(echo "$OS_V_CODENAME" | grep -i -c -E "faye") -gt 0 ]; then OS_V_CODENAME="bookworm"; fi
+    # ----
     if [ $(echo "$OS_V_CODENAME" | grep -i -c -E "stretch") -gt 0 ];  then DEBIAN_VERSION="9";  fi
     if [ $(echo "$OS_V_CODENAME" | grep -i -c -E "buster") -gt 0 ];   then DEBIAN_VERSION="10"; fi
     if [ $(echo "$OS_V_CODENAME" | grep -i -c -E "bullseye") -gt 0 ]; then DEBIAN_VERSION="11"; fi
@@ -1059,7 +1066,7 @@ PPA_REPO_SRC[makemkv-bin]="heyarje-ubuntu-makemkv-beta*"
 declare -A DEB_PKG_NAME # Angezeigter Name des Programms
 declare -A DEB_PKG_VERS # Auf migano.de zum Download bereitgestellte Version
 declare -A DEB_PKG_MESG # Hinweis zur Installation der neuen Version
-declare -A DEB_PKG_EVAL # Kommando zum Testen der Voraussetzungen
+declare -A DEB_PKG_EVAL # Kommando zum Testen der Voraussetzungen [in Vorbereitung]
 declare -A DEB_PKG_FILE # Download-URL
 declare -A DEB_PKG_CSUM # Prüfsumme ODER URL zu Prüfsummen-Datei
 declare -A DEB_PKG_OLDV # Nummer der Vorgänger-Version (nur amd64)
@@ -1551,7 +1558,7 @@ declare -A WEB_PKG_NAME # Angezeigter Name des Programms und zugleich der Ordner
                         # ACHTUNG: Nur der Ordnername, nicht der vollständge Pfad (siehe WEB_PKG_DIR)!
 declare -A WEB_PKG_VERS # Auf migano.de zum Download bereitgestellte Version
 declare -A WEB_PKG_MESG # Hinweis zur Installation der neuen Version
-declare -A WEB_PKG_EVAL # Kommando zum Testen der Voraussetzungen
+declare -A WEB_PKG_EVAL # Kommando zum Testen der Voraussetzungen [in Vorbereitung]
 declare -A WEB_PKG_FILE # Download-URL
 declare -A WEB_PKG_CSUM # Prüfsumme ODER URL zu Prüfsummen-Datei
 declare -A WEB_PKG_CATY # Kategorie für den Linux-Menü-Eintrag (NICHT unsere Kategorien)
@@ -2819,15 +2826,17 @@ function extend_repo_erw () {
         e_and_l "$OK_TAG"
         repo_update "$PRE_SPACE Aktualisiere das Repository, bitte warten ... "
       else
-        e_and_l "$ERROR_TAG beim Erstellen der Quellen-Datei!"
+        e_and_l ""
+        e_and_l "$PRE_SPACE $ERROR_TAG beim Erstellen der Quellen-Datei!"
         add_full_log
       fi
     else
-      e_and_l "$ERROR_TAG"
+      e_and_l "$ERROR_TAG $LINENO"
       add_full_log
     fi
   else
-    e_and_l "$ERROR_TAG beim Download des Authentifizierungs-Schlüssels!"
+    e_and_l ""
+    e_and_l "$PRE_SPACE $ERROR_TAG beim Download des Authentifizierungs-Schlüssels!"
     add_full_log
     remove_file "$LOCAL_DOWNLOAD_FILE"
   fi
@@ -2848,7 +2857,8 @@ function extend_repo_ppa () {
     e_and_l "$OK_TAG"
     repo_update "$PRE_SPACE Aktualisiere das Repository, bitte warten ... "
   else
-    e_and_l "$ERROR_TAG beim Erweitern des Repository!"
+    e_and_l ""
+    e_and_l "$PRE_SPACE $ERROR_TAG beim Erweitern des Repository!"
     add_full_log
   fi
 }
@@ -3710,6 +3720,7 @@ function install_pkg () {
               CONTINUE_INSTALL=0
             fi
           fi
+
           # -------------------------------------------------------------------
           # Ja/Nein-Abfrage (wird automatisch mit Ja beantwortet, wenn die
           # Option "force" gewählt wurde und es auch keinen Konflikt gibt)
@@ -3724,27 +3735,30 @@ function install_pkg () {
           # -------------------------------------------------------------------
           # Wenn ein Voraussetzungs-Hinweis existiert, diesen vorher anzeigen
           # -------------------------------------------------------------------
-          if [ "${DEB_PKG_MESG["$PAKET"]}" != "" ] ||
-             [ "${WEB_PKG_MESG["$PAKET"]}" != "" ];
+          if [ $CONTINUE_INSTALL -eq 1 ];
           then
-            if [ ${OPTION_FLAG[force]} -ne 0 ];
+            if [ "${DEB_PKG_MESG["$PAKET"]}" != "" ] ||
+               [ "${WEB_PKG_MESG["$PAKET"]}" != "" ];
             then
-              e_and_l " Installation von ${light_yellow}$PAKET${colors_off} ..."
-              e_and_l -n "$PRE_SPACE"
+              if [ ${OPTION_FLAG[force]} -ne 0 ];
+              then
+                e_and_l " Installation von ${light_yellow}$PAKET${colors_off} ..."
+                e_and_l -n "$PRE_SPACE"
+              fi
+              TMP_MESG="${bold_red}Achtung:${colors_off} ${light_yellow}"
+              if [ "${DEB_PKG_MESG["$PAKET"]}" != "" ];
+              then
+                TMP_MESG+="${DEB_PKG_MESG["$PAKET"]}"
+              else
+                TMP_MESG+="${WEB_PKG_MESG["$PAKET"]}"
+              fi
+              TMP_MESG+="${colors_off}"
+              e_and_l " $TMP_MESG"
+              e_and_l " ${PRE_SPACE}Bitte prüfe vor der Installation, ob diese Voraussetzung erfüllt ist."
+              ask_yes_or_no " ${PRE_SPACE}Dieses Programmpaket jetzt wirklich installieren"
+              CONTINUE_INSTALL=$?
+              if [ $CONTINUE_INSTALL -eq 1 ]; then e_and_l -n "${PRE_SPACE}"; fi
             fi
-            TMP_MESG="${bold_red}Achtung:${colors_off} ${light_yellow}"
-            if [ "${DEB_PKG_MESG["$PAKET"]}" != "" ];
-            then
-              TMP_MESG+="${DEB_PKG_MESG["$PAKET"]}"
-            else
-              TMP_MESG+="${WEB_PKG_MESG["$PAKET"]}"
-            fi
-            TMP_MESG+="${colors_off}"
-            e_and_l " $TMP_MESG"
-            e_and_l " ${PRE_SPACE}Bitte prüfe vor der Installation, ob diese Voraussetzung erfüllt ist."
-            ask_yes_or_no " ${PRE_SPACE}Dieses Programmpaket jetzt wirklich installieren"
-            CONTINUE_INSTALL=$?
-            if [ $CONTINUE_INSTALL -eq 1 ]; then e_and_l -n "${PRE_SPACE}"; fi
           fi
 
           # -------------------------------------------------------------------
@@ -7404,51 +7418,56 @@ then
       # ========================================================================
       ACTION_MESSAGE=" Extra-Mauszeiger ${light_cyan}CursorPack${colors_off} installieren"
       USER_ICON_DIR="$USER_HOME_DIR/.icons"
-      if [ ! -f "$USER_ICON_DIR/.CursorPack_ok" ];
+      if [ "$DESKTOP_ENVIRONMENT" = "MATE" ];
       then
-        ask_yes_or_no "$ACTION_MESSAGE"
-        if [ $? -eq 1 ];
+        if [ ! -f "$USER_ICON_DIR/.CursorPack_ok" ];
         then
-          e_and_l -n " Installiere ${light_yellow}CursorPack${colors_off}, bitte warten       "
-          DOWNLOAD_FILE_URL="$RESSOURCE_SERVER_DIR/CursorPack.7z"
-          DOWNLOAD_FILE_NAME="${DOWNLOAD_FILE_URL##*/}"
-          LOCAL_DOWNLOAD_FILE="$DOWNLOAD_DIR/$DOWNLOAD_FILE_NAME"
-          wget -nv -O "$LOCAL_DOWNLOAD_FILE" "$DOWNLOAD_FILE_URL" &>"$LOG_TEMP"
-          if [ $? -eq 0 ] &&
-             [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
-             [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
+          ask_yes_or_no "$ACTION_MESSAGE"
+          if [ $? -eq 1 ];
           then
-            chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
-            if [ ! -d "$USER_ICON_DIR" ];
+            e_and_l -n " Installiere ${light_yellow}CursorPack${colors_off}, bitte warten       "
+            DOWNLOAD_FILE_URL="$RESSOURCE_SERVER_DIR/CursorPack.7z"
+            DOWNLOAD_FILE_NAME="${DOWNLOAD_FILE_URL##*/}"
+            LOCAL_DOWNLOAD_FILE="$DOWNLOAD_DIR/$DOWNLOAD_FILE_NAME"
+            wget -nv -O "$LOCAL_DOWNLOAD_FILE" "$DOWNLOAD_FILE_URL" &>"$LOG_TEMP"
+            if [ $? -eq 0 ] &&
+              [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
+              [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
             then
-              mkdir -p "$USER_ICON_DIR" &>/dev/null
-            fi
-            if [ -d "$USER_ICON_DIR" ];
-            then
-              7z x "$LOCAL_DOWNLOAD_FILE" -o"$USER_ICON_DIR/" -y &>"$LOG_TEMP"
-              if [ $? -eq 0 ];
+              chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+              if [ ! -d "$USER_ICON_DIR" ];
               then
-                chown -R "$USER_USERNAME:$USER_USERNAME" "$USER_ICON_DIR" &>/dev/null
-                # chmod 0755 "$USER_ICON_DIR" &>/dev/null
-                remove_file "$LOCAL_DOWNLOAD_FILE"
-                e_and_l "... $OK_TAG"
-                CHANGES_MADE=1
+                mkdir -p "$USER_ICON_DIR" &>/dev/null
+              fi
+              if [ -d "$USER_ICON_DIR" ];
+              then
+                7z x "$LOCAL_DOWNLOAD_FILE" -o"$USER_ICON_DIR/" -y &>"$LOG_TEMP"
+                if [ $? -eq 0 ];
+                then
+                  chown -R "$USER_USERNAME:$USER_USERNAME" "$USER_ICON_DIR" &>/dev/null
+                  # chmod 0755 "$USER_ICON_DIR" &>/dev/null
+                  remove_file "$LOCAL_DOWNLOAD_FILE"
+                  e_and_l "... $OK_TAG"
+                  CHANGES_MADE=1
+                else
+                  e_and_l "... $ERROR_TAG $LINENO"
+                  add_full_log
+                fi
               else
                 e_and_l "... $ERROR_TAG $LINENO"
                 add_full_log
               fi
             else
-              e_and_l "... $ERROR_TAG $LINENO"
+              e_and_l "... ${bold_red}nicht${colors_off} installiert"
+              remove_file "$LOCAL_DOWNLOAD_FILE"
               add_full_log
             fi
-          else
-            e_and_l "... ${bold_red}nicht${colors_off} installiert"
-            remove_file "$LOCAL_DOWNLOAD_FILE"
-            add_full_log
           fi
+        else
+          e_and_l "$ACTION_MESSAGE   ... $NC_TAG"
         fi
-      else
-        e_and_l "$ACTION_MESSAGE   ... $NC_TAG"
+      else # kein MATE
+        e_and_l "$(skip_text "$ACTION_MESSAGE  " "nur MATE-Desktop")"
       fi
 
       # ===========================================================================
