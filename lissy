@@ -35,8 +35,8 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.80"
-# Letzte Änderung: 10.10.2023
+VERSION="3.81"
+# Letzte Änderung: 13.10.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -891,7 +891,14 @@ KATEGORIE_PKGS[c]="owncloud-client nextcloud-desktop"
 # Programmierung
 KATEGORIE_PKGS[p]="bless closure-compiler codium geany ghex kate kdiff3 kompare meld mu-editor python3 scratch thonny"
 # Emulation und Virtualisierung
-KATEGORIE_PKGS[q]="docker.io qemu-system-common qemu-system-data qemu-system-x86 qemu-system-arm qemu-system-gui qemu-efi-aarch64 qemu-efi-arm qemu-utils qemu-block-extra libvirt-daemon-system libvirt-clients bridge-utils virtualbox virtualbox-ext-pack virtualbox-guest-additions-iso virt-manager"
+KATEGORIE_PKGS[q]="docker.io qemu-system-common qemu-system-data qemu-system-x86 qemu-system-arm qemu-system-gui qemu-efi-aarch64 qemu-efi-arm qemu-utils qemu-block-extra libvirt-daemon-system libvirt-clients bridge-utils virt-manager"
+if [ $(uname -a 2>/dev/null | grep -i -c -E "debian") -gt 0 ] &&
+   [ $(echo "$OS_V_CODENAME" | grep -i -c -E "bookworm") -gt 0 ];
+then
+  KATEGORIE_PKGS[q]+=" virtualbox-7.0"
+else
+  KATEGORIE_PKGS[q]+=" virtualbox virtualbox-ext-pack virtualbox-guest-additions-iso"
+fi
 # FTP-Server
 KATEGORIE_PKGS[f]="proftpd-basic"
 # Grafik
@@ -985,6 +992,7 @@ SIMILAR_PACK[pdfarranger]="pdfmod"
 SIMILAR_PACK[pinta]="drawing"
 SIMILAR_PACK[transmission-common]="transmission"
 SIMILAR_PACK[usb-creator-common]="balena-etcher"
+SIMILAR_PACK[virtualbox]="virtualbox-7.0"
 
 ###############################################################################
 # Einige Programme sind nicht in jedem Repository enthalten und können dann
@@ -1027,6 +1035,17 @@ ERW_REPO_TXT[microsoft-edge-stable]="deb [arch=amd64] https://packages.microsoft
 
 ERW_AUTH_KEY[microsoft-edge-dev]="https://packages.microsoft.com/keys/microsoft.asc"
 ERW_REPO_TXT[microsoft-edge-dev]="deb [arch=amd64] https://packages.microsoft.com/repos/edge/ stable main"
+
+# In reinen Debian-Systemen ist VirtualBox nicht enthalten,
+# aber auf den Original-Seiten von VirtualBox downloadbar.
+# ACHTUNG: Der Paketname lautet dann "virtualbox-7.0", nicht nur "virtualbox"
+# HINWEIS: Auch als externes Paket verfügbar (s.u. DEB)
+if [ $(uname -a 2>/dev/null | grep -i -c -E "debian") -gt 0 ] &&
+   [ $(echo "$OS_V_CODENAME" | grep -i -c -E "bookworm") -gt 0 ];
+then
+  ERW_AUTH_KEY[virtualbox-7.0]="https://www.virtualbox.org/download/oracle_vbox_2016.asc"
+  ERW_REPO_TXT[virtualbox-7.0]="deb [arch=amd64] http://download.virtualbox.org/virtualbox/debian bookworm contrib"
+fi
 
 # TeamViewer besser mit direkten Download (s.u. DEB) installieren, weil
 # TeamViewer bei der Installation seine eigenen Repo-Erweiterungen anlegt
@@ -1485,39 +1504,20 @@ then
   DEB_PKG_FILE[yt-dlp_amd64]="$RESSOURCE_SERVER_DIR/deb/yt-dlp_2023.03.04-1_all.deb"
   DEB_PKG_CSUM[yt-dlp_amd64]="$RESSOURCE_SERVER_DIR/deb/yt-dlp_2023.03.04-1_all.deb.sha"
 
-  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # ACHTUNG: VirtualBox läuft derzeit nicht sauber auf reinem Debian 12 !!!
-  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Download von https://www.virtualbox.org/wiki/Linux_Downloads
-  # DEB_PKG_NAME[virtualbox]="VirtualBox"
-  # DEB_PKG_OLDV[virtualbox]=""
-  # DEB_PKG_OLDF[virtualbox]=""
-  # DEB_PKG_VERS[virtualbox]="7.0.10"
-  # DEB_PKG_MESG[virtualbox]=""
-  # DEB_PKG_EVAL[virtualbox]=""
-  # DEB_PKG_FILE[virtualbox_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.10-158379~Debian~bookworm_amd64.deb"
-  # DEB_PKG_CSUM[virtualbox_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.10-158379~Debian~bookworm_amd64.deb.sha"
-
-  # Download von https://www.virtualbox.org/wiki/Downloads
-  # DEB_PKG_NAME[virtualbox-ext-pack]="VirtualBox Extension Pack"
-  # DEB_PKG_OLDV[virtualbox-ext-pack]=""
-  # DEB_PKG_OLDF[virtualbox-ext-pack]=""
-  # DEB_PKG_VERS[virtualbox-ext-pack]="7.0.10"
-  # DEB_PKG_MESG[virtualbox-ext-pack]=""
-  # DEB_PKG_EVAL[virtualbox-ext-pack]=""
-  # DEB_PKG_FILE[virtualbox-ext-pack_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualBox_Extension_Pack-7.0.10.vbox-extpack"
-  # DEB_PKG_CSUM[virtualbox-ext-pack_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualBox_Extension_Pack-7.0.10.vbox-extpack.sha"
-
-  # Download von https://packages.debian.org/sid/virtualbox-guest-additions-iso
-  # DEB_PKG_NAME[virtualbox-guest-additions-iso]="VirtualBox Guest Additions"
-  # DEB_PKG_OLDV[virtualbox-guest-additions-iso]=""
-  # DEB_PKG_OLDF[virtualbox-guest-additions-iso]=""
-  # DEB_PKG_VERS[virtualbox-guest-additions-iso]="7.0.10"
-  # DEB_PKG_MESG[virtualbox-guest-additions-iso]=""
-  # DEB_PKG_EVAL[virtualbox-guest-additions-iso]=""
-  # DEB_PKG_FILE[virtualbox-guest-additions-iso_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-guest-additions-iso_7.0.10-1_all.deb"
-  # DEB_PKG_CSUM[virtualbox-guest-additions-iso_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-guest-additions-iso_7.0.10-1_all.deb.sha"
-  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # ACHTUNG: Der Paketname lautet dann "virtualbox-7.0", nicht nur "virtualbox"
+  # HINWEIS: Auch als Repo-Erweiterung verfügbar (s.o. ERW)
+  if [ $(uname -a 2>/dev/null | grep -i -c -E "debian") ];
+  then
+    DEB_PKG_NAME[virtualbox-7.0]="VirtualBox 7.0"
+    DEB_PKG_OLDV[virtualbox-7.0]=""
+    DEB_PKG_OLDF[virtualbox-7.0]=""
+    DEB_PKG_VERS[virtualbox-7.0]="7.0.10"
+    DEB_PKG_MESG[virtualbox-7.0]=""
+    DEB_PKG_EVAL[virtualbox-7.0]=""
+    DEB_PKG_FILE[virtualbox-7.0_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.10-158379~Debian~bookworm_amd64.deb"
+    DEB_PKG_CSUM[virtualbox-7.0_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.10-158379~Debian~bookworm_amd64.deb.sha"
+  fi
 
 fi
 # -----------------------------------------------------------------------------
@@ -1828,7 +1828,8 @@ POST_INST_CONF[samba]="$RESSOURCE_SERVER_DIR/scripts/samba_post_inst"
 POST_INST_CONF[teamviewer]="$RESSOURCE_SERVER_DIR/scripts/teamviewer_post_inst"
 POST_INST_CONF[tor-browser]="$RESSOURCE_SERVER_DIR/scripts/tor-browser_post_inst"
 POST_INST_CONF[usbauth-notifier]="$RESSOURCE_SERVER_DIR/scripts/usbauth-notifier_post_inst"
-POST_INST_CONF[virtualbox]="usermod -aG vboxusers $USER_USERNAME"
+POST_INST_CONF[virtualbox]="usermod -a -G vboxusers $USER_USERNAME"
+POST_INST_CONF[virtualbox-7.0]="$RESSOURCE_SERVER_DIR/scripts/virtualbox-7.0_post_inst"
 POST_INST_CONF[wireguard]="$RESSOURCE_SERVER_DIR/scripts/wireguard_post_inst"
 
 ###############################################################################
@@ -2450,6 +2451,7 @@ function create_desktop_icon () {
           # ------------------------------------------------------
           # "Erweiterte" Paketnamen bereinigen auf Basisnamen
           SEARCH_NAME="$1"
+          SEARCH_NAME="${SEARCH_NAME/-7.0/}"    # VirtualBox
           SEARCH_NAME="${SEARCH_NAME/-bin/}"
           SEARCH_NAME="${SEARCH_NAME/-client/}"
           SEARCH_NAME="${SEARCH_NAME/-common/}"
