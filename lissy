@@ -36,7 +36,7 @@
 #                                                                             #
 ###############################################################################
 VERSION="3.81"
-# Letzte Änderung: 13.10.2023
+# Letzte Änderung: 14.10.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -908,7 +908,7 @@ if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORI
 KATEGORIE_PKGS[i]="anydesk ipscan chromium filezilla firefox opera-stable microsoft-edge-stable nomachine realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission-common virt-viewer wireshark"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[i]+=" hexchat warpinator"; fi
 # Multimedia
-KATEGORIE_PKGS[m]="asunder celluloid cheese easytag handbrake hypnotix k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mediainfo-gui mixxx mkvtoolnix mkvtoolnix-gui mpv parole openshot-qt rhythmbox smplayer vlc yt-dlp youtube-dl youtubedl-gui youplay"
+KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mediainfo-gui mixxx mkvtoolnix mkvtoolnix-gui mpv parole openshot-qt rhythmbox smplayer vlc yt-dlp youtube-dl youtubedl-gui youplay"
 # Netzwerkverbindungen
 KATEGORIE_PKGS[n]="openvpn network-manager-openvpn network-manager-openvpn-gnome vpnc vpnc-scripts network-manager-vpnc network-manager-vpnc-gnome"
 # Spiele
@@ -979,6 +979,8 @@ SIMILAR_PACK[file-roller]="xarchiver"
 SIMILAR_PACK[firefox]="firefox-esr"
 SIMILAR_PACK[gcompris-qt]="gcompris"
 SIMILAR_PACK[gnome-tweaks]="gnome-tweak-tool"
+SIMILAR_PACK[iptvnator]="hypnotix"
+SIMILAR_PACK[hypnotix]="freetuxtv"
 SIMILAR_PACK[k3b]="brasero"
 SIMILAR_PACK[kid3]="exfalso"
 SIMILAR_PACK[libreoffice]="libreoffice-common"
@@ -1158,6 +1160,22 @@ then
   DEB_PKG_FILE[hypnotix_armhf]="" # NUR für 64-bit verfügbar
   DEB_PKG_CSUM[hypnotix_armhf]="" # NUR für 64-bit verfügbar
 fi
+
+# Download von https://github.com/4gray/iptvnator
+DEB_PKG_NAME[iptvnator]="IPTVnator"
+DEB_PKG_OLDV[iptvnator]=""
+DEB_PKG_OLDF[iptvnator]=""
+DEB_PKG_VERS[iptvnator]="0.14"
+DEB_PKG_MESG[iptvnator]=""
+DEB_PKG_EVAL[iptvnator]=""
+DEB_PKG_FILE[iptvnator_amd64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.14.0_amd64.deb"
+DEB_PKG_CSUM[iptvnator_amd64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.14.0_amd64.deb.sha"
+DEB_PKG_FILE[iptvnator_i386]="" # NUR für 64-bit verfügbar
+DEB_PKG_CSUM[iptvnator_i386]="" # NUR für 64-bit verfügbar
+DEB_PKG_FILE[iptvnator_arm64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.14.0_arm64.deb"
+DEB_PKG_CSUM[iptvnator_arm64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.14.0_arm64.deb.sha"
+DEB_PKG_FILE[iptvnator_armhf]="" # NUR für 64-bit verfügbar
+DEB_PKG_CSUM[iptvnator_armhf]="" # NUR für 64-bit verfügbar
 
 # Download von https://angryip.org/download/#linux
 DEB_PKG_NAME[ipscan]="Angry IP Scanner"
@@ -1747,7 +1765,7 @@ WEB_PKG_CSUM[youplay_armhf]="" # NICHT für ARM verfügbar
 # im Repo haben und somit von apt auch nicht automatisch aktualisiert werden.
 # Dient als Basis für die Updates dieser Programme mit der Option "exupdate".
 ###############################################################################
-EXUPDATE_PKG_LIST=('balena-etcher' 'code-the-classics' 'codium' 'czkawka' 'freefilesync' 'hypnotix' 'ipscan' 'nomachine' 'openshot-qt' 'tor-browser' 'veracrypt' 'xnview' 'youplay')
+EXUPDATE_PKG_LIST=('balena-etcher' 'code-the-classics' 'codium' 'czkawka' 'freefilesync' 'hypnotix' 'ipscan' 'iptvnator' 'nomachine' 'openshot-qt' 'tor-browser' 'veracrypt' 'xnview' 'youplay')
 
 ###############################################################################
 # Pakete, die warum auch immer vorzugsweise als Snap installiert werden sollen.
@@ -1806,7 +1824,9 @@ POST_INST_CONF[anydesk]="$RESSOURCE_SERVER_DIR/scripts/anydesk_post_inst"
 POST_INST_CONF[code-the-classics]="$RESSOURCE_SERVER_DIR/scripts/code-the-classics_post_inst"
 POST_INST_CONF[czkawka]="$RESSOURCE_SERVER_DIR/scripts/czkawka_post_inst"
 POST_INST_CONF[freefilesync]="$RESSOURCE_SERVER_DIR/scripts/freefilesync_post_inst"
+POST_INST_CONF[freetuxtv]="$RESSOURCE_SERVER_DIR/scripts/freetuxtv_post_inst"
 POST_INST_CONF[hypnotix]="$RESSOURCE_SERVER_DIR/scripts/hypnotix_post_inst"
+POST_INST_CONF[iptvnator]="$RESSOURCE_SERVER_DIR/scripts/iptvnator_post_inst"
 POST_INST_CONF[keepass2]="$RESSOURCE_SERVER_DIR/scripts/keepass2_post_inst"
 POST_INST_CONF[libdvd-pkg]="dpkg-reconfigure libdvd-pkg"
 POST_INST_CONF[makemkv-bin]="$RESSOURCE_SERVER_DIR/scripts/makemkv-bin_post_inst"
@@ -5980,35 +6000,6 @@ if [ ${OPTION_FLAG[logfull]} -eq 1 ]; then OPTION_FLAG[log]=1; fi
 if [ ${OPTION_FLAG[log]} -eq 1 ]; then echo -n "" > "$LOG_FILE"; fi
 show_headlines
 
-###############################################################################
-# Prüfen, ob in der Liste der Alternativ-Programme Zirkelbezüge vorhanden sind
-###############################################################################
-for pkg in ${ALL_PKG_LIST[@]}
-do
-  TEST_SIM_PACK="$pkg"
-  LAST_SIM_PACK=""
-  ALT_LIST=(  )
-  while [ "$TEST_SIM_PACK" != "$LAST_SIM_PACK" ];
-  do
-    ALT_LIST=("${ALT_LIST[@]}" "$TEST_SIM_PACK")
-    LAST_SIM_PACK="$TEST_SIM_PACK"
-    if [ "${SIMILAR_PACK[$TEST_SIM_PACK]}" != "" ];
-    then
-      TEST_SIM_PACK="${SIMILAR_PACK[$TEST_SIM_PACK]}"
-      for alt_pkg in ${ALT_LIST[@]};
-      do
-        if [ "$TEST_SIM_PACK" = "$alt_pkg" ];
-        then
-          e_and_l " $ERROR_TAG: Für das Programmpaket ${light_yellow}$pkg${colors_off} ist zwischen den Alternativen"
-          e_and_l " ${light_purple}$LAST_SIM_PACK${colors_off} und ${light_purple}$TEST_SIM_PACK${colors_off} ein ungültiger Zirkelbezug eingetragen!"
-          e_and_l ""
-          exit 1
-        fi
-      done
-    fi
-  done
-done
-
 if [ ${OPTION_FLAG[log]} -eq 1 ];
 then
   do_log "$FULL_LINE"
@@ -6199,6 +6190,35 @@ then
   e_and_l ""
   exit 1;
 fi
+
+###############################################################################
+# Prüfen, ob in der Liste der Alternativ-Programme Zirkelbezüge vorhanden sind
+###############################################################################
+for pkg in ${ALL_PKG_LIST[@]}
+do
+  TEST_SIM_PACK="$pkg"
+  LAST_SIM_PACK=""
+  ALT_LIST=(  )
+  while [ "$TEST_SIM_PACK" != "$LAST_SIM_PACK" ];
+  do
+    ALT_LIST=("${ALT_LIST[@]}" "$TEST_SIM_PACK")
+    LAST_SIM_PACK="$TEST_SIM_PACK"
+    if [ "${SIMILAR_PACK[$TEST_SIM_PACK]}" != "" ];
+    then
+      TEST_SIM_PACK="${SIMILAR_PACK[$TEST_SIM_PACK]}"
+      for alt_pkg in ${ALT_LIST[@]};
+      do
+        if [ "$TEST_SIM_PACK" = "$alt_pkg" ];
+        then
+          e_and_l " $ERROR_TAG: Für das Programmpaket ${light_yellow}$pkg${colors_off} ist zwischen den Alternativen"
+          e_and_l " ${light_purple}$LAST_SIM_PACK${colors_off} und ${light_purple}$TEST_SIM_PACK${colors_off} ein ungültiger Zirkelbezug eingetragen!"
+          e_and_l ""
+          exit 1
+        fi
+      done
+    fi
+  done
+done
 
 ###############################################################################
 # Dateien zur Speicherung von dconf-Daten
