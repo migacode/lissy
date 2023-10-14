@@ -1165,7 +1165,7 @@ fi
 DEB_PKG_NAME[iptvnator]="IPTVnator"
 DEB_PKG_OLDV[iptvnator]=""
 DEB_PKG_OLDF[iptvnator]=""
-DEB_PKG_VERS[iptvnator]="0.14"
+DEB_PKG_VERS[iptvnator]="0.14.0"
 DEB_PKG_MESG[iptvnator]=""
 DEB_PKG_EVAL[iptvnator]=""
 DEB_PKG_FILE[iptvnator_amd64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.14.0_amd64.deb"
