@@ -35,8 +35,8 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.81"
-# Letzte Änderung: 14.10.2023
+VERSION="3.83"
+# Letzte Änderung: 15.10.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -868,8 +868,12 @@ OPTION_MENU[saveconf]=5
 ###############################################################################
 # Paket-Listen definieren (Kategorisierte Listen von Programmpaketen)
 # -----------------------------------------------------------------------------
+# HINWEIS: Wenn zu einem Paket automatisch weitere Pakete installiert
+# werden sollen, können diese in AUTO_ADD_PKGS angegeben werden!
+# -----------------------------------------------------------------------------
 # Sollen aus irgendeinem Grund Snap- oder externe Pakete bevorzugt werden, dann
 # können diese in FORCE_SNAPPY_LIST und FORCE_EXTERN_LIST eingetragen werden.
+# -----------------------------------------------------------------------------
 ###############################################################################
 # Apache und PHP (Webserver)- mit vielen PHP-Modulen in aktueller Version ;)
 PHP_VERSION=$(LANG=en apt show "php" 2>/dev/null | grep -i -E "depends\:\s*")
@@ -884,7 +888,7 @@ then
   done
 fi
 # Büro
-KATEGORIE_PKGS[b]="calibre evolution libreoffice okular pdfarranger pdfchain qpdfview scribus scribus-template"
+KATEGORIE_PKGS[b]="calibre evolution libreoffice okular pdfarranger pdfchain qpdfview scribus"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[b]+=" thingy xreader"; fi
 # Cloud-Clients"Online-Datenspeicher"
 KATEGORIE_PKGS[c]="owncloud-client nextcloud-desktop"
@@ -894,21 +898,21 @@ KATEGORIE_PKGS[p]="bless closure-compiler codium geany ghex kate kdiff3 kompare 
 KATEGORIE_PKGS[q]="docker.io qemu-system-common qemu-system-data qemu-system-x86 qemu-system-arm qemu-system-gui qemu-efi-aarch64 qemu-efi-arm qemu-utils qemu-block-extra libvirt-daemon-system libvirt-clients bridge-utils virt-manager"
 if [ $(uname -a 2>/dev/null | grep -i -c -E "debian") -gt 0 ] &&
    [ $(echo "$OS_V_CODENAME" | grep -i -c -E "bookworm") -gt 0 ];
-then
+then # Externes Paket => Extension-Pack wird per POST_ACTION nachinstalliert
   KATEGORIE_PKGS[q]+=" virtualbox-7.0"
-else
-  KATEGORIE_PKGS[q]+=" virtualbox virtualbox-ext-pack virtualbox-guest-additions-iso"
+else # Repo => Extensions siehe AUTO_ADD_PKGS
+  KATEGORIE_PKGS[q]+=" virtualbox"
 fi
 # FTP-Server
 KATEGORIE_PKGS[f]="proftpd-basic"
 # Grafik
-KATEGORIE_PKGS[g]="blender darktable digikam drawing eom fraqtive geeqie gimp gpicview gpick gwenview imagemagick inkscape krita krita-l10n mandelbulber2 mtpaint pinta rawtherapee shotwell simple-scan xnview"
+KATEGORIE_PKGS[g]="blender darktable digikam drawing eom fraqtive geeqie gimp gpicview gpick gwenview imagemagick inkscape krita mandelbulber2 mtpaint pinta rawtherapee shotwell simple-scan xnview"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[g]+=" pix xviewer"; fi
 # Internet
 KATEGORIE_PKGS[i]="anydesk ipscan chromium filezilla firefox opera-stable microsoft-edge-stable nomachine realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission-common virt-viewer wireshark"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[i]+=" hexchat warpinator"; fi
 # Multimedia
-KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mediainfo-gui mixxx mkvtoolnix mkvtoolnix-gui mpv parole openshot-qt rhythmbox smplayer vlc yt-dlp youtube-dl youtubedl-gui youplay"
+KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv parole openshot-qt rhythmbox smplayer vlc yt-dlp youtube-dl youtubedl-gui youplay"
 # Netzwerkverbindungen
 KATEGORIE_PKGS[n]="openvpn network-manager-openvpn network-manager-openvpn-gnome vpnc vpnc-scripts network-manager-vpnc network-manager-vpnc-gnome"
 # Spiele
@@ -916,14 +920,14 @@ KATEGORIE_PKGS[s]="0ad alien-arena astromenace atomix billard-gl biniax2 blobwar
 # Systemerweiterungen
 KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dirmngr dpkg-repack e2fsprogs ethtool exfat-fuse exfatprogs extundelete fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysfsutils sysstat tar tcptrack testdisk traceroute udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
 # Systemverwaltung
-KATEGORIE_PKGS[v]="backintime-common baobab bleachbit blueman caja caja-actions caja-eiciel caja-extensions-common caja-gtkhash caja-image-converter caja-mediainfo caja-open-terminal caja-rename caja-seahorse caja-sendto caja-share caja-wallpaper caja-xattr-tags copyq czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted grsync grub-customizer gsmartcontrol gtkhash gufw hardinfo kwalletmanager mozo nemo plasma-discover seahorse synaptic system-config-printer timeshift tilda usbview xfce4-taskmanager zulumount-gui"
+KATEGORIE_PKGS[v]="backintime-common baobab bleachbit blueman caja copyq czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted grsync grub-customizer gsmartcontrol gtkhash gufw hardinfo kwalletmanager mozo nemo plasma-discover seahorse synaptic system-config-printer timeshift tilda usbview xfce4-taskmanager zulumount-gui"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[v]+=" bulky qt5ct webapp-manager"; fi
 # Tonstudio
 KATEGORIE_PKGS[t]="ardour audacity hydrogen lmms qjackctl qtractor yoshimi"
 # USB-Firewall
-KATEGORIE_PKGS[u]="usbauth usbauth-notifier"
+KATEGORIE_PKGS[u]="usbauth"
 # Zubehör
-KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk doublecmd-common doublecmd-gtk engrampa freefilesync galculator gedit gnome-characters gucharmap keepass2 kfind klavaro ktouch magnus mousepad nmapsi4 onboard pdfmod pluma putty redshift-gtk rpi-imager usb-creator-common usb-creator-gtk veracrypt xournal"
+KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk doublecmd-common engrampa freefilesync galculator gedit gnome-characters gucharmap keepass2 kfind klavaro ktouch magnus mousepad nmapsi4 onboard pdfmod pluma putty redshift rpi-imager usb-creator-common veracrypt xournal"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[z]+=" sticky xed"; fi
 # Windows-API "Wine"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ];
@@ -954,9 +958,49 @@ if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "ubuntu") -gt 0 ]; then KATEGORI
 KATEGORIE_PKGS[xx]=""
 
 ###############################################################################
-#  Liste der Architekturen
+# Liste von Paketen, die automatisch zusätzlich zu einem Basispaket installiert
+# werden. HINWEIS: Diese Funktionalität ersetzt die vorherige Logik mittels
+# DEPENDS_PACK (s.u.), bei welcher alle Pakete durchlaufen werden, aber nur
+# die Pakete installiert werden, deren Basispaket bereits installiert ist.
 ###############################################################################
-ARCH_NAME_LIST=('amd64' 'i386' 'arm64' 'armhf')
+declare -A AUTO_ADD_PKGS
+
+AUTO_ADD_PKGS[caja]="caja-actions caja-eiciel caja-extensions-common caja-gtkhash caja-image-converter caja-mediainfo caja-open-terminal caja-rename caja-seahorse caja-sendto caja-share caja-wallpaper caja-xattr-tags"
+AUTO_ADD_PKGS[doublecmd-common]="doublecmd-gtk"
+AUTO_ADD_PKGS[krita]="krita-l10n"
+AUTO_ADD_PKGS[mediainfo]="mediainfo-gui"
+AUTO_ADD_PKGS[mkvtoolnix]="mkvtoolnix-gui"
+AUTO_ADD_PKGS[redshift]="redshift-gtk"
+AUTO_ADD_PKGS[scribus]="scribus-template"
+AUTO_ADD_PKGS[usbauth]="usbauth-notifier"
+AUTO_ADD_PKGS[usb-creator-common]="usb-creator-gtk"
+AUTO_ADD_PKGS[virtualbox]="virtualbox-ext-pack virtualbox-guest-additions-iso"
+
+AUTO_ADD_PKGS[alien-arena]="alien-arena-data"
+AUTO_ADD_PKGS[astromenace]="astromenace-data-src"
+AUTO_ADD_PKGS[frogatto]="frogatto-data"
+AUTO_ADD_PKGS[gcompris-qt]="gcompris-qt-data"
+
+###############################################################################
+# Einige Programme sind nicht in jedem Repository enthalten und können dann
+# nicht installiert werden, so dass auch Erweiterungen zu diesen Programmen
+# nicht benötigt werden, obwohl diese oft unsinnigerweise installierbar sind.
+# Die in der Tabelle DEPENDS_PACK aufgeführten Programme werden daher nur
+# dann installiert, wenn auch das zugehörige Basispaket installiert ist.
+# HINWEIS: Diese Funktionalität wurde ersetzt durch AUTO_ADD_PKGS (s.o.),
+# welche quasi in umgekehrter Logik arbeitet.
+###############################################################################
+# declare -A DEPENDS_PACK
+
+# DEPENDS_PACK[doublecmd-gtk]="doublecmd-common"
+# DEPENDS_PACK[krita-l10n]="krita"
+# DEPENDS_PACK[mediainfo-gui]="mediainfo"
+# DEPENDS_PACK[mkvtoolnix-gui]="mkvtoolnix"
+# DEPENDS_PACK[scribus-template]="scribus"
+# DEPENDS_PACK[usbauth-notifier]="usbauth"
+# DEPENDS_PACK[usb-creator-gtk]="usb-creator-common"
+# DEPENDS_PACK[virtualbox-ext-pack]="virtualbox"
+# DEPENDS_PACK[virtualbox-guest-additions-iso]="virtualbox"
 
 ###############################################################################
 # Alternative ähnliche Programmpakete, welche installiert werden, wenn das
@@ -997,23 +1041,9 @@ SIMILAR_PACK[usb-creator-common]="balena-etcher"
 SIMILAR_PACK[virtualbox]="virtualbox-7.0"
 
 ###############################################################################
-# Einige Programme sind nicht in jedem Repository enthalten und können dann
-# nicht installiert werden, so dass auch Erweiterungen zu diesen Programmen
-# nicht benötigt werden, obwohl diese unsinnigerweise installierbar sind
-# Die in der Tabelle DEPENDS_PACK aufgeführten Programme werden daher nur
-# dann installiert, wenn auch das zugehörige Hauptpaket installiert ist.
+# Liste der Architekturen
 ###############################################################################
-declare -A DEPENDS_PACK
-
-DEPENDS_PACK[doublecmd-gtk]="doublecmd-common"
-DEPENDS_PACK[krita-l10n]="krita"
-DEPENDS_PACK[mediainfo-gui]="mediainfo"
-DEPENDS_PACK[mkvtoolnix-gui]="mkvtoolnix"
-DEPENDS_PACK[scribus-template]="scribus"
-DEPENDS_PACK[usbauth-notifier]="usbauth"
-DEPENDS_PACK[usb-creator-gtk]="usb-creator-common"
-DEPENDS_PACK[virtualbox-ext-pack]="virtualbox"
-DEPENDS_PACK[virtualbox-guest-additions-iso]="virtualbox"
+ARCH_NAME_LIST=('amd64' 'i386' 'arm64' 'armhf')
 
 ###############################################################################
 # Alternative Quellen "ERW": Programmpakete aus den oben stehenden Paketlisten,
@@ -2509,11 +2539,11 @@ function create_desktop_icon () {
           fi
 
           # 5. Auftreten des Paketnamens an relevanten Stellen innerhalb der Dateien im Benutzer-Ordner suchen
-          SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" "$USER_HOME_DIR"/.local/share/applications/* 2>/dev/null)
+          SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" "$USER_HOME_DIR"/.local/share/applications/* 2>/dev/null)
           if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
           # 6. Auftreten des Paketnamens an relevanten Stellen innerhalb der Dateien im System-Ordner suchen
-          SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" /usr/share/applications/* 2>/dev/null)
+          SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" /usr/share/applications/* 2>/dev/null)
           if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
           # 7. Auftreten des Paketnamens an spezifischen Stellen innerhalb der Dateien im System-Ordner suchen
@@ -2523,7 +2553,7 @@ function create_desktop_icon () {
           # 8. Auftreten des Paketnamens an relevanten Stellen innerhalb der Dateien im Snap-Ordner suchen
           if [ -d "/var/lib/snapd/desktop/applications" ];
           then
-            SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" /var/lib/snapd/desktop/applications/* 2>/dev/null)
+            SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" /var/lib/snapd/desktop/applications/* 2>/dev/null)
             if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
           fi
 
@@ -3411,21 +3441,51 @@ function install_pkg () {
       SKIP_REASON=" (in Ausschlussliste)"
     fi
 
-    # ---------------------------------------------------------------
-    # Paket überspringen, wenn dessen Abhängigkeit nicht erfüllt ist
-    # ---------------------------------------------------------------
-    DEPENDS_ON_PACK="${DEPENDS_PACK[$PAKET]}"
-    if [ "$DEPENDS_ON_PACK" != "" ];
-    then
-      ORG_PKG_VERSION="$PKG_VERSION"
-      get_install_status "$DEPENDS_ON_PACK"
-      if [ $? -eq 0 ];
+    # -----------------------------------------------------------------
+    # Paket überspringen, wenn dessen Basispaket nicht installiert ist
+    # -----------------------------------------------------------------
+    # ALT (mit DEPENDS_PACK)
+    # -----------------------
+    # DEPENDS_ON_PACK="${DEPENDS_PACK[$PAKET]}"
+    # if [ "$DEPENDS_ON_PACK" != "" ];
+    # then
+    #   ORG_PKG_VERSION="$PKG_VERSION"
+    #   get_install_status "$DEPENDS_ON_PACK"
+    #   if [ $? -eq 0 ];
+    #   then
+    #     SKIP_THIS=1
+    #     SKIP_REASON=" (unerfüllte Abhängigkeit)"
+    #   fi
+    #   PKG_VERSION="$ORG_PKG_VERSION"
+    # fi
+    # ------------------------
+    # NEU (mit AUTO_ADD_PKGS)
+    # ------------------------
+    BASE_PACK_FOUND=0
+    for base_pack in ${!AUTO_ADD_PKGS[@]};
+    do
+      if [ $BASE_PACK_FOUND -eq 0 ];
       then
-        SKIP_THIS=1
-        SKIP_REASON=" (unerfüllte Abhängigkeit)"
+      BASE_PACK_ADD_LIST="${AUTO_ADD_PKGS[$base_pack]}"
+      for add_pack in ${BASE_PACK_ADD_LIST};
+      do
+        if [ "$PAKET" == "$add_pack" ];
+        then
+          ORG_PKG_VERSION="$PKG_VERSION"
+          get_install_status "$base_pack"
+          if [ $? -eq 0 ];
+          then
+            SKIP_THIS=1
+            # SKIP_REASON=" (unerfüllte Abhängigkeit)"
+            SKIP_REASON=" (${light_cyan}$base_pack${colors_off} ist nicht installiert)"
+          fi
+          PKG_VERSION="$ORG_PKG_VERSION"
+          BASE_PACK_FOUND=1
+          break
+        fi
+      done
       fi
-      PKG_VERSION="$ORG_PKG_VERSION"
-    fi
+    done
 
     # ----------------------------------------------------------------
     # Nur weitermachen, wenn das Paket nicht übersprungen werden soll
@@ -4549,9 +4609,23 @@ function ready_for_action () {
       TMP_LIST+=" ${KATEGORIE_PKGS[$k]}"
     fi
   done
+  # --------------------------------------------
+  # Automatisch zu ergänzende Pakete hinzufügen
+  # --------------------------------------------
+  for p in ${TMP_LIST};
+  do
+    ADDITIONAL_PACKS="${AUTO_ADD_PKGS[$p]}"
+    if [ "$ADDITIONAL_PACKS" != "" ];
+    then
+      TMP_LIST=$(echo " $TMP_LIST " | sed -E "s/ $p / $p $ADDITIONAL_PACKS /")
+    fi
+  done
+  # -----------------------------
+  # Liste in ein Array umwandeln
+  # -----------------------------
   ALL_PKG_LIST=(${TMP_LIST})
   TOTAL_PACKS=${#ALL_PKG_LIST[@]}
-  # echo -e "AUSWAHL: $TOTAL_PACKS ${ALL_PKG_LIST[@]}" # NUR ZUM TESTEN
+  # echo -e "AUSWAHL: ${ALL_PKG_LIST[@]} ($TOTAL_PACKS)" # NUR ZUM TESTEN
   # echo -e "SKIP:${SKIP_LIST[@]} (${#SKIP_LIST[@]})" # NUR ZUM TESTEN
   # exit # NUR ZUM TESTEN
   if [[ $TOTAL_PACKS             -eq 0 &&
@@ -6948,7 +7022,23 @@ then
     if [ ${KATEGORIE_FLAG[$k]} -eq 1 ];
     then
 
-      CAT_PKG_LIST=(${KATEGORIE_PKGS[$k]}) # Tabelle aus der Liste der Pakete der Kategorie erstellen
+      # --------------------------------------------------
+      # Liste der Pakete einer Kategorie erstellen und
+      # dabei automatisch zu ergänzende Pakete hinzufügen
+      # --------------------------------------------------
+      TMP_LIST="${KATEGORIE_PKGS[$k]}"
+      for p in ${TMP_LIST};
+      do
+        ADDITIONAL_PACKS="${AUTO_ADD_PKGS[$p]}"
+        if [ "$ADDITIONAL_PACKS" != "" ];
+        then
+          TMP_LIST=$(echo " $TMP_LIST " | sed -E "s/ $p / $p $ADDITIONAL_PACKS /")
+        fi
+      done
+      # -------------------------------------------
+      # Tabelle aus der Liste der Pakete erstellen
+      # -------------------------------------------
+      CAT_PKG_LIST=(${TMP_LIST})
       CURRENT_CATEGORY="$k"
       KAT_SHORT_NAME="${KATEGORIE_TEXT[$CURRENT_CATEGORY]}" # Name der aktuellen Kategorie
       e_and_l " ${bold_blue}$KAT_SHORT_NAME${colors_off}"
@@ -11346,7 +11436,7 @@ then
             # Wenn keine Datei im Spiel ist, nur Kommando ausführen ...
             # ----------------------------------------------------------
             if [ "${USER_CONF_SRC[$IDX_NAME]}" = "" ] &&
-              [ "${USER_CONF_DST[$IDX_NAME]}" = "" ];
+               [ "${USER_CONF_DST[$IDX_NAME]}" = "" ];
             then
               { eval "${USER_CONF_COM[$IDX_NAME]}" 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; } | tee "$LOG_TEMP"
               if [ $(cat "$LAST_EXIT_CODE") -eq 0 ];
@@ -11362,8 +11452,8 @@ then
               LOCAL_DOWNLOAD_FILE="$DOWNLOAD_DIR/$DOWNLOAD_FILE_NAME"
               wget -nv --post-data="&u=$USER_USERNAME&p=$DECODED_PASS" -O "$LOCAL_DOWNLOAD_FILE" "$DOWNLOAD_FILE_URL" &>"$LOG_TEMP"
               if [ $? -eq 0 ] &&
-                [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
-                [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
+                 [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
+                 [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
               then
                 chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
                 PERSONAL_ACTION_RESULT=0
@@ -11379,7 +11469,7 @@ then
                     # (sicherheitshalber nur innerhalb des eigenen Benutzerordners)
                     THE_DST_DIR="${USER_CONF_DST[$IDX_NAME]%/*}"
                     if [ $(echo -n "${USER_CONF_DST[$IDX_NAME]}" | grep -i -c -E "${USER_HOME_DIR}" 2>/dev/null) -gt 0 ] &&
-                      [ ! -d "$THE_DST_DIR" ];
+                       [ ! -d "$THE_DST_DIR" ];
                     then
                       mkdir -p "$THE_DST_DIR" &>/dev/null
                       chown -R "$USER_USERNAME:$USER_USERNAME" "$THE_DST_DIR" &>/dev/null
@@ -11398,7 +11488,7 @@ then
                   if [ $DO_SOME_ACTION -ne 0 ];
                   then
                     if [ -s "${USER_CONF_DST[$IDX_NAME]}" ] &&
-                      [ ! -d "${USER_CONF_DST[$IDX_NAME]}" ];
+                       [ ! -d "${USER_CONF_DST[$IDX_NAME]}" ];
                     then
                       create_backup_file "${USER_CONF_DST[$IDX_NAME]}"
                     fi
@@ -11407,7 +11497,7 @@ then
                     then
                       e_and_l "$OK_TAG"
                       if [ $(echo -n "${USER_CONF_DST[$IDX_NAME]}" | grep -i -c -E "${USER_HOME_DIR}" 2>/dev/null) -gt 0 ] &&
-                        [ -f "${USER_CONF_DST[$IDX_NAME]}" ];
+                         [ -f "${USER_CONF_DST[$IDX_NAME]}" ];
                       then
                         chown "$USER_USERNAME:$USER_USERNAME" "${USER_CONF_DST[$IDX_NAME]}" &>/dev/null
                         chmod 0664 "${USER_CONF_DST[$IDX_NAME]}" &>/dev/null
@@ -11428,7 +11518,7 @@ then
                 fi
                 # Optionale Meldung anzeigen ...
                 if [ $PERSONAL_ACTION_RESULT -eq 0 ] &&
-                  [ "${USER_CONF_MSG[$IDX_NAME]}" != "" ];
+                   [ "${USER_CONF_MSG[$IDX_NAME]}" != "" ];
                 then
                   e_and_l " $HINWEIS_TAG: ${USER_CONF_MSG[$IDX_NAME]}"
                 fi
