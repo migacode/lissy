@@ -35,8 +35,8 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.83"
-# Letzte Änderung: 15.10.2023
+VERSION="3.91"
+# Letzte Änderung: 26.10.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -255,6 +255,35 @@ function create_backup_file () {
       cp -f "$FILE_TO_BACKUP" "$FILE_TO_BACKUP.save" &>/dev/null
     else
       cp -f "$FILE_TO_BACKUP" "$FILE_TO_BACKUP.bak" &>/dev/null
+    fi
+  fi
+}
+
+###############################################################################
+# Funktion zum Download einer Bild-Datei (Pixmap)
+###############################################################################
+function download_icon_file ()
+{
+  PKG_PICTURE_NAME="$1.png"
+  PKG_PICTURE_DIR="/usr/share/pixmaps"
+  PKG_PICTURE_FILE="$PKG_PICTURE_DIR/$PKG_PICTURE_NAME"
+  # echo -e "Try: $PKG_PICTURE_FILE" # NUR ZUM TESTEN!
+  if [ -d "$PKG_PICTURE_DIR" ] &&
+     [ ! -s "$PKG_PICTURE_FILE" ];
+  then
+    PKG_PICTURE_URL="$RESSOURCE_SERVER_DIR/png/$PKG_PICTURE_NAME"
+    LOCAL_DOWNLOAD_FILE="$DOWNLOAD_DIR/$PKG_PICTURE_NAME"
+    wget -nv -O "$LOCAL_DOWNLOAD_FILE" "$PKG_PICTURE_URL" &>/dev/null
+    DOWNLOAD_RESULT=$?
+    if [ $DOWNLOAD_RESULT -eq 0 ] &&
+       [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
+       [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
+    then
+      mv -f "$LOCAL_DOWNLOAD_FILE" "$PKG_PICTURE_FILE" &>/dev/null
+      chown "root:root" "$PKG_PICTURE_FILE" &>/dev/null
+      chmod 0644 "$PKG_PICTURE_FILE" &>/dev/null
+    else
+      remove_file "$LOCAL_DOWNLOAD_FILE"
     fi
   fi
 }
@@ -868,8 +897,8 @@ OPTION_MENU[saveconf]=5
 ###############################################################################
 # Paket-Listen definieren (Kategorisierte Listen von Programmpaketen)
 # -----------------------------------------------------------------------------
-# HINWEIS: Wenn zu einem Paket automatisch weitere Pakete installiert
-# werden sollen, können diese in AUTO_ADD_PKGS angegeben werden!
+# HINWEIS: Wenn vor oder nach einem Paket automatisch auch weitere Pakete
+# installiert werden sollen, können diese in AUTO_ADD_PKGS angegeben werden!
 # -----------------------------------------------------------------------------
 # Sollen aus irgendeinem Grund Snap- oder externe Pakete bevorzugt werden, dann
 # können diese in FORCE_SNAPPY_LIST und FORCE_EXTERN_LIST eingetragen werden.
@@ -898,7 +927,7 @@ KATEGORIE_PKGS[p]="bless closure-compiler codium geany ghex kate kdiff3 kompare 
 KATEGORIE_PKGS[q]="docker.io qemu-system-common qemu-system-data qemu-system-x86 qemu-system-arm qemu-system-gui qemu-efi-aarch64 qemu-efi-arm qemu-utils qemu-block-extra libvirt-daemon-system libvirt-clients bridge-utils virt-manager"
 if [ $(uname -a 2>/dev/null | grep -i -c -E "debian") -gt 0 ] &&
    [ $(echo "$OS_V_CODENAME" | grep -i -c -E "bookworm") -gt 0 ];
-then # Externes Paket => Extension-Pack wird per POST_ACTION nachinstalliert
+then # Externes Paket => Extension-Pack wird per POST_INST_CONF nachinstalliert
   KATEGORIE_PKGS[q]+=" virtualbox-7.0"
 else # Repo => Extensions siehe AUTO_ADD_PKGS
   KATEGORIE_PKGS[q]+=" virtualbox"
@@ -916,9 +945,9 @@ KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv handbrake hypnotix
 # Netzwerkverbindungen
 KATEGORIE_PKGS[n]="openvpn network-manager-openvpn network-manager-openvpn-gnome vpnc vpnc-scripts network-manager-vpnc network-manager-vpnc-gnome"
 # Spiele
-KATEGORIE_PKGS[s]="0ad alien-arena astromenace atomix billard-gl biniax2 blobwars blockout2 briquolo brutalchess caveexpress chromium-bsu code-the-classics criticalmass cuyo dreamchess enigma extremetuxracer foobillardplus freedoom frogatto frozen-bubble fs-uae fs-uae-launcher gbrainy gcompris-qt gemdropx gnome-games gnubg gweled hedgewars jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter morris naev neverball neverputt nexuiz numptyphysics oolite open-invaders pinball pingus pokerth pybik rocksndiamonds sauerbraten sdl-ball supertux supertuxkart teeworlds torcs trigger-rally tuxmath ufoai wesnoth widelands zaz"
+KATEGORIE_PKGS[s]="0ad alien-arena astromenace atomix billard-gl biniax2 blobwars blockout2 briquolo brutalchess caveexpress chromium-bsu code-the-classics criticalmass cuyo dreamchess enigma extremetuxracer foobillardplus freedoom frogatto frozen-bubble fs-uae gbrainy gcompris-qt gemdropx gnome-games gnubg gweled hedgewars jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter morris naev neverball neverputt nexuiz numptyphysics oolite open-invaders pinball pingus pokerth pybik rocksndiamonds sauerbraten sdl-ball supertux supertuxkart teeworlds torcs trigger-rally tuxmath ufoai wesnoth widelands zaz"
 # Systemerweiterungen
-KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dirmngr dpkg-repack e2fsprogs ethtool exfat-fuse exfatprogs extundelete fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysfsutils sysstat tar tcptrack testdisk traceroute udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
+KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dirmngr dpkg-repack e2fsprogs ethtool exfat-fuse exfatprogs extundelete fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends hdparm heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysfsutils sysstat tar tcptrack testdisk traceroute udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
 # Systemverwaltung
 KATEGORIE_PKGS[v]="backintime-common baobab bleachbit blueman caja copyq czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted grsync grub-customizer gsmartcontrol gtkhash gufw hardinfo kwalletmanager mozo nemo plasma-discover seahorse synaptic system-config-printer timeshift tilda usbview xfce4-taskmanager zulumount-gui"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[v]+=" bulky qt5ct webapp-manager"; fi
@@ -930,11 +959,11 @@ KATEGORIE_PKGS[u]="usbauth"
 KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk doublecmd-common engrampa freefilesync galculator gedit gnome-characters gucharmap keepass2 kfind klavaro ktouch magnus mousepad nmapsi4 onboard pdfmod pluma putty redshift rpi-imager usb-creator-common veracrypt xournal"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[z]+=" sticky xed"; fi
 # Windows-API "Wine"
-if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ];
+if [ $(apt list "wine-installer" 2>/dev/null | grep -i -c -E "wine-installer") -gt 0 ];
 then
   KATEGORIE_PKGS[w]="wine-installer"
 else
-  KATEGORIE_PKGS[w]="wine wine64 wine64-preloader wine64-tools"
+  KATEGORIE_PKGS[w]="wine wine64 wine32"
 fi
 KATEGORIE_PKGS[w]+=" winetricks zenity playonlinux"
 # WireGuard
@@ -963,11 +992,24 @@ KATEGORIE_PKGS[xx]=""
 # DEPENDS_PACK (s.u.), bei welcher alle Pakete durchlaufen werden, aber nur
 # die Pakete installiert werden, deren Basispaket bereits installiert ist.
 ###############################################################################
-declare -A AUTO_ADD_PKGS
+declare -A AUTO_ADD_PKGS # Liste der zusätzlichen Pakete
+declare -A AUTO_ADD_PPOS # Wenn "true" zusätzliche Pakete VOR Basispaket einfügen
 
+AUTO_ADD_PKGS[alien-arena]="alien-arena-data"
+AUTO_ADD_PPOS[alien-arena]="true"
+AUTO_ADD_PKGS[astromenace]="astromenace-data-src"
+AUTO_ADD_PPOS[astromenace]="true"
 AUTO_ADD_PKGS[caja]="caja-actions caja-eiciel caja-extensions-common caja-gtkhash caja-image-converter caja-mediainfo caja-open-terminal caja-rename caja-seahorse caja-sendto caja-share caja-wallpaper caja-xattr-tags"
 AUTO_ADD_PKGS[doublecmd-common]="doublecmd-gtk"
+AUTO_ADD_PKGS[frogatto]="frogatto-data"
+AUTO_ADD_PPOS[frogatto]="true"
+AUTO_ADD_PKGS[fs-uae]="fs-uae-launcher"
+AUTO_ADD_PPOS[fs-uae]=""
+AUTO_ADD_PKGS[gcompris-qt]="gcompris-qt-data"
+AUTO_ADD_PPOS[gcompris-qt]="true"
 AUTO_ADD_PKGS[krita]="krita-l10n"
+AUTO_ADD_PKGS[libreoffice]="libreoffice-gnome"
+AUTO_ADD_PKGS[libreoffice-common]="libreoffice-gnome"
 AUTO_ADD_PKGS[mediainfo]="mediainfo-gui"
 AUTO_ADD_PKGS[mkvtoolnix]="mkvtoolnix-gui"
 AUTO_ADD_PKGS[redshift]="redshift-gtk"
@@ -975,11 +1017,6 @@ AUTO_ADD_PKGS[scribus]="scribus-template"
 AUTO_ADD_PKGS[usbauth]="usbauth-notifier"
 AUTO_ADD_PKGS[usb-creator-common]="usb-creator-gtk"
 AUTO_ADD_PKGS[virtualbox]="virtualbox-ext-pack virtualbox-guest-additions-iso"
-
-AUTO_ADD_PKGS[alien-arena]="alien-arena-data"
-AUTO_ADD_PKGS[astromenace]="astromenace-data-src"
-AUTO_ADD_PKGS[frogatto]="frogatto-data"
-AUTO_ADD_PKGS[gcompris-qt]="gcompris-qt-data"
 
 ###############################################################################
 # Einige Programme sind nicht in jedem Repository enthalten und können dann
@@ -1117,7 +1154,7 @@ PPA_REPO_SRC[makemkv-bin]="heyarje-ubuntu-makemkv-beta*"
 declare -A DEB_PKG_NAME # Angezeigter Name des Programms
 declare -A DEB_PKG_VERS # Auf migano.de zum Download bereitgestellte Version
 declare -A DEB_PKG_MESG # Hinweis zur Installation der neuen Version
-declare -A DEB_PKG_EVAL # Kommando zum Testen der Voraussetzungen [in Vorbereitung]
+declare -A DEB_PKG_EVAL # Kommando zum Testen der Voraussetzungen
 declare -A DEB_PKG_FILE # Download-URL
 declare -A DEB_PKG_CSUM # Prüfsumme ODER URL zu Prüfsummen-Datei
 declare -A DEB_PKG_OLDV # Nummer der Vorgänger-Version (nur amd64)
@@ -1179,8 +1216,8 @@ then
   DEB_PKG_OLDV[hypnotix]="2.6"
   DEB_PKG_OLDF[hypnotix]="$RESSOURCE_SERVER_DIR/deb/hypnotix_2.6_LAST_20.04_all.deb"
   DEB_PKG_VERS[hypnotix]="3.7"
-  DEB_PKG_MESG[hypnotix]="Benötigt mindestens GTK 4!"
-  DEB_PKG_EVAL[hypnotix]=""
+  DEB_PKG_MESG[hypnotix]="Benötigt mindestens gtk-4.0!"
+  DEB_PKG_EVAL[hypnotix]="[ -d /usr/share/gtk-4.0 ]"
   DEB_PKG_FILE[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb"
   DEB_PKG_CSUM[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb.sha"
   DEB_PKG_FILE[hypnotix_i386]="" # NUR für 64-bit verfügbar
@@ -1224,7 +1261,9 @@ DEB_PKG_FILE[ipscan_armhf]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_all.deb"
 DEB_PKG_CSUM[ipscan_armhf]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_all.deb.sha"
 
 # Erstellt mittels dpkg-repack :)
-# Ab Ubuntu 22 leider nicht mehr lauffähig wegen fehlender Libraries :(
+# In Debian nicht enthalten und ab Ubuntu 22 leider
+# nicht mehr lauffähig wegen fehlender Libraries :(
+# Hinweis: Als Flatpack verfügbar ...
 # DEB_PKG_NAME[lix]="lix"
 # DEB_PKG_OLDV[lix]=""
 # DEB_PKG_OLDF[lix]=""
@@ -1435,6 +1474,15 @@ then
   DEB_PKG_FILE[alien-arena_amd64]="$RESSOURCE_SERVER_DIR/deb/alien-arena_7.71.3+dfsg-3_amd64.deb"
   DEB_PKG_CSUM[alien-arena_amd64]="$RESSOURCE_SERVER_DIR/deb/alien-arena_7.71.3+dfsg-3_amd64.deb.sha"
 
+  DEB_PKG_NAME[alien-arena-data]="Alien Arena Data"
+  DEB_PKG_OLDV[alien-arena-data]=""
+  DEB_PKG_OLDF[alien-arena-data]=""
+  DEB_PKG_VERS[alien-arena-data]="7.71.3"
+  DEB_PKG_MESG[alien-arena-data]=""
+  DEB_PKG_EVAL[alien-arena-data]=""
+  DEB_PKG_FILE[alien-arena-data_amd64]="$RESSOURCE_SERVER_DIR/deb/alien-arena-data_7.71.3+ds-1_all.deb"
+  DEB_PKG_CSUM[alien-arena-data_amd64]="$RESSOURCE_SERVER_DIR/deb/alien-arena-data_7.71.3+ds-1_all.deb.sha"
+
   DEB_PKG_NAME[astromenace]="Astromenace"
   DEB_PKG_OLDV[astromenace]=""
   DEB_PKG_OLDF[astromenace]=""
@@ -1443,6 +1491,15 @@ then
   DEB_PKG_EVAL[astromenace]=""
   DEB_PKG_FILE[astromenace_amd64]="$RESSOURCE_SERVER_DIR/deb/astromenace_1.3.2+repack-7_amd64.deb"
   DEB_PKG_CSUM[astromenace_amd64]="$RESSOURCE_SERVER_DIR/deb/astromenace_1.3.2+repack-7_amd64.deb.sha"
+
+  DEB_PKG_NAME[astromenace-data-src]="Astromenace Data"
+  DEB_PKG_OLDV[astromenace-data-src]=""
+  DEB_PKG_OLDF[astromenace-data-src]=""
+  DEB_PKG_VERS[astromenace-data-src]="1.3.2"
+  DEB_PKG_MESG[astromenace-data-src]=""
+  DEB_PKG_EVAL[astromenace-data-src]=""
+  DEB_PKG_FILE[astromenace-data-src_amd64]="$RESSOURCE_SERVER_DIR/deb/astromenace-data-src_1.3.2+repack-3_all.deb"
+  DEB_PKG_CSUM[astromenace-data-src_amd64]="$RESSOURCE_SERVER_DIR/deb/astromenace-data-src_1.3.2+repack-3_all.deb.sha"
 
   DEB_PKG_NAME[frogatto]="Frogatto"
   DEB_PKG_OLDV[frogatto]=""
@@ -1453,6 +1510,15 @@ then
   DEB_PKG_FILE[frogatto_amd64]="$RESSOURCE_SERVER_DIR/deb/frogatto_1.3.1+dfsg-6+b2_amd64.deb"
   DEB_PKG_CSUM[frogatto_amd64]="$RESSOURCE_SERVER_DIR/deb/frogatto_1.3.1+dfsg-6+b2_amd64.deb.sha"
 
+  DEB_PKG_NAME[frogatto-data]="Frogatto Data"
+  DEB_PKG_OLDV[frogatto-data]=""
+  DEB_PKG_OLDF[frogatto-data]=""
+  DEB_PKG_VERS[frogatto-data]="1.3.1"
+  DEB_PKG_MESG[frogatto-data]=""
+  DEB_PKG_EVAL[frogatto-data]=""
+  DEB_PKG_FILE[frogatto-data_amd64]="$RESSOURCE_SERVER_DIR/deb/frogatto-data_1.3.1+dfsg-3_all.deb"
+  DEB_PKG_CSUM[frogatto-data_amd64]="$RESSOURCE_SERVER_DIR/deb/frogatto-data_1.3.1+dfsg-3_all.deb.sha"
+
   DEB_PKG_NAME[gcompris-qt]="GCompris"
   DEB_PKG_OLDV[gcompris-qt]=""
   DEB_PKG_OLDF[gcompris-qt]=""
@@ -1461,6 +1527,15 @@ then
   DEB_PKG_EVAL[gcompris-qt]=""
   DEB_PKG_FILE[gcompris-qt_amd64]="$RESSOURCE_SERVER_DIR/deb/gcompris-qt_3.1-2_amd64.deb"
   DEB_PKG_CSUM[gcompris-qt_amd64]="$RESSOURCE_SERVER_DIR/deb/gcompris-qt_3.1-2_amd64.deb.sha"
+
+  DEB_PKG_NAME[gcompris-qt-data]="GCompris Data"
+  DEB_PKG_OLDV[gcompris-qt-data]=""
+  DEB_PKG_OLDF[gcompris-qt-data]=""
+  DEB_PKG_VERS[gcompris-qt-data]="3.1.2"
+  DEB_PKG_MESG[gcompris-qt-data]=""
+  DEB_PKG_EVAL[gcompris-qt-data]=""
+  DEB_PKG_FILE[gcompris-qt-data_amd64]="$RESSOURCE_SERVER_DIR/deb/gcompris-qt-data_3.1-2_all.deb"
+  DEB_PKG_CSUM[gcompris-qt-data_amd64]="$RESSOURCE_SERVER_DIR/deb/gcompris-qt-data_3.1-2_all.deb.sha"
 
   DEB_PKG_NAME[libdvd-pkg]="libdvd-pkg"
   DEB_PKG_OLDV[libdvd-pkg]=""
@@ -1606,7 +1681,7 @@ declare -A WEB_PKG_NAME # Angezeigter Name des Programms und zugleich der Ordner
                         # ACHTUNG: Nur der Ordnername, nicht der vollständge Pfad (siehe WEB_PKG_DIR)!
 declare -A WEB_PKG_VERS # Auf migano.de zum Download bereitgestellte Version
 declare -A WEB_PKG_MESG # Hinweis zur Installation der neuen Version
-declare -A WEB_PKG_EVAL # Kommando zum Testen der Voraussetzungen [in Vorbereitung]
+declare -A WEB_PKG_EVAL # Kommando zum Testen der Voraussetzungen
 declare -A WEB_PKG_FILE # Download-URL
 declare -A WEB_PKG_CSUM # Prüfsumme ODER URL zu Prüfsummen-Datei
 declare -A WEB_PKG_CATY # Kategorie für den Linux-Menü-Eintrag (NICHT unsere Kategorien)
@@ -1658,8 +1733,8 @@ WEB_PKG_CATY[czkawka]="System;Utility"
 WEB_PKG_OLDV[czkawka]="4.1.0"
 WEB_PKG_OLDF[czkawka]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_4.1.0"
 WEB_PKG_VERS[czkawka]="6.0.0"
-WEB_PKG_MESG[czkawka]="Benötigt mindestens GTK 4!"
-WEB_PKG_EVAL[czkawka]=""
+WEB_PKG_MESG[czkawka]="Benötigt mindestens gtk-4.0!"
+WEB_PKG_EVAL[czkawka]="[ -d /usr/share/gtk-4.0 ]"
 WEB_PKG_FILE[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.0.0"
 WEB_PKG_CSUM[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.0.0.sha"
  WEB_PKG_FILE[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.0.0"
@@ -1704,13 +1779,16 @@ WEB_PKG_FILE[fs-uae_armhf]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[fs-uae_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://fs-uae.net/download#linux
-WEB_PKG_NAME[fs-uae-launcher]="FS-UAE Launcher"
+# Wird aktuell auf Debian bookworm leider noch nicht unterstützt :(
+# ACHTUNG: Als externes Paket muss FS-USE-Launcher mit FS-UAE
+# auf der selben Ordner-Ebene liegen (s.a. POST_INST_CONF)
+WEB_PKG_NAME[fs-uae-launcher]="FS-UAE-Launcher"
 WEB_PKG_CATY[fs-uae-launcher]="Games"
 WEB_PKG_OLDV[fs-uae-launcher]=""
 WEB_PKG_OLDF[fs-uae-launcher]=""
 WEB_PKG_VERS[fs-uae-launcher]="3.1.68"
-WEB_PKG_MESG[fs-uae-launcher]=""
-WEB_PKG_EVAL[fs-uae-launcher]=""
+WEB_PKG_MESG[fs-uae-launcher]="FS-UAE-Launcher funktioniert nur auf älteren Debian-Versionen."
+WEB_PKG_EVAL[fs-uae-launcher]="[ $(echo ${OS_V_CODENAME} | grep -i -c -E "bookworm") -eq 0 ]"
 WEB_PKG_FILE[fs-uae-launcher_amd64]="$RESSOURCE_SERVER_DIR/web/FS-UAE-Launcher_3.1.68_Linux_x86-64.tar.xz"
 WEB_PKG_CSUM[fs-uae-launcher_amd64]="$RESSOURCE_SERVER_DIR/web/FS-UAE-Launcher_3.1.68_Linux_x86-64.tar.xz.sha"
  WEB_PKG_FILE[fs-uae-launcher_i386]="$RESSOURCE_SERVER_DIR/web/FS-UAE-Launcher_3.1.68_Linux_x86-64.tar.xz"
@@ -1744,7 +1822,7 @@ WEB_PKG_OLDV[openshot-qt]="2.6.1"
 WEB_PKG_OLDF[openshot-qt]="$RESSOURCE_SERVER_DIR/web/OpenShot-v2.6.1-x86_64.AppImage"
 WEB_PKG_VERS[openshot-qt]="3.1.1"
 WEB_PKG_MESG[openshot-qt]="Mindestens 4GB RAM erforderlich!"
-WEB_PKG_EVAL[openshot-qt]=""
+WEB_PKG_EVAL[openshot-qt]="[ $MEMORY_TOTAL -gt 4000000000 ]"
 WEB_PKG_FILE[openshot-qt_amd64]="$RESSOURCE_SERVER_DIR/web/OpenShot-v3.1.1-x86_64.AppImage"
 WEB_PKG_CSUM[openshot-qt_amd64]="$RESSOURCE_SERVER_DIR/web/OpenShot-v3.1.1-x86_64.AppImage.sha"
  WEB_PKG_FILE[openshot-qt_i386]="" # Für Linux nur als 64-bit verfügbar
@@ -1777,8 +1855,8 @@ WEB_PKG_CATY[youplay]="AudioVideo;Video"
 WEB_PKG_OLDV[youplay]=""
 WEB_PKG_OLDF[youplay]=""
 WEB_PKG_VERS[youplay]="0.46"
-WEB_PKG_MESG[youplay]="Benötigt mindestens GTK 4!"
-WEB_PKG_EVAL[youplay]=""
+WEB_PKG_MESG[youplay]="Benötigt mindestens gtk-4.0!"
+WEB_PKG_EVAL[youplay]="[ -d /usr/share/gtk-4.0 ]"
 WEB_PKG_FILE[youplay_amd64]="$RESSOURCE_SERVER_DIR/web/youplay_v0.46-GTK4-x86_64.AppImage"
 WEB_PKG_CSUM[youplay_amd64]="$RESSOURCE_SERVER_DIR/web/youplay_v0.46-GTK4-x86_64.AppImage.sha"
  WEB_PKG_FILE[youplay_i386]="" # Für Linux nur als 64-bit verfügbar
@@ -1837,6 +1915,7 @@ NOT_ON_RASPBIAN=('gnome-software' 'realvnc-vnc-server' 'usbview' 'ubuntu-mate-we
 declare -A PRE_INST_CONF
 
 PRE_INST_CONF[anydesk]="$RESSOURCE_SERVER_DIR/scripts/anydesk_pre_inst"
+PRE_INST_CONF[wine]="$RESSOURCE_SERVER_DIR/scripts/wine_pre_inst"
 
 ###############################################################################
 # Wenn zu Programmpaketen NACH deren Installation eine weitere Konfiguration
@@ -1855,6 +1934,8 @@ POST_INST_CONF[code-the-classics]="$RESSOURCE_SERVER_DIR/scripts/code-the-classi
 POST_INST_CONF[czkawka]="$RESSOURCE_SERVER_DIR/scripts/czkawka_post_inst"
 POST_INST_CONF[freefilesync]="$RESSOURCE_SERVER_DIR/scripts/freefilesync_post_inst"
 POST_INST_CONF[freetuxtv]="$RESSOURCE_SERVER_DIR/scripts/freetuxtv_post_inst"
+POST_INST_CONF[fs-uae]="$RESSOURCE_SERVER_DIR/scripts/fs-uae_post_inst"
+POST_INST_CONF[fs-uae-launcher]="$RESSOURCE_SERVER_DIR/scripts/fs-uae-launcher_post_inst"
 POST_INST_CONF[hypnotix]="$RESSOURCE_SERVER_DIR/scripts/hypnotix_post_inst"
 POST_INST_CONF[iptvnator]="$RESSOURCE_SERVER_DIR/scripts/iptvnator_post_inst"
 POST_INST_CONF[keepass2]="$RESSOURCE_SERVER_DIR/scripts/keepass2_post_inst"
@@ -1880,6 +1961,7 @@ POST_INST_CONF[tor-browser]="$RESSOURCE_SERVER_DIR/scripts/tor-browser_post_inst
 POST_INST_CONF[usbauth-notifier]="$RESSOURCE_SERVER_DIR/scripts/usbauth-notifier_post_inst"
 POST_INST_CONF[virtualbox]="usermod -a -G vboxusers $USER_USERNAME"
 POST_INST_CONF[virtualbox-7.0]="$RESSOURCE_SERVER_DIR/scripts/virtualbox-7.0_post_inst"
+POST_INST_CONF[wine]="$RESSOURCE_SERVER_DIR/scripts/wine_post_inst"
 POST_INST_CONF[wireguard]="$RESSOURCE_SERVER_DIR/scripts/wireguard_post_inst"
 
 ###############################################################################
@@ -1887,6 +1969,8 @@ POST_INST_CONF[wireguard]="$RESSOURCE_SERVER_DIR/scripts/wireguard_post_inst"
 # haben wie das Programm selbst, oder für Programmpakete, zu denen mehrere
 # Starter angelegt werden sollen, können deren Dateinamen in den folgenden
 # Listen angegeben werden (gesucht werden diese in /usr/share/applications).
+# ACHTUNG: Die Starter-Dateien (.desktop) werden dazu nur kopiert und nicht
+# neu erzeugt, d.h. diese müssen dazu natürlich vorhanden sein.
 ###############################################################################
 declare -A PKG_ICON_LIST
 declare -A PKG_ICON_XDIR # Extra Verzeichnis, falls dieses angelegt werden soll
@@ -1901,6 +1985,10 @@ PKG_ICON_LIST[gnome-games]="aisleriot sol org.gnome.Chess org.gnome.five-or-more
 PKG_ICON_XDIR[gnome-games]="Gnome Games"
 PKG_ICON_LIST[oolite]="oolite.org"
 PKG_ICON_XDIR[oolite]=""
+PKG_ICON_LIST[wine]="wine-browsedrive wine-winecfg wine-uninstaller wine-winexplorer"
+PKG_ICON_XDIR[wine]=""
+PKG_ICON_LIST[wine-installer]="wine-browsedrive wine-winecfg wine-uninstaller wine-winexplorer"
+PKG_ICON_XDIR[wine-installer]=""
 
 ###############################################################################
 # Zusätzliche Desktop-Symbole zur Ergänzung des Ordners "Systemverwaltung".
@@ -1944,8 +2032,9 @@ WRONG_ICONS=('Internet/chromium-bsu.desktop')
 # nicht an einem Ort abgelegt, an welchem das System diese findet. Zu den in
 # dem Array "LOAD_PIXMAP_ICONS" stehenden Paketnamen wird eine gleichnamige
 # Bilddatei im Format .png heruntergeladen und in /usr/share/pixmaps abgelegt.
+# HINWEIS: NICHT MEHR VERWENDET!
 ###############################################################################
-LOAD_PIXMAP_ICONS=('alien-arena' 'hydrogen' 'mandelbulber2')
+# LOAD_PIXMAP_ICONS=('alien-arena' 'hydrogen' 'mandelbulber2')
 
 ###############################################################################
 # Desktop-Ordner des Benutzers (zur Erstellung der Programmsymbole / Icons)
@@ -2016,7 +2105,7 @@ function add_similar_icons () {
         ((PAKETS_EXIST+=1))
         ((PAKETS_SIMILAR_EXIST+=1))
       fi
-      create_desktop_icon $CHECK_SIM_PACK
+      copy_starter_to_desktop $CHECK_SIM_PACK
     fi
     CHECK_SIM_PACK="${SIMILAR_PACK[$CHECK_SIM_PACK]}"
   done
@@ -2177,7 +2266,7 @@ function ask_yes_no_info () {
         e_and_l -n " ${light_purple}$PKG_VERSION${colors_off}"
       fi
       e_and_l " ist bereits installiert!"
-      create_desktop_icon $CHECK_SIM_PACK
+      copy_starter_to_desktop $CHECK_SIM_PACK
       ((SIM_PACK_INSTALLED+=1))
     fi
     CHECK_SIM_PACK="${SIMILAR_PACK[$CHECK_SIM_PACK]}"
@@ -2442,12 +2531,14 @@ function create_autostart_file () {
 # Rückgaben: 0 = OK, Desktop-Symbol erstellt
 #            1 = Fehler, Desktop-Symbol NICHT erstellt
 ###############################################################################
-function create_desktop_icon () {
+function copy_starter_to_desktop () {
   if [ "$DESKTOP_ENVIRONMENT" = "GNOME" ] ||
      [ ${OPTION_FLAG[addicons]} -ne 1 ];
   then
     return 1
   fi
+
+  # echo -e "Starter for $1" # NUR ZUM TESTEN!
 
   CREATE_DESKTOP_RESULT=1
 
@@ -2495,10 +2586,10 @@ function create_desktop_icon () {
         if [ -d "$ICON_TARGET_DIR" ];
         then
 
-          # ------------------------------------------------------
-          # Suchen des zum Paket passenden Desktop-Eintrags
+          # -----------------------------------------------------------
+          # Suchen des zum Paket passenden Starter-(.desktop)-Eintrags
           # Ein leidiges Thema, umso mehr wenn Snap dazukommt ...
-          # ------------------------------------------------------
+          # -----------------------------------------------------------
           # "Erweiterte" Paketnamen bereinigen auf Basisnamen
           SEARCH_NAME="$1"
           SEARCH_NAME="${SEARCH_NAME/-7.0/}"    # VirtualBox
@@ -2516,6 +2607,9 @@ function create_desktop_icon () {
 
           SEARCH_RESULT_ALL=(  )
 
+          # -------------------------------------------------------------------
+          # Paketname = Dateiname ---------------------------------------------
+          # -------------------------------------------------------------------
           # 1. Datei mit Paketnamen im Raspi-Ordner suchen
           if [ -d "/usr/share/raspi-ui-overrides/applications" ];
           then
@@ -2538,6 +2632,9 @@ function create_desktop_icon () {
             if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
           fi
 
+          # -------------------------------------------------------------------
+          # Paketname kommt in Datei vor --------------------------------------
+          # -------------------------------------------------------------------
           # 5. Auftreten des Paketnamens an relevanten Stellen innerhalb der Dateien im Benutzer-Ordner suchen
           SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" "$USER_HOME_DIR"/.local/share/applications/* 2>/dev/null)
           if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
@@ -2561,7 +2658,9 @@ function create_desktop_icon () {
           SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "(X-SnapInstanceName)=\b$SEARCH_NAME\b" /var/lib/snapd/desktop/applications/* 2>/dev/null)
           if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
-          # 10. Verwendung von Desktop-Dateien aus vordefinierter Liste
+          # -------------------------------------------------------------------
+          # 10. Dateinamen aus vordefinierter Liste in PKG_ICON_LIST verwenden
+          # -------------------------------------------------------------------
           tmp_list=${PKG_ICON_LIST[$SEARCH_NAME]};
           if [ "$tmp_list" != "" ]
           then
@@ -2597,6 +2696,10 @@ function create_desktop_icon () {
             fi
             SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"
           fi
+
+          # -------------------------------------------------------------------
+          # Ende der Suche nach Starter(.desktop)-Dateien
+          # -------------------------------------------------------------------
 
           # Ergebnisliste in Array umwandeln
           IFS=$'\n' ICON_LIST_ARRAY=(${SEARCH_RESULT_ALL})
@@ -2674,44 +2777,28 @@ function create_desktop_icon () {
                       fi
                       # Die Datei als vertrauenswürdig markieren, um sie korrekt anzuzeigen
                       # und die Sicherheitsabfrage beim Anklicken zu vermeiden (Puh, dieses
-                      # neue "Feature" von Ubuntu 21 war ganz schön gut versteckt ... ;))
+                      # neue "Feature" von Ubuntu war ganz schön gut versteckt ... ;))
                       if [ -s "$TARGET_FILE_NAME" ];
                       then
                         sudo -u ${USER_USERNAME} DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${USER_UID}/bus" gio set "$TARGET_FILE_NAME" "metadata::trusted" true &>/dev/null # < Ubuntu 21 (opt.: yes)
                         sudo -u ${USER_USERNAME} DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${USER_UID}/bus" gio set "$TARGET_FILE_NAME" "metadata::caja-trusted-launcher" true &>/dev/null # Ubuntu 21
                       fi
-                      # Fehlende Bild-Datei runterladen
-                      LOAD_THIS_ICON=0
-                      for load_pix_pkg in ${LOAD_PIXMAP_ICONS[@]};
-                      do
-                        if [ "$load_pix_pkg" = "$1" ];
-                        then
-                          LOAD_THIS_ICON=1
-                          break
-                        fi
-                      done
-                      if [ $LOAD_THIS_ICON -eq 1 ];
-                      then
-                        PKG_PICTURE_NAME="$SEARCH_NAME.png"
-                        PKG_PICTURE_DIR="/usr/share/pixmaps"
-                        PKG_PICTURE_FILE="$PKG_PICTURE_DIR/$PKG_PICTURE_NAME"
-                        if [ -d "$PKG_PICTURE_DIR" ] &&
-                           [ ! -s "$PKG_PICTURE_FILE" ];
-                        then
-                          PKG_PICTURE_URL="$RESSOURCE_SERVER_DIR/png/$PKG_PICTURE_NAME"
-                          LOCAL_DOWNLOAD_FILE="$DOWNLOAD_DIR/$PKG_PICTURE_NAME"
-                          wget -nv -O "$LOCAL_DOWNLOAD_FILE" "$PKG_PICTURE_URL" &>/dev/null
-                          DOWNLOAD_RESULT=$?
-                          if [ $DOWNLOAD_RESULT -eq 0 ] &&
-                             [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
-                             [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
-                          then
-                            mv -f "$LOCAL_DOWNLOAD_FILE" "$PKG_PICTURE_FILE" &>/dev/null
-                          else
-                            remove_file "$LOCAL_DOWNLOAD_FILE"
-                          fi
-                        fi
-                      fi
+                      # ALT: Nur fest definierte fehlende Bild-Dateien runterladen
+                      # LOAD_THIS_ICON=0
+                      # for load_pix_pkg in ${LOAD_PIXMAP_ICONS[@]};
+                      # do
+                      #   if [ "$load_pix_pkg" = "$1" ];
+                      #   then
+                      #     LOAD_THIS_ICON=1
+                      #     break
+                      #   fi
+                      # done
+                      # if [ $LOAD_THIS_ICON -eq 1 ];
+                      # then
+                      #   download_icon_file "$SEARCH_NAME"
+                      # fi
+                      # NEU: Immer nach fehlenden Bild-Dateien suchen und diese runterladen
+                      download_icon_file "$(echo ${FILE_BASE_NAME} | sed 's/.desktop//g')"
                     fi
                   fi
                 fi
@@ -2729,7 +2816,7 @@ function create_desktop_icon () {
 # Sub-Funktion zur Erstellung von Tool-Icons auf dem Desktop
 ###############################################################################
 function create_extra_icon () {
-  create_desktop_icon $1
+  copy_starter_to_desktop $1
   if [ $? -eq 0 ];
   then
     LFD_NR=$(show_nr $NEW_ICON_COUNTER)
@@ -3469,7 +3556,8 @@ function install_pkg () {
       BASE_PACK_ADD_LIST="${AUTO_ADD_PKGS[$base_pack]}"
       for add_pack in ${BASE_PACK_ADD_LIST};
       do
-        if [ "$PAKET" == "$add_pack" ];
+        if [ "$PAKET" == "$add_pack" ] &&
+           [ "${AUTO_ADD_PPOS[$base_pack]}" != "true" ];
         then
           ORG_PKG_VERSION="$PKG_VERSION"
           get_install_status "$base_pack"
@@ -3815,7 +3903,8 @@ function install_pkg () {
           fi
 
           # -------------------------------------------------------------------
-          # Wenn ein Voraussetzungs-Hinweis existiert, diesen vorher anzeigen
+          # Wenn Hinweise oder Tests zu Voraussetzungen existieren,
+          # diese vorher anzeigen bzw. durchführen
           # -------------------------------------------------------------------
           if [ $CONTINUE_INSTALL -eq 1 ];
           then
@@ -3827,17 +3916,31 @@ function install_pkg () {
                 e_and_l " Installation von ${light_yellow}$PAKET${colors_off} ..."
                 e_and_l -n "$PRE_SPACE"
               fi
-              TMP_MESG="${bold_red}Achtung:${colors_off} ${light_yellow}"
-              if [ "${DEB_PKG_MESG["$PAKET"]}" != "" ];
+              # Falls vorhanden Voraussetzungen anzeigen und evaluieren
+              FILL_WORD="wirklich"
+              SHOW_PKG_MSG=""
+              TMP_PACK_MSG="${WEB_PKG_MESG[$PAKET]}"
+              if [ "$TMP_PACK_MSG" = "" ]; then TMP_PACK_MSG="${DEB_PKG_MESG[$PAKET]}"; fi
+              if [ "$TMP_PACK_MSG" != "" ];
               then
-                TMP_MESG+="${DEB_PKG_MESG["$PAKET"]}"
-              else
-                TMP_MESG+="${WEB_PKG_MESG["$PAKET"]}"
+                SHOW_PKG_MSG="${bold_red}Achtung:${colors_off} ${light_yellow}$TMP_PACK_MSG${colors_off}"
               fi
-              TMP_MESG+="${colors_off}"
-              e_and_l " $TMP_MESG"
-              e_and_l " ${PRE_SPACE}Bitte prüfe vor der Installation, ob diese Voraussetzung erfüllt ist."
-              ask_yes_or_no " ${PRE_SPACE}Dieses Programmpaket jetzt wirklich installieren"
+              EVAL_TEST="${WEB_PKG_EVAL["$PAKET"]}"
+              if [ "$EVAL_TEST" = "" ]; then EVAL_TEST="${DEB_PKG_EVAL["$PAKET"]}"; fi
+              if [ "$EVAL_TEST" != "" ];
+              then
+                eval "$EVAL_TEST" &>/dev/null
+                if [ $? -ne 0 ];
+                then
+                  e_and_l " $SHOW_PKG_MSG"
+                  e_and_l " ${PRE_SPACE}Diese Voraussetzung scheint ${bold_red}nicht${colors_off} erfüllt zu sein!"
+                  FILL_WORD="trotzdem"
+                fi
+              else
+                e_and_l " $SHOW_PKG_MSG"
+                e_and_l " ${PRE_SPACE}Bitte prüfe vor der Installation, ob diese Voraussetzung erfüllt ist."
+              fi
+              ask_yes_or_no " ${PRE_SPACE}Dieses Programmpaket jetzt $FILL_WORD installieren"
               CONTINUE_INSTALL=$?
               if [ $CONTINUE_INSTALL -eq 1 ]; then e_and_l -n "${PRE_SPACE}"; fi
             fi
@@ -4306,6 +4409,9 @@ function install_pkg () {
                       AFTER_ACTION="Kopiere"
                     fi
                   fi
+
+                  WPKG_CLEAN_NAME=$(echo "$PAKET" | tr A-Z a-z | sed 's/ /-/g' | xargs)
+
                   # Je nach Datei-Format entpacken oder kopieren
                   e_and_l -n "$PRE_SPACE $AFTER_ACTION ${light_yellow}$LOCAL_DOWNLOAD_FILE${colors_off}\n$PRE_SPACE nach ${light_yellow}$PACKAGE_INST_DIR${colors_off} ... "
                   if [ "$DOWNLOAD_FORMAT" = "ZIP" ];
@@ -4333,8 +4439,8 @@ function install_pkg () {
                         APPIMG_FILE_NAME="$DOWNLOAD_FILE_NAME"
                         if [ -s "$PACKAGE_INST_DIR/$APPIMG_FILE_NAME" ];
                         then
-                          WPKG_CLEAN_NAME=$(echo "$PAKET" | tr A-Z a-z | sed 's/ /-/g' | xargs)
-                          # Icon runterladen
+                          # Icon runterladen und mit im Programmordner hinterlegen
+                          # (ggf. redundant mit Suche einer Bilddatei weiter unten)
                           IMAGE_FILE_NAME="$WPKG_CLEAN_NAME.png"
                           ICON_TARGET_FILE="$PACKAGE_INST_DIR/$IMAGE_FILE_NAME"
                           LOCAL_DOWNLOAD_FILE="$DOWNLOAD_DIR/$IMAGE_FILE_NAME"
@@ -4370,6 +4476,7 @@ function install_pkg () {
                       fi
                     fi
                   fi
+
                   # -----------------------------------------------------------
                   # Wenn alles ok, Programm-Version notieren und
                   # den gesamten Programm-Ordner zu eigen machen
@@ -4379,7 +4486,7 @@ function install_pkg () {
                     # Programm-Version als Datei speichern -------------
                     PKG_VERS_FILE="$PACKAGE_INST_DIR/.$PAKET"
                     PKG_VERS_FILE+="_version"
-                    echo -e "${WEB_PKG_VERS[$PAKET]}" > "$PKG_VERS_FILE"
+                    echo -e "${WEB_PKG_VERS[$PAKET]}" > "$PKG_VERS_FILE" 2>/dev/null
                     # --------------------------------------------------
                     e_and_l "$OK_TAG"
                     e_and_l "$PRE_SPACE $HINWEIS_TAG: Eventuell müssen die Zugriffsrechte noch angepasst werden!"
@@ -4388,7 +4495,25 @@ function install_pkg () {
                     e_and_l "$ERROR_TAG"
                   fi
                   add_full_log
-                fi
+
+                  # -----------------------------------------------------------
+                  # Wenn alles ok, zudem prüfen ob es ein Icon zu dem Paket
+                  # gibt und ggf. eine passende Bilddatei herunterladen
+                  # -----------------------------------------------------------
+                  if [ $INSTALL_RESULT -eq 0 ];
+                  then
+                    # Kategorien mit Programmpaketen ohne Desktop-Symbole auslassen
+                    if
+                     [ "$CURRENT_CATEGORY" != "a" ] &&
+                     [ "$CURRENT_CATEGORY" != "f" ] &&
+                     [ "$CURRENT_CATEGORY" != "u" ] &&
+                     [ "$CURRENT_CATEGORY" != "x" ];
+                    then
+                      download_icon_file "$WPKG_CLEAN_NAME"
+                    fi
+                  fi
+
+                fi # Fehler beim Download
               fi # Ende INSTALL_MODE 4 (WEB)
 
             fi
@@ -4472,7 +4597,7 @@ function install_pkg () {
             # -----------------------------------------------------------------
             # Nach erfolgreicher Installation ggf. Desktop-Icon anlegen
             # -----------------------------------------------------------------
-            if [ $INSTALL_RESULT -eq 0 ]; then create_desktop_icon $PAKET; fi
+            if [ $INSTALL_RESULT -eq 0 ]; then copy_starter_to_desktop $PAKET; fi
 
           else # wenn Ja-Nein-Abfrage negativ ausgefallen
 
@@ -4586,7 +4711,7 @@ function install_pkg () {
     # "Auf Wunsch" auch für schon installierte Programme sowie
     #  deren installierte Alternativen ein Desktop-Icon anlegen
     # ------------------------------------------------------------------------
-    create_desktop_icon $PAKET
+    copy_starter_to_desktop $PAKET
     add_similar_icons $PAKET 0
 
   fi
@@ -4617,7 +4742,14 @@ function ready_for_action () {
     ADDITIONAL_PACKS="${AUTO_ADD_PKGS[$p]}"
     if [ "$ADDITIONAL_PACKS" != "" ];
     then
-      TMP_LIST=$(echo " $TMP_LIST " | sed -E "s/ $p / $p $ADDITIONAL_PACKS /")
+      if [ "${AUTO_ADD_PPOS[$p]}" != "true" ];
+      then
+        # Zusätzliche Pakete NACH Basispaket einfügen
+        TMP_LIST=$(echo " $TMP_LIST " | sed -E "s/ $p / $p $ADDITIONAL_PACKS /")
+      else
+        # Zusätzliche Pakete VOR Basispaket einfügen
+        TMP_LIST=$(echo " $TMP_LIST " | sed -E "s/ $p / $ADDITIONAL_PACKS $p /")
+      fi
     fi
   done
   # -----------------------------
@@ -5286,25 +5418,9 @@ then
   fi
 fi
 # -----------------------------------------------------------------------------
-# Aktuelles Icon für den Starter downloaden (immer)
+# Aktuelles Icon für den Starter downloaden
 # -----------------------------------------------------------------------------
-PKG_PICTURE_NAME="lissy.png"
-PKG_PICTURE_DIR="/usr/share/pixmaps"
-if [ -d "$PKG_PICTURE_DIR" ] &&
-   [ ! -s "$PKG_PICTURE_FILE" ];
-then
-  LOCAL_DOWNLOAD_FILE="$DOWNLOAD_DIR/$PKG_PICTURE_NAME"
-  wget -nv -O "$LOCAL_DOWNLOAD_FILE" "$THIS_SCRIPT_ICO" &>/dev/null
-  DOWNLOAD_RESULT=$?
-  if [ $DOWNLOAD_RESULT -eq 0 ] &&
-     [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
-     [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
-  then
-    mv -f "$LOCAL_DOWNLOAD_FILE" "$PKG_PICTURE_DIR/$PKG_PICTURE_NAME" &>/dev/null
-    chmod 0644 "$PKG_PICTURE_DIR/$PKG_PICTURE_NAME" &>/dev/null
-  fi
-  remove_file "$LOCAL_DOWNLOAD_FILE"
-fi
+download_icon_file "lissy"
 echo -e ""
 
 # -----------------------------------------------------------------------------
@@ -6843,21 +6959,74 @@ then
     then
       if [ $INST_STATUS -eq 2 ]; then e_and_l -n " als ${light_purple}SNAP${colors_off}"; fi
       e_and_l " installiert."
-      if [ "$PKG_VERSION" != "$NEW_PKG_INST_VERS" ] &&
-         [ "$NEW_PKG_INST_FILE" != "" ];
+      # Prüfen ob eine höhere Versionsnummer verfügbar ist
+      UPDATE_AVAILABLE=0
+      CUR_PKG_VER_1=$(echo $PKG_VERSION | cut -d"." -f 1)
+      CUR_PKG_VER_2=$(echo $PKG_VERSION | cut -d"." -f 2)
+      CUR_PKG_VER_3=$(echo $PKG_VERSION | cut -d"." -f 3)
+      NEW_PKG_VER_1=$(echo $NEW_PKG_INST_VERS | cut -d"." -f 1)
+      NEW_PKG_VER_2=$(echo $NEW_PKG_INST_VERS | cut -d"." -f 2)
+      NEW_PKG_VER_3=$(echo $NEW_PKG_INST_VERS | cut -d"." -f 3)
+      if [ "$CUR_PKG_VER_1" != "" ] &&
+         [ "$NEW_PKG_VER_1" != "" ];
+      then
+        if [ $CUR_PKG_VER_1 -lt $NEW_PKG_VER_1 ];
+        then
+          UPDATE_AVAILABLE=1
+        fi
+      fi
+      if [ $UPDATE_AVAILABLE -eq 0 ];
+      then
+        if [ "$CUR_PKG_VER_2" != "" ] &&
+           [ "$NEW_PKG_VER_2" != "" ];
+        then
+          if [ $CUR_PKG_VER_2 -lt $NEW_PKG_VER_2 ];
+          then
+            UPDATE_AVAILABLE=1
+          fi
+        fi
+      fi
+      if [ $UPDATE_AVAILABLE -eq 0 ];
+      then
+        if [ "$CUR_PKG_VER_3" != "" ] &&
+           [ "$NEW_PKG_VER_3" != "" ];
+        then
+          if [ $CUR_PKG_VER_3 -lt $NEW_PKG_VER_3 ];
+          then
+            UPDATE_AVAILABLE=1
+          fi
+        fi
+      fi
+      if [ $UPDATE_AVAILABLE -eq 1 ];
       then
         e_and_l " Die Version ${light_yellow}$NEW_PKG_INST_VERS${colors_off} steht zur Verfügung. Zum Update muss die alte Version"
         e_and_l " erst vollständig entfernt und danach die neue Version installiert werden."
         e_and_l " Eventuell bestehende Konfigurationsdaten werden zuvor natürlich gesichert."
-        if [ "${DEB_PKG_MESG[$pkg_name]}" != "" ];
+        # Falls vorhanden Voraussetzungen anzeigen und evaluieren
+        FILL_WORD="jetzt"
+        SHOW_PKG_MSG=""
+        TMP_PACK_MSG="${WEB_PKG_MESG[$pkg_name]}"
+        if [ "$TMP_PACK_MSG" = "" ]; then TMP_PACK_MSG="${DEB_PKG_MESG[$pkg_name]}"; fi
+        if [ "$TMP_PACK_MSG" != "" ];
         then
-          e_and_l " ${bold_red}Achtung:${colors_off} ${light_yellow}${DEB_PKG_MESG[$pkg_name]}${colors_off}"
+          SHOW_PKG_MSG="${bold_red}Achtung:${colors_off} ${light_yellow}$TMP_PACK_MSG${colors_off}"
         fi
-        if [ "${WEB_PKG_MESG[$pkg_name]}" != "" ];
+        EVAL_TEST="${WEB_PKG_EVAL["$pkg_name"]}"
+        if [ "$EVAL_TEST" = "" ]; then EVAL_TEST="${DEB_PKG_EVAL["$pkg_name"]}"; fi
+        if [ "$EVAL_TEST" != "" ];
         then
-          e_and_l " ${bold_red}Achtung:${colors_off} ${light_yellow}${WEB_PKG_MESG[$pkg_name]}${colors_off}"
+          eval "$EVAL_TEST" &>/dev/null
+          if [ $? -ne 0 ];
+          then
+            e_and_l " $SHOW_PKG_MSG"
+            e_and_l " Diese Voraussetzung scheint ${bold_red}nicht${colors_off} erfüllt zu sein!"
+            FILL_WORD="trotzdem"
+          fi
+        else
+          e_and_l " $SHOW_PKG_MSG"
+          e_and_l " Bitte prüfe vor der Installation, ob diese Voraussetzung erfüllt ist."
         fi
-        ask_yes_or_no " ${light_cyan}$pkg_name${colors_off} jetzt auf Version ${light_yellow}$NEW_PKG_INST_VERS${colors_off} updaten"
+        ask_yes_or_no " ${light_cyan}$pkg_name${colors_off} $FILL_WORD auf Version ${light_yellow}$NEW_PKG_INST_VERS${colors_off} updaten"
         if [ $? -eq 1 ];
         then
           ask_yes_or_no " Programm ${bold_yellow}$pkg_name $PKG_VERSION${colors_off} entfernen"
@@ -7032,7 +7201,14 @@ then
         ADDITIONAL_PACKS="${AUTO_ADD_PKGS[$p]}"
         if [ "$ADDITIONAL_PACKS" != "" ];
         then
-          TMP_LIST=$(echo " $TMP_LIST " | sed -E "s/ $p / $p $ADDITIONAL_PACKS /")
+          if [ "${AUTO_ADD_PPOS[$p]}" != "true" ];
+          then
+            # Zusätzliche Pakete NACH Basispaket einfügen
+            TMP_LIST=$(echo " $TMP_LIST " | sed -E "s/ $p / $p $ADDITIONAL_PACKS /")
+          else
+            # Zusätzliche Pakete VOR Basispaket einfügen
+            TMP_LIST=$(echo " $TMP_LIST " | sed -E "s/ $p / $ADDITIONAL_PACKS $p /")
+          fi
         fi
       done
       # -------------------------------------------
@@ -7685,7 +7861,7 @@ then
       # ===========================================================================
       # Desktop-Themen Ubuntu-MATE installieren
       # ===========================================================================
-      ACTION_MESSAGE=" Desktop-Themen ${light_cyan}MATE${colors_off} installieren"
+      ACTION_MESSAGE=" Desktop-Themen ${light_cyan}Ubuntu MATE${colors_off} installieren"
       if [ $(apt list "ubuntu-mate-themes" 2>/dev/null | grep -i -c "ubuntu-mate-themes") -gt 0 ];
       then
         if [ $(LANG=en dpkg-query -W -f='${Status}' "ubuntu-mate-themes" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
@@ -7705,10 +7881,10 @@ then
             add_full_log
           fi
         else
-          e_and_l "$ACTION_MESSAGE           ... $NC_TAG"
+          e_and_l "$ACTION_MESSAGE    ... $NC_TAG"
         fi
       else
-        e_and_l "$(skip_text "$ACTION_MESSAGE          " "$NA_TXT")"
+        e_and_l "$(skip_text "$ACTION_MESSAGE   " "$NA_TXT")"
       fi
 
       # ===========================================================================
@@ -7798,7 +7974,7 @@ then
                 if [ $? -eq 0 ];
                 then
                   CURRENT_CATEGORY="v" # Icon für Einstellungen des XScreenSaver der Systemverwaltung zuordnen
-                  create_desktop_icon "xscreensaver-properties"
+                  copy_starter_to_desktop "xscreensaver-properties"
                 fi
               fi
             fi
@@ -9642,8 +9818,7 @@ EOF
   # Sichtbarkeit der Scrollbalken verbessern (nur für den aktuellen Benutzer)
   # ===========================================================================
   ACTION_MESSAGE=" Sichtbarkeit der ${light_cyan}Scrollbalken${colors_off} verbessern"
-  if [ $(echo "$WINDOW_THEME" | grep -i -c -E "Ambiant-MATE-Dark") -gt 0 ] ||
-     [ $(echo "$WINDOW_THEME" | grep -i -c -E "Yaru-MATE-Dark") -gt 0 ];
+  if [ $(echo "$WINDOW_THEME" | grep -i -c -E "\-Dark") -gt 0 ];
   then
     GTK3_CONF_DIR="$USER_CONFIG_DIR/gtk-3.0"
     if [ -d "$GTK3_CONF_DIR" ];
@@ -9697,7 +9872,7 @@ EOF
       fi
     fi
   else
-    e_and_l "$(skip_text "$ACTION_MESSAGE  " "nur MATE-Dark")"
+    e_and_l "$(skip_text "$ACTION_MESSAGE  " "nur Dark-Themen")"
   fi
 
   # ===========================================================================
