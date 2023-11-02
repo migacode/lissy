@@ -8204,7 +8204,7 @@ then
       # In "wine_post_inst" wird WINE_STARTER_LIST statt PKG_ICON_LIST[wine] zur
       # Auswahl der Starter verwendet. Bei Änderungen in beiden Scripten anpassen!
       # ===========================================================================
-      ACTION_MESSAGE=" Erstellung diverser ${light_cyan}Menü-Einträge für Wine${colors_off}"
+      ACTION_MESSAGE=" Fehlende ${light_cyan}Menü-Einträge für Wine${colors_off} erstellen"
       if [ $(LANG=en dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
       then
         WINE_STARTER_MISSING=0
@@ -8241,7 +8241,7 @@ then
           WINE_STARTER_EXEC[wine-wineconsole]='wine wineconsole'
           WINE_STARTER_NAME[wine-winemine]='MineSweeper'
           WINE_STARTER_EXEC[wine-winemine]='wine winemine'
-          e_and_l -n "$ACTION_MESSAGE ... "
+          e_and_l -n "$ACTION_MESSAGE  ... "
           WINE_STARTER_ERRORS=0
           for starter_file in ${tmp_list[@]};
           do
@@ -8278,10 +8278,10 @@ then
             e_and_l "$ERROR_TAG"
           fi
         else
-          e_and_l "$ACTION_MESSAGE ... $NC_TAG"
+          e_and_l "$ACTION_MESSAGE  ... $NC_TAG"
         fi
       else
-        e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
+        e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
       fi
 
       # ===========================================================================
