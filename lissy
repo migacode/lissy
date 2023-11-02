@@ -35,8 +35,8 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.91"
-# Letzte Änderung: 26.10.2023
+VERSION="3.92"
+# Letzte Änderung: 01.11.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -114,6 +114,7 @@ PRE_SPACE=$(printf ' %.0s' {1..5})
 FULLSPACE=$(printf '\x20%.0s' {1..80})
 NA_TXT="nicht verfügbar"
 NF_TXT="nicht gefunden"
+NM_TXT="nur MATE-Desktop"
 NR_TXT="nicht für root"
 NU_TXT="nur mit Ubuntu"
 NV_TXT="nicht vorhanden"
@@ -267,7 +268,6 @@ function download_icon_file ()
   PKG_PICTURE_NAME="$1.png"
   PKG_PICTURE_DIR="/usr/share/pixmaps"
   PKG_PICTURE_FILE="$PKG_PICTURE_DIR/$PKG_PICTURE_NAME"
-  # echo -e "Try: $PKG_PICTURE_FILE" # NUR ZUM TESTEN!
   if [ -d "$PKG_PICTURE_DIR" ] &&
      [ ! -s "$PKG_PICTURE_FILE" ];
   then
@@ -1985,9 +1985,9 @@ PKG_ICON_LIST[gnome-games]="aisleriot sol org.gnome.Chess org.gnome.five-or-more
 PKG_ICON_XDIR[gnome-games]="Gnome Games"
 PKG_ICON_LIST[oolite]="oolite.org"
 PKG_ICON_XDIR[oolite]=""
-PKG_ICON_LIST[wine]="wine-browsedrive wine-winecfg wine-uninstaller wine-winexplorer"
+PKG_ICON_LIST[wine]="wine-browsedrive wine-control wine-explorer wine-iexplore wine-regedit wine-taskmgr wine-uninstaller wine-winecfg wine-wineconsole wine-winemine"
 PKG_ICON_XDIR[wine]=""
-PKG_ICON_LIST[wine-installer]="wine-browsedrive wine-winecfg wine-uninstaller wine-winexplorer"
+PKG_ICON_LIST[wine-installer]="${PKG_ICON_LIST[wine]}"
 PKG_ICON_XDIR[wine-installer]=""
 
 ###############################################################################
@@ -1997,7 +1997,7 @@ PKG_ICON_XDIR[wine-installer]=""
 # Das betrifft bspw. Programme aus den Systemerweiterungen oder Tools (GUIs)
 # für die Konfiguration von Kernel-Modulen sowie externen Treibern.
 ###############################################################################
-ADD_SYS_ICONS=( 'caja-file-management-properties' 'ccsm' 'htop' 'nvidia-settings' 'nm-connection-editor' 'org.gnome.DiskUtility' 'software-properties-gtk' 'software-properties-qt' 'time-admin' 'update-manager' 'users-admin' 'xarchiver' 'xscreensaver-properties' )
+ADD_SYS_ICONS=( 'caja-file-management-properties' 'ccsm' 'htop' 'nvidia-settings' 'nm-connection-editor' 'org.gnome.DiskUtility' 'software-properties-gtk' 'software-properties-qt' 'time-admin' 'update-manager' 'users-admin' 'xarchiver' 'xscreensaver-properties' 'xscreensaver-settings')
 
 ###############################################################################
 # Raspbian Tools - Namen der Symbole (vollständige Dateinamen ohne Pfadangabe
@@ -2522,7 +2522,7 @@ function create_autostart_file () {
   echo -e "X-GNOME-Autostart-enabled=true" >> "$1" 2>/dev/null
   echo -e "X-MATE-Autostart-enabled=true" >> "$1" 2>/dev/null
   chown "$USER_USERNAME:$USER_USERNAME" "$1" &>/dev/null
-  chmod 0664 "$1" &>/dev/null
+  chmod 0644 "$1" &>/dev/null
   return $?
 }
 
@@ -7755,7 +7755,7 @@ then
           e_and_l "$ACTION_MESSAGE   ... $NC_TAG"
         fi
       else # kein MATE
-        e_and_l "$(skip_text "$ACTION_MESSAGE  " "nur MATE-Desktop")"
+        e_and_l "$(skip_text "$ACTION_MESSAGE  " "$NM_TXT")"
       fi
 
       # ===========================================================================
@@ -7855,7 +7855,7 @@ then
           e_and_l "$ACTION_MESSAGE    ... $NC_TAG"
         fi
       else # kein MATE
-        e_and_l "$(skip_text "$ACTION_MESSAGE   " "nur MATE-Desktop")"
+        e_and_l "$(skip_text "$ACTION_MESSAGE   " "$NM_TXT")"
       fi
 
       # ===========================================================================
@@ -7936,81 +7936,138 @@ then
       fi
 
       # ===========================================================================
-      # Zusätzliche Bildschirmschoner (Screensaver-Module) installieren
+      # Bildschirmschoner XScreenSaver installieren
       # ===========================================================================
-      XSCRSAVER_EPKG_LIST=('xscreensaver-data' 'xscreensaver-data-extra' 'xscreensaver-gl' 'xscreensaver-gl-extra' 'rss-glx')
+      ACTION_MESSAGE=" Bildschirmschoner ${light_cyan}XScreenSaver${colors_off} einrichten"
+      XSCRSAVER_EPKG_LIST=('xscreensaver' 'xscreensaver-data' 'xscreensaver-data-extra' 'xscreensaver-gl' 'xscreensaver-gl-extra' 'rss-glx')
       XSCRSAVER_AVAILABLE=0
       XSCRSAVER_INSTALLED=0
       for xs_pkg in ${XSCRSAVER_EPKG_LIST[@]};
       do
-        XS_PKG_NAME="$xs_pkg"
-        if [ $(apt list "$XS_PKG_NAME" 2>/dev/null | grep -i -c "$XS_PKG_NAME") -gt 0 ];
+        if [ $(apt list "$xs_pkg" 2>/dev/null | grep -i -c "$xs_pkg") -gt 0 ];
         then
           ((XSCRSAVER_AVAILABLE+=1))
         fi
-        get_install_status "$XS_PKG_NAME"
+        get_install_status "$xs_pkg"
         if [ $? -ne 0 ];
         then
           ((XSCRSAVER_INSTALLED+=1))
         fi
       done
-      ACTION_MESSAGE=" Zusätzliche ${light_cyan}Bildschirmschoner${colors_off} installieren"
-      if [ $XSCRSAVER_AVAILABLE -gt 0 ];
+      if [ $XSCRSAVER_AVAILABLE -gt 1 ];
       then
+        # Fehlende XScreenSaver-Komponenten installieren
         if [ $XSCRSAVER_INSTALLED -ne $XSCRSAVER_AVAILABLE ];
         then
           ask_yes_or_no "$ACTION_MESSAGE"
           if [ $? -eq 1 ];
           then
-            e_and_l -n " Installiere zusätzliche ${light_yellow}Bildschirmschoner${colors_off}, bitte warten ... "
-            echo -e "" > "$LOG_TEMP"
-            # XScreenSaver selbst installieren. Die installierten Screensaver-Module funktionieren zwar auch ohne
-            # diesen, aber Einstellungen zu den Modulen sind nur mit den xscreensaver-properties durchzuführen ...
-            if [ $(LANG=en dpkg-query -W -f='${Status}' "xscreensaver" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+            if [ $XSCRSAVER_INSTALLED -ne $XSCRSAVER_AVAILABLE ];
             then
-              if [ $(apt list "xscreensaver" 2>/dev/null | grep -i -c "xscreensaver") -gt 0 ];
-              then
-                apt install "xscreensaver" -y &>>"$LOG_TEMP"
-                if [ $? -eq 0 ];
+              e_and_l -n " Installiere ${light_yellow}XScreen-Module${colors_off}, bitte warten   ... "
+              echo -e "" > "$LOG_TEMP"
+              XSCRSAVER_NEWINST=0
+              for xs_pkg in ${XSCRSAVER_EPKG_LIST[@]};
+              do
+                # Wenn das Modul noch nicht installiert ist ...
+                if [ $(LANG=en dpkg-query -W -f='${Status}' "$xs_pkg" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
                 then
-                  CURRENT_CATEGORY="v" # Icon für Einstellungen des XScreenSaver der Systemverwaltung zuordnen
-                  copy_starter_to_desktop "xscreensaver-properties"
-                fi
-              fi
-            fi
-            XSCRSAVER_NEWINST=0
-            for xs_pkg in ${XSCRSAVER_EPKG_LIST[@]};
-            do
-              XS_PKG_NAME=""
-              # Wenn der Screensaver noch nicht installiert ist ...
-              if [ $(LANG=en dpkg-query -W -f='${Status}' "$xs_pkg" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
-              then
-                # ... und verfügbar ist, dann neu installieren ...
-                if [ $(apt list "$xs_pkg" 2>/dev/null | grep -i -c "$xs_pkg") -gt 0 ];
-                then
-                  apt install "$xs_pkg" -y &>>"$LOG_TEMP"
-                  if [ $? -eq 0 ];
+                  # ... und verfügbar ist, dann neu installieren ...
+                  if [ $(apt list "$xs_pkg" 2>/dev/null | grep -i -c "$xs_pkg") -gt 0 ];
                   then
-                    CHANGES_MADE=1
-                    ((XSCRSAVER_NEWINST+=1))
+                    apt install "$xs_pkg" -y &>>"$LOG_TEMP"
+                    if [ $? -eq 0 ];
+                    then
+                      ((XSCRSAVER_NEWINST+=1))
+                    fi
                   fi
                 fi
+              done
+              if [ $XSCRSAVER_NEWINST -gt 0 ];
+              then
+                e_and_l "$OK_TAG"
+                CURRENT_CATEGORY="v" # Icon für Einstellungen des XScreenSaver der Systemverwaltung zuordnen
+                KAT_SHORT_NAME="${KATEGORIE_TEXT[v]}"
+                copy_starter_to_desktop "xscreensaver-properties"
+                copy_starter_to_desktop "xscreensaver-settings"
+                CHANGES_MADE=1
+              else
+                e_and_l "$ERROR_TAG"
               fi
-            done
-            if [ $XSCRSAVER_NEWINST -gt 0 ];
+              add_full_log
+              remove_file "$LOG_TEMP"
+            fi
+          fi
+        else
+          e_and_l "$ACTION_MESSAGE  ... $NC_TAG"
+        fi
+        # Wenn XScreenSaver verfügbar, dann Autostarteintrag für XScreenSaver erstellen/aktivieren
+        if [ $XSCRSAVER_INSTALLED -eq $XSCRSAVER_AVAILABLE ] ||
+           [ $XSCRSAVER_NEWINST -gt 0 ];
+        then
+          X_SCREENSAVER_AUTOSTART_FILE="/home/$USER_USERNAME/.config/autostart/xscreensaver.desktop"
+          if [ ! -s "$X_SCREENSAVER_AUTOSTART_FILE" ];
+          then
+            e_and_l -n " Erstelle Autostarteintrag für ${light_yellow}XScreenSaver${colors_off} ... "
+            XSCR_EXEC_TEXT="xscreensaver"
+            if [ $(xscreensaver --help 2>&1 | grep -c -E "no-splash") -gt 0 ]; then XSCR_EXEC_TEXT+=" --no-splash"; fi
+            create_autostart_file "$X_SCREENSAVER_AUTOSTART_FILE" "XScreenSaver" "Bildschirmschoner und Bildschirmsperre" "$XSCR_EXEC_TEXT" "xscreensaver"
+            if [ $? -eq 0 ];
             then
               e_and_l "$OK_TAG"
+              CHANGES_MADE=1
             else
               e_and_l "$ERROR_TAG"
             fi
-            add_full_log
-            remove_file "$LOG_TEMP"
           fi
-        else
-          e_and_l "$ACTION_MESSAGE ... $NC_TAG"
         fi
-      else
-        e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
+        # Wenn XScreenSaver verfügbar, dann MATE-Bildschirmschoner deaktivieren
+        if [ $XSCRSAVER_INSTALLED -eq $XSCRSAVER_AVAILABLE ] ||
+           [ $XSCRSAVER_NEWINST -gt 0 ];
+        then
+          if [ -e "/usr/bin/mate-screensaver" ] ||
+             [ -e "/usr/bin/mate-screensaver.deactivated" ];
+          then
+            MATE_ACTIVE_SS_FILES=0
+            declare -A MATE_SCRSAVER_FILES
+            MATE_SCRSAVER_FILES[0]="/etc/xdg/autostart/mate-screensaver.desktop"
+            MATE_SCRSAVER_FILES[1]="/usr/bin/mate-screensaver"
+            MATE_SCRSAVER_FILES[2]="/usr/share/applications/mate-screensaver-preferences.desktop"
+            MATE_SCRSAVER_FILES[3]="$USER_CONFIG_DIR/autostart/mate-screensaver.desktop"
+            for scr_saver_file in ${MATE_SCRSAVER_FILES[@]};
+            do
+              if [ -e "$scr_saver_file" ]; then ((MATE_ACTIVE_SS_FILES+=1)); fi
+            done
+            if [ $MATE_ACTIVE_SS_FILES -gt 0 ];
+            then
+              e_and_l " $HINWEIS_TAG: Mit dem MATE- und X-ScreenSaver sind zwei Bildschirmschoner aktiv."
+              ask_yes_or_no " MATE-Screensaver vollständig deaktivieren (empfohlen)"
+              if [ $? -eq 1 ];
+              then
+                e_and_l -n " Deaktiviere den ${light_yellow}MATE-Bildschirmschoner${colors_off}     ... "
+                MSCR_RESULT=0
+                for scr_saver_file in ${MATE_SCRSAVER_FILES[@]};
+                do
+                  if [ -e "$scr_saver_file" ];
+                  then
+                    mv -f "$scr_saver_file" "$scr_saver_file.deactivated" &>/dev/null
+                    if [ $? -ne 0 ]; then ((MSCR_RESULT+=1)); fi
+                  fi
+                done
+                if [ $MSCR_RESULT -eq 0 ];
+                then
+                  e_and_l "$OK_TAG"
+                  e_and_l " $HINWEIS_TAG: Die Änderungen werden erst nach Neustart des Systems wirksam."
+                  CHANGES_MADE=1
+                else
+                  e_and_l "$ERROR_TAG"
+                fi
+              fi
+            fi
+          fi
+        fi
+      else # Kein XScreenSaver verfügbar
+        e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
       fi
 
       # ===========================================================================
@@ -8139,6 +8196,93 @@ then
         fi
         ((a+=1))
       done
+
+      # ===========================================================================
+      # Erstellung diverser Menü-Einträge für Wine
+      # ---------------------------------------------------------------------------
+      # ACHTUNG:
+      # In "wine_post_inst" wird WINE_STARTER_LIST statt PKG_ICON_LIST[wine] zur
+      # Auswahl der Starter verwendet. Bei Änderungen in beiden Scripten anpassen!
+      # ===========================================================================
+      ACTION_MESSAGE=" Erstellung diverser ${light_cyan}Menü-Einträge für Wine${colors_off}"
+      if [ $(LANG=en dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
+      then
+        WINE_STARTER_MISSING=0
+        tmp_list=${PKG_ICON_LIST[wine]};
+        for starter_file in ${tmp_list[@]};
+        do
+          if [ ! -s "/usr/share/applications/$starter_file.desktop" ];
+          then
+            ((WINE_STARTER_MISSING+=1))
+            break
+          fi
+        done
+        if [ $WINE_STARTER_MISSING -gt 0 ];
+        then
+          declare -A WINE_STARTER_NAME
+          declare -A WINE_STARTER_EXEC
+          WINE_STARTER_NAME[wine-browsedrive]='Laufwerk C:'
+          WINE_STARTER_EXEC[wine-browsedrive]='xdg-open .wine/dosdevices/c:'
+          WINE_STARTER_NAME[wine-control]='Kontrollpanel'
+          WINE_STARTER_EXEC[wine-control]='wine control'
+          WINE_STARTER_NAME[wine-explorer]='Windows Explorer'
+          WINE_STARTER_EXEC[wine-explorer]='wine explorer'
+          WINE_STARTER_NAME[wine-iexplore]='Internet Explorer'
+          WINE_STARTER_EXEC[wine-iexplore]='wine iexplore'
+          WINE_STARTER_NAME[wine-regedit]='Registry Editor'
+          WINE_STARTER_EXEC[wine-regedit]='wine regedit'
+          WINE_STARTER_NAME[wine-taskmgr]='Taskmanager'
+          WINE_STARTER_EXEC[wine-taskmgr]='wine taskmgr'
+          WINE_STARTER_NAME[wine-uninstaller]='Software UnInstaller'
+          WINE_STARTER_EXEC[wine-uninstaller]='wine uninstaller'
+          WINE_STARTER_NAME[wine-winecfg]='Konfiguration'
+          WINE_STARTER_EXEC[wine-winecfg]='winecfg'
+          WINE_STARTER_NAME[wine-wineconsole]='Windows Konsole'
+          WINE_STARTER_EXEC[wine-wineconsole]='wine wineconsole'
+          WINE_STARTER_NAME[wine-winemine]='MineSweeper'
+          WINE_STARTER_EXEC[wine-winemine]='wine winemine'
+          e_and_l -n "$ACTION_MESSAGE ... "
+          WINE_STARTER_ERRORS=0
+          for starter_file in ${tmp_list[@]};
+          do
+            WINE_STARTER_FILE="/usr/share/applications/$starter_file.desktop"
+            if [ ! -s "$WINE_STARTER_FILE" ];
+            then
+              echo -e "[Desktop Entry]" > "$WINE_STARTER_FILE" 2>/dev/null
+              if [ $? -eq 0 ];
+              then
+                echo -e "Type=Application" >> "$WINE_STARTER_FILE" 2>/dev/null
+                echo -e "Name=Wine ${WINE_STARTER_NAME[$starter_file]}" >> "$WINE_STARTER_FILE" 2>/dev/null
+                echo -e "Exec=${WINE_STARTER_EXEC[$starter_file]}" >> "$WINE_STARTER_FILE" 2>/dev/null
+                echo -e "Icon=$starter_file" >> "$WINE_STARTER_FILE" 2>/dev/null
+                echo -e "Terminal=false" >> "$WINE_STARTER_FILE" 2>/dev/null
+                echo -e "StartupNotify=false" >> "$WINE_STARTER_FILE" 2>/dev/null
+                echo -e "Categories=Wine;" >> "$WINE_STARTER_FILE" 2>/dev/null
+                chown "root:root" "$WINE_STARTER_FILE" &>/dev/null
+                chmod 0644 "$WINE_STARTER_FILE" &>/dev/null
+                download_icon_file "$starter_file"
+                if [ ${OPTION_FLAG[addicons]} -ne 0 ];
+                then
+                  KAT_SHORT_NAME="${KATEGORIE_TEXT[w]}"
+                  copy_starter_to_desktop "$starter_file"
+                fi
+              else
+                ((WINE_STARTER_ERRORS+=1))
+              fi
+            fi
+          done
+          if [ $WINE_STARTER_ERRORS -eq 0 ];
+          then
+            e_and_l "$OK_TAG"
+          else
+            e_and_l "$ERROR_TAG"
+          fi
+        else
+          e_and_l "$ACTION_MESSAGE ... $NC_TAG"
+        fi
+      else
+        e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
+      fi
 
       # ===========================================================================
       # Signaturen der Blu-ray-Datenbank erneuern
@@ -9741,7 +9885,7 @@ EOF
       e_and_l "$ACTION_MESSAGE      ... $NC_TAG"
     fi
   else # kein MATE
-    e_and_l "$(skip_text "$ACTION_MESSAGE     " "nur MATE-Desktop")"
+    e_and_l "$(skip_text "$ACTION_MESSAGE     " "$NM_TXT")"
   fi
 
   # ===========================================================================
@@ -10115,7 +10259,7 @@ EOF
   fi
 
   # ===========================================================================
-  # Alias Definitionen für Befehle einrichten (für ALLE  Benutzer)
+  # Alias Definitionen für Befehle einrichten (für ALLE Benutzer)
   # ===========================================================================
   GLOBAL_BASHRC_FILE="/etc/bash.bashrc"
   USER_BASHRC_FILE="$USER_HOME_DIR/.bashrc"
