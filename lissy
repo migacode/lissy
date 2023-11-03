@@ -35,8 +35,8 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.93"
-# Letzte Änderung: 02.11.2023
+VERSION="3.94"
+# Letzte Änderung: 03.11.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -941,7 +941,7 @@ if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORI
 KATEGORIE_PKGS[i]="anydesk ipscan chromium filezilla firefox opera-stable microsoft-edge-stable nomachine realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission-common virt-viewer wireshark"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[i]+=" hexchat warpinator"; fi
 # Multimedia
-KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv parole openshot-qt rhythmbox smplayer vlc yt-dlp youtube-dl youtubedl-gui youplay"
+KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv parole openshot-qt rhythmbox smplayer vlc webcamoid yt-dlp youtube-dl youtubedl-gui youplay"
 # Netzwerkverbindungen
 KATEGORIE_PKGS[n]="openvpn network-manager-openvpn network-manager-openvpn-gnome vpnc vpnc-scripts network-manager-vpnc network-manager-vpnc-gnome"
 # Spiele
@@ -952,11 +952,11 @@ KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker
 KATEGORIE_PKGS[v]="backintime-common baobab bleachbit blueman caja copyq czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted grsync grub-customizer gsmartcontrol gtkhash gufw hardinfo kwalletmanager mozo nemo plasma-discover seahorse synaptic system-config-printer timeshift tilda usbview xfce4-taskmanager zulumount-gui"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[v]+=" bulky qt5ct webapp-manager"; fi
 # Tonstudio
-KATEGORIE_PKGS[t]="ardour audacity hydrogen lmms qjackctl qtractor yoshimi"
+KATEGORIE_PKGS[t]="ardour audacity hydrogen lmms qjackctl qtractor yoshimi zynaddsubfx"
 # USB-Firewall
 KATEGORIE_PKGS[u]="usbauth"
 # Zubehör
-KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk doublecmd-common engrampa freefilesync galculator gedit gnome-characters gucharmap keepass2 kfind klavaro ktouch magnus mousepad nmapsi4 onboard pdfmod pluma putty redshift rpi-imager usb-creator-common veracrypt xournal"
+KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk doublecmd-common engrampa freefilesync galculator gedit gnome-characters gucharmap kdeconnect keepass2 kfind klavaro ktouch magnus mousepad nmapsi4 onboard pdfmod plank pluma putty redshift rpi-imager usb-creator-common veracrypt xournal"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[z]+=" sticky xed"; fi
 # Windows-API "Wine"
 if [ $(apt list "wine-installer" 2>/dev/null | grep -i -c -E "wine-installer") -gt 0 ];
@@ -1983,12 +1983,16 @@ PKG_ICON_LIST[freedoom]="io.github.freedoom.Phase1 io.github.freedoom.Phase2"
 PKG_ICON_XDIR[freedoom]=""
 PKG_ICON_LIST[gnome-games]="aisleriot sol org.gnome.Chess org.gnome.five-or-more org.gnome.Four-in-a-row org.gnome.Hitori org.gnome.Klotski org.gnome.LightsOff org.gnome.Mahjongg org.gnome.Mines org.gnome.Nibbles org.gnome.Quadrapassel org.gnome.Reversi org.gnome.Robots org.gnome.Sudoku org.gnome.SwellFoop org.gnome.Tali org.gnome.Taquin org.gnome.Tetravex org.gnome.TwentyFortyEight"
 PKG_ICON_XDIR[gnome-games]="Gnome Games"
+PKG_ICON_LIST[kdeconnect]=""
+PKG_ICON_XDIR[kdeconnect]="KDE Connect"
 PKG_ICON_LIST[oolite]="oolite.org"
 PKG_ICON_XDIR[oolite]=""
 PKG_ICON_LIST[wine]="wine-browsedrive wine-control wine-explorer wine-iexplore wine-regedit wine-taskmgr wine-uninstaller wine-winecfg wine-wineconsole wine-winemine"
 PKG_ICON_XDIR[wine]=""
 PKG_ICON_LIST[wine-installer]="${PKG_ICON_LIST[wine]}"
 PKG_ICON_XDIR[wine-installer]=""
+PKG_ICON_LIST[zynaddsubfx]=""
+PKG_ICON_XDIR[zynaddsubfx]="ZynAddSubFX"
 
 ###############################################################################
 # Zusätzliche Desktop-Symbole zur Ergänzung des Ordners "Systemverwaltung".
@@ -1997,7 +2001,7 @@ PKG_ICON_XDIR[wine-installer]=""
 # Das betrifft bspw. Programme aus den Systemerweiterungen oder Tools (GUIs)
 # für die Konfiguration von Kernel-Modulen sowie externen Treibern.
 ###############################################################################
-ADD_SYS_ICONS=( 'caja-file-management-properties' 'ccsm' 'htop' 'nvidia-settings' 'nm-connection-editor' 'org.gnome.DiskUtility' 'software-properties-gtk' 'software-properties-qt' 'time-admin' 'update-manager' 'users-admin' 'xarchiver' 'xscreensaver-properties' 'xscreensaver-settings')
+ADD_SYS_ICONS=( 'ayatana-settings' 'debian-xterm' 'caja-file-management-properties' 'ccsm' 'htop' 'lightdm-settings' 'nvidia-settings' 'nm-connection-editor' 'org.gnome.DiskUtility' 'software-properties-gtk' 'software-properties-qt' 'time-admin' 'update-manager' 'users-admin' 'xarchiver' 'xpra' 'xscreensaver-properties' 'xscreensaver-settings' 'xterm' )
 
 ###############################################################################
 # Raspbian Tools - Namen der Symbole (vollständige Dateinamen ohne Pfadangabe
@@ -2673,27 +2677,6 @@ function copy_starter_to_desktop () {
                 SEARCH_RESULT_TMP+=$'\n'
               fi
             done
-            # Wenn Icons aus vordefinierter Liste gefunden wurden,
-            # dann auch Extra-Verzeichnis prüfen und ggf. anlegen
-            if [ "$SEARCH_RESULT_TMP" != "" ];
-            then
-              if [ "${PKG_ICON_XDIR[$SEARCH_NAME]}" != "" ];
-              then
-                ICON_TARGET_DIR+="/${PKG_ICON_XDIR[$SEARCH_NAME]}"
-                if [ ! -d "$ICON_TARGET_DIR" ];
-                then
-                  ORG_ICON_TARGET_DIR="$ICON_TARGET_DIR"
-                  mkdir "$ICON_TARGET_DIR" &>/dev/null
-                  if [ $? -eq 0 ];
-                  then
-                    chown "$USER_USERNAME:$USER_USERNAME" "$ICON_TARGET_DIR" &>/dev/null
-                    chmod 0755 "$ICON_TARGET_DIR" &>/dev/null
-                  else
-                    ICON_TARGET_DIR="$ORG_ICON_TARGET_DIR"
-                  fi
-                fi
-              fi
-            fi
             SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"
           fi
 
@@ -2701,13 +2684,34 @@ function copy_starter_to_desktop () {
           # Ende der Suche nach Starter(.desktop)-Dateien
           # -------------------------------------------------------------------
 
+          # -------------------------------------------------------------------
           # Ergebnisliste in Array umwandeln
+          # -------------------------------------------------------------------
           IFS=$'\n' ICON_LIST_ARRAY=(${SEARCH_RESULT_ALL})
           IFS=' '
 
+          # -------------------------------------------------------------------
           # Wenn Dateien gefunden wurden, diese kopieren
+          # -------------------------------------------------------------------
           if [ ${#ICON_LIST_ARRAY[@]} -gt 0 ];
           then
+            # Extra-Verzeichnis prüfen und ggf. anlegen
+            if [ "${PKG_ICON_XDIR[$SEARCH_NAME]}" != "" ];
+            then
+              ICON_TARGET_DIR+="/${PKG_ICON_XDIR[$SEARCH_NAME]}"
+              if [ ! -d "$ICON_TARGET_DIR" ];
+              then
+                ORG_ICON_TARGET_DIR="$ICON_TARGET_DIR"
+                mkdir "$ICON_TARGET_DIR" &>/dev/null
+                if [ $? -eq 0 ];
+                then
+                  chown "$USER_USERNAME:$USER_USERNAME" "$ICON_TARGET_DIR" &>/dev/null
+                  chmod 0755 "$ICON_TARGET_DIR" &>/dev/null
+                else
+                  ICON_TARGET_DIR="$ORG_ICON_TARGET_DIR"
+                fi
+              fi
+            fi
             LAST_BASE_NAME=""
             for desktop_file in ${ICON_LIST_ARRAY[@]};
             do
@@ -7327,13 +7331,6 @@ then
     do
       create_extra_icon "$desktop_icon"
     done
-    # ---------------------------------------------------------------------------
-    # Systemverwaltung - nur bei LightDM Display Manager
-    # ---------------------------------------------------------------------------
-    if [ "$DISPLAY_MANAGER" = "lightdm" ];
-    then
-      create_extra_icon "lightdm-settings"
-    fi
     e_and_l " Es wurden ${bold_green}$NEW_ICON_COUNTER${colors_off} neue Programmsymbole erstellt"
     e_and_l "$FULL_LINE"
     ((ALL_ICON_COUNTER+=NEW_ICON_COUNTER))
@@ -7376,6 +7373,20 @@ then
     fi
     SEARCH_ICON_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]}"
     create_extra_icon "matecc" # Control-Center / Steuerzentrale separat ("-" fehlt im Namen)
+    EXCLUDE_ICON_LIST=""
+    copy_icon_list
+  fi
+
+  # ---------------------------------------------------------------------------
+  # Cinnamon Tools Icons
+  # ---------------------------------------------------------------------------
+  if [ "$DESKTOP_ENVIRONMENT" = "Cinnamon" ];
+  then
+    NEW_ICON_COUNTER=0
+    e_and_l " ${bold_blue}Cinnamon Tools${colors_off}"
+    e_and_l " Erstelle zusätzliche Programmsymbole des Cinnamon-Desktop ... "
+    KAT_SHORT_NAME="Cinnamon Tools"
+    SEARCH_ICON_RESULT=$(ls "/usr/share/applications" | grep -i -E "cinnamon\-.*\.desktop")
     EXCLUDE_ICON_LIST=""
     copy_icon_list
   fi
@@ -8029,11 +8040,17 @@ then
              [ -e "/usr/bin/mate-screensaver.deactivated" ];
           then
             MATE_ACTIVE_SS_FILES=0
+            # -------------------------
             declare -A MATE_SCRSAVER_FILES
-            MATE_SCRSAVER_FILES[0]="/etc/xdg/autostart/mate-screensaver.desktop"
-            MATE_SCRSAVER_FILES[1]="/usr/bin/mate-screensaver"
-            MATE_SCRSAVER_FILES[2]="/usr/share/applications/mate-screensaver-preferences.desktop"
-            MATE_SCRSAVER_FILES[3]="$USER_CONFIG_DIR/autostart/mate-screensaver.desktop"
+            # Binär-Datei
+            MATE_SCRSAVER_FILES[0]="/usr/bin/mate-screensaver"
+            # Autostart-Einträge
+            MATE_SCRSAVER_FILES[1]="/etc/xdg/autostart/mate-screensaver.desktop"
+            MATE_SCRSAVER_FILES[2]="$USER_CONFIG_DIR/autostart/mate-screensaver.desktop"
+            # Menü-Einträge
+            MATE_SCRSAVER_FILES[3]="/usr/share/applications/mate-screensaver-preferences.desktop"
+            MATE_SCRSAVER_FILES[4]="/usr/share/mate/applications/mate-screensaver-preferences.desktop"
+            # -------------------------
             for scr_saver_file in ${MATE_SCRSAVER_FILES[@]};
             do
               if [ -e "$scr_saver_file" ]; then ((MATE_ACTIVE_SS_FILES+=1)); fi
