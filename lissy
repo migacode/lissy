@@ -35,8 +35,8 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.95"
-# Letzte Änderung: 03.11.2023
+VERSION="3.95.2" # Immer sechs Zeichen lang ;)
+# Letzte Änderung: 04.11.2023
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -761,9 +761,9 @@ declare -A KATEGORIE_TEXT # Angezeigte Bezeichnung der Kategorie
 declare -A KATEGORIE_PKGS # Liste mit den in der Kategorie enthaltenen Paketen
 
 # Alphabetische Reihenfolge
-KAT_KEY_LIST=(a b c f g i m n p q s t u v w wg x z mt gx lx mx xx)
+KAT_KEY_LIST=(a b c f g i m n p q s t u v w wg x z mt gx lx mx)
 # Reihenfolge der Verarbeitung
-KAT_ORD_LIST=(x v b i n wg c m g t z u p a f q w s mt gx lx mx xx)
+KAT_ORD_LIST=(x v b i n wg c m g t z u p a f q w s mt gx lx mx)
 
 # --- CATEGORIES START ---
 KATEGORIE_TEXT[a]="Webserver (Apache und PHP)"
@@ -788,7 +788,6 @@ KATEGORIE_TEXT[mt]="Mint Tools (Erweiterungen für Linux Mint)"
 KATEGORIE_TEXT[gx]="GNOME Tools (Erweiterungen für das GNOME-Desktop)"
 KATEGORIE_TEXT[lx]="LXDE Tools (Erweiterungen für das LXDE-Desktop)"
 KATEGORIE_TEXT[mx]="MATE Tools (Erweiterungen für das MATE-Desktop)"
-KATEGORIE_TEXT[xx]="XFCE Tools (Erweiterungen für das XFCE-Desktop)"
 # --- CATEGORIES END ---
 
 ###############################################################################
@@ -985,8 +984,6 @@ else
   KATEGORIE_PKGS[mx]+=" mate-desktop-environment-extras"
 fi
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "ubuntu") -gt 0 ]; then KATEGORIE_PKGS[mx]+=" software-boutique ubuntu-mate-welcome"; fi
-# XFCE Tools
-KATEGORIE_PKGS[xx]=""
 
 ###############################################################################
 # Liste von Paketen, die automatisch zusätzlich zu einem Basispaket installiert
@@ -1078,6 +1075,7 @@ SIMILAR_PACK[pinta]="drawing"
 SIMILAR_PACK[transmission-common]="transmission"
 SIMILAR_PACK[usb-creator-common]="balena-etcher"
 SIMILAR_PACK[virtualbox]="virtualbox-7.0"
+SIMILAR_PACK[wine-installer]="wine"
 
 ###############################################################################
 # Liste der Architekturen
@@ -5364,7 +5362,7 @@ function show_headlines () {
   HEADLINE_TEXT+="$FULLSPACE"$'\n'
   HEADLINE_TEXT+="                $HEADLINE_TITLE                "$'\n'
   HEADLINE_TEXT+="${light_blue}${bg_blue}"
-  HEADLINE_TEXT+="                             by Michael G. | v$VERSION                              "$'\n'
+  HEADLINE_TEXT+="                            by Michael G. | v$VERSION                             "$'\n'
   HEADLINE_TEXT+="$FULLSPACE"
   HEADLINE_TEXT+="${colors_off}"
   e_and_l "$HEADLINE_TEXT"
@@ -5632,7 +5630,6 @@ then
       KATEGORIE_FLAG[lx]=0
       KATEGORIE_FLAG[mt]=0
       KATEGORIE_FLAG[mx]=0
-      KATEGORIE_FLAG[xx]=0
     fi
   done
   # Danach "restliche" bzw. individuelle Kategorie-Auswahl (+) einlesen
@@ -5836,7 +5833,7 @@ then
   # Menü nur anzeigen, wenn "dialog" verfügbar ist
   if [ $NO_MENU -eq 0 ];
   then
-    MENU_TITLE="    ────── $HEADLINE_TITLE v $VERSION ──────"
+    MENU_TITLE="    ───── $HEADLINE_TITLE v $VERSION ─────"
     DIALOG_RC_FILE="$DOWNLOAD_DIR/dialogrc"
     # Konfigurations-Datei für "dialog" anlegen, wenn es noch keine gibt
     REMOVE_DIALOG_RC=0
@@ -6155,8 +6152,7 @@ EOF
         if [[ ${KATEGORIE_FLAG[gx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "GNOME" ]] ||
            [[ ${KATEGORIE_FLAG[lx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "LXDE"  ]] ||
            [[ ${KATEGORIE_FLAG[mt]} -eq 1 && $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -eq 0  ]] ||
-           [[ ${KATEGORIE_FLAG[mx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "MATE"  ]] ||
-           [[ ${KATEGORIE_FLAG[xx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "XFCE"  ]];
+           [[ ${KATEGORIE_FLAG[mx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "MATE"  ]];
         then
           MENU_INFO_TEXT="\Z1\ZbWarnung\Zn: Es wurden Tool-Pakete ausgewählt, die nicht für diesen Desktop vorgesehen sind."
         fi
@@ -7519,26 +7515,6 @@ then
     if [ -d "/var/lib/snapd/desktop/applications" ];
     then
       SEARCH_RESULT_SNAP=$(ls "/var/lib/snapd/desktop/applications" | grep -i -E "^lx.*\.desktop")
-    fi
-    SEARCH_ICON_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]}"
-    EXCLUDE_ICON_LIST=""
-    copy_icon_list
-  fi
-
-  # ---------------------------------------------------------------------------
-  # XFCE Tools Icons
-  # ---------------------------------------------------------------------------
-  if [ ${KATEGORIE_FLAG[xx]} -eq 1 ];
-  then
-    NEW_ICON_COUNTER=0
-    e_and_l " ${bold_blue}XFCE Tools${colors_off}"
-    e_and_l " Erstelle zusätzliche Programmsymbole des XFCE-Desktop ... "
-    KAT_SHORT_NAME="${KATEGORIE_TEXT[xx]}"
-    SEARCH_RESULT_STANDARD=$(ls "/usr/share/applications" | grep -i -E "^xfce.*\.desktop")
-    SEARCH_RESULT_SNAP=""
-    if [ -d "/var/lib/snapd/desktop/applications" ];
-    then
-      SEARCH_RESULT_SNAP=$(ls "/var/lib/snapd/desktop/applications" | grep -i -E "^xfce.*\.desktop")
     fi
     SEARCH_ICON_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]}"
     EXCLUDE_ICON_LIST=""
@@ -10794,6 +10770,7 @@ if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
 then
   e_and_l " ${bold_blue}Reaktivierung vormals deaktivierter Komponenten${colors_off}"
   echo -e -n " Starte Suche deaktivierter Komponenten, bitte warten ... "
+  NOTHING_FOUND_TEXT="Es wurden keine deaktivierten Komponenten gefunden"
   REVIVE_ITEM_LIST="$DOWNLOAD_DIR/revive_item_list"
   echo -e -n "" > "$REVIVE_ITEM_LIST"
   find / -iname "*.deactivated" -type d,f 1>>"$REVIVE_ITEM_LIST" 2>/dev/null
