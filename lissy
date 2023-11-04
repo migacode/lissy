@@ -35,8 +35,9 @@
 #   https://migano.de oder per E-Mail an >> kontakt@migano.de <<. Danke.      #
 #                                                                             #
 ###############################################################################
-VERSION="3.95.2" # Immer sechs Zeichen lang ;)
+# Versionsnummer (immer sechs Zeichen lang ;)
 # Letzte Änderung: 04.11.2023
+VERSION="3.95.2"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
