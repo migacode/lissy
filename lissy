@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 04.11.2023
-VERSION="3.95.2"
+# Letzte Änderung: 05.11.2023
+VERSION="3.95.4"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -749,6 +749,15 @@ then
   SHELL_TEXT="$("${SHELL##*/}" --version)"
   SHELL_TEXT=$(echo -n "${SHELL_TEXT%%(*}")
   SHELL_TEXT=$(echo -n "${SHELL_TEXT:0:64}" | xargs)
+
+  # -----
+  # Wine
+  # -----
+  WINE_VERSION=""
+  if wine --version &>/dev/null;
+  then
+    WINE_VERSION="$(wine --version | cut -d" " -f 1 | cut -d "-" -f 2)"
+  fi
 
 fi
 
@@ -6652,6 +6661,11 @@ then
   if [ "$SHELL_TEXT" != "" ];
   then
     SYS_INFO_TXT+=" Shell: ${bold_yellow}$SHELL_TEXT${colors_off}"$'\n'
+  fi
+
+  if [ "$WINE_VERSION" != "" ];
+  then
+    SYS_INFO_TXT+=" Wine: ${bold_yellow}$WINE_VERSION${colors_off}"$'\n'
   fi
 
   SYS_INFO_TXT+=" Hostname: ${bold_yellow}$(hostname)${colors_off}"$'\n'
