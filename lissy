@@ -37,7 +37,7 @@
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
 # Letzte Änderung: 05.11.2023
-VERSION="3.95.5"
+VERSION="3.95.6"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -9774,7 +9774,8 @@ EOF
        [ $(cat "$LDM_CONF_FILE" 2>/dev/null | grep -i -c -E "$THE_HIDE_USER_LINE") -gt 0 ];
     then
       THE_GOOD_LINE="greeter-hide-users=false"
-      if [ $(cat "$LDM_CONF_FILE" 2>/dev/null | grep -i -c -E "^\s*$THE_GOOD_LINE") -eq 0 ];
+      if [ "$THE_HIDE_USER_LINE" != "" ] &&
+         [ $(cat "$LDM_CONF_FILE" 2>/dev/null | grep -i -c -E "^\s*$THE_GOOD_LINE") -eq 0 ];
       then
         ask_yes_or_no "$ACTION_MESSAGE"
         if [ $? -eq 1 ];
