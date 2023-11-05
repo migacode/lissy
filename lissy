@@ -37,7 +37,7 @@
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
 # Letzte Änderung: 05.11.2023
-VERSION="3.95.4"
+VERSION="3.95.5"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -9724,6 +9724,8 @@ then
   # Datei lightdm.conf existiert und diese ggf. erstellen oder erweitern
   # ===========================================================================
   LDM_CONF_DIR="/etc/lightdm"
+  LDM_CONF_FILE="$LDM_CONF_DIR/lightdm.conf"
+
   if [ -d "$LDM_CONF_DIR" ]
   then
     # Wenn es schon eine Konfigurations-Datei gibt, diese vervollständigen ...
@@ -9759,6 +9761,43 @@ allow-guest=true
 EOF
 # ---------------------------
     fi
+  fi
+
+  # ===========================================================================
+  # Bei Anmeldung Liste der Benutzer anzeigen
+  # ===========================================================================
+  ACTION_MESSAGE=" Bei Anmeldung ${light_cyan}Liste der Benutzer${colors_off} anzeigen"
+  if [ -d "$LDM_CONF_DIR" ]
+  then
+    THE_HIDE_USER_LINE=$(cat "$LDM_CONF_FILE" | grep -i -E "^\s*#*\s*greeter-hide-users=[a-z]*")
+    if [ -s "$LDM_CONF_FILE" ] &&
+       [ $(cat "$LDM_CONF_FILE" 2>/dev/null | grep -i -c -E "$THE_HIDE_USER_LINE") -gt 0 ];
+    then
+      THE_GOOD_LINE="greeter-hide-users=false"
+      if [ $(cat "$LDM_CONF_FILE" 2>/dev/null | grep -i -c -E "^\s*$THE_GOOD_LINE") -eq 0 ];
+      then
+        ask_yes_or_no "$ACTION_MESSAGE"
+        if [ $? -eq 1 ];
+        then
+          e_and_l -n "${ACTION_MESSAGE//96m/93m}  ... "
+          create_backup_file "$LDM_CONF_FILE"
+          sed -i -E "s/$THE_HIDE_USER_LINE/$THE_GOOD_LINE/g" "$LDM_CONF_FILE"
+          if [ $? -eq 0 ];
+          then
+            e_and_l "$OK_TAG"
+            CHANGES_MADE=1
+          else
+            e_and_l "$ERROR_TAG"
+          fi
+        fi
+      else
+        e_and_l "$ACTION_MESSAGE  ... $NC_TAG"
+      fi
+    else
+      e_and_l "$ACTION_MESSAGE  ... $NA_TXT"
+    fi
+  else
+    e_and_l "$(skip_text "$ACTION_MESSAGE " "nur bei LDM")"
   fi
 
   # ===========================================================================
