@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 05.11.2023
-VERSION="3.95.6"
+# Letzte Änderung: 08.11.2023
+VERSION="3.95.8"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -7140,20 +7140,23 @@ then
         then
           SHOW_PKG_MSG="${bold_red}Achtung:${colors_off} ${light_yellow}$TMP_PACK_MSG${colors_off}"
         fi
-        EVAL_TEST="${WEB_PKG_EVAL["$pkg_name"]}"
-        if [ "$EVAL_TEST" = "" ]; then EVAL_TEST="${DEB_PKG_EVAL["$pkg_name"]}"; fi
-        if [ "$EVAL_TEST" != "" ];
+        if [ "$SHOW_PKG_MSG" != "" ];
         then
-          eval "$EVAL_TEST" &>/dev/null
-          if [ $? -ne 0 ];
+          EVAL_TEST="${WEB_PKG_EVAL["$pkg_name"]}"
+          if [ "$EVAL_TEST" = "" ]; then EVAL_TEST="${DEB_PKG_EVAL["$pkg_name"]}"; fi
+          if [ "$EVAL_TEST" != "" ];
           then
+            eval "$EVAL_TEST" &>/dev/null
+            if [ $? -ne 0 ];
+            then
+              e_and_l " $SHOW_PKG_MSG"
+              e_and_l " Diese Voraussetzung scheint ${bold_red}nicht${colors_off} erfüllt zu sein!"
+              FILL_WORD="trotzdem"
+            fi
+          else
             e_and_l " $SHOW_PKG_MSG"
-            e_and_l " Diese Voraussetzung scheint ${bold_red}nicht${colors_off} erfüllt zu sein!"
-            FILL_WORD="trotzdem"
+            e_and_l " Bitte prüfe vor der Installation, ob diese Voraussetzung erfüllt ist."
           fi
-        else
-          e_and_l " $SHOW_PKG_MSG"
-          e_and_l " Bitte prüfe vor der Installation, ob diese Voraussetzung erfüllt ist."
         fi
         ask_yes_or_no " ${light_cyan}$pkg_name${colors_off} $FILL_WORD auf Version ${light_yellow}$NEW_PKG_INST_VERS${colors_off} updaten"
         if [ $? -eq 1 ];
@@ -12040,7 +12043,7 @@ then
             remove_file "$LOCAL_DOWNLOAD_FILE"
           fi
         else
-          e_and_l -n "$ACTION_MESSAGE${light_yellow}wird übersprungen${colors_off}"
+          e_and_l "$ACTION_MESSAGE${light_yellow}wird übersprungen${colors_off}"
         fi
       done
     else
