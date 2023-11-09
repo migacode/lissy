@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 08.11.2023
-VERSION="3.95.8"
+# Letzte Änderung: 09.11.2023
+VERSION="3.96.0"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -8059,8 +8059,9 @@ then
       # ===========================================================================
       ACTION_MESSAGE=" Bildschirmschoner ${light_cyan}XScreenSaver${colors_off} einrichten"
       XSCRSAVER_EPKG_LIST=('xscreensaver' 'xscreensaver-data' 'xscreensaver-data-extra' 'xscreensaver-gl' 'xscreensaver-gl-extra' 'rss-glx')
-      XSCRSAVER_AVAILABLE=0
-      XSCRSAVER_INSTALLED=0
+      XSCRSAVER_AVAILABLE=0 # Verfügbare Module
+      XSCRSAVER_INSTALLED=0 # Bereits installierte Module
+      XSCRSAVER_NEWINST=0   # Neu installierte Module
       for xs_pkg in ${XSCRSAVER_EPKG_LIST[@]};
       do
         if [ $(apt list "$xs_pkg" 2>/dev/null | grep -i -c "$xs_pkg") -gt 0 ];
@@ -8085,7 +8086,6 @@ then
             then
               e_and_l -n " Installiere ${light_yellow}XScreen-Module${colors_off}, bitte warten   ... "
               echo -e "" > "$LOG_TEMP"
-              XSCRSAVER_NEWINST=0
               for xs_pkg in ${XSCRSAVER_EPKG_LIST[@]};
               do
                 # Wenn das Modul noch nicht installiert ist ...
@@ -8216,9 +8216,8 @@ then
         if [ "${AUTOSTART_ACTIVATE_ONLY[$a]}" = "all" ] ||
            [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "${AUTOSTART_ACTIVATE_ONLY[$a]}") -gt 0 ];
         then
+          # 1. Installation des Moduls
           INSTALL_STATUS=0
-          NEW_INSTALLED=0
-          ANSWER_INST_NO=0
           if [ $(LANG=en dpkg-query -W -f='${Status}' "${AUTOSTART_ACTIVATE_LIST[$a]}" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
           then
             if [ $(apt list "${AUTOSTART_ACTIVATE_LIST[$a]}" 2>/dev/null | grep -i -c -E "${AUTOSTART_ACTIVATE_LIST[$a]}") -gt 0 ];
@@ -8234,27 +8233,32 @@ then
                 apt install "${AUTOSTART_ACTIVATE_LIST[$a]}" -y &>"$LOG_TEMP"
                 if [ $? -eq 0 ]
                 then
-                  NEW_INSTALLED=1
-                else
                   INSTALL_STATUS=1
+                  CHANGES_MADE=1
+                  e_and_l "$OK_TAG"
+                else
+                  e_and_l "$ERROR_TAG"
                 fi
-              else
-                INSTALL_STATUS=2
-                ANSWER_INST_NO=1
               fi
             else
-              INSTALL_STATUS=3
               e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
             fi
           else
-            e_and_l -n "$ACTION_MESSAGE ... "
+            INSTALL_STATUS=1
+            e_and_l "$ACTION_MESSAGE ... $NC_TAG"
           fi
-          if [ $INSTALL_STATUS -eq 0 ];
+          # 2. Einrichtung des Autostart-Eintrags
+          if [ $INSTALL_STATUS -eq 1 ];
           then
             # Auf MATE- und Cinnamon-Desktop zusätzlich Autostart einrichten
             if [ "$DESKTOP_ENVIRONMENT" = "MATE" ] ||
                [ "$DESKTOP_ENVIRONMENT" = "Cinnamon" ];
             then
+              e_and_l -n " Autostart für ${bold_white}$PACKET_NAME_TO_SHOW${colors_off} einrichten"
+              ANZ_SPACES=18
+              ((ANZ_SPACES-=${#PACKET_NAME_TO_SHOW}))
+              i=1; while [ $i -lt $ANZ_SPACES ]; do e_and_l -n " "; ((i+=1)); done
+              e_and_l -n " ... "
               ENTRY_FILE_NAME="$USER_CONFIG_DIR/autostart/${AUTOSTART_ACTIVATE_LIST[$a]}"
               ENTRY_FILE_NAME+=".desktop"
               # Wenn es schon eine Datei gibt, diese anpassen ...
@@ -8305,18 +8309,9 @@ then
                   e_and_l "$ERROR_TAG"
                 fi
               fi
-            else
-              if [ $NEW_INSTALLED -eq 1 ];
-              then
-                e_and_l "$OK_TAG"
-              else
-                e_and_l "$NC_TAG"
-              fi
             fi
-          else
-            add_full_log
           fi
-        else
+        else # Kein Ubuntu
           e_and_l "$(skip_text "$ACTION_MESSAGE" "$NU_TXT")"
         fi
         ((a+=1))
