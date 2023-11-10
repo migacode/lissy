@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 09.11.2023
-VERSION="3.96.0"
+# Letzte Änderung: 10.11.2023
+VERSION="3.96.2"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -9584,7 +9584,7 @@ then
   fi
   if [ "$SHOW_SKIP_MESSAGE" != "" ];
   then
-    e_and_l "$(skip_text "${ACTION_MESSAGE//96m/93m}" "$SHOW_SKIP_MESSAGE")"
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "$SHOW_SKIP_MESSAGE")"
   fi
 
   # ===========================================================================
@@ -9633,6 +9633,57 @@ then
   if [ "$SHOW_SKIP_MESSAGE" != "" ];
   then
     e_and_l "$(skip_text " Deaktivierung des internen Screen Blanking" "$SHOW_SKIP_MESSAGE")"
+  fi
+
+  # ===========================================================================
+  # Korrektur der Monitor-Overscan-Einstellung
+  # ===========================================================================
+  ACTION_MESSAGE=" Korrektur der Einstellung ${light_cyan}Monitor-Overscan${colors_off}"
+  if [ $RASPBERRY -ne 0 ];
+  then
+    PI_X_CONF_FILE="/boot/firmware/config.txt"
+    OVERSCAN_TEXT="disable_overscan=1"
+    if [ -f "$PI_X_CONF_FILE" ];
+    then
+      # Wenn ein korrekter und keine weiteren Einträge existieren, nicht weitermachen
+      if [ $(grep -i -c -E "^\s*$OVERSCAN_TEXT" "$PI_X_CONF_FILE" 2>/dev/null) -gt 0 ];
+      then
+        e_and_l -n "$ACTION_MESSAGE ... "
+        e_and_l "$NC_TAG"
+      else
+        ask_yes_or_no " Einstellung für ${light_cyan}Monitor-Overscan${colors_off} korrigieren"
+        if [ $? -eq 1 ];
+        then
+          e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
+          # Wenn schon ein Eintrag existiert, diesen anpassen ...
+          if [ $(grep -i -c -E "^\s*#*\s*disable_overscan" "$PI_X_CONF_FILE" 2>/dev/null) -gt 0 ];
+          then
+            create_backup_file "$PI_X_CONF_FILE"
+            sed -i -E "s/^\s*#*\s*disable_overscan\s*\=\s*[0-9]*/$OVERSCAN_TEXT/gi" "$PI_X_CONF_FILE" &>/dev/null
+            if [ $? -eq 0 ];
+            then
+              e_and_l "$OK_TAG"
+              CHANGES_MADE=1
+            else
+              e_and_l "$ERROR_TAG"
+            fi
+          else # ... wenn kein Eintrag existiert, diesen hinzufügen
+            echo -e $'\n'"$OVERSCAN_TEXT" >> "$PI_X_CONF_FILE" 2>/dev/null
+            if [ $? -eq 0 ];
+            then
+              e_and_l "$OK_TAG"
+              CHANGES_MADE=1
+            else
+              e_and_l "$ERROR_TAG"
+            fi
+          fi
+        fi
+      fi
+    else # Keine Config-Datei
+      e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
+    fi
+  else # Kein Raspberry Pi
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "$RASPY_TXT")"
   fi
 
   # ===========================================================================
