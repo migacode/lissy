@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 10.11.2023
-VERSION="3.96.2"
+# Letzte Änderung: 12.11.2023
+VERSION="3.97.1"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -354,12 +354,12 @@ then
     # =========================================================================
     # Ermittlung der Anzahl von Paket-Quellen in der Datei sources.list
     # =========================================================================
-    ANZ_SOURCE_ENTRIES=$(cat "$SOURCES_LIST_FILE" 2>/dev/null | grep -i -E "^\s*deb\s" | grep -i -v "security" | wc -l)
+    ANZ_SOURCE_ENTRIES=$(grep -i -E "^\s*deb\s" "$SOURCES_LIST_FILE" 2>/dev/null | grep -i -v "security" | wc -l)
     # =========================================================================
     # Deaktivieren von CD/DVD als Haupt-Paketquelle (alle zu installierenden
     # Pakete werden ausschließlich immer aktuell aus dem Internet geladen!)
     # =========================================================================
-    if [ $(cat "$SOURCES_LIST_FILE" 2>/dev/null | grep -i -c -E "^\s*deb\s\s*cdrom") -gt 0 ];
+    if [ $(grep -i -c -E "^\s*deb\s\s*cdrom" "$SOURCES_LIST_FILE" 2>/dev/null) -gt 0 ];
     then
       echo -e ""
       echo -e -n " Deaktiviere CD/DVD als Paketquelle ... "
@@ -412,20 +412,20 @@ then
   # Prozessor
   # ----------
   # Bezeichnung
-  CPU_MODEL=$(cat /proc/cpuinfo 2>/dev/null | grep -i -E "^model\s*name*\s*\:")
+  CPU_MODEL=$(grep -i -E "^model\s*name*\s*\:" "/proc/cpuinfo" 2>/dev/null)
   if [ "$CPU_MODEL" = "" ];
   then
-    CPU_MODEL=$(cat /proc/cpuinfo 2>/dev/null | grep -i -E "^model\s*\:")
+    CPU_MODEL=$(grep -i -E "^model\s*\:" "/proc/cpuinfo" 2>/dev/null)
   fi
   CPU_MODEL=$(echo -n "${CPU_MODEL##*\:}" | xargs)
   # Anzahl Kerne
-  CPU_CORES=$(cat /proc/cpuinfo 2>/dev/null | grep -i -c -E "^processor\s*\:")
+  CPU_CORES=$(grep -i -c -E "^processor\s*\:" "/proc/cpuinfo" 2>/dev/null)
   # CPU-Code
-  CPU_CODE=$(cat /proc/cpuinfo 2>/dev/null | grep -i -E "^hardware\s*\:")
+  CPU_CODE=$(grep -i -E "^hardware\s*\:" "/proc/cpuinfo" 2>/dev/null)
   CPU_CODE=$(echo -n "${CPU_CODE##*\:}" | xargs)
 
   # Seriennummer
-  CPU_SERIAL=$(cat /proc/cpuinfo 2>/dev/null | grep -i -E "^serial\s*\:")
+  CPU_SERIAL=$(grep -i -E "^serial\s*\:" "/proc/cpuinfo" 2>/dev/null)
   CPU_SERIAL=$(echo -n "${CPU_SERIAL##*\:}" | xargs)
 
   # -------------------------------------------------------------------------
@@ -474,7 +474,7 @@ then
   # -----------------------------------------------------------------------------
   if [ -f "/proc/meminfo" ];
   then
-    MEMORY_TOTAL=$(cat /proc/meminfo 2>/dev/null | grep -i -E "memtotal")
+    MEMORY_TOTAL=$(grep -i -E "memtotal" "/proc/meminfo" 2>/dev/null)
     MEMORY_TOTAL=${MEMORY_TOTAL##*\:}
     if [ $(echo $MEMORY_TOTAL | grep -i -c -E "G") -gt 0 ];
     then
@@ -493,7 +493,7 @@ then
         fi
       fi
     fi
-    MEMORY_AVAIL=$(cat /proc/meminfo 2>/dev/null | grep -i -E "memavail")
+    MEMORY_AVAIL=$(grep -i -E "memavail" "/proc/meminfo" 2>/dev/null)
     MEMORY_AVAIL=${MEMORY_AVAIL##*\:}
     if [ $(echo $MEMORY_AVAIL | grep -i -c -E "G") -gt 0 ];
     then
@@ -524,34 +524,34 @@ then
   if [ $RASPBERRY -eq 0 ] &&
      [ -f "/proc/cpuinfo" ];
   then
-    RASPBERRY=$(cat "/proc/cpuinfo" | grep -i -c -E "raspberry")
+    RASPBERRY=$(grep -i -c -E "raspberry" "/proc/cpuinfo")
   fi
   RASPBIAN=0
   OS_V_CODENAME=""
   OS_U_CODENAME=""
   if [ -s '/etc/os-release' ];
   then
-    OS_NAME=$(cat "/etc/os-release" | grep -i -E "^NAME\s*=")
+    OS_NAME=$(grep -i -E "^NAME\s*=" "/etc/os-release")
     # OS_NAME=$(echo -n "${OS_NAME//\(/}")
     # OS_NAME=$(echo -n "${OS_NAME//\)/}")
     OS_NAME=$(echo -n "${OS_NAME##*\=}" | xargs)
 
-    OS_VERSION=$(cat "/etc/os-release" | grep -i -E "^VERSION\s*=")
+    OS_VERSION=$(grep -i -E "^VERSION\s*=" "/etc/os-release")
     # OS_VERSION=$(echo -n "${OS_VERSION//\(/}")
     # OS_VERSION=$(echo -n "${OS_VERSION//\)/}")
     OS_VERSION=$(echo -n "${OS_VERSION##*\=}" | xargs)
 
-    OS_V_CODENAME=$(cat "/etc/os-release" | grep  -i -E "^VERSION_CODENAME\s*=" | cut -d'"' -f 2 | cut -d'"' -f 1)
+    OS_V_CODENAME=$(grep -i -E "^VERSION_CODENAME\s*=" "/etc/os-release" | cut -d'"' -f 2 | cut -d'"' -f 1)
     # OS_V_CODENAME=$(echo -n "${OS_V_CODENAME//\(/}")
     # OS_V_CODENAME=$(echo -n "${OS_V_CODENAME//\)/}")
     OS_V_CODENAME=$(echo -n "${OS_V_CODENAME##*\=}" | xargs)
 
-    OS_U_CODENAME=$(cat "/etc/os-release" | grep  -i -E "^UBUNTU_CODENAME\s*=" | cut -d'"' -f 2 | cut -d'"' -f 1)
+    OS_U_CODENAME=$(grep  -i -E "^UBUNTU_CODENAME\s*=" "/etc/os-release" | cut -d'"' -f 2 | cut -d'"' -f 1)
     # OS_U_CODENAME=$(echo -n "${OS_U_CODENAME//\(/}")
     # OS_U_CODENAME=$(echo -n "${OS_U_CODENAME//\)/}")
     OS_U_CODENAME=$(echo -n "${OS_U_CODENAME##*\=}" | xargs)
 
-    OS_PRETTY_NAME=$(cat "/etc/os-release" | grep -i -E "^PRETTY_NAME\s*=")
+    OS_PRETTY_NAME=$(grep -i -E "^PRETTY_NAME\s*=" "/etc/os-release")
     # OS_PRETTY_NAME=$(echo -n "${OS_PRETTY_NAME//\(/}")
     # OS_PRETTY_NAME=$(echo -n "${OS_PRETTY_NAME//\)/}")
     OS_PRETTY_NAME=$(echo -n "${OS_PRETTY_NAME##*\=}" | xargs)
@@ -559,10 +559,10 @@ then
     OPERATION_SYSTEM="$OS_NAME $OS_VERSION"
 
     # Check if Raspbian
-    RASPBIAN=$(cat "/etc/os-release" | grep -i -c -E "raspbian")
+    RASPBIAN=$(grep -i -c -E "raspbian" "/etc/os-release")
     if [ $RASPBIAN -eq 0 ];
     then
-      RASPBIAN=$(cat "/etc/os-release" | grep -i -c -E "Raspberry Pi OS")
+      RASPBIAN=$(grep -i -c -E "Raspberry Pi OS" "/etc/os-release")
     fi
     if [ $RASPBIAN -eq 0 ];
     then
@@ -674,9 +674,9 @@ then
   if [ "$DESKTOP_ENVIRONMENT" = "GNOME" ] &&
     [ -s "/usr/share/gnome/gnome-version.xml" ];
   then
-    GNOME_PLATFORM=$(cat /usr/share/gnome/gnome-version.xml | grep -i -E "platform" | cut -d">" -f 2 | cut -d"<" -f 1 )
-    GNOME_MINOR=$(cat /usr/share/gnome/gnome-version.xml | grep -i -E "minor" | cut -d">" -f 2 | cut -d"<" -f 1 )
-    GNOME_MICRO=$(cat /usr/share/gnome/gnome-version.xml | grep -i -E "micro" | cut -d">" -f 2 | cut -d"<" -f 1 )
+    GNOME_PLATFORM=$(grep -i -E "platform" "/usr/share/gnome/gnome-version.xml" | cut -d">" -f 2 | cut -d"<" -f 1 )
+    GNOME_MINOR=$(grep -i -E "minor" "/usr/share/gnome/gnome-version.xml" | cut -d">" -f 2 | cut -d"<" -f 1 )
+    GNOME_MICRO=$(grep -i -E "micro" "/usr/share/gnome/gnome-version.xml" | cut -d">" -f 2 | cut -d"<" -f 1 )
     GNOME_VERSION="$GNOME_PLATFORM.$GNOME_MINOR.$GNOME_MICRO"
     GNOME_PLATFORM=printf -v int '%d\n' "$GNOME_PLATFORM" 2>/dev/null
   fi
@@ -2954,8 +2954,8 @@ function extend_repo_erw () {
      [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
   then
     if [ $(echo "$REPO_KEY_URL" | grep -c -i -E "\.asc$") -gt 0 ] ||
-       [[ $(cat "$LOCAL_DOWNLOAD_FILE" 2>/dev/null | grep -c -i -E "BEGIN PGP") -gt 0 &&
-          $(cat "$LOCAL_DOWNLOAD_FILE" 2>/dev/null | grep -c -i -E "END PGP") -gt 0 ]];
+       [[ $(grep -c -i -E "BEGIN PGP" "$LOCAL_DOWNLOAD_FILE" 2>/dev/null) -gt 0 &&
+          $(grep -c -i -E "END PGP" "$LOCAL_DOWNLOAD_FILE" 2>/dev/null) -gt 0 ]];
     then
       LOCAL_KEY_FILE+=".asc"
     else
@@ -3397,12 +3397,12 @@ function get_tmpfs_size () {
   MOUNT_POINT="$1"
   # Größe nur berechnen, wenn das tmpfs in der fstab enthalten und aktiviert ist
   if [ "$MOUNT_POINT" != "" ] &&
-     [ $(cat "/etc/fstab" | grep -i -c -E "^\s*tmpfs\s*${MOUNT_POINT}\s") -gt 0 ];
+     [ $(grep -i -c -E "^\s*tmpfs\s*${MOUNT_POINT}\s" "/etc/fstab") -gt 0 ];
   then
     # Wenn die Größe explizit angegeben ist, diese auslesen und umwandeln ...
-    if [ $(cat "/etc/fstab" | grep -i -c -E "^\s*tmpfs\s*${MOUNT_POINT}\s.*size\s*=") -gt 0 ];
+    if [ $(grep -i -c -E "^\s*tmpfs\s*${MOUNT_POINT}\s.*size\s*=" "/etc/fstab") -gt 0 ];
     then
-      THE_RAMDISK_SIZE=$(cat "/etc/fstab" | grep -i -E "^\s*tmpfs\s*${MOUNT_POINT}" | sed 's/.*size\s*=\s*//g' | cut -d" " -f 1 | cut -d"," -f 1 | xargs)
+      THE_RAMDISK_SIZE=$(grep -i -E "^\s*tmpfs\s*${MOUNT_POINT}" "/etc/fstab" | sed 's/.*size\s*=\s*//g' | cut -d" " -f 1 | cut -d"," -f 1 | xargs)
       THE_RAMSIZE_UNIT=$(echo $THE_RAMDISK_SIZE | sed 's/[0-9]*//g')
       THE_RAMDISK_SIZE=$(echo $THE_RAMDISK_SIZE | sed 's/[^0-9]*//g')
       case $THE_RAMSIZE_UNIT in
@@ -5763,7 +5763,7 @@ then
   then
     chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
     chmod a+x "$LOCAL_DOWNLOAD_FILE" &>/dev/null
-    NEW_VERSION=$(cat "$LOCAL_DOWNLOAD_FILE" | grep -i -E "^\s*version=" | sed -E "s/^\s*version=//i" | sed -E "s/\"//g" | xargs)
+    NEW_VERSION=$(grep -i -E "^\s*version=" "$LOCAL_DOWNLOAD_FILE" | sed -E "s/^\s*version=//i" | sed -E "s/\"//g" | xargs)
     if [ "$VERSION" != "$NEW_VERSION" ];
     then
       show_headlines
@@ -8554,9 +8554,9 @@ then
       fi
     fi
   fi
+  ACTION_MESSAGE=" Umstellung der ${light_cyan}Systemzeit auf RTC${colors_off} (MS Win)"
   if [ $IS_MULTI_BOOT -ne 0 ];
   then
-    ACTION_MESSAGE=" Umstellung der ${light_cyan}Systemzeit auf RTC${colors_off} (MS Win)"
     if timedatectl &>/dev/null;
     then
       if [ $(timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -eq 0 ];
@@ -8581,6 +8581,8 @@ then
     else
       e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
     fi
+  else
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "kein Multi-Boot")"
   fi
 
   # ===========================================================================
@@ -8590,7 +8592,7 @@ then
   GRUB_FILE="/etc/default/grub"
   if [ -s "$GRUB_FILE" ];
   then
-    if [ $(cat "$GRUB_FILE" | grep -i -c -E "^\s*GRUB_DISABLE_OS_PROBER\s*=\s*\"*true\"*\s*") -gt 0 ];
+    if [ $(grep -i -c -E "^\s*GRUB_DISABLE_OS_PROBER\s*=\s*\"*true\"*\s*" "$GRUB_FILE") -gt 0 ];
     then
       ask_yes_or_no " Die Erkennung anderer ${light_cyan}Betriebssysteme${colors_off} aktivieren"
       if [ $? -eq 1 ];
@@ -8931,7 +8933,7 @@ then
     RAMDISK_ENABLED_SIZE=$((RAMDISK_ENABLED_SIZE * 1024 * 1024))
     FREE_FOR_TMP_DIR=$((MEMORY_TOTAL - MIN_LINUX_RAM - RAMDISK_ENABLED_SIZE))
     TEMP_MSG="$ACTION_MESSAGE ..."
-    if [ $(cat "/etc/fstab" | grep -i -c -E "^\s*tmpfs\s*\/tmp\s*tmpfs") -gt 0 ];
+    if [ $(grep -i -c -E "^\s*tmpfs\s*\/tmp\s*tmpfs" "/etc/fstab") -gt 0 ];
     then
       e_and_l "$TEMP_MSG $NC_TAG"
       REDUCE_TMP_RAM=1
@@ -8956,7 +8958,7 @@ then
         e_and_l -n " Verlagere Ordner ${light_yellow}/tmp${colors_off} in den ${light_yellow}Hauptspeicher${colors_off} ... "
         create_backup_file "/etc/fstab"
         # Wenn es den Eintrag schon gibt, diesen auskommentieren ...
-        if [ $(cat "/etc/fstab" | grep -i -c -E "^#\s*tmpfs\s\s*\/tmp\s\s*tmpfs\s\s*noatime,nosuid,mode=1777\s\s*0\s\s*0") -gt 0 ];
+        if [ $(grep -i -c -E "^#\s*tmpfs\s\s*\/tmp\s\s*tmpfs\s\s*noatime,nosuid,mode=1777\s\s*0\s\s*0" "/etc/fstab") -gt 0 ];
         then
           sed -i -E "s/^#\s*tmpfs\s\s*\/tmp\s\s*tmpfs\s\s*noatime,nosuid,mode=1777\s\s*0\s\s*0/tmpfs  \/tmp  tmpfs  noatime,nosuid,mode=1777  0  0/g" "/etc/fstab"
         else # ... sonst neu anlegen
@@ -9304,7 +9306,7 @@ then
         APPORT_FILE="/etc/default/apport"
         if [ -s "$APPORT_FILE" ];
         then
-          APPORT_FILE_STATUS=$(cat "$APPORT_FILE" | grep -i -c -E "^\s*enabled\s*=\s*0")
+          APPORT_FILE_STATUS=$(grep -i -c -E "^\s*enabled\s*=\s*0" "$APPORT_FILE")
           APPORT_SERVICE_STATUS=$(LANG=en systemctl is-enabled apport 2>/dev/null | grep -i -c -E "^\s*disabled")
           if [ $APPORT_FILE_STATUS -eq 0 ] ||
              [ $APPORT_SERVICE_STATUS -eq 0 ];
@@ -9363,9 +9365,9 @@ then
   SYSLOG_CFG_FILE="/etc/systemd/journald.conf"
   if [ -s "$SYSLOG_CFG_FILE" ];
   then
-    if [ $(cat "$SYSLOG_CFG_FILE" | grep -i -c -E "^\s*SystemMaxFiles\s*=\s*${ANZ_LOG_DAYS}d") -eq 0 ] ||
-       [ $(cat "$SYSLOG_CFG_FILE" | grep -i -c -E "^\s*SystemMaxFileSize\s*=\s*${MAX_LOG_SIZE}M") -eq 0 ] ||
-       [ $(cat "$SYSLOG_CFG_FILE" | grep -i -c -E "^\s*SystemMaxUse\s*=\s*${MAX_LOG_SIZE}M") -eq 0 ];
+    if [ $(grep -i -c -E "^\s*SystemMaxFiles\s*=\s*${ANZ_LOG_DAYS}d" "$SYSLOG_CFG_FILE") -eq 0 ] ||
+       [ $(grep -i -c -E "^\s*SystemMaxFileSize\s*=\s*${MAX_LOG_SIZE}M" "$SYSLOG_CFG_FILE") -eq 0 ] ||
+       [ $(grep -i -c -E "^\s*SystemMaxUse\s*=\s*${MAX_LOG_SIZE}M" "$SYSLOG_CFG_FILE") -eq 0 ];
     then
       ask_yes_or_no " Speicherplatz für ${light_cyan}System-Logdateien${colors_off} begrenzen"
       if [ $? -eq 1 ];
@@ -9397,116 +9399,139 @@ then
     e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
   fi
 
+  e_and_l "$HALF_LINE"
+  e_and_l " ${bold_blue}Raspberry Pi${colors_off}"
+  e_and_l "$HALF_LINE"
+
   # ===========================================================================
   # Taktfrequenzen des Raspberry Pi 4 einstellen
   # ===========================================================================
   SHOW_SKIP_MESSAGE=""
   if [ $RASPBERRY -ne 0 ];
   then
-    PI_CONF_FILE="/boot/config.txt"
+    PI_CONF_FILE="/boot/config.txt" # Pi OS
+    if [ ! -s "$PI_CONF_FILE" ];
+    then
+      PI_CONF_FILE="/boot/firmware/config.txt" # Debian
+    fi
     if [ -s "$PI_CONF_FILE" ];
     then
-      if [ $(cat "$PI_CONF_FILE" | grep -i -c -E "\[pi4\]") -gt 0 ];
+      if [ $(grep -i -c -E "\[pi4\]" "$PI_CONF_FILE") -eq 0 ];
       then
-        pi_perfname=('Low'  'Medium' 'High')
-        pi_overvolt=('0'    '2'      '6'   )
-        pi_arm_freq=('1500' '1750'   '2000')
-        pi_gpu_freq=('500'  '600'    '750' )
-        CURRENT_OVERVOLT="$(cat "$PI_CONF_FILE" | grep -i -E "^\s*over_voltage\s*=" | cut -d"=" -f 2 | xargs)"
-        CURRENT_ARM_FREQ="$(cat "$PI_CONF_FILE" | grep -i -E "^\s*arm_freq\s*=" | cut -d"=" -f 2 | xargs)"
-        CURRENT_GPU_FREQ="$(cat "$PI_CONF_FILE" | grep -i -E "^\s*gpu_freq\s*=" | cut -d"=" -f 2 | xargs)"
-        CURRENT_PI_PERFNAME="Low" # Standard, wenn nichts anderes konfiguriert ist
-        if [ "$CURRENT_ARM_FREQ" != "" ];
-        then
-          i=0
-          for cpu_freq in ${pi_arm_freq[@]};
-          do
-            if [ $CURRENT_ARM_FREQ -ge $cpu_freq ];
-            then
-              CURRENT_PI_PERFNAME=${pi_perfname[$i]}
-            fi
-            ((i+=1))
-          done
-        fi
-        e_and_l " Die aktuellen ${light_cyan}Taktfrequenzen${colors_off} dieses Pi sind auf ${light_yellow}$CURRENT_PI_PERFNAME-Performance${colors_off} eingestellt"
-        ask_yes_or_no " Sollen die Taktfreqenzen geändert werden"
+        echo -e $'\n'"[pi4]" >> "$PI_CONF_FILE" # 2>/dev/null
+      fi
+      pi_perfname=('Low'  'Medium' 'High')
+      pi_overvolt=('0'    '2'      '6'   )
+      pi_arm_freq=('1500' '1750'   '2000')
+      pi_gpu_freq=('500'  '600'    '750' )
+      CURRENT_OVERVOLT="$(grep -i -E "^\s*over_voltage\s*=" "$PI_CONF_FILE" | cut -d"=" -f 2 | xargs)"
+      CURRENT_ARM_FREQ="$(grep -i -E "^\s*arm_freq\s*=" "$PI_CONF_FILE" | cut -d"=" -f 2 | xargs)"
+      CURRENT_GPU_FREQ="$(grep -i -E "^\s*gpu_freq\s*=" "$PI_CONF_FILE" | cut -d"=" -f 2 | xargs)"
+      CURRENT_PI_PERFNAME="Low" # Standard, wenn nichts anderes konfiguriert ist
+      if [ "$CURRENT_ARM_FREQ" != "" ];
+      then
+        i=0
+        for cpu_freq in ${pi_arm_freq[@]};
+        do
+          if [ $CURRENT_ARM_FREQ -ge $cpu_freq ];
+          then
+            CURRENT_PI_PERFNAME=${pi_perfname[$i]}
+          fi
+          ((i+=1))
+        done
+      fi
+      e_and_l " Die aktuellen ${light_cyan}Taktfrequenzen${colors_off} dieses Pi sind auf ${light_yellow}$CURRENT_PI_PERFNAME-Performance${colors_off} eingestellt"
+      ask_yes_or_no " Sollen die Taktfreqenzen geändert werden"
+      if [ $? -eq 1 ];
+      then
+        echo -e " Bitte neues Performance-Profil auswählen"
+        i=0
+        for perfname in ${pi_perfname[@]};
+        do
+          echo -e " [${bold_yellow}$i${colors_off}] $perfname (${pi_arm_freq[$i]} MHz)"
+          ((i+=1))
+        done
+        setterm -cursor off 2>/dev/null
+        NEW_PERF_MODE=-1
+        MAX_NEW_MODE=${#pi_perfname[@]}
+        ((MAX_NEW_MODE-=1))
+        while [ $NEW_PERF_MODE -lt 0 ] ||
+              [ $NEW_PERF_MODE -gt $MAX_NEW_MODE ];
+        do
+          read -N 1 -r -s NEW_PERF_MODE
+          NEW_PERF_MODE=$(echo $NEW_PERF_MODE | sed 's/[^0-9]*//g')
+          if [ "$NEW_PERF_MODE" = "" ]; then NEW_PERF_MODE=-1; fi
+        done
+        setterm -cursor on 2>/dev/null
+        ask_yes_or_no " Taktfrequenzen auf das Profil ${light_yellow}${pi_perfname[$NEW_PERF_MODE]}${colors_off} umstellen"
         if [ $? -eq 1 ];
         then
-          echo -e " Bitte neues Performance-Profil auswählen"
-          i=0
-          for perfname in ${pi_perfname[@]};
-          do
-            echo -e " [${bold_yellow}$i${colors_off}] $perfname (${pi_arm_freq[$i]} MHz)"
-            ((i+=1))
-          done
-          setterm -cursor off 2>/dev/null
-          NEW_PERF_MODE=-1
-          MAX_NEW_MODE=${#pi_perfname[@]}
-          ((MAX_NEW_MODE-=1))
-          while [ $NEW_PERF_MODE -lt 0 ] ||
-                [ $NEW_PERF_MODE -gt $MAX_NEW_MODE ];
-          do
-            read -N 1 -r -s NEW_PERF_MODE
-            NEW_PERF_MODE=$(echo $NEW_PERF_MODE | sed 's/[^0-9]*//g')
-            if [ "$NEW_PERF_MODE" = "" ]; then NEW_PERF_MODE=-1; fi
-          done
-          setterm -cursor on 2>/dev/null
-          ask_yes_or_no " Taktfrequenzen auf das Profil ${light_yellow}${pi_perfname[$NEW_PERF_MODE]}${colors_off} umstellen"
-          if [ $? -eq 1 ];
+          SED_ERROR_CODE_1=0
+          SED_ERROR_CODE_2=0
+          SED_ERROR_CODE_3=0
+          e_and_l -n " OK, ändere Einstellung der ${light_yellow}Taktfrequenzen${colors_off}  ... "
+          create_backup_file "$PI_CONF_FILE"
+          # -----------------------------------------------------------------
+          # 1. Zur Vermeidung und Bereinigung eventuell redundanter Eintragungen
+          #    alle bestehenden Einträge deaktivieren (auskommentieren)
+          # -----------------------------------------------------------------
+          sed -i -E "s/(^\s*over_voltage\s*=)/\# \1/g" "$PI_CONF_FILE"
+          sed -i -E "s/(^\s*arm_freq\s*=)/\# \1/g" "$PI_CONF_FILE"
+          sed -i -E "s/(^\s*gpu_freq\s*=)/\# \1/g" "$PI_CONF_FILE"
+          # -----------------------------------------------------------------
+          # 2. Neue Werte durch die Re-Aktivierung passender (falls vorhanden)
+          #    oder das Hinzufügen neuer Eintragungen einstellen
+          # -----------------------------------------------------------------
+          PI4_NEWLINE=$'\n'
+          # --------
+          # 2.1 GPU
+          # --------
+          NEW_GPU_FREQ=${pi_gpu_freq[$NEW_PERF_MODE]}
+          if [ $(grep -i -c -E "^\s*#\s*gpu_freq\s*=\s*$NEW_GPU_FREQ" "$PI_CONF_FILE") -gt 0 ];
           then
-            e_and_l -n " OK, ändere Einstellung der ${light_yellow}Taktfrequenzen${colors_off}  ... "
-            create_backup_file "$PI_CONF_FILE"
-            # -----------------------------------------------------------------
-            # 1. Zur Vermeidung und Bereinigung eventuell redundanter Eintragungen
-            #    alle bestehenden Einträge deaktivieren (auskommentieren)
-            # -----------------------------------------------------------------
-            sed -i -E "s/(^\s*over_voltage\s*=)/\# \1/g" "$PI_CONF_FILE"
-            sed -i -E "s/(^\s*arm_freq\s*=)/\# \1/g" "$PI_CONF_FILE"
-            sed -i -E "s/(^\s*gpu_freq\s*=)/\# \1/g" "$PI_CONF_FILE"
-            # -----------------------------------------------------------------
-            # 2. Neue Werte durch die Re-Aktivierung passender (falls vorhanden)
-            #    oder das Hinzufügen neuer Eintragungen einstellen
-            # -----------------------------------------------------------------
-            PI4_NEWLINE=$'\n'
-            # --------
-            # 2.1 GPU
-            # --------
-            NEW_GPU_FREQ=${pi_gpu_freq[$NEW_PERF_MODE]}
-            if [ $(cat "$PI_CONF_FILE" | grep -i -c -E "^\s*#\s*gpu_freq\s*=\s*$NEW_GPU_FREQ") -gt 0 ];
-            then
-              sed -i -E "s/^\s*#\s*gpu_freq\s*=\s*$NEW_GPU_FREQ/gpu_freq=$NEW_GPU_FREQ/g" "$PI_CONF_FILE"
-            else
-              sed -i -E "s/\[pi4\]/[pi4]\\${PI4_NEWLINE}gpu_freq=$NEW_GPU_FREQ/g" "$PI_CONF_FILE"
-            fi
-            # --------
-            # 2.2 CPU
-            # --------
-            NEW_ARM_FREQ=${pi_arm_freq[$NEW_PERF_MODE]}
-            if [ $(cat "$PI_CONF_FILE" | grep -i -c -E "^\s*#\s*arm_freq\s*=\s*$NEW_ARM_FREQ") -gt 0 ];
-            then
-              sed -i -E "s/^\s*#\s*arm_freq\s*=\s*$NEW_ARM_FREQ/arm_freq=$NEW_ARM_FREQ/g" "$PI_CONF_FILE"
-            else
-              sed -i -E "s/\[pi4\]/[pi4]\\${PI4_NEWLINE}arm_freq=$NEW_ARM_FREQ/g" "$PI_CONF_FILE"
-            fi
-            # ---------
-            # 2.3 VOLT
-            # ---------
-            NEW_OVERVOLT=${pi_overvolt[$NEW_PERF_MODE]}
-            if [ $(cat "$PI_CONF_FILE" | grep -i -c -E "^\s*#\s*over_voltage\s*=\s*$NEW_OVERVOLT") -gt 0 ];
-            then
-              sed -i -E "s/^\s*#\s*over_voltage\s*=\s*$NEW_OVERVOLT/over_voltage=$NEW_OVERVOLT/g" "$PI_CONF_FILE"
-            else
-              sed -i -E "s/\[pi4\]/[pi4]\\${PI4_NEWLINE}over_voltage=$NEW_OVERVOLT/g" "$PI_CONF_FILE"
-            fi
-            # -----------------------------------------------------------------
+            sed -i -E "s/^\s*#\s*gpu_freq\s*=\s*$NEW_GPU_FREQ/gpu_freq=$NEW_GPU_FREQ/g" "$PI_CONF_FILE"
+            SED_ERROR_CODE_1=$?
+          else
+            sed -i -E "s/\[pi4\]/[pi4]\\${PI4_NEWLINE}gpu_freq=$NEW_GPU_FREQ/g" "$PI_CONF_FILE"
+            SED_ERROR_CODE_1=$?
+          fi
+          # --------
+          # 2.2 CPU
+          # --------
+          NEW_ARM_FREQ=${pi_arm_freq[$NEW_PERF_MODE]}
+          if [ $(grep -i -c -E "^\s*#\s*arm_freq\s*=\s*$NEW_ARM_FREQ" "$PI_CONF_FILE") -gt 0 ];
+          then
+            sed -i -E "s/^\s*#\s*arm_freq\s*=\s*$NEW_ARM_FREQ/arm_freq=$NEW_ARM_FREQ/g" "$PI_CONF_FILE"
+            SED_ERROR_CODE_2=$?
+          else
+            sed -i -E "s/\[pi4\]/[pi4]\\${PI4_NEWLINE}arm_freq=$NEW_ARM_FREQ/g" "$PI_CONF_FILE"
+            SED_ERROR_CODE_2=$?
+          fi
+          # ---------
+          # 2.3 VOLT
+          # ---------
+          NEW_OVERVOLT=${pi_overvolt[$NEW_PERF_MODE]}
+          if [ $(grep -i -c -E "^\s*#\s*over_voltage\s*=\s*$NEW_OVERVOLT" "$PI_CONF_FILE") -gt 0 ];
+          then
+            sed -i -E "s/^\s*#\s*over_voltage\s*=\s*$NEW_OVERVOLT/over_voltage=$NEW_OVERVOLT/g" "$PI_CONF_FILE"
+            SED_ERROR_CODE_3=$?
+          else
+            sed -i -E "s/\[pi4\]/[pi4]\\${PI4_NEWLINE}over_voltage=$NEW_OVERVOLT/g" "$PI_CONF_FILE"
+            SED_ERROR_CODE_3=$?
+          fi
+          # -----------------------------------------------------------------
+          if [ $SED_ERROR_CODE_1 -eq 0 ] &&
+             [ $SED_ERROR_CODE_2 -eq 0 ] &&
+             [ $SED_ERROR_CODE_3 -eq 0 ];
+          then
             e_and_l "$OK_TAG"
             CHANGES_MADE=1
+          else
+            e_and_l "$ERROR_TAG"
           fi
         fi
-      else # Kein [pi4]-Eintrag in /boot/config.txt
-        SHOW_SKIP_MESSAGE="$PIOS_TXT"
       fi
-    else # Keine /boot/config.txt
+    else # Keine config.txt
       SHOW_SKIP_MESSAGE="$PIOS_TXT"
     fi
   else # Kein Raspberry
@@ -9526,7 +9551,11 @@ then
   SHOW_SKIP_MESSAGE=""
   if [ $RASPBERRY -ne 0 ];
   then
-    PI_CONF_FILE="/boot/config.txt"
+    PI_CONF_FILE="/boot/config.txt" # Pi OS
+    if [ ! -s "$PI_CONF_FILE" ];
+    then
+      PI_CONF_FILE="/boot/firmware/config.txt" # Debian
+    fi
     if [ -s "$PI_CONF_FILE" ];
     then
       TWO_GIGABYTES=$((2 * 1024 * 1024 * 1024))
@@ -9537,32 +9566,27 @@ then
       VALUE_MESSAGE="$NEW_MEM_SIZE MB"
       if [ $NEW_MEM_SIZE -ne 0 ];
       then
-        if [ $(cat "$PI_CONF_FILE" | grep -i -c -E "gpu_mem") -eq 0 ] ||
-           [ $(cat "$PI_CONF_FILE" | grep -i -c -E "gpu_mem\s*=\s*$NEW_MEM_SIZE") -eq 0 ];
+        if [ $(grep -i -c -E "^\s*gpu_mem\s*=\s*$NEW_MEM_SIZE" "$PI_CONF_FILE") -eq 0 ];
         then
           ask_yes_or_no " Soll der ${light_cyan}GPU-Speicher${colors_off} optimiert werden"
           if [ $? -eq 1 ];
           then
             e_and_l -n "$ACTION_MESSAGE"
             # Wenn ein Eintrag vorhanden ist, diesen ändern ...
-            if [ $(cat "$PI_CONF_FILE" | grep -i -c -E "gpu_mem") -gt 0 ];
+            if [ $(grep -i -c -E "^\s*gpu_mem\s*=\s*" "$PI_CONF_FILE") -gt 0 ];
             then
-              if [ $(cat "$PI_CONF_FILE" | grep -i -c -E "gpu_mem\s*=\s*$NEW_MEM_SIZE") -eq 0 ];
+              create_backup_file "$PI_CONF_FILE"
+              sed -i -E "s/^\s*gpu_mem\s*=\s*[0-9]*/gpu_mem=$NEW_MEM_SIZE/gi" "$PI_CONF_FILE"
+              if [ $? -eq 0 ];
               then
-                create_backup_file "$PI_CONF_FILE"
-                sed -i -E "s/^#*gpu_mem\s*=\s*[0-9]*/gpu_mem=$NEW_MEM_SIZE/gi" "$PI_CONF_FILE"
-                if [ $? -eq 0 ];
-                then
-                  e_and_l "$OK_TAG ${light_yellow}(NEU: $VALUE_MESSAGE)${colors_off}"
-                  CHANGES_MADE=1
-                else
-                  e_and_l "$ERROR_TAG $LINENO"
-                fi
+                e_and_l "$OK_TAG ${light_yellow}(NEU: $VALUE_MESSAGE)${colors_off}"
+                CHANGES_MADE=1
               else
-                e_and_l "$OK_TAG ${dark_grey}(Wert: $VALUE_MESSAGE)${colors_off}"
+                e_and_l "$ERROR_TAG $LINENO"
               fi
             else # ... sonst einen neuen Eintrag hinzufügen
-              echo -e $'\n'"gpu_mem=$NEW_MEM_SIZE" >> "$PI_CONF_FILE"
+              create_backup_file "$PI_CONF_FILE"
+              echo -e $'\n'"gpu_mem=$NEW_MEM_SIZE" >> "$PI_CONF_FILE" 2>/dev/null
               if [ $? -eq 0 ];
               then
                 e_and_l "$OK_TAG ${light_yellow}(NEU: $VALUE_MESSAGE)${colors_off}"
@@ -9572,11 +9596,14 @@ then
               fi
             fi
           fi
+        else
+          e_and_l -n "$ACTION_MESSAGE"
+          e_and_l "$OK_TAG ${dark_grey}(Wert: $NEW_MEM_SIZE MB)${colors_off}"
         fi
       else
         SHOW_SKIP_MESSAGE="erst ab 2GB RAM"
       fi
-    else # Keine /boot/config.txt
+    else # Keine config.txt
       SHOW_SKIP_MESSAGE="$PIOS_TXT"
     fi
   else # Kein Raspberry
@@ -9620,7 +9647,7 @@ then
         e_and_l "$ERROR_TAG $LINENO"
       fi
     else
-      if [ $(cat "$PI_X_CONF_FILE" 2>/dev/null | grep -i -c -E "BlankTime\"*\s*\s\"*0") -gt 0 ];
+      if [ $(grep -i -c -E "BlankTime\"*\s*\s\"*0" "$PI_X_CONF_FILE" 2>/dev/null) -gt 0 ];
       then
         e_and_l "$NC_TAG"
       else
@@ -9696,7 +9723,7 @@ then
     CREATE_NEW_FILE=1
     if [ -s "$PI_NOPASS_FILE" ];
     then
-      if [ $(cat ${PI_NOPASS_FILE} | grep -i -c -E "^\s*pi\s*ALL\s*\=\s*\(ALL\)\s*PASSWD\s*\:\s*ALL") -gt 0 ];
+      if [ $(grep -i -c -E "^\s*pi\s*ALL\s*\=\s*\(ALL\)\s*PASSWD\s*\:\s*ALL" ${PI_NOPASS_FILE}) -gt 0 ];
       then
         CREATE_NEW_FILE=0
       fi
@@ -9736,10 +9763,10 @@ then
     if [ -s "$RASPI_DEB_FILE" ];
     then
       # Nur weitermachen, wenn die Datei auch einen entsprechenden Eintrag hat
-      if [ $(cat ${RASPI_DEB_FILE} | grep -i -c -E "deb\s*http\:\/\/archive\.raspberrypi\.org\/debian") -gt 0 ];
+      if [ $(grep -i -c -E "deb\s*http\:\/\/archive\.raspberrypi\.org\/debian" ${RASPI_DEB_FILE}) -gt 0 ];
       then
         # Wenn der Eintrag aktiv ist, diesen auskommentieren
-        if [ $(cat ${RASPI_DEB_FILE} | grep -i -c -E "^\s*deb\s\s*http\:\/\/archive\.raspberrypi\.org\/debian") -gt 0 ];
+        if [ $(grep -i -c -E "^\s*deb\s\s*http\:\/\/archive\.raspberrypi\.org\/debian" ${RASPI_DEB_FILE}) -gt 0 ];
         then
           ask_yes_or_no "$ACTION_MESSAGE"
           if [ $? -eq 1 ];
@@ -9780,22 +9807,22 @@ then
     # Wenn es schon eine Konfigurations-Datei gibt, diese vervollständigen ...
     LDM_CONF_FILE="$LDM_CONF_DIR/lightdm.conf"
     if [ -s "$LDM_CONF_FILE" ] &&
-       [ $(cat "$LDM_CONF_FILE" 2>/dev/null | grep -i -c -E "\[Seat") -gt 0 ];
+       [ $(grep -i -c -E "\[Seat" "$LDM_CONF_FILE" 2>/dev/null) -gt 0 ];
     then
       # Fehlende Default-Einträge ergänzen ------------------------------------
-      if [ $(cat "$LDM_CONF_FILE" 2>/dev/null | grep -i -c -E "^#*\s*autologin-guest\s*=") -eq 0 ];
+      if [ $(grep -i -c -E "^#*\s*autologin-guest\s*=" "$LDM_CONF_FILE" 2>/dev/null) -eq 0 ];
       then
         echo -e "autologin-guest=false" >> "$LDM_CONF_FILE" 2>/dev/null
       fi
-      if [ $(cat "$LDM_CONF_FILE" 2>/dev/null | grep -i -c -E "^#*\s*autologin-user\s*=") -eq 0 ];
+      if [ $(grep -i -c -E "^#*\s*autologin-user\s*=" "$LDM_CONF_FILE" 2>/dev/null) -eq 0 ];
       then
         echo -e "#autologin-user=" >> "$LDM_CONF_FILE" 2>/dev/null
       fi
-      if [ $(cat "$LDM_CONF_FILE" 2>/dev/null | grep -i -c -E "^#*\s*autologin-user-timeout\s*=") -eq 0 ];
+      if [ $(grep -i -c -E "^#*\s*autologin-user-timeout\s*=" "$LDM_CONF_FILE" 2>/dev/null) -eq 0 ];
       then
         echo -e "autologin-user-timeout=0" >> "$LDM_CONF_FILE" 2>/dev/null
       fi
-      if [ $(cat "$LDM_CONF_FILE" 2>/dev/null | grep -i -c -E "^#*\s*allow-guest\s*=") -eq 0 ];
+      if [ $(grep -i -c -E "^#*\s*allow-guest\s*=" "$LDM_CONF_FILE" 2>/dev/null) -eq 0 ];
       then
         echo -e "allow-guest=true" >> "$LDM_CONF_FILE" 2>/dev/null
       fi
@@ -9818,13 +9845,13 @@ EOF
   ACTION_MESSAGE=" Bei Anmeldung ${light_cyan}Liste der Benutzer${colors_off} anzeigen"
   if [ -d "$LDM_CONF_DIR" ]
   then
-    THE_HIDE_USER_LINE=$(cat "$LDM_CONF_FILE" | grep -i -E "^\s*#*\s*greeter-hide-users=[a-z]*")
+    THE_HIDE_USER_LINE=$(grep -i -E "^\s*#*\s*greeter-hide-users=[a-z]*" "$LDM_CONF_FILE" 2>/dev/null)
     if [ -s "$LDM_CONF_FILE" ] &&
-       [ $(cat "$LDM_CONF_FILE" 2>/dev/null | grep -i -c -E "$THE_HIDE_USER_LINE") -gt 0 ];
+       [ $(grep -i -c -E "$THE_HIDE_USER_LINE" "$LDM_CONF_FILE" 2>/dev/null) -gt 0 ];
     then
       THE_GOOD_LINE="greeter-hide-users=false"
       if [ "$THE_HIDE_USER_LINE" != "" ] &&
-         [ $(cat "$LDM_CONF_FILE" 2>/dev/null | grep -i -c -E "^\s*$THE_GOOD_LINE") -eq 0 ];
+         [ $(grep -i -c -E "^\s*$THE_GOOD_LINE" "$LDM_CONF_FILE" 2>/dev/null) -eq 0 ];
       then
         ask_yes_or_no "$ACTION_MESSAGE"
         if [ $? -eq 1 ];
@@ -9858,9 +9885,9 @@ EOF
   then
     THE_AUTOSTART_LINE="^\s*autologin-user\s*=\s*[0-9a-z]"
     if [ -s "$LDM_CONF_FILE" ] &&
-       [ $(cat "$LDM_CONF_FILE" 2>/dev/null | grep -i -c -E "$THE_AUTOSTART_LINE") -gt 0 ];
+       [ $(grep -i -c -E "$THE_AUTOSTART_LINE" "$LDM_CONF_FILE" 2>/dev/null) -gt 0 ];
     then
-      THE_BAD_LINE=$(cat "$LDM_CONF_FILE" | grep -i -E "$THE_AUTOSTART_LINE")
+      THE_BAD_LINE=$(grep -i -E "$THE_AUTOSTART_LINE" "$LDM_CONF_FILE" 2>/dev/null)
       TEST_USER_NAME=$(echo ${THE_BAD_LINE##*=} | xargs)
       e_and_l " $WARN_TAG: Der Benutzer ${light_cyan}$TEST_USER_NAME${colors_off} wird automatisch am System angemeldet!"
       ask_yes_or_no " Soll die ${light_cyan}automatische Anmeldung${colors_off} deaktiviert werden"
@@ -9893,9 +9920,9 @@ EOF
   then
     THE_GUESTUSER_LINE="^\s*allow-guest\s*=\s*true"
     if [ -s "$LDM_CONF_FILE" ] &&
-       [ $(cat "$LDM_CONF_FILE" 2>/dev/null | grep -i -c -E "$THE_GUESTUSER_LINE") -gt 0 ];
+       [ $(grep -i -c -E "$THE_GUESTUSER_LINE" "$LDM_CONF_FILE" 2>/dev/null) -gt 0 ];
     then
-      THE_BAD_LINE=$(cat "$LDM_CONF_FILE" | grep -i -E "$THE_GUESTUSER_LINE")
+      THE_BAD_LINE=$(grep -i -E "$THE_GUESTUSER_LINE" "$LDM_CONF_FILE" 2>/dev/null)
       e_and_l " $WARN_TAG: Die Anmeldung enthält einen ${light_cyan}Gastzugang${colors_off}."
       ask_yes_or_no " Soll die ${light_cyan}Anmeldung als Gast${colors_off} deaktiviert werden"
       if [ $? -eq 1 ];
@@ -9906,7 +9933,7 @@ EOF
         if [ $? -eq 0 ];
         then
           # Zur Sicherheit ggf. auch die automatische Anmeldung als Gast deaktivieren
-          THE_BAD_LINE=$(cat "$LDM_CONF_FILE" | grep -i -E "^\s*autologin-guest\s*=\s*true")
+          THE_BAD_LINE=$(grep -i -E "^\s*autologin-guest\s*=\s*true" "$LDM_CONF_FILE" 2>/dev/null)
           if [ "$THE_BAD_LINE" != "" ];
           then
             sed -i -E "s/$THE_BAD_LINE/autologin-guest=false/g" "$LDM_CONF_FILE"
@@ -10738,7 +10765,7 @@ EOF
       if [ -f "/sys/block/${disk_name}/queue/scheduler" ];
       then
         e_and_l -n " - Einstellung des ${light_cyan}I/O-Schedulers${colors_off}    ... "
-        if [ $(cat /sys/block/${disk_name}/queue/scheduler | grep -i -E "mq-deadline" | grep -i -c -E "none") -gt 0 ];
+        if [ $(grep -i -E "mq-deadline" "/sys/block/${disk_name}/queue/scheduler" | grep -i -c -E "none") -gt 0 ];
         then
           e_and_l "QueueConfig $OK_TAG"
         else
@@ -11235,7 +11262,7 @@ then
            [ "$FILE_EXTENSION" != "save" ] &&
            [ "$FILE_EXTENSION" != "bak" ];
         then
-          if [ $(cat "$source_file" 2>/dev/null | grep -i -c -E "$REG_EXP") -gt 0 ];
+          if [ $(grep -i -c -E "$REG_EXP" "$source_file" 2>/dev/null) -gt 0 ];
           then
             ((ENTRIES_FOUND+=1))
           fi
@@ -11261,7 +11288,7 @@ then
         e_and_l ":"
         while read source_file;
         do
-          if [ $(cat "$source_file" 2>/dev/null | grep -i -c -E "$REG_EXP") -gt 0 ];
+          if [ $(grep -i -c -E "$REG_EXP" "$source_file" 2>/dev/null) -gt 0 ];
           then
             # e_and_l -n "   ${source_file/\/etc\/apt\/sources.list.d\//}" # Kurzform
             e_and_l -n "   $source_file" # Voller Pfad
@@ -11379,7 +11406,7 @@ then
               e_and_l "   Enthalten in Datei(en):"
               while read source_file;
               do
-                if [ $(cat "$source_file" 2>/dev/null | grep -i -c -E "$src_uri") -gt 0 ];
+                if [ $(grep -i -c -E "$src_uri" "$source_file" 2>/dev/null) -gt 0 ];
                 then
                   e_and_l "   $source_file"
                 fi
@@ -11532,9 +11559,9 @@ then
   IRFS_CONF_FILE="/etc/initramfs-tools/initramfs.conf"
   if [ -s "$IRFS_CONF_FILE" ];
   then
-    if [ $(cat "$IRFS_CONF_FILE" | grep -i -c -E "^\s*COMPRESS\s*=") -ne 0 ];
+    if [ $(grep -i -c -E "^\s*COMPRESS\s*=" "$IRFS_CONF_FILE") -ne 0 ];
     then
-      IRFS_COMP=$(cat ${IRFS_CONF_FILE} | grep -i -E "^\s*COMPRESS\s*=" | sed -E "s/^\s*COMPRESS\s*=\s*//i")
+      IRFS_COMP=$(grep -i -E "^\s*COMPRESS\s*=" "$IRFS_CONF_FILE" | sed -E "s/^\s*COMPRESS\s*=\s*//i")
       if [ "$IRFS_COMP" != "xz" ] &&
          [ "$IRFS_COMP" != "zstd" ];
       then
