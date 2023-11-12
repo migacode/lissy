@@ -37,7 +37,7 @@
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
 # Letzte Änderung: 12.11.2023
-VERSION="3.97.1"
+VERSION="3.97.0"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -134,6 +134,7 @@ ACHTUNG_TAG="${bold_red}Achtung${colors_off}"
 ERROR_TAG="${bold_red}Fehler${colors_off}"
 USER_CHOICE_YES="OK, Du hast es so gewollt ..."
 USER_CHOICE_NO="Sicherheit geht vor!"
+REBOOT_MSG=" $HINWEIS_TAG: Die Änderungen werden erst nach Neustart des Systems wirksam."
 
 ###############################################################################
 # Ausreichende Zugriffsrechte prüfen
@@ -5092,7 +5093,7 @@ function do_revive_items () {
           fi
           ((i+=1))
         done
-        e_and_l " $HINWEIS_TAG: Manche Änderungen werden erst nach Neustart des Systems wirksam."
+        e_and_l "$REBOOT_MSG"
         remove_file "$REVIVE_ITEM_LIST"
         add_full_log
       else
@@ -8182,7 +8183,7 @@ then
                 if [ $MSCR_RESULT -eq 0 ];
                 then
                   e_and_l "$OK_TAG"
-                  e_and_l " $HINWEIS_TAG: Die Änderungen werden erst nach Neustart des Systems wirksam."
+                  e_and_l "$REBOOT_MSG"
                   CHANGES_MADE=1
                 else
                   e_and_l "$ERROR_TAG"
@@ -8966,7 +8967,8 @@ then
         fi
         if [ $? -eq 0 ];
         then
-          e_and_l "$OK_TAG (${light_yellow}Neustart erforderlich${colors_off})"
+          e_and_l "$OK_TAG"
+          e_and_l "$REBOOT_MSG"
           CHANGES_MADE=1
           REDUCE_TMP_RAM=1
         else
@@ -9525,6 +9527,7 @@ then
              [ $SED_ERROR_CODE_3 -eq 0 ];
           then
             e_and_l "$OK_TAG"
+            e_and_l "$REBOOT_MSG"
             CHANGES_MADE=1
           else
             e_and_l "$ERROR_TAG"
@@ -9571,25 +9574,26 @@ then
           ask_yes_or_no " Soll der ${light_cyan}GPU-Speicher${colors_off} optimiert werden"
           if [ $? -eq 1 ];
           then
+            create_backup_file "$PI_CONF_FILE"
             e_and_l -n "$ACTION_MESSAGE"
             # Wenn ein Eintrag vorhanden ist, diesen ändern ...
             if [ $(grep -i -c -E "^\s*gpu_mem\s*=\s*" "$PI_CONF_FILE") -gt 0 ];
             then
-              create_backup_file "$PI_CONF_FILE"
               sed -i -E "s/^\s*gpu_mem\s*=\s*[0-9]*/gpu_mem=$NEW_MEM_SIZE/gi" "$PI_CONF_FILE"
               if [ $? -eq 0 ];
               then
                 e_and_l "$OK_TAG ${light_yellow}(NEU: $VALUE_MESSAGE)${colors_off}"
+                e_and_l "$REBOOT_MSG"
                 CHANGES_MADE=1
               else
                 e_and_l "$ERROR_TAG $LINENO"
               fi
             else # ... sonst einen neuen Eintrag hinzufügen
-              create_backup_file "$PI_CONF_FILE"
               echo -e $'\n'"gpu_mem=$NEW_MEM_SIZE" >> "$PI_CONF_FILE" 2>/dev/null
               if [ $? -eq 0 ];
               then
                 e_and_l "$OK_TAG ${light_yellow}(NEU: $VALUE_MESSAGE)${colors_off}"
+                e_and_l "$REBOOT_MSG"
                 CHANGES_MADE=1
               else
                 e_and_l "$ERROR_TAG $LINENO"
@@ -9639,6 +9643,7 @@ then
           echo -e "  Option \"BlankTime\" \"0\"" >> "$PI_X_CONF_FILE"
           echo -e "EndSection" >> "$PI_X_CONF_FILE"
           e_and_l "$OK_TAG"
+          e_and_l "$REBOOT_MSG"
           CHANGES_MADE=1
         else
           e_and_l "$ERROR_TAG $LINENO"
@@ -9663,54 +9668,59 @@ then
   fi
 
   # ===========================================================================
-  # Korrektur der Monitor-Overscan-Einstellung
+  # Änderung der Monitor-Overscan-Einstellung
   # ===========================================================================
-  ACTION_MESSAGE=" Korrektur der Einstellung ${light_cyan}Monitor-Overscan${colors_off}"
+  ACTION_MESSAGE=" Änderung der Einstellung ${light_cyan}Monitor-Overscan${colors_off}"
   if [ $RASPBERRY -ne 0 ];
   then
-    PI_X_CONF_FILE="/boot/firmware/config.txt"
-    OVERSCAN_TEXT="disable_overscan=1"
-    if [ -f "$PI_X_CONF_FILE" ];
+    PI_CONF_FILE="/boot/config.txt" # Pi OS
+    if [ ! -s "$PI_CONF_FILE" ];
     then
-      # Wenn ein korrekter und keine weiteren Einträge existieren, nicht weitermachen
-      if [ $(grep -i -c -E "^\s*$OVERSCAN_TEXT" "$PI_X_CONF_FILE" 2>/dev/null) -gt 0 ];
+      PI_CONF_FILE="/boot/firmware/config.txt" # Debian
+    fi
+    if [ -s "$PI_CONF_FILE" ];
+    then
+      ask_yes_or_no " Einstellung für ${light_cyan}Monitor-Overscan${colors_off} ändern"
+      if [ $? -eq 1 ];
       then
-        e_and_l -n "$ACTION_MESSAGE ... "
-        e_and_l "$NC_TAG"
-      else
-        ask_yes_or_no " Einstellung für ${light_cyan}Monitor-Overscan${colors_off} korrigieren"
-        if [ $? -eq 1 ];
+        e_and_l -n "${ACTION_MESSAGE//96m/93m}  ... "
+        create_backup_file "$PI_CONF_FILE"
+        # Wenn ein aktiver Eintrag vorhanden ist, diesen ändern ...
+        if [ $(grep -i -c -E "^\s*disable_overscan\s*\=" "$PI_CONF_FILE" 2>/dev/null) -gt 0 ];
         then
-          e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
-          # Wenn schon ein Eintrag existiert, diesen anpassen ...
-          if [ $(grep -i -c -E "^\s*#*\s*disable_overscan" "$PI_X_CONF_FILE" 2>/dev/null) -gt 0 ];
+          CURRENT_OVERSCAN="$(grep -i -E "^\s*disable_overscan\s*\=" "$PI_CONF_FILE" | cut -d"=" -f 2 | xargs)"
+          if [ "$CURRENT_OVERSCAN" = "1" ];
           then
-            create_backup_file "$PI_X_CONF_FILE"
-            sed -i -E "s/^\s*#*\s*disable_overscan\s*\=\s*[0-9]*/$OVERSCAN_TEXT/gi" "$PI_X_CONF_FILE" &>/dev/null
-            if [ $? -eq 0 ];
-            then
-              e_and_l "$OK_TAG"
-              CHANGES_MADE=1
-            else
-              e_and_l "$ERROR_TAG"
-            fi
-          else # ... wenn kein Eintrag existiert, diesen hinzufügen
-            echo -e $'\n'"$OVERSCAN_TEXT" >> "$PI_X_CONF_FILE" 2>/dev/null
-            if [ $? -eq 0 ];
-            then
-              e_and_l "$OK_TAG"
-              CHANGES_MADE=1
-            else
-              e_and_l "$ERROR_TAG"
-            fi
+            NEW_OVERSCAN="0"
+          else
+            NEW_OVERSCAN="1"
+          fi
+          sed -i -E "s/^\s*disable_overscan\s*\=\s*[0-9]*/disable_overscan=$NEW_OVERSCAN/gi" "$PI_CONF_FILE" &>/dev/null
+          if [ $? -eq 0 ];
+          then
+            e_and_l "$OK_TAG"
+            e_and_l "$REBOOT_MSG"
+            CHANGES_MADE=1
+          else
+            e_and_l "$ERROR_TAG"
+          fi
+        else # ... wenn kein aktiver Eintrag existiert, einen hinzufügen
+          echo -e $'\n'"disable_overscan=1" >> "$PI_CONF_FILE" 2>/dev/null
+          if [ $? -eq 0 ];
+          then
+            e_and_l "$OK_TAG"
+            e_and_l "$REBOOT_MSG"
+            CHANGES_MADE=1
+          else
+            e_and_l "$ERROR_TAG"
           fi
         fi
       fi
     else # Keine Config-Datei
-      e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
+      e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
     fi
   else # Kein Raspberry Pi
-    e_and_l "$(skip_text "$ACTION_MESSAGE" "$RASPY_TXT")"
+    e_and_l "$(skip_text "$ACTION_MESSAGE " "$RASPY_TXT")"
   fi
 
   # ===========================================================================
