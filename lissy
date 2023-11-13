@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 12.11.2023
-VERSION="3.97.0"
+# Letzte Änderung: 13.11.2023
+VERSION="3.97.1"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -7697,6 +7697,28 @@ then
 
     if [ ${OPTION_FLAG[extras]} -eq 1 ];
     then
+
+      # ===========================================================================
+      # Einstellung der Sprachumgebung (des Systems) auf deutsch (oder andere)
+      # ===========================================================================
+      if [ "$CUR_SYS_LANG" != "de" ];
+      then
+        e_and_l " Die Sprachumgebung des Systems ist nicht auf deutsch eingestellt."
+        ask_yes_or_no " Soll die ${light_cyan}Systemsprache${colors_off} geändert werden"
+        if [ $? -eq 1 ];
+        then
+          export LANG=de_DE.UTF-8
+          dpkg-reconfigure locales
+          if [ $? -eq 0 ];
+          then
+            e_and_l "$REBOOT_MSG"
+          else
+            e_and_l " $HINWEIS_TAG: Die Sprachumgebung wurde nicht geändert."
+          fi
+        fi
+      else
+        e_and_l " Einstellung der ${light_cyan}Sprachumgebung${colors_off} auf deutsch ... $NC_TAG"
+      fi
 
       # ===========================================================================
       # Zusätzliche Sprachpakete (fehlende Sprachunterstützung) installieren
