@@ -37,7 +37,7 @@
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
 # Letzte Änderung: 15.11.2023
-VERSION="3.97.3"
+VERSION="3.97.6"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -957,7 +957,7 @@ KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv handbrake hypnotix
 # Netzwerkverbindungen
 KATEGORIE_PKGS[n]="openvpn network-manager-openvpn network-manager-openvpn-gnome vpnc vpnc-scripts network-manager-vpnc network-manager-vpnc-gnome"
 # Spiele
-KATEGORIE_PKGS[s]="0ad alien-arena astromenace atomix billard-gl biniax2 blobwars blockout2 briquolo brutalchess caveexpress chromium-bsu code-the-classics criticalmass cuyo dreamchess enigma extremetuxracer foobillardplus freedoom frogatto frozen-bubble fs-uae gbrainy gcompris-qt gemdropx gnome-games gnubg gweled hedgewars jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter morris naev neverball neverputt nexuiz numptyphysics oolite open-invaders pinball pingus pokerth pybik rocksndiamonds sauerbraten sdl-ball supertux supertuxkart teeworlds torcs trigger-rally tuxmath ufoai wesnoth widelands zaz"
+KATEGORIE_PKGS[s]="0ad alien-arena astromenace atomix billard-gl biniax2 blobwars blockout2 briquolo brutalchess caveexpress chromium-bsu code-the-classics criticalmass cuyo dreamchess enigma extremetuxracer foobillardplus freedoom frogatto frozen-bubble fs-uae gbrainy gcompris-qt gemdropx gnome-games gnubg gweled hedgewars jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter morris naev neverball neverputt nexuiz numptyphysics oolite open-invaders pinball pingus pokerth pybik rocksndiamonds sauerbraten sdl-ball steam supertux supertuxkart teeworlds torcs trigger-rally tuxmath ufoai wesnoth widelands zaz"
 # Systemerweiterungen
 KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dirmngr dpkg-repack e2fsprogs ethtool exfat-fuse exfatprogs extundelete fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends hdparm heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysfsutils sysstat tar tcptrack testdisk traceroute udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
 # Systemverwaltung
@@ -1058,6 +1058,7 @@ AUTO_ADD_PKGS[virtualbox]="virtualbox-ext-pack virtualbox-guest-additions-iso"
 ###############################################################################
 declare -A SIMILAR_PACK
 
+SIMILAR_PACK[balena-etcher]="unetbootin"
 SIMILAR_PACK[blender]="blender-tpaw"
 SIMILAR_PACK[brasero]="xfburn"
 SIMILAR_PACK[celluloid]="parole"
@@ -1070,8 +1071,8 @@ SIMILAR_PACK[file-roller]="xarchiver"
 SIMILAR_PACK[firefox]="firefox-esr"
 SIMILAR_PACK[gcompris-qt]="gcompris"
 SIMILAR_PACK[gnome-tweaks]="gnome-tweak-tool"
-SIMILAR_PACK[iptvnator]="hypnotix"
 SIMILAR_PACK[hypnotix]="freetuxtv"
+SIMILAR_PACK[iptvnator]="hypnotix"
 SIMILAR_PACK[k3b]="brasero"
 SIMILAR_PACK[kid3]="exfalso"
 SIMILAR_PACK[libreoffice]="libreoffice-common"
@@ -1083,9 +1084,9 @@ SIMILAR_PACK[parole]="mpv"
 SIMILAR_PACK[pdfchain]="pdfmod"
 SIMILAR_PACK[pdfarranger]="pdfmod"
 SIMILAR_PACK[pinta]="drawing"
+SIMILAR_PACK[steam]="steam-launcher"
 SIMILAR_PACK[transmission-common]="transmission"
 SIMILAR_PACK[usb-creator-common]="balena-etcher"
-SIMILAR_PACK[balena-etcher]="unetbootin"
 SIMILAR_PACK[virtualbox]="virtualbox-7.0"
 SIMILAR_PACK[wine-installer]="wine"
 
@@ -1364,6 +1365,16 @@ DEB_PKG_FILE[rpi-imager_arm64]="" # NICHT für ARM verfügbar
 DEB_PKG_CSUM[rpi-imager_arm64]="" # NICHT für ARM verfügbar
 DEB_PKG_FILE[rpi-imager_armhf]="" # NICHT für ARM verfügbar
 DEB_PKG_CSUM[rpi-imager_armhf]="" # NICHT für ARM verfügbar
+
+# Download von https://store.steampowered.com/about
+DEB_PKG_NAME[steam-launcher]="Steam Launcher"
+DEB_PKG_OLDV[steam-launcher]=""
+DEB_PKG_OLDF[steam-launcher]=""
+DEB_PKG_VERS[steam-launcher]="1.0.0.78"
+DEB_PKG_MESG[steam-launcher]=""
+DEB_PKG_EVAL[steam-launcher]=""
+DEB_PKG_FILE[steam-launcher_amd64]="$RESSOURCE_SERVER_DIR/deb/steam_latest.deb"
+DEB_PKG_CSUM[steam-launcher_amd64]="$RESSOURCE_SERVER_DIR/deb/steam_latest.deb.sha"
 
 # Downloads automatisch von der Herstellerseite (manuell: https://www.teamviewer.com/de/download/linux)
 DEB_PKG_NAME[teamviewer]="TeamViewer"
@@ -1961,6 +1972,8 @@ NOT_ON_RASPBIAN=('gnome-software' 'realvnc-vnc-server' 'usbview' 'ubuntu-mate-we
 declare -A PRE_INST_CONF
 
 PRE_INST_CONF[anydesk]="$RESSOURCE_SERVER_DIR/scripts/anydesk_pre_inst"
+PRE_INST_CONF[steam]="$RESSOURCE_SERVER_DIR/scripts/steam_pre_inst"
+PRE_INST_CONF[steam-launcher]="$RESSOURCE_SERVER_DIR/scripts/steam_pre_inst"
 PRE_INST_CONF[wine]="$RESSOURCE_SERVER_DIR/scripts/wine_pre_inst"
 
 ###############################################################################
@@ -2644,9 +2657,9 @@ function copy_starter_to_desktop () {
           # Suchen des zum Paket passenden Starter-(.desktop)-Eintrags
           # Ein leidiges Thema, umso mehr wenn Snap dazukommt ...
           # -----------------------------------------------------------
-          # "Erweiterte" Paketnamen bereinigen auf Basisnamen
+          # Namen der Starter-Dateien für diverse Pakete anpassen
           SEARCH_NAME="$1"
-          SEARCH_NAME="${SEARCH_NAME/-7.0/}"    # VirtualBox
+          # Überflüssige und störende Erweiterungen des Paketnamens
           SEARCH_NAME="${SEARCH_NAME/-bin/}"
           SEARCH_NAME="${SEARCH_NAME/-client/}"
           SEARCH_NAME="${SEARCH_NAME/-common/}"
@@ -2655,9 +2668,11 @@ function copy_starter_to_desktop () {
             SEARCH_NAME="${SEARCH_NAME/-desktop/}"
           fi
           SEARCH_NAME="${SEARCH_NAME/-stable/}"
-          # Bekannte Unterschiede zwischen Paket- und Dateinamen anpassen
+          # Bekannte Unterschiede zwischen Paket- und Starter-Dateinamen
           SEARCH_NAME="${SEARCH_NAME/realvnc-vnc-server/realvnc-vncserver-service}"
           SEARCH_NAME="${SEARCH_NAME/realvnc-vnc-viewer/realvnc-vncviewer}"
+          SEARCH_NAME="${SEARCH_NAME/steam-launcher/steam}"
+          SEARCH_NAME="${SEARCH_NAME/virtualbox-7.0/virtualbox}"
 
           SEARCH_RESULT_ALL=(  )
 
