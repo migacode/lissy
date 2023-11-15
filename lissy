@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 13.11.2023
-VERSION="3.97.1"
+# Letzte Änderung: 15.11.2023
+VERSION="3.97.3"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -968,7 +968,7 @@ KATEGORIE_PKGS[t]="ardour audacity hydrogen lmms qjackctl qtractor yoshimi zynad
 # USB-Firewall
 KATEGORIE_PKGS[u]="usbauth"
 # Zubehör
-KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk doublecmd-common engrampa freefilesync galculator gedit gnome-characters gucharmap kdeconnect keepass2 kfind klavaro ktouch magnus mousepad nmapsi4 onboard pdfmod plank pluma putty redshift rpi-imager usb-creator-common veracrypt xournal"
+KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk doublecmd-common engrampa file-roller freefilesync galculator gedit gnome-characters gucharmap kdeconnect keepass2 kfind klavaro ktouch magnus mousepad nmapsi4 onboard pdfmod plank pluma putty redshift rpi-imager sardu unetbootin usb-creator-common veracrypt xournal"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[z]+=" sticky xed"; fi
 # Windows-API "Wine"
 if [ $(apt list "wine-installer" 2>/dev/null | grep -i -c -E "wine-installer") -gt 0 ];
@@ -1085,6 +1085,7 @@ SIMILAR_PACK[pdfarranger]="pdfmod"
 SIMILAR_PACK[pinta]="drawing"
 SIMILAR_PACK[transmission-common]="transmission"
 SIMILAR_PACK[usb-creator-common]="balena-etcher"
+SIMILAR_PACK[balena-etcher]="unetbootin"
 SIMILAR_PACK[virtualbox]="virtualbox-7.0"
 SIMILAR_PACK[wine-installer]="wine"
 
@@ -1843,6 +1844,23 @@ WEB_PKG_CSUM[openshot-qt_arm64]="" # NICHT für ARM verfügbar
 WEB_PKG_FILE[openshot-qt_armhf]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[openshot-qt_armhf]="" # NICHT für ARM verfügbar
 
+# Download von https://www.sarducd.it/downloads
+WEB_PKG_NAME[sardu]="Sardu"
+WEB_PKG_CATY[sardu]="System;Utility"
+WEB_PKG_OLDV[sardu]=""
+WEB_PKG_OLDF[sardu]=""
+WEB_PKG_VERS[sardu]="4.4.0" # Bei Änderung auch sardu_post_inst anpassen !!!
+WEB_PKG_MESG[sardu]=""
+WEB_PKG_EVAL[sardu]=""
+WEB_PKG_FILE[sardu_amd64]="$RESSOURCE_SERVER_DIR/web/sardu_4.4.0-linux.tar.gz"
+WEB_PKG_CSUM[sardu_amd64]="$RESSOURCE_SERVER_DIR/web/sardu_4.4.0-linux.tar.gz.sha"
+ WEB_PKG_FILE[sardu_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
+ WEB_PKG_CSUM[sardu_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
+WEB_PKG_FILE[sardu_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[sardu_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_FILE[sardu_armhf]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[sardu_armhf]="" # NICHT für ARM verfügbar
+
 # Download von https://www.torproject.org/de/download/
 WEB_PKG_NAME[tor-browser]="Tor Browser"
 WEB_PKG_CATY[tor-browser]="Network;WebBrowser"
@@ -1859,6 +1877,23 @@ WEB_PKG_FILE[tor-browser_arm64]="" # Auf ARM nur für Android verfügbar (Raspbe
 WEB_PKG_CSUM[tor-browser_arm64]="" # Auf ARM nur für Android verfügbar (Raspberry hat kein SSE2)
 WEB_PKG_FILE[tor-browser_armhf]="" # Auf ARM nur für Android verfügbar (Raspberry hat kein SSE2)
 WEB_PKG_CSUM[tor-browser_armhf]="" # Auf ARM nur für Android verfügbar (Raspberry hat kein SSE2)
+
+# Download von https://unetbootin.github.io/
+WEB_PKG_NAME[unetbootin]="UNetbootin"
+WEB_PKG_CATY[unetbootin]="System;Utility"
+WEB_PKG_OLDV[unetbootin]=""
+WEB_PKG_OLDF[unetbootin]=""
+WEB_PKG_VERS[unetbootin]="7.0.2"
+WEB_PKG_MESG[unetbootin]=""
+WEB_PKG_EVAL[unetbootin]=""
+WEB_PKG_FILE[unetbootin_amd64]="$RESSOURCE_SERVER_DIR/web/unetbootin-linux64-702.bin"
+WEB_PKG_CSUM[unetbootin_amd64]="$RESSOURCE_SERVER_DIR/web/unetbootin-linux64-702.bin.sha"
+ WEB_PKG_FILE[unetbootin_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
+ WEB_PKG_CSUM[unetbootin_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
+WEB_PKG_FILE[unetbootin_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[unetbootin_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_FILE[unetbootin_armhf]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[unetbootin_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://codeberg.org/ralfhersel/youplay
 WEB_PKG_NAME[youplay]="YouPlay"
@@ -1884,7 +1919,7 @@ WEB_PKG_CSUM[youplay_armhf]="" # NICHT für ARM verfügbar
 # im Repo haben und somit von apt auch nicht automatisch aktualisiert werden.
 # Dient als Basis für die Updates dieser Programme mit der Option "exupdate".
 ###############################################################################
-EXUPDATE_PKG_LIST=('balena-etcher' 'code-the-classics' 'codium' 'czkawka' 'freefilesync' 'hypnotix' 'ipscan' 'iptvnator' 'nomachine' 'openshot-qt' 'tor-browser' 'veracrypt' 'xnview' 'youplay')
+EXUPDATE_PKG_LIST=('balena-etcher' 'code-the-classics' 'codium' 'czkawka' 'freefilesync' 'hypnotix' 'ipscan' 'iptvnator' 'nomachine' 'openshot-qt' 'tor-browser' 'sardu' 'unetbootin' 'veracrypt' 'xnview' 'youplay')
 
 ###############################################################################
 # Pakete, die warum auch immer vorzugsweise als Snap installiert werden sollen.
@@ -1967,8 +2002,10 @@ then
 fi
 POST_INST_CONF[rocksndiamonds]="dpkg-reconfigure rocksndiamonds"
 POST_INST_CONF[samba]="$RESSOURCE_SERVER_DIR/scripts/samba_post_inst"
+POST_INST_CONF[sardu]="$RESSOURCE_SERVER_DIR/scripts/sardu_post_inst"
 POST_INST_CONF[teamviewer]="$RESSOURCE_SERVER_DIR/scripts/teamviewer_post_inst"
 POST_INST_CONF[tor-browser]="$RESSOURCE_SERVER_DIR/scripts/tor-browser_post_inst"
+POST_INST_CONF[unetbootin]="$RESSOURCE_SERVER_DIR/scripts/unetbootin_post_inst"
 POST_INST_CONF[usbauth-notifier]="$RESSOURCE_SERVER_DIR/scripts/usbauth-notifier_post_inst"
 POST_INST_CONF[virtualbox]="usermod -a -G vboxusers $USER_USERNAME"
 POST_INST_CONF[virtualbox-7.0]="$RESSOURCE_SERVER_DIR/scripts/virtualbox-7.0_post_inst"
@@ -4472,7 +4509,6 @@ function install_pkg () {
                             chmod 0644 "$ICON_TARGET_FILE" &>/dev/null
                           fi
                           # .desktop-Datei anlegen
-                          # ACHTUNG: Derzeit nur als Zubehör (Utility)
                           DESKTOP_FILE="/usr/share/applications/$WPKG_CLEAN_NAME.desktop"
                           echo -e "[Desktop Entry]" > "$DESKTOP_FILE" 2>/dev/null
                           if [ $? -eq 0 ];
