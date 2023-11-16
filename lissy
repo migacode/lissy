@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 15.11.2023
-VERSION="3.97.6"
+# Letzte Änderung: 16.11.2023
+VERSION="3.97.7"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -1118,6 +1118,17 @@ ERW_REPO_TXT[microsoft-edge-stable]="deb [arch=amd64] https://packages.microsoft
 ERW_AUTH_KEY[microsoft-edge-dev]="https://packages.microsoft.com/keys/microsoft.asc"
 ERW_REPO_TXT[microsoft-edge-dev]="deb [arch=amd64] https://packages.microsoft.com/repos/edge/ stable main"
 
+# Steam-Launcher besser mit direkten Download (s.u. DEB) installieren, weil
+# Steam-Launcher bei der Installation seine eigenen Repo-Erweiterungen anlegt
+# ERW_AUTH_KEY[steam-launcher]="https://repo.steampowered.com/steam/archive/stable/steam.gpg"
+# ERW_REPO_TXT[steam-launcher]="deb [arch=amd64,i386 signed-by=/usr/share/keyrings/steam.gpg] https://repo.steampowered.com/steam/ stable steam"
+
+# TeamViewer besser mit direkten Download (s.u. DEB) installieren, weil
+# TeamViewer bei der Installation seine eigenen Repo-Erweiterungen anlegt
+# und dadurch Redundanzen mit unserer Erweiterung enstehen würden.
+# ERW_AUTH_KEY[teamviewer]="https://download.teamviewer.com/download/linux/signature/TeamViewer2017.asc"
+# ERW_REPO_TXT[teamviewer]="deb https://linux.teamviewer.com/deb stable main"
+
 # In reinen Debian-Systemen ist VirtualBox nicht enthalten,
 # aber auf den Original-Seiten von VirtualBox downloadbar.
 # ACHTUNG: Der Paketname lautet dann "virtualbox-7.0", nicht nur "virtualbox"
@@ -1128,12 +1139,6 @@ then
   ERW_AUTH_KEY[virtualbox-7.0]="https://www.virtualbox.org/download/oracle_vbox_2016.asc"
   ERW_REPO_TXT[virtualbox-7.0]="deb [arch=amd64] http://download.virtualbox.org/virtualbox/debian bookworm contrib"
 fi
-
-# TeamViewer besser mit direkten Download (s.u. DEB) installieren, weil
-# TeamViewer bei der Installation seine eigenen Repo-Erweiterungen anlegt
-# und dadurch Redundanzen mit unserer Erweiterung enstehen würden.
-# ERW_AUTH_KEY[teamviewer]="https://download.teamviewer.com/download/linux/signature/TeamViewer2017.asc"
-# ERW_REPO_TXT[teamviewer]="deb https://linux.teamviewer.com/deb stable main"
 
 ###############################################################################
 # Alternative Quellen "PPA": Programmpakete aus den oben stehenden Paketlisten,
@@ -1367,6 +1372,7 @@ DEB_PKG_FILE[rpi-imager_armhf]="" # NICHT für ARM verfügbar
 DEB_PKG_CSUM[rpi-imager_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://store.steampowered.com/about
+# oder direkt: https://repo.steampowered.com/steam/archive/stable/steam_latest.deb
 DEB_PKG_NAME[steam-launcher]="Steam Launcher"
 DEB_PKG_OLDV[steam-launcher]=""
 DEB_PKG_OLDF[steam-launcher]=""
@@ -1375,6 +1381,12 @@ DEB_PKG_MESG[steam-launcher]=""
 DEB_PKG_EVAL[steam-launcher]=""
 DEB_PKG_FILE[steam-launcher_amd64]="$RESSOURCE_SERVER_DIR/deb/steam_latest.deb"
 DEB_PKG_CSUM[steam-launcher_amd64]="$RESSOURCE_SERVER_DIR/deb/steam_latest.deb.sha"
+ DEB_PKG_FILE[steam-launcher_i368]="$RESSOURCE_SERVER_DIR/deb/steam_latest.deb"
+ DEB_PKG_CSUM[steam-launcher_i368]="$RESSOURCE_SERVER_DIR/deb/steam_latest.deb.sha"
+DEB_PKG_FILE[steam-launcher_arm64]="" # NICHT für ARM verfügbar
+DEB_PKG_CSUM[steam-launcher_arm64]="" # NICHT für ARM verfügbar
+DEB_PKG_FILE[steam-launcher_armhf]="" # NICHT für ARM verfügbar
+DEB_PKG_CSUM[steam-launcher_armhf]="" # NICHT für ARM verfügbar
 
 # Downloads automatisch von der Herstellerseite (manuell: https://www.teamviewer.com/de/download/linux)
 DEB_PKG_NAME[teamviewer]="TeamViewer"
@@ -9874,6 +9886,51 @@ then
     e_and_l "$(skip_text "$ACTION_MESSAGE" "$PIOS_TXT")"
   fi
 
+  # ===========================================================================
+  # Tastatur-Belegung zurück auf Standard setzen (nur Raspbian)
+  # ===========================================================================
+  ACTION_MESSAGE=" Standard ${light_cyan}Tastaturbelegung${colors_off} wiederherstellen"
+  if [ $RASPBIAN -ne 0 ];
+  then
+    USER_RC_CONFIG="$USER_CONFIG_DIR/openbox/lxde-pi-rc.xml"
+    STANDARD_RC_CONFIG="/etc/xdg/openbox/lxde-pi-rc.xml"
+    # Nur weitermachen, wenn eine geänderte Konfiguration exisitiert
+    if [ -s "$USER_RC_CONFIG" ];
+    then
+      # Wenn darin kein Tastatur-Kürzel Ctrl-Alt-T eingerichtet ist,
+      # dann Tastatur-Belegung wieder auf Standard zurücksetzen
+      if [ $(grep -i -c -E "key\=\"C-A-T\"" "$USER_RC_CONFIG" 2>/dev/null) -eq 0 ];
+      then
+        if [ -s "$STANDARD_RC_CONFIG" ];
+        then
+          ask_yes_or_no "$ACTION_MESSAGE"
+          if [ $? -eq 1 ];
+          then
+            e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
+            create_backup_file "$USER_RC_CONFIG"
+            cp -f "$STANDARD_RC_CONFIG" "$USER_RC_CONFIG" &>/dev/null
+            if [ $? -eq 0 ];
+            then
+              e_and_l "$OK_TAG"
+              CHANGES_MADE=1
+            else
+              restore_backup_file "$USER_RC_CONFIG"
+              e_and_l "$ERROR_TAG $LINENO"
+            fi
+          fi
+        else
+          e_and_l "$ACTION_MESSAGE ... $ERROR_TAG $LINENO"
+        fi
+      else
+        e_and_l "$ACTION_MESSAGE ... $NC_TAG"
+      fi
+    else
+      e_and_l "$ACTION_MESSAGE ... $NC_TAG"
+    fi
+  else
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "$PIOS_TXT")"
+  fi
+
   e_and_l "$HALF_LINE"
   e_and_l " ${bold_blue}Desktop${colors_off}"
   e_and_l "$HALF_LINE"
@@ -10580,6 +10637,46 @@ EOF
   fi
 
   # ===========================================================================
+  # Erweiterung des Suchpfad für Binär-Dateien (nur für den aktuellen Benutzer)
+  # ===========================================================================
+  USER_BIN_DIR="$USER_HOME_DIR/bin"
+  ACTION_MESSAGE=" Erweiterung des ${light_cyan}Suchpfad${colors_off} für Binär-Dateien"
+  if [ -d "$USER_BIN_DIR" ];
+  then
+    USER_BASHRC_FILE="$USER_HOME_DIR/.bashrc"
+    if [ -s "$USER_BASHRC_FILE" ];
+    then
+      if [ $(grep -c -E "Extended Path" "$USER_BASHRC_FILE") -eq 0 ] &&
+         [ $(grep -c -E "^\s*export\s*PATH" "$USER_BASHRC_FILE") -eq 0 ];
+      then
+        ask_yes_or_no "$ACTION_MESSAGE"
+        if [ $? -eq 1 ];
+        then
+          e_and_l -n " Erweitere den ${light_yellow}Suchpfad${colors_off} für Binär-Dateien   ... "
+          create_backup_file "$USER_BASHRC_FILE"
+          echo -e "" >> "$USER_BASHRC_FILE"
+          echo -e "# --------------"$'\n'"# Extended Path"$'\n'"# --------------" >> "$USER_BASHRC_FILE"
+          echo -e "export PATH=$USER_BIN_DIR:\$PATH" >>  "$USER_BASHRC_FILE"
+          echo -e "# --------------" >>  "$USER_BASHRC_FILE"
+          if [ $? -eq 0 ];
+          then
+            e_and_l "$OK_TAG"
+            CHANGES_MADE=1
+          else
+            e_and_l "$ERROR_TAG $LINENO"
+          fi
+        fi
+      else
+        e_and_l "$ACTION_MESSAGE ... $NC_TAG"
+      fi
+    else
+      e_and_l "$(skip_text "$ACTION_MESSAGE" "nur für Bash")"
+    fi
+  else
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
+  fi
+
+  # ===========================================================================
   # Alias Definitionen für Befehle einrichten (für ALLE Benutzer)
   # ===========================================================================
   GLOBAL_BASHRC_FILE="/etc/bash.bashrc"
@@ -10673,51 +10770,6 @@ EOF
     remove_file "$LOCAL_DOWNLOAD_FILE"
   else
     e_and_l "$(skip_text "$ACTION_MESSAGE " "nur für Bash")"
-  fi
-
-  # ===========================================================================
-  # Tastatur-Belegung zurück auf Standard setzen (nur Raspbian)
-  # ===========================================================================
-  ACTION_MESSAGE=" Standard ${light_cyan}Tastaturbelegung${colors_off} wiederherstellen"
-  if [ $RASPBIAN -ne 0 ];
-  then
-    USER_RC_CONFIG="$USER_CONFIG_DIR/openbox/lxde-pi-rc.xml"
-    STANDARD_RC_CONFIG="/etc/xdg/openbox/lxde-pi-rc.xml"
-    # Nur weitermachen, wenn eine geänderte Konfiguration exisitiert
-    if [ -s "$USER_RC_CONFIG" ];
-    then
-      # Wenn darin kein Tastatur-Kürzel Ctrl-Alt-T eingerichtet ist,
-      # dann Tastatur-Belegung wieder auf Standard zurücksetzen
-      if [ $(grep -i -c -E "key\=\"C-A-T\"" "$USER_RC_CONFIG" 2>/dev/null) -eq 0 ];
-      then
-        if [ -s "$STANDARD_RC_CONFIG" ];
-        then
-          ask_yes_or_no "$ACTION_MESSAGE"
-          if [ $? -eq 1 ];
-          then
-            e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
-            create_backup_file "$USER_RC_CONFIG"
-            cp -f "$STANDARD_RC_CONFIG" "$USER_RC_CONFIG" &>/dev/null
-            if [ $? -eq 0 ];
-            then
-              e_and_l "$OK_TAG"
-              CHANGES_MADE=1
-            else
-              restore_backup_file "$USER_RC_CONFIG"
-              e_and_l "$ERROR_TAG $LINENO"
-            fi
-          fi
-        else
-          e_and_l "$ACTION_MESSAGE ... $ERROR_TAG $LINENO"
-        fi
-      else
-        e_and_l "$ACTION_MESSAGE ... $NC_TAG"
-      fi
-    else
-      e_and_l "$ACTION_MESSAGE ... $NC_TAG"
-    fi
-  else
-    e_and_l "$(skip_text "$ACTION_MESSAGE" "$PIOS_TXT")"
   fi
 
   # ===========================================================================
