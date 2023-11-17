@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 16.11.2023
-VERSION="3.97.7"
+# Letzte Änderung: 17.11.2023
+VERSION="3.97.8"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -1371,24 +1371,25 @@ DEB_PKG_CSUM[rpi-imager_arm64]="" # NICHT für ARM verfügbar
 DEB_PKG_FILE[rpi-imager_armhf]="" # NICHT für ARM verfügbar
 DEB_PKG_CSUM[rpi-imager_armhf]="" # NICHT für ARM verfügbar
 
-# Download von https://store.steampowered.com/about
-# oder direkt: https://repo.steampowered.com/steam/archive/stable/steam_latest.deb
+# Downloads automatisch von der Herstellerseite
+# (manuell: https://store.steampowered.com/about)
 DEB_PKG_NAME[steam-launcher]="Steam Launcher"
 DEB_PKG_OLDV[steam-launcher]=""
 DEB_PKG_OLDF[steam-launcher]=""
-DEB_PKG_VERS[steam-launcher]="1.0.0.78"
+DEB_PKG_VERS[steam-launcher]=""
 DEB_PKG_MESG[steam-launcher]=""
 DEB_PKG_EVAL[steam-launcher]=""
-DEB_PKG_FILE[steam-launcher_amd64]="$RESSOURCE_SERVER_DIR/deb/steam_latest.deb"
-DEB_PKG_CSUM[steam-launcher_amd64]="$RESSOURCE_SERVER_DIR/deb/steam_latest.deb.sha"
- DEB_PKG_FILE[steam-launcher_i368]="$RESSOURCE_SERVER_DIR/deb/steam_latest.deb"
- DEB_PKG_CSUM[steam-launcher_i368]="$RESSOURCE_SERVER_DIR/deb/steam_latest.deb.sha"
+DEB_PKG_FILE[steam-launcher_amd64]="https://repo.steampowered.com/steam/archive/stable/steam_latest.deb"
+DEB_PKG_CSUM[steam-launcher_amd64]=""
+ DEB_PKG_FILE[steam-launcher_i368]="https://repo.steampowered.com/steam/archive/stable/steam_latest.deb"
+ DEB_PKG_CSUM[steam-launcher_i368]=""
 DEB_PKG_FILE[steam-launcher_arm64]="" # NICHT für ARM verfügbar
 DEB_PKG_CSUM[steam-launcher_arm64]="" # NICHT für ARM verfügbar
 DEB_PKG_FILE[steam-launcher_armhf]="" # NICHT für ARM verfügbar
 DEB_PKG_CSUM[steam-launcher_armhf]="" # NICHT für ARM verfügbar
 
-# Downloads automatisch von der Herstellerseite (manuell: https://www.teamviewer.com/de/download/linux)
+# Downloads automatisch von der Herstellerseite
+# (manuell: https://www.teamviewer.com/de/download/linux)
 DEB_PKG_NAME[teamviewer]="TeamViewer"
 DEB_PKG_OLDV[teamviewer]=""
 DEB_PKG_OLDF[teamviewer]=""
@@ -10639,26 +10640,54 @@ EOF
   # ===========================================================================
   # Erweiterung des Suchpfad für Binär-Dateien (nur für den aktuellen Benutzer)
   # ===========================================================================
-  USER_BIN_DIR="$USER_HOME_DIR/bin"
   ACTION_MESSAGE=" Erweiterung des ${light_cyan}Suchpfad${colors_off} für Binär-Dateien"
-  if [ -d "$USER_BIN_DIR" ];
+  USER_BASHRC_FILE="$USER_HOME_DIR/.bashrc"
+  if [ -s "$USER_BASHRC_FILE" ];
   then
-    USER_BASHRC_FILE="$USER_HOME_DIR/.bashrc"
-    if [ -s "$USER_BASHRC_FILE" ];
+    THE_NEW_PATH=""
+    # 1. Suche nach eigenen Scripten in ~/bin
+    if [ -d "$USER_HOME_DIR/bin" ];
     then
-      if [ $(grep -c -E "Extended Path" "$USER_BASHRC_FILE") -eq 0 ] &&
-         [ $(grep -c -E "^\s*export\s*PATH" "$USER_BASHRC_FILE") -eq 0 ];
+      THE_NEW_PATH+="$USER_HOME_DIR/bin:"
+    fi
+    # 2. Suche in ~/.local/bin
+    if [ -d "$USER_HOME_DIR/.local/bin" ];
+    then
+      THE_NEW_PATH+="$USER_HOME_DIR/.local/bin:"
+    fi
+    # 3. Suche nach Binärdateien in /usr/sbin und /sbin (für sudo)
+    if [ -d "/usr/sbin" ];
+    then
+      THE_NEW_PATH+="/usr/sbin:"
+    fi
+    if [ -d "/sbin" ];
+    then
+      THE_NEW_PATH+="/sbin:"
+    fi
+    if [ "$THE_NEW_PATH" != "" ];
+    then
+      THE_NEW_PATH+="\$PATH"
+      if [ $(grep -c -E "^\s*export\s*PATH\s*\=\s*${THE_NEW_PATH/$/\\\$}" "$USER_BASHRC_FILE") -eq 0 ];
       then
         ask_yes_or_no "$ACTION_MESSAGE"
         if [ $? -eq 1 ];
         then
           e_and_l -n " Erweitere den ${light_yellow}Suchpfad${colors_off} für Binär-Dateien   ... "
           create_backup_file "$USER_BASHRC_FILE"
-          echo -e "" >> "$USER_BASHRC_FILE"
-          echo -e "# --------------"$'\n'"# Extended Path"$'\n'"# --------------" >> "$USER_BASHRC_FILE"
-          echo -e "export PATH=$USER_BIN_DIR:\$PATH" >>  "$USER_BASHRC_FILE"
-          echo -e "# --------------" >>  "$USER_BASHRC_FILE"
-          if [ $? -eq 0 ];
+          # Wenn es schon einen aktiven PATH-Eintrag gibt, diesen ersetzen ...
+          if [ $(grep -c -E "^\s*export\s*PATH\s*\=" "$USER_BASHRC_FILE") -gt 0 ];
+          then
+            sed -i -E "s/^\s*export\s*PATH\s*\=\s*.*/export PATH=${THE_NEW_PATH//\//\\\/}/gi" "$USER_BASHRC_FILE"
+            THE_RESULT=$?
+          else
+            # ... sonst einen neuen Eintrag anlegen
+            echo -e "" >> "$USER_BASHRC_FILE"
+            echo -e "# --------------"$'\n'"# Extended Path"$'\n'"# --------------" >> "$USER_BASHRC_FILE"
+            echo -e "export PATH=$THE_NEW_PATH" >>  "$USER_BASHRC_FILE"
+            echo -e "# --------------" >>  "$USER_BASHRC_FILE"
+            THE_RESULT=$?
+          fi
+          if [ $THE_RESULT -eq 0 ];
           then
             e_and_l "$OK_TAG"
             CHANGES_MADE=1
@@ -10670,10 +10699,10 @@ EOF
         e_and_l "$ACTION_MESSAGE ... $NC_TAG"
       fi
     else
-      e_and_l "$(skip_text "$ACTION_MESSAGE" "nur für Bash")"
+      e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
     fi
   else
-    e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "nur für Bash")"
   fi
 
   # ===========================================================================
