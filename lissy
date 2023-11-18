@@ -36,7 +36,7 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 17.11.2023
+# Letzte Änderung: 18.11.2023
 VERSION="3.97.8"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
@@ -1960,10 +1960,14 @@ FORCE_EXTERN_LIST=(  )
 # oder anderen Gründen sinnlose und daher auszuschließende Pakete, obwohl
 # diese eventuell sogar im Repository enthalten und installierbar sind.
 ###############################################################################
-# Microsoft-Programme laufen nicht auf einer ARM-Architektur, es sein denn
-# síe wurden dafür neu kompiliert - dann braucht man dafür aber kein Wine ;)
+# Microsoft-Programme laufen nicht auf einer ARM-Architektur, es sein denn sie
+# wurden dafür neu kompiliert - dann braucht man dafür aber kein Wine o.a. ;)
 TMP_LIST="microsoft-edge-stable microsoft-edge-dev msr-tools"
+# Steam auf dem Pi ist mangels Leistung und Auswahl an ARM-Spielen auch Unsinn
+TMP_LIST+=" steam steam-launcher"
+# Wine auf dem Pi ist wegen ARM-Architektur ebenfalls für nichts zu gebrauchen
 TMP_LIST+=" ${KATEGORIE_PKGS[w]}"
+# Aus der Liste ein Array machen
 NOT_ON_RASPBERRY=(${TMP_LIST})
 
 ###############################################################################
