@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 18.11.2023
-VERSION="3.97.8"
+# Letzte Änderung: 19.11.2023
+VERSION="3.98.0"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -210,6 +210,7 @@ LAST_EXIT_CODE="$DOWNLOAD_DIR/laexco"
 ###############################################################################
 # Pfad erweitern zur Sicherstellung, dass alle Systemprogramme gefunden werden
 ###############################################################################
+ORIGINAL_USER_PATH="$(sudo --user=${USER_USERNAME} bash -c 'echo $PATH' 2>/dev/null)"
 export PATH="$PATH:/usr/sbin:/usr/bin:/sbin:/bin"
 
 ###############################################################################
@@ -10650,21 +10651,25 @@ EOF
   then
     THE_NEW_PATH=""
     # 1. Suche nach eigenen Scripten in ~/bin
-    if [ -d "$USER_HOME_DIR/bin" ];
+    if [ -d "$USER_HOME_DIR/bin" ] &&
+       [ $(echo "$ORIGINAL_USER_PATH" | grep -i -c -E "$USER_HOME_DIR\/bin") -eq 0 ];
     then
       THE_NEW_PATH+="$USER_HOME_DIR/bin:"
     fi
     # 2. Suche in ~/.local/bin
-    if [ -d "$USER_HOME_DIR/.local/bin" ];
+    if [ -d "$USER_HOME_DIR/.local/bin" ] &&
+       [ $(echo "$ORIGINAL_USER_PATH" | grep -i -c -E "$USER_HOME_DIR\/\.local\/bin") -eq 0 ];
     then
       THE_NEW_PATH+="$USER_HOME_DIR/.local/bin:"
     fi
-    # 3. Suche nach Binärdateien in /usr/sbin und /sbin (für sudo)
-    if [ -d "/usr/sbin" ];
+    # 3. Suche nach Binärdateien in /usr/sbin und /sbin (Standard für sudo)
+    if [ -d "/usr/sbin" ] &&
+       [ $(echo "$ORIGINAL_USER_PATH" | grep -i -c -E "\:\/usr\/sbin") -eq 0 ];
     then
       THE_NEW_PATH+="/usr/sbin:"
     fi
-    if [ -d "/sbin" ];
+    if [ -d "/sbin" ] &&
+       [ $(echo "$ORIGINAL_USER_PATH" | grep -i -c -E "\:\/sbin") -eq 0 ];
     then
       THE_NEW_PATH+="/sbin:"
     fi
