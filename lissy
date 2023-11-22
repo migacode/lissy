@@ -11709,27 +11709,35 @@ then
       if [ $kernel_changed -gt 0 ];
       then
         e_and_l " Es wurden ${light_yellow}$kernel_changed${colors_off} Einträge gelöscht."
-        ask_yes_or_no " Sollen Dateisystem und GRUB-Loader erneuert werden"
+        ask_yes_or_no " Sollen ${light_cyan}initramfs${colors_off} und ${light_cyan}GRUB-Loader${colors_off} erneuert werden"
         if [ $? -eq 1 ];
         then
-          e_and_l -n " Aktualisiere das ${light_yellow}Initial Ram FileSystem${colors_off}  ... "
-          update-initramfs -u &>"$LOG_TEMP"
-          if [ $? -eq 0 ];
+          e_and_l " $ACHTUNG_TAG: Dadurch werden Dateien im Boot-Bereich des Systems verändert, was"
+          e_and_l " dazu führen kann, dass sich das System nicht mehr starten lässt, bzw. die"
+          e_and_l " Konfiguration des GRUB-Loaders nachträglch manuell angepasst werden muss."
+          e_and_l " Mache daher nur weiter, wenn Du Dich damit auskennst und dies tun kannst."
+          ask_yes_or_no " Jetzt wirklich ${bold_white}initramfs${colors_off} und ${bold_white}GRUB-Loader${colors_off} erneuern"
+          if [ $? -eq 1 ];
           then
-            e_and_l "$OK_TAG"
-          else
-            e_and_l "$ERROR_TAG"
+            e_and_l -n " Aktualisiere das ${light_yellow}Initial Ram FileSystem${colors_off}  ... "
+            update-initramfs -u &>"$LOG_TEMP"
+            if [ $? -eq 0 ];
+            then
+              e_and_l "$OK_TAG"
+            else
+              e_and_l "$ERROR_TAG"
+            fi
+            add_full_log
+            e_and_l -n " Aktualisiere die Einträge im ${light_yellow}GRUB-Loader${colors_off} ... "
+            update-grub &>"$LOG_TEMP"
+            if [ $? -eq 0 ];
+            then
+              e_and_l "$OK_TAG"
+            else
+              e_and_l "$ERROR_TAG"
+            fi
+            add_full_log
           fi
-          add_full_log
-          e_and_l -n " Aktualisiere die Einträge im ${light_yellow}GRUB-Loader${colors_off} ... "
-          update-grub &>"$LOG_TEMP"
-          if [ $? -eq 0 ];
-          then
-            e_and_l "$OK_TAG"
-          else
-            e_and_l "$ERROR_TAG"
-          fi
-          add_full_log
         fi
       fi
       e_and_l "$HALF_LINE"
