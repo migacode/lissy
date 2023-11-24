@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 22.11.2023
-VERSION="3.98.2"
+# Letzte Änderung: 24.11.2023
+VERSION="3.98.4"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -208,6 +208,25 @@ LOG_TEMP="$DOWNLOAD_DIR/$(date +%Y-%m-%d-%H%M).tmp"
 LAST_EXIT_CODE="$DOWNLOAD_DIR/laexco"
 
 ###############################################################################
+# Daten für automaische Antworten (autoyorn) einlesen
+###############################################################################
+declare -A AUTO_ANSWERS
+AUTO_ANSWER_FILE="$SCRIPT_CONFIG_DIR/auto_answers"
+if [ -s "$AUTO_ANSWER_FILE" ];
+then
+  while read auto_answer_line;
+  do
+    if [ "$auto_answer_line" != "" ];
+    then
+      auto_answer_id="$(echo $auto_answer_line | cut -d':' -f 1)"
+      auto_answer_txt="$(echo $auto_answer_line | cut -d':' -f 2)"
+      AUTO_ANSWERS["$auto_answer_id"]="$auto_answer_txt"
+    fi
+  done < "$AUTO_ANSWER_FILE"
+  rm -f "$AUTO_ANSWER_FILE" &>/dev/null
+fi
+
+###############################################################################
 # Pfad erweitern zur Sicherstellung, dass alle Systemprogramme gefunden werden
 ###############################################################################
 ORIGINAL_USER_PATH="$(sudo --user=${USER_USERNAME} bash -c 'echo $PATH' 2>/dev/null)"
@@ -260,6 +279,17 @@ function create_backup_file () {
     else
       cp -f "$FILE_TO_BACKUP" "$FILE_TO_BACKUP.bak" &>/dev/null
     fi
+  fi
+}
+
+###############################################################################
+# Funktion zum Löschen einer bestimmten einzelnen Datei
+###############################################################################
+function remove_file () {
+  if [ "$1" != "" ] &&
+     [ -f "$1" ];
+  then
+    rm -f "$1" &>/dev/null
   fi
 }
 
@@ -825,9 +855,10 @@ declare -A OPTION_MENU # Index des Menüpunktes, in dem die Option erscheint
 OPTION_LIST=()
 OPTION_LIST+=(nosnap norepo foreign force quiet status listonly addicons) # Menu 2
 OPTION_LIST+=(extras exupdate udrivers kuplock kunlock optimize notrim cleansys nopkgsrv revive personal dsave dload) # Menu 4
-OPTION_LIST+=(infoonly noinfo log logfull noupdate nocolor saveconf cleantmp) # Menu 5
+OPTION_LIST+=(autoyorn infoonly noinfo log logfull noupdate nocolor saveconf cleantmp) # Menu 5
 
 OPTION_TEXT[addicons]="Desktop-Symbole (Icons) für Paketauswahl erstellen"
+OPTION_TEXT[autoyorn]="Fragen automatisch gemäß letztem Durchlauf beantworten"
 OPTION_TEXT[cleansys]="Reparaturen und diverse Bereinigungen durchführen"
 OPTION_TEXT[cleantmp]="Alle temporären Dateien bei Programmende löschen"
 OPTION_TEXT[dload]="Gespeicherte Desktop-Einstellungen laden (dconf)"
@@ -898,8 +929,9 @@ OPTION_MENU[personal]=4
 OPTION_MENU[revive]=4
 OPTION_MENU[udrivers]=4
 
-OPTION_MENU[infoonly]=5
+OPTION_MENU[autoyorn]=5
 OPTION_MENU[cleantmp]=5
+OPTION_MENU[infoonly]=5
 OPTION_MENU[log]=5
 OPTION_MENU[logfull]=5
 OPTION_MENU[nocolor]=5
@@ -2266,19 +2298,43 @@ function ask_for_install_mode () {
 #            1 = true (Ja)
 ###############################################################################
 function ask_yes_or_no () {
-  QUESTION="$1? [${bold_yellow}j${colors_off}]a, [${bold_yellow}n${colors_off}]ein, [${bold_yellow}a${colors_off}]nzeigen: "
-  FILE_TO_SHOW="$2"
-
+  QUEST_ID="$1"
+  QUESTION="$2? [${bold_yellow}j${colors_off}]a, [${bold_yellow}n${colors_off}]ein, [${bold_yellow}a${colors_off}]nzeigen: "
+  FILE_TO_SHOW="$3"
   if [ "$FILE_TO_SHOW" != "" ];
   then
     REG_CHARS="[^JjNnAa]*"
     e_and_l -n "$QUESTION"
   else
     REG_CHARS="[^JjNn]*"
-    e_and_l -n "$1? [${bold_yellow}j${colors_off}]a oder [${bold_yellow}n${colors_off}]ein: "
+    e_and_l -n "$2? [${bold_yellow}j${colors_off}]a oder [${bold_yellow}n${colors_off}]ein: "
   fi
   IYN_RESULT=0
   INPUT_OK=0
+  # ---------------------------------------------------------------------------
+  # Optional Antwort des vorherigen Durchlaufs verwenden
+  # ---------------------------------------------------------------------------
+  if [ ${OPTION_FLAG[autoyorn]} -eq 1 ] &&
+     [ "$QUEST_ID" != "" ];
+  then
+    ANSWER=$(echo ${AUTO_ANSWERS["$QUEST_ID"]} | xargs)
+    if [ "$ANSWER" = "j" ];
+    then
+      e_and_l ${dark_grey}$ANSWER${colors_off}
+      IYN_RESULT=1
+      INPUT_OK=1
+    fi
+    if [ "$ANSWER" = "n" ];
+    then
+      e_and_l ${dark_grey}$ANSWER${colors_off}
+      IYN_RESULT=0
+      INPUT_OK=1
+    fi
+  fi
+  # ---------------------------------------------------------------------------
+  # Wenn es keine Antwort aus dem vorherigen Durchlauf gibt, oder dies
+  # nicht gewollt ist, dann erweiterte Ja/Nein-Abfrage durchführen
+  # ---------------------------------------------------------------------------
   while [ $INPUT_OK -eq 0 ]
   do
     # Eingabe-Schleife --------------------------------------------------------
@@ -2322,6 +2378,15 @@ function ask_yes_or_no () {
       fi
     fi
   done
+  # Antwort speichern
+  if [ $INPUT_OK -eq 1 ] &&
+     [ "$QUEST_ID" != "" ] &&
+     [ "$ANSWER" != "" ];
+  then
+    ANSWER="$(echo -n "${ANSWER}" | tr '[:upper:]' '[:lower:]')"
+    echo -e "$QUEST_ID:$ANSWER" >> "$AUTO_ANSWER_FILE" 2>/dev/null
+  fi
+
   return $IYN_RESULT
 }
 
@@ -3520,7 +3585,7 @@ function get_user_list () {
   then
     e_and_l " Es sind auch schon andere Benutzer als ${light_cyan}Superuser${colors_off} (Sudoer) eingerichtet,"
     e_and_l " so dass dieses Script auch von solchen Benutzern ausgeführt werden kann."
-    ask_yes_or_no " Willst Du jetzt trotzdem als ${bold_yellow}$USER_USERNAME${colors_off} weitermachen"
+    ask_yes_or_no "other_sudoers" " Willst Du jetzt trotzdem als ${bold_yellow}$USER_USERNAME${colors_off} weitermachen"
     if [ $? -ne 1 ];
     then
       exit 0
@@ -4027,7 +4092,7 @@ function install_pkg () {
                 e_and_l " $SHOW_PKG_MSG"
                 e_and_l " ${PRE_SPACE}Bitte prüfe vor der Installation, ob diese Voraussetzung erfüllt ist."
               fi
-              ask_yes_or_no " ${PRE_SPACE}Dieses Programmpaket jetzt $FILL_WORD installieren"
+              ask_yes_or_no "pkg_pre_$PAKET" " ${PRE_SPACE}Dieses Programmpaket jetzt $FILL_WORD installieren"
               CONTINUE_INSTALL=$?
               if [ $CONTINUE_INSTALL -eq 1 ]; then e_and_l -n "${PRE_SPACE}"; fi
             fi
@@ -4169,7 +4234,7 @@ function install_pkg () {
                   SHOW_VERSION_TEXT=${SHOW_VERSION_TEXT/ devmode/}
                   SHOW_VERSION_TEXT=${SHOW_VERSION_TEXT/ jailmode/}
                   e_and_l "$PRE_SPACE $ACHTUNG_TAG: Die Version \"${light_red}$SHOW_VERSION_TEXT${colors_off}\" ist nicht für den produktiven Einsatz"
-                  ask_yes_or_no "$PRE_SPACE gedacht und ohne Support. Trotzdem installieren"
+                  ask_yes_or_no "snap_non_stable_$PAKET" "$PRE_SPACE gedacht und ohne Support. Trotzdem installieren"
                   SNAP_CHECK_1=$?
                 fi
                 # -----------------------------------------------------
@@ -4185,7 +4250,7 @@ function install_pkg () {
                   SNAP_CLASSIC_OPTION="--classic --jailmode"
                   e_and_l "$PRE_SPACE $ACHTUNG_TAG: Diese klassische Version ist nicht durch die Sicherheitssandbox"
                   e_and_l "$PRE_SPACE von Snap geschützt und kann möglicherweise ohne manuelle Nacharbeit auch"
-                  ask_yes_or_no "$PRE_SPACE nicht lauffähig sein. Trotzdem installieren"
+                  ask_yes_or_no "snap_classic_$PAKET" "$PRE_SPACE nicht lauffähig sein. Trotzdem installieren"
                   SNAP_CHECK_2=$?
                   if [ $SNAP_CHECK_2 -eq 1 ];
                   then
@@ -4336,7 +4401,7 @@ function install_pkg () {
                     fi
                   else
                     e_and_l "$PRE_SPACE $WARN_TAG: Datei kann wegen fehlender Prüfsumme nicht verifiziert werden!"
-                    ask_yes_or_no "$PRE_SPACE ${bold_yellow}$DOWNLOAD_FILE_NAME${colors_off} trotzdem installieren"
+                    ask_yes_or_no "pkg_no_csum_$PAKET" "$PRE_SPACE ${bold_yellow}$DOWNLOAD_FILE_NAME${colors_off} trotzdem installieren"
                     if [ $? -eq 1 ];
                     then
                       e_and_l "$PRE_SPACE $USER_CHOICE_YES"
@@ -4372,7 +4437,7 @@ function install_pkg () {
                 if [ "$PKG_FOREIGN_ARCH" != "" ];
                 then
                   e_and_l "$FOREIGN_WARNING"
-                  ask_yes_or_no "$PRE_SPACE ${bold_yellow}$PAKET${colors_off} trotzdem installieren"
+                  ask_yes_or_no "pkg_foreign_deb_$PAKET" "$PRE_SPACE ${bold_yellow}$PAKET${colors_off} trotzdem installieren"
                   if [ $? -eq 1 ];
                   then
                     e_and_l "$PRE_SPACE $USER_CHOICE_YES"
@@ -4429,7 +4494,7 @@ function install_pkg () {
                 if [ "$PKG_FOREIGN_ARCH" != "" ];
                 then
                   e_and_l "$FOREIGN_WARNING"
-                  ask_yes_or_no "$PRE_SPACE ${bold_yellow}$PAKET${colors_off} trotzdem installieren"
+                  ask_yes_or_no "pkg_foreign_other_$PAKET" "$PRE_SPACE ${bold_yellow}$PAKET${colors_off} trotzdem installieren"
                   if [ $? -eq 1 ];
                   then
                     e_and_l "$PRE_SPACE $USER_CHOICE_YES"
@@ -4868,17 +4933,6 @@ function ready_for_action () {
 }
 
 ###############################################################################
-# Funktion zum Löschen einer bestimmten einzelnen Datei
-###############################################################################
-function remove_file () {
-  if [ "$1" != "" ] &&
-     [ -f "$1" ];
-  then
-    rm -f "$1" &>/dev/null
-  fi
-}
-
-###############################################################################
 # Funktion zum Ermittlung der benutzerspezifischen Konfigurations-Daten eines
 # Programmpakets zur nachfolgenden Löschung
 ###############################################################################
@@ -5005,7 +5059,7 @@ function do_remove_items () {
       if [ $REMOVE_ITEMS_ACTION -eq 2 ];
       then
         e_and_l " Hast Du die Liste ganz genau geprüft, so dass nichts ungewollt gelöscht wird?"
-        ask_yes_or_no " Wirklich ${bold_red}alle${colors_off} vorstehenden Ordner und Dateien löschen"
+        ask_yes_or_no "" " Wirklich ${bold_red}alle${colors_off} vorstehenden Ordner und Dateien löschen"
         if [ $? -eq 0 ];
         then
           e_and_l " $USER_CHOICE_NO"
@@ -5035,7 +5089,7 @@ function do_remove_items () {
                 echo -e "$HALF_MINUS_LINE"
               fi
               e_and_l " ${light_cyan}$config_path${colors_off}"
-              ask_yes_or_no " Löschen"
+              ask_yes_or_no "" " Löschen"
               if [ $? -eq 0 ];
               then
                 DO_REMOVE_ITEM=0
@@ -5112,7 +5166,7 @@ function do_revive_items () {
       if [ $REVIVE_ITEMS_ACTION -eq 2 ];
       then
         e_and_l " Hast Du die Liste genau geprüft, so dass nichts ungewollt reaktiviert wird?"
-        ask_yes_or_no " Wirklich ${bold_red}alle${colors_off} vorstehenden Komponenten reaktivieren"
+        ask_yes_or_no "" " Wirklich ${bold_red}alle${colors_off} vorstehenden Komponenten reaktivieren"
         if [ $? -eq 0 ];
         then
           e_and_l " $USER_CHOICE_NO"
@@ -5141,7 +5195,7 @@ function do_revive_items () {
                 echo -e "$HALF_MINUS_LINE"
               fi
               e_and_l " ${light_cyan}${config_file_old_name}${colors_off}"
-              ask_yes_or_no " Reaktivieren"
+              ask_yes_or_no "" " Reaktivieren"
               if [ $? -eq 0 ];
               then
                 DO_REVIVE_ITEM=0
@@ -5351,7 +5405,7 @@ function remove_snapshots () {
         SNAP_SIZE="${SNAP_SIZE/)/}"
         e_and_l "$SNAP_SIZE"
       done < "$SNAPSHOT_SNAPS_LIST"
-      ask_yes_or_no " Jetzt ${bold_white}ALLE${colors_off} vorstehenden Snap-Schnappschüsse löschen"
+      ask_yes_or_no "" " Jetzt ${bold_white}ALLE${colors_off} vorstehenden Snap-Schnappschüsse löschen"
       if [ $? -eq 1 ];
       then
         while read snapset snapname snapage snapversion snaprevision snapsize
@@ -5587,7 +5641,7 @@ then
   echo -e ""
   echo -e ""
   e_and_l " $HINWEIS_TAG: Es scheint kein ${light_cyan}Starter${colors_off} für Lissy v$VERSION angelegt zu sein."
-  ask_yes_or_no " Jetzt Starter (Symbol) auf dem Desktop anlegen"
+  ask_yes_or_no "desktop_starter" " Jetzt Starter (Symbol) auf dem Desktop anlegen"
   if [ $? -eq 1 ];
   then
     e_and_l -n " Erstelle Starter ... "
@@ -5838,7 +5892,7 @@ then
     then
       show_headlines
       e_and_l " Version ${light_yellow}$NEW_VERSION${colors_off} ist verfügbar. Es wird empfohlen, die neue Version zu verwenden."
-      ask_yes_or_no " Alte Version sichern und neue Version verwenden" "$LOCAL_DOWNLOAD_FILE"
+      ask_yes_or_no "" " Alte Version sichern und neue Version verwenden" "$LOCAL_DOWNLOAD_FILE"
       if [ $? -eq 1 ];
       then
         mv "${0}" "${0}.bak" &>/dev/null
@@ -5850,7 +5904,7 @@ then
             e_and_l " $ACHTUNG_TAG: Es sind individuell angepasste Paket-Listen/Kategorien gespeichert."
             e_and_l " Dadurch werden die in den Kategorien eventuell neu hinzu gekommenen sowie"
             e_and_l " weggefallenen Programmpakete bei diesen Kategorien nicht berücksichtigt."
-            ask_yes_or_no " Individuelle Listen sichern und neue Listen verwenden"
+            ask_yes_or_no "" " Individuelle Listen sichern und neue Listen verwenden"
             if [ $? -eq 1 ];
             then
               mv "$USER_PAKET_LIST" "$USER_PAKET_LIST.bak" &>/dev/null
@@ -6443,6 +6497,10 @@ then
   e_and_l "            ausgewählten Kategorien auf dem Desktop des Benutzers"
   e_and_l "            (wird bei GNOME-Desktops ab der Version 3 ignoriert)"
   e_and_l ""
+  e_and_l "  autoyorn  Alle Ja/Nein-Abfragen bei der Installation von Programmen"
+  e_and_l "            und Auswahl von Optionen werden automatisch so bentwortet,"
+  e_and_l "            wie sie im vorherigen Programm-Durchlauf auswählt wurden."
+  e_and_l ""
   e_and_l "  cleansys  Bereinigt nicht benötigte Daten des Benutzers und"
   e_and_l "            repariert diverse Einstellungen des Systems"
   e_and_l ""
@@ -6768,7 +6826,7 @@ then
   e_and_l " $ACHTUNG_TAG: Dieses Tool ist nicht für dieses Betriebssystem entwickelt worden!"
   e_and_l " Auf Debian-basierten Systemen werden die meisten Punkte zwar funktionieren,"
   e_and_l " auf anderen Systemen werden die Funktionen jedoch eher eingeschränkt sein!"
-  ask_yes_or_no " Trotzdem weitermachen"
+  ask_yes_or_no "other_os" " Trotzdem weitermachen"
   if [ $? -ne 1 ];
   then
     exit 0
@@ -6827,7 +6885,7 @@ then
     e_and_l " ${bold_blue}Erweiterungen für die Architektur armhf auf arm64${colors_off}"
     if [ $(LANG=en dpkg-query -W -f='${Status}' "crossbuild-essential-armhf" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
     then
-      ask_yes_or_no "$ACTION_MESSAGE für armhf auf arm64 installieren"
+      ask_yes_or_no "crossbuild" "$ACTION_MESSAGE für armhf auf arm64 installieren"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m} werden installiert, bitte warten ... "
@@ -6876,7 +6934,7 @@ then
      [ $SUDOER_EXIST -eq 0 ];
   then
     e_and_l " Es sind allerdings noch keine Benutzer als ${light_cyan}Superuser${colors_off} (Sudoer) eingerichtet."
-    ask_yes_or_no " Willst Du andere Benutzer als Sudoer einrichten"
+    ask_yes_or_no "" " Willst Du andere Benutzer als Sudoer einrichten"
     if [ $? -eq 1 ];
     then
       NEW_SUDOER=0
@@ -6888,7 +6946,7 @@ then
         then
           if [ $(id $TEST_USER_NAME 2>/dev/null | grep -i -c -E "\(sudo\)") -eq 0 ];
           then
-            ask_yes_or_no " Benutzer ${bold_yellow}$TEST_USER_NAME${colors_off} zum Superuser machen?"
+            ask_yes_or_no "" " Benutzer ${bold_yellow}$TEST_USER_NAME${colors_off} zum Superuser machen?"
             if [ $? -eq 1 ];
             then
               e_and_l -n " Erhebe Benutzer ${bold_white}$TEST_USER_NAME${colors_off} zum Superuser ... "
@@ -6933,7 +6991,7 @@ then
   get_user_list
   if [ $SUDOER_EXIST -eq 0 ];
   then
-    ask_yes_or_no " Soll ein neuer Benutzer/Superuser angelegt werden"
+    ask_yes_or_no "" " Soll ein neuer Benutzer/Superuser angelegt werden"
     if [ $? -eq 1 ];
     then
       NEW_USERNAME=""
@@ -6947,7 +7005,7 @@ then
           id "$NEW_USERNAME" &>/dev/null
           if [ $? -ne 0 ];
           then
-            ask_yes_or_no " Neuer Benutzername: ${bold_yellow}$NEW_USERNAME${colors_off} - OK"
+            ask_yes_or_no "" " Neuer Benutzername: ${bold_yellow}$NEW_USERNAME${colors_off} - OK"
             if [ $? -eq 1 ];
             then
               e_and_l " Erstelle Superuser $NEW_USERNAME ... "
@@ -6981,7 +7039,7 @@ then
                     fi
                     e_and_l " Bitte als neuer Benutzer anmelden und $SCRIPT_NAME erneut aufrufen."
                     e_and_l " $HINWEIS_TAG: Der Superuser-Status wird erst nach einem Neustart wirksam."
-                    ask_yes_or_no " System neu starten [${bold_yellow}J${colors_off}] oder Script beenden [${bold_yellow}N${colors_off}]"
+                    ask_yes_or_no "" " System neu starten [${bold_yellow}J${colors_off}] oder Script beenden [${bold_yellow}N${colors_off}]"
                     if [ $? -eq 1 ];
                     then
                       reboot
@@ -7022,7 +7080,7 @@ then
   e_and_l " Programmpakete OHNE Rückfrage nach deren Standard-Vorgabe installiert!"
   e_and_l " Wenn das gewünscht ist, die folgende Frage mit [${bold_yellow}J${colors_off}]a beantworten, sonst"
   e_and_l " wird bei Eingabe von [${bold_yellow}N${colors_off}]ein ohne Quiet-Modus weitergemacht (empfohlen)."
-  ask_yes_or_no " Wirklich im Quiet-Modus weitermachen"
+  ask_yes_or_no "use_quiet" " Wirklich im Quiet-Modus weitermachen"
   if [ $? -eq 0 ]; then OPTION_FLAG[quiet]=0; fi
   e_and_l ""
   e_and_l "$FULL_LINE"
@@ -7088,7 +7146,7 @@ if [ $TOTAL_PACKS -gt 0 ] &&
 then
   e_and_l ""
   e_and_l " $ACHTUNG_TAG: Die Snap-Paketverwaltung ist nicht installiert."
-  ask_yes_or_no " Die Snap-Paketverwaltung jetzt installieren"
+  ask_yes_or_no "install_snap" " Die Snap-Paketverwaltung jetzt installieren"
   if [ $? -eq 1 ];
   then
     e_and_l -n " Installiere die ${light_yellow}Snap-Paketverwaltung${colors_off}, bitte warten ... "
@@ -7228,10 +7286,10 @@ then
             e_and_l " Bitte prüfe vor der Installation, ob diese Voraussetzung erfüllt ist."
           fi
         fi
-        ask_yes_or_no " ${light_cyan}$pkg_name${colors_off} $FILL_WORD auf Version ${light_yellow}$NEW_PKG_INST_VERS${colors_off} updaten"
+        ask_yes_or_no "exupdate_$pkg_name" " ${light_cyan}$pkg_name${colors_off} $FILL_WORD auf Version ${light_yellow}$NEW_PKG_INST_VERS${colors_off} updaten"
         if [ $? -eq 1 ];
         then
-          ask_yes_or_no " Programm ${bold_yellow}$pkg_name $PKG_VERSION${colors_off} entfernen"
+          ask_yes_or_no "" " Programm ${bold_yellow}$pkg_name $PKG_VERSION${colors_off} entfernen"
           if [ $? -eq 1 ];
           then
             e_and_l " $USER_CHOICE_YES"
@@ -7736,7 +7794,7 @@ then
           then
             e_and_l "${bold_green}ok, Treiber gefunden${colors_off}"
             echo -e "$MISSING_DRIVER_LIST" > "$THE_TEMP_FILE" 2>/dev/null
-            ask_yes_or_no " Zusätzliche ${light_cyan}Geräte-Treiber${colors_off} installieren" "$THE_TEMP_FILE"
+            ask_yes_or_no "ubuntu-drivers" " Zusätzliche ${light_cyan}Geräte-Treiber${colors_off} installieren" "$THE_TEMP_FILE"
             if [ $? -eq 1 ];
             then
               e_and_l " Installiere zusätzliche ${light_yellow}Geräte-Treiber${colors_off} ... "
@@ -7773,7 +7831,7 @@ then
       if [ "$CUR_SYS_LANG" != "de" ];
       then
         e_and_l " Die Sprachumgebung des Systems ist nicht auf deutsch eingestellt."
-        ask_yes_or_no " Soll die ${light_cyan}Systemsprache${colors_off} geändert werden"
+        ask_yes_or_no "cur_sys_lang" " Soll die ${light_cyan}Systemsprache${colors_off} geändert werden"
         if [ $? -eq 1 ];
         then
           export LANG=de_DE.UTF-8
@@ -7819,7 +7877,7 @@ then
           if [ "$MISSING_LANGUAGE_SUPPORT" != "" ];
           then
             echo -e "$MISSING_LANGUAGE_SUPPORT" > "$THE_TEMP_FILE" 2>/dev/null
-            ask_yes_or_no "$ACTION_MESSAGE" "$THE_TEMP_FILE"
+            ask_yes_or_no "language-support" "$ACTION_MESSAGE" "$THE_TEMP_FILE"
             if [ $? -eq 1 ];
             then
               e_and_l -n " Installiere zusätzliche ${light_yellow}Sprachpakete ($lang_code)${colors_off}, bitte warten ... "
@@ -7849,7 +7907,7 @@ then
       MEGA_FONT_DIR="$SYSTEM_FONT_DIR/MegaFontPack"
       if [ ! -d "$MEGA_FONT_DIR" ];
       then
-        ask_yes_or_no " Schriftarten ${light_cyan}MegaFontPack${colors_off} installieren"
+        ask_yes_or_no "megafontpack" " Schriftarten ${light_cyan}MegaFontPack${colors_off} installieren"
         if [ $? -eq 1 ];
         then
           e_and_l -n " Installiere ${light_yellow}MegaFontPack${colors_off}, bitte warten     "
@@ -7887,7 +7945,7 @@ then
           then
             if [ $(apt list "ttf-mscorefonts-installer" 2>/dev/null | grep -i -c -E "ttf-mscorefonts-installer") -gt 0 ];
             then
-              ask_yes_or_no "$ACTION_MESSAGE"
+              ask_yes_or_no "ms_windows_fonts" "$ACTION_MESSAGE"
               if [ $? -eq 1 ];
               then
                 e_and_l " Installiere ${light_yellow}MS Windows Fonts${colors_off} ... "
@@ -7921,7 +7979,7 @@ then
       then
         if [ ! -f "$USER_ICON_DIR/.CursorPack_ok" ];
         then
-          ask_yes_or_no "$ACTION_MESSAGE"
+          ask_yes_or_no "cursorpack" "$ACTION_MESSAGE"
           if [ $? -eq 1 ];
           then
             e_and_l -n " Installiere ${light_yellow}CursorPack${colors_off}, bitte warten       "
@@ -7995,7 +8053,7 @@ then
         done
         if [ $DIRS_FOUND -lt $ANZ_THEMES ];
         then
-          ask_yes_or_no "$ACTION_MESSAGE"
+          ask_yes_or_no "ambiant_and_radiant" "$ACTION_MESSAGE"
           if [ $? -eq 1 ];
           then
             e_and_l " Installiere Themen ${light_yellow}Ambiant und Radiant${colors_off}:"
@@ -8077,7 +8135,7 @@ then
       then
         if [ $(LANG=en dpkg-query -W -f='${Status}' "ubuntu-mate-themes" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
         then
-          ask_yes_or_no "$ACTION_MESSAGE"
+          ask_yes_or_no "ubuntu-mate-themes" "$ACTION_MESSAGE"
           if [ $? -eq 1 ];
           then
             e_and_l -n " Installiere Desktop-Themen ${light_yellow}Ubuntu-MATE${colors_off}     ... "
@@ -8120,7 +8178,7 @@ then
       then
         if [ "$YARU_MISSING" != "" ];
         then
-          ask_yes_or_no "$ACTION_MESSAGE"
+          ask_yes_or_no "yaru-theme" "$ACTION_MESSAGE"
           if [ $? -eq 1 ];
           then
             e_and_l -n " Installiere ${light_yellow}Yaru-Themen${colors_off}, bitte warten      ... "
@@ -8171,7 +8229,7 @@ then
         # Fehlende XScreenSaver-Komponenten installieren
         if [ $XSCRSAVER_INSTALLED -ne $XSCRSAVER_AVAILABLE ];
         then
-          ask_yes_or_no "$ACTION_MESSAGE"
+          ask_yes_or_no "xscreensaver_$xs_pkg" "$ACTION_MESSAGE"
           if [ $? -eq 1 ];
           then
             if [ $XSCRSAVER_INSTALLED -ne $XSCRSAVER_AVAILABLE ];
@@ -8258,7 +8316,7 @@ then
             if [ $MATE_ACTIVE_SS_FILES -gt 0 ];
             then
               e_and_l " $HINWEIS_TAG: Mit dem MATE- und X-ScreenSaver sind zwei Bildschirmschoner aktiv."
-              ask_yes_or_no " MATE-Screensaver vollständig deaktivieren (empfohlen)"
+              ask_yes_or_no "deactivate_mate_screensaver" " MATE-Screensaver vollständig deaktivieren (empfohlen)"
               if [ $? -eq 1 ];
               then
                 e_and_l -n " Deaktiviere den ${light_yellow}MATE-Bildschirmschoner${colors_off}     ... "
@@ -8314,7 +8372,7 @@ then
           then
             if [ $(apt list "${AUTOSTART_ACTIVATE_LIST[$a]}" 2>/dev/null | grep -i -c -E "${AUTOSTART_ACTIVATE_LIST[$a]}") -gt 0 ];
             then
-              ask_yes_or_no " Modul ${light_cyan}${AUTOSTART_ACTIVATE_DESC[$a]%%*\/ }${colors_off} installieren"
+              ask_yes_or_no "desktop_tool_$PACKET_NAME_TO_SHOW" " Modul ${light_cyan}${AUTOSTART_ACTIVATE_DESC[$a]%%*\/ }${colors_off} installieren"
               if [ $? -eq 1 ];
               then
                 e_and_l -n " Installiere ${light_yellow}$PACKET_NAME_TO_SHOW${colors_off}, bitte warten"
@@ -8512,7 +8570,7 @@ then
         then
           e_and_l "$ACTION_MESSAGE ... $NC_TAG"
         else
-          ask_yes_or_no " AACS-Signaturen für ${light_cyan}Blu-rays${colors_off} erneuern"
+          ask_yes_or_no "aacs_update" " AACS-Signaturen für ${light_cyan}Blu-rays${colors_off} erneuern"
           if [ $? -eq 1 ];
           then
             e_and_l -n " Download ${light_yellow}Blu-ray Signaturen${colors_off}, bitte warten  "
@@ -8591,7 +8649,7 @@ then
     e_and_l " Aktualisierungen (Updates) für den Kernel sind derzeit blockiert."
     KERNEL_QUESTION="wieder freigeben"
   fi
-  ask_yes_or_no " Updates für den Kernel $KERNEL_QUESTION"
+  ask_yes_or_no "" " Updates für den Kernel $KERNEL_QUESTION"
   if [ $? -eq 1 ];
   then
     if [ ${OPTION_FLAG[kuplock]} -eq 1 ];
@@ -8657,6 +8715,12 @@ then
       if [ $(grep -c -i -E "windows" "$grub_config" 2>/dev/null) -gt 0 ];
       then
         IS_MULTI_BOOT=1
+      else
+        # if [ $(ls -la /dev 2>/dev/null | grep -c -E "sd[a-z][1-9]*") -gt 2 ];
+        if [ $(echo $boot_device | grep -c -E "sd[a-z][3-9]") -gt 0 ];
+        then
+          IS_MULTI_BOOT=1
+        fi
       fi
     fi
   fi
@@ -8667,9 +8731,11 @@ then
     then
       if [ $(timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -eq 0 ];
       then
-        e_and_l " ${bold_white}Multi-Boot-System${colors_off} mit MS Windows gefunden. MS Windows verwendet statt UTC das"
-        e_and_l " RTC-Format für Datum und Uhrzeit, was zu unterschiedlichen Zeitangaben führt."
-        ask_yes_or_no " Die ${light_cyan}Systemzeit auf RTC${colors_off} wie bei MS Windows umstellen"
+        e_and_l " ${bold_white}Multi-Boot-System${colors_off} gefunden. Einige Betriebssysteme wie MS Windows verwenden"
+        e_and_l " statt UTC (Universal Time Coordinated) das RTC-Format (Real Time Clock) für"
+        e_and_l " Datum und Uhrzeit, was zu unterschiedlichen Zeitangaben führt. Um die Zeit-"
+        e_and_l " Angaben zu vereinheitlichen, kann auch Linux auf RTC umgestellt werden."
+        ask_yes_or_no "utc_to_rtc" " Die ${light_cyan}Systemzeit auf RTC (Real Time Clock)${colors_off} umstellen"
         if [ $? -eq 1 ];
         then
           e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -8688,7 +8754,7 @@ then
       e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
     fi
   else
-    e_and_l "$(skip_text "$ACTION_MESSAGE" "kein Multi-Boot")"
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
   fi
 
   # ===========================================================================
@@ -8700,7 +8766,7 @@ then
   then
     if [ $(grep -i -c -E "^\s*GRUB_DISABLE_OS_PROBER\s*=\s*\"*true\"*\s*" "$GRUB_FILE") -gt 0 ];
     then
-      ask_yes_or_no " Die Erkennung anderer ${light_cyan}Betriebssysteme${colors_off} aktivieren"
+      ask_yes_or_no "activate_os_prober" " Die Erkennung anderer ${light_cyan}Betriebssysteme${colors_off} aktivieren"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -8736,7 +8802,7 @@ then
   else
     if [ $(apt list "ufw" 2>/dev/null | grep -i -c -E "ufw") -gt 0 ];
     then
-      ask_yes_or_no " Soll die ${light_cyan}Firewall (ufw)${colors_off} installiert werden"
+      ask_yes_or_no "ufw_install" " Soll die ${light_cyan}Firewall (ufw)${colors_off} installiert werden"
       if [ $? -eq 1 ];
       then
         e_and_l -n " Installiere ${light_yellow}Firewall (ufw)${colors_off}, bitte warten   ... "
@@ -8770,7 +8836,7 @@ then
     # Firewall einschalten ----------------------------------------------------
     if [ $(LANG=en ufw status 2>/dev/null | grep -i -c -E "status\s*:\s*a") -eq 0 ];
     then
-      ask_yes_or_no "$ACTION_MESSAGE"
+      ask_yes_or_no "ufw_activate" "$ACTION_MESSAGE"
       if [ $? -eq 1 ];
       then
         e_and_l -n " Schalte die interne ${light_yellow}Firewall (ufw)${colors_off} ein     ... "
@@ -8795,7 +8861,7 @@ then
       if [ $(LANG=en ufw status verbose 2>/dev/null | grep -i -c -E "Proto.*\:\s*off$") -eq 0 ] &&
          [ $(LANG=en ufw status verbose 2>/dev/null | grep -i -c -E "Logging\s*\:\s*off$") -eq 0 ];
       then
-        ask_yes_or_no "$ACTION_MESSAGE"
+        ask_yes_or_no "ufw_logging_off" "$ACTION_MESSAGE"
         if [ $? -eq 1 ];
         then
           e_and_l -n " Schalte das ${light_yellow}Protokoll-Log der Firewall${colors_off} aus ... "
@@ -8837,7 +8903,7 @@ then
     then
       OPENSSH_INSTALL_STATUS=0
     else
-      ask_yes_or_no " Installation des ${light_cyan}OpenSSH-Servers${colors_off}"
+      ask_yes_or_no "ssh_install" " Installation des ${light_cyan}OpenSSH-Servers${colors_off}"
       if [ $? -eq 1 ];
       then
         e_and_l -n " Installiere ${light_yellow}openssh-server${colors_off}, bitte warten   ... "
@@ -8878,7 +8944,7 @@ then
       then
         if [ $(LANG=en systemctl is-enabled ssh 2>/dev/null | grep -i -c -E "enabled") -eq 0 ];
         then
-          ask_yes_or_no "$ACTION_MESSAGE"
+          ask_yes_or_no "ssh_activate" "$ACTION_MESSAGE"
           if [ $? -eq 1 ];
           then
             e_and_l -n " Aktiviere den ${light_yellow}SSH-Server${colors_off} bei Systemstart   ... "
@@ -8936,7 +9002,7 @@ then
     e_and_l "$OK_TAG ${dark_grey}(Wert: $SWAP_VALUE%)${colors_off}"
   else
     e_and_l " Der ${light_cyan}Swapping-Wert${colors_off} liegt bei ${light_cyan}$SWAP_VALUE${colors_off}, für dieses System wird ${light_yellow}$BEST_SWAP_SIZE${colors_off} empfohlen."
-    ask_yes_or_no " Einstellung des ${light_cyan}Swapping-Wertes${colors_off} jetzt ändern"
+    ask_yes_or_no "swap_change" " Einstellung des ${light_cyan}Swapping-Wertes${colors_off} jetzt ändern"
     if [ $? -eq 1 ];
     then
       NEW_SWAPPING=0
@@ -8996,7 +9062,7 @@ then
     FSTAB_OCCURES_LINES=$((FSTAB_NOATIME_EXT4_LINES+FSTAB_NOATIME_AUTO_LINES))
     if [ $FSTAB_RELEVANT_LINES -ne $FSTAB_OCCURES_LINES ]
     then
-      ask_yes_or_no " Unnötige ${light_cyan}Festplatten-Zugriffe${colors_off} reduzieren"
+      ask_yes_or_no "fstab_noatime" " Unnötige ${light_cyan}Festplatten-Zugriffe${colors_off} reduzieren"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m}"
@@ -9051,11 +9117,11 @@ then
       if [ $FREE_FOR_TMP_DIR -gt $HALF_TOTAL_MEMORY ];
       then
         e_and_l " Es sind ${light_yellow}$FREE_MEMORY${colors_off} Hauptspeicher frei - Vorschläge zur Verwendung:"
-        ask_yes_or_no " 1.$ACTION_MESSAGE"
+        ask_yes_or_no "unused_memory_1" " 1.$ACTION_MESSAGE"
         DO_MOVE_TMP=$?
       else # ... sonst fragen ob das trotzdem gewollt ist
         e_and_l " Es sind nur ${light_yellow}$FREE_MEMORY${colors_off} Hauptspeicher frei. Soll der Ordner ${light_cyan}/tmp${colors_off} trotzdem in den"
-        ask_yes_or_no " ${light_cyan}Hauptspeicher${colors_off} auslagert werden (NICHT empfohlen)"
+        ask_yes_or_no "unused_memory_2" " ${light_cyan}Hauptspeicher${colors_off} auslagert werden (NICHT empfohlen)"
         DO_MOVE_TMP=$?
       fi
       # Auslagern -------------------------------------------------------------
@@ -9112,7 +9178,7 @@ then
     else
       if [ $FREE_FOR_RAMDISK -ge $RAMDISK_MIN_SIZE ];
       then
-        ask_yes_or_no " 2.$ACTION_MESSAGE"
+        ask_yes_or_no "ram_disk" " 2.$ACTION_MESSAGE"
         if [ $? -eq 1 ];
         then
           RAMDISK_SIZE=0
@@ -9128,13 +9194,13 @@ then
             RAMDISK_SIZE=$(echo $RAMDISK_SIZE | sed 's/[^0-9]*//g')
             if [ "$RAMDISK_SIZE" = "" ]; then RAMDISK_SIZE=0; fi
           done
-          ask_yes_or_no " Jetzt dynamische ${light_yellow}RAM Disk${colors_off} von ${light_yellow}max. $RAMDISK_SIZE MB${colors_off} anlegen"
+          ask_yes_or_no "" " Jetzt dynamische ${light_yellow}RAM Disk${colors_off} von ${light_yellow}max. $RAMDISK_SIZE MB${colors_off} anlegen"
           if [ $? -eq 1 ];
           then
             if [ $(df | grep -i -c -E "$RAMDISK_MOUNTPOINT") -gt 0 ];
             then
               e_and_l " ${bold_yellow}Ups${colors_off}, das Dateisystem ${light_cyan}$RAMDISK_MOUNTPOINT${colors_off} ist noch eingehangen."
-              ask_yes_or_no " Jetzt aushängen (alle Daten darauf werden gelöscht)"
+              ask_yes_or_no "" " Jetzt aushängen (alle Daten darauf werden gelöscht)"
               if [ $? -eq 1 ];
               then
                 umount "$RAMDISK_MOUNTPOINT" &>/dev/null
@@ -9202,7 +9268,7 @@ then
       CHECK_RAMDISK_SIZE=$(get_tmpfs_size "/media/ramdisk")
       if [ $CHECK_RAMDISK_SIZE -ge $BROWSER_CACHE_MIN_SIZE ];
       then
-        ask_yes_or_no "$ACTION_MESSAGE"
+        ask_yes_or_no "browser-cache-to-ram" "$ACTION_MESSAGE"
         if [ $? -eq 1 ];
         then
           e_and_l -n " Verlagere ${light_yellow}Browser-Caches${colors_off} auf die ${light_yellow}RAM Disk${colors_off}  ... "
@@ -9286,7 +9352,7 @@ then
     then
       e_and_l "$ACTION_MESSAGE ... $NC_TAG"
     else
-      ask_yes_or_no "$ACTION_MESSAGE"
+      ask_yes_or_no "wifi_speed_up" "$ACTION_MESSAGE"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m} ..."
@@ -9320,7 +9386,7 @@ then
     then
       e_and_l "$ACTION_MESSAGE   ... $NC_TAG"
     else
-      ask_yes_or_no "$ACTION_MESSAGE"
+      ask_yes_or_no "wifi_powersave" "$ACTION_MESSAGE"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m}  "
@@ -9352,7 +9418,7 @@ then
     then
       e_and_l "$ACTION_MESSAGE   ... $NC_TAG"
     else
-      ask_yes_or_no "$ACTION_MESSAGE"
+      ask_yes_or_no "wifi_led" "$ACTION_MESSAGE"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m}   ... "
@@ -9389,7 +9455,7 @@ then
     if [ $APPORT_INSTALL_STATUS -gt 0 ] ||
        [ $WHOOPSIE_INSTALL_STATUS -gt 0 ];
     then
-      ask_yes_or_no " Erstellung von ${light_cyan}Fehlerberichten${colors_off} komplett deaktivieren"
+      ask_yes_or_no "apport_deactivate_full" " Erstellung von ${light_cyan}Fehlerberichten${colors_off} komplett deaktivieren"
       if [ $? -eq 1 ];
       then
         e_and_l " Ok, die Module zur ${light_yellow}Fehlerbericht-Erstellung${colors_off} werden jetzt entfernt."
@@ -9418,7 +9484,7 @@ then
           if [ $APPORT_FILE_STATUS -eq 0 ] ||
              [ $APPORT_SERVICE_STATUS -eq 0 ];
           then
-            ask_yes_or_no " Sendung der ${light_cyan}Fehlerberichte${colors_off} ausschalten"
+            ask_yes_or_no "apport_deactivate" " Sendung der ${light_cyan}Fehlerberichte${colors_off} ausschalten"
             if [ $? -eq 1 ];
             then
               e_and_l -n "${ACTION_MESSAGE//96m/93m}"
@@ -9476,7 +9542,7 @@ then
        [ $(grep -i -c -E "^\s*SystemMaxFileSize\s*=\s*${MAX_LOG_SIZE}M" "$SYSLOG_CFG_FILE") -eq 0 ] ||
        [ $(grep -i -c -E "^\s*SystemMaxUse\s*=\s*${MAX_LOG_SIZE}M" "$SYSLOG_CFG_FILE") -eq 0 ];
     then
-      ask_yes_or_no " Speicherplatz für ${light_cyan}System-Logdateien${colors_off} begrenzen"
+      ask_yes_or_no "system_log_limit" " Speicherplatz für ${light_cyan}System-Logdateien${colors_off} begrenzen"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m}"
@@ -9548,7 +9614,7 @@ then
         done
       fi
       e_and_l " Die aktuellen ${light_cyan}Taktfrequenzen${colors_off} dieses Pi sind auf ${light_yellow}$CURRENT_PI_PERFNAME-Performance${colors_off} eingestellt"
-      ask_yes_or_no " Sollen die Taktfreqenzen geändert werden"
+      ask_yes_or_no "raspy_performance" " Sollen die Taktfreqenzen geändert werden"
       if [ $? -eq 1 ];
       then
         echo -e " Bitte neues Performance-Profil auswählen"
@@ -9570,7 +9636,7 @@ then
           if [ "$NEW_PERF_MODE" = "" ]; then NEW_PERF_MODE=-1; fi
         done
         setterm -cursor on 2>/dev/null
-        ask_yes_or_no " Taktfrequenzen auf das Profil ${light_yellow}${pi_perfname[$NEW_PERF_MODE]}${colors_off} umstellen"
+        ask_yes_or_no "" " Taktfrequenzen auf das Profil ${light_yellow}${pi_perfname[$NEW_PERF_MODE]}${colors_off} umstellen"
         if [ $? -eq 1 ];
         then
           SED_ERROR_CODE_1=0
@@ -9676,7 +9742,7 @@ then
       then
         if [ $(grep -i -c -E "^\s*gpu_mem\s*=\s*$NEW_MEM_SIZE" "$PI_CONF_FILE") -eq 0 ];
         then
-          ask_yes_or_no " Soll der ${light_cyan}GPU-Speicher${colors_off} optimiert werden"
+          ask_yes_or_no "raspy_gpu_mem" " Soll der ${light_cyan}GPU-Speicher${colors_off} optimiert werden"
           if [ $? -eq 1 ];
           then
             create_backup_file "$PI_CONF_FILE"
@@ -9785,7 +9851,7 @@ then
     fi
     if [ -s "$PI_CONF_FILE" ];
     then
-      ask_yes_or_no " Einstellung für ${light_cyan}Monitor-Overscan${colors_off} ändern"
+      ask_yes_or_no "" " Einstellung für ${light_cyan}Monitor-Overscan${colors_off} ändern"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m}  ... "
@@ -9845,7 +9911,7 @@ then
     fi
     if [ $CREATE_NEW_FILE -eq 1 ];
     then
-      ask_yes_or_no " Für Benutzer pi ${light_cyan}sudo-Passwort${colors_off} aktivieren"
+      ask_yes_or_no "raspy_user_pi_passwd" " Für Benutzer pi ${light_cyan}sudo-Passwort${colors_off} aktivieren"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -9883,7 +9949,7 @@ then
         # Wenn der Eintrag aktiv ist, diesen auskommentieren
         if [ $(grep -i -c -E "^\s*deb\s\s*http\:\/\/archive\.raspberrypi\.org\/debian" ${RASPI_DEB_FILE}) -gt 0 ];
         then
-          ask_yes_or_no "$ACTION_MESSAGE"
+          ask_yes_or_no "raspy_no_testing" "$ACTION_MESSAGE"
           if [ $? -eq 1 ];
           then
             e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -9923,7 +9989,7 @@ then
       then
         if [ -s "$STANDARD_RC_CONFIG" ];
         then
-          ask_yes_or_no "$ACTION_MESSAGE"
+          ask_yes_or_no "raspy_keyboard" "$ACTION_MESSAGE"
           if [ $? -eq 1 ];
           then
             e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -10013,7 +10079,7 @@ EOF
       if [ "$THE_HIDE_USER_LINE" != "" ] &&
          [ $(grep -i -c -E "^\s*$THE_GOOD_LINE" "$LDM_CONF_FILE" 2>/dev/null) -eq 0 ];
       then
-        ask_yes_or_no "$ACTION_MESSAGE"
+        ask_yes_or_no "login_user_list" "$ACTION_MESSAGE"
         if [ $? -eq 1 ];
         then
           e_and_l -n "${ACTION_MESSAGE//96m/93m}  ... "
@@ -10050,7 +10116,7 @@ EOF
       THE_BAD_LINE=$(grep -i -E "$THE_AUTOSTART_LINE" "$LDM_CONF_FILE" 2>/dev/null)
       TEST_USER_NAME=$(echo ${THE_BAD_LINE##*=} | xargs)
       e_and_l " $WARN_TAG: Der Benutzer ${light_cyan}$TEST_USER_NAME${colors_off} wird automatisch am System angemeldet!"
-      ask_yes_or_no " Soll die ${light_cyan}automatische Anmeldung${colors_off} deaktiviert werden"
+      ask_yes_or_no "login_deactivate_auto_login" " Soll die ${light_cyan}automatische Anmeldung${colors_off} deaktiviert werden"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -10084,7 +10150,7 @@ EOF
     then
       THE_BAD_LINE=$(grep -i -E "$THE_GUESTUSER_LINE" "$LDM_CONF_FILE" 2>/dev/null)
       e_and_l " $WARN_TAG: Die Anmeldung enthält einen ${light_cyan}Gastzugang${colors_off}."
-      ask_yes_or_no " Soll die ${light_cyan}Anmeldung als Gast${colors_off} deaktiviert werden"
+      ask_yes_or_no "login_no_guest" " Soll die ${light_cyan}Anmeldung als Gast${colors_off} deaktiviert werden"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -10120,7 +10186,7 @@ EOF
   ASKED_NUMLOCKX_INST_NO=0
   if [ $(LANG=en dpkg-query -W -f='${Status}' "numlockx" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
   then
-    ask_yes_or_no " Zur Aktivierung des Nummernblocks ${light_cyan}numlockx${colors_off} installieren"
+    ask_yes_or_no "login_numlock" " Zur Aktivierung des Nummernblocks ${light_cyan}numlockx${colors_off} installieren"
     if [ $? -eq 1 ];
     then
       e_and_l -n " Installiere ${light_yellow}numlockx${colors_off}, bitte warten         "
@@ -10254,7 +10320,7 @@ EOF
     LED_STATUS="$(gsettings_get org.mate.peripherals-keyboard-xkb.general duplicate-leds)"
     if [ "$LED_STATUS" != "true" ];
     then
-      ask_yes_or_no "$ACTION_MESSAGE"
+      ask_yes_or_no "desktop_keyboard_leds" "$ACTION_MESSAGE"
       if [ $? -eq 1 ];
       then
         e_and_l -n " Schalte die Anzeige der ${light_yellow}Tastatur-LEDs${colors_off} ein  ... "
@@ -10326,7 +10392,7 @@ EOF
     fi
     if [ $COPY_FONTS_FILE -eq 1 ];
     then
-      ask_yes_or_no " Sollen ${light_cyan}asiatische Schriftarten${colors_off} ausgeblendet werden"
+      ask_yes_or_no "desktop_no_asia_fonts" " Sollen ${light_cyan}asiatische Schriftarten${colors_off} ausgeblendet werden"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m}"
@@ -10368,7 +10434,7 @@ EOF
       GTK3_CFG_FILE="$GTK3_CONF_DIR/gtk.css"
       if [ ! -s "$GTK3_CFG_FILE" ];
       then
-        ask_yes_or_no "$ACTION_MESSAGE"
+        ask_yes_or_no "desktop_big_scrollbars" "$ACTION_MESSAGE"
         if [ $? -eq 1 ];
         then
           e_and_l -n "${ACTION_MESSAGE//96m/93m}   ... "
@@ -10426,7 +10492,7 @@ EOF
   then
     if [ $(grep -l -i -c -E "^\s*NoDisplay\s*=\s*true" "$AUTOSTARTS_DIR"/* | wc -l) -gt 0 ];
     then
-      ask_yes_or_no "$ACTION_MESSAGE"
+      ask_yes_or_no "activate_all_autostart" "$ACTION_MESSAGE"
       if [ $? -eq 1 ];
       then
         e_and_l -n " Mache alle ${light_yellow}Autostart-Programme${colors_off} zugänglich  ... "
@@ -10499,7 +10565,7 @@ EOF
     fi
     if [ $VALUES_DIFFERENT -eq 1 ];
     then
-      ask_yes_or_no " Speicherplatz für ${light_cyan}Thumbnail-Zwischenspeicher${colors_off} begrenzen"
+      ask_yes_or_no "thumbnail_cache_limit" " Speicherplatz für ${light_cyan}Thumbnail-Zwischenspeicher${colors_off} begrenzen"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m}"
@@ -10587,7 +10653,7 @@ EOF
      [ ! -f "$LINK_PATH" ] &&
      [ ! -L "$LINK_PATH" ];
   then
-    ask_yes_or_no " Verknüpfung ${light_cyan}$LINK_NAME${colors_off} zu ${light_cyan}$TARGET_NAME${colors_off} anlegen"
+    ask_yes_or_no "desktop_link" " Verknüpfung ${light_cyan}$LINK_NAME${colors_off} zu ${light_cyan}$TARGET_NAME${colors_off} anlegen"
     if [ $? -eq 1 ];
     then
       e_and_l -n "${ACTION_MESSAGE//96m/93m}"
@@ -10625,7 +10691,7 @@ EOF
   then
     if [ $(grep -c -E "Extended Prompt" "$USER_BASHRC_FILE") -eq 0 ];
     then
-      ask_yes_or_no "$ACTION_MESSAGE einrichten"
+      ask_yes_or_no "extended_prompt" "$ACTION_MESSAGE einrichten"
       if [ $? -eq 1 ];
       then
         e_and_l -n " Richte erweitertes ${light_yellow}Konsolen-Prompt${colors_off} ein     ... "
@@ -10692,7 +10758,7 @@ EOF
       THE_NEW_PATH+="\$PATH"
       if [ $(grep -c -E "^\s*export\s*PATH\s*\=\s*${THE_NEW_PATH/$/\\\$}" "$USER_BASHRC_FILE") -eq 0 ];
       then
-        ask_yes_or_no "$ACTION_MESSAGE"
+        ask_yes_or_no "extended_path" "$ACTION_MESSAGE"
         if [ $? -eq 1 ];
         then
           e_and_l -n " Erweitere den ${light_yellow}Suchpfad${colors_off} für Binär-Dateien   ... "
@@ -10764,7 +10830,7 @@ EOF
       fi
       if [ $COPY_NEW_ALIAS_FILE -eq 1 ];
       then
-        ask_yes_or_no "$ACTION_MESSAGE"
+        ask_yes_or_no "bash_aliases" "$ACTION_MESSAGE"
         if [ $? -eq 1 ];
         then
           e_and_l -n " Richte Definitionen der ${light_yellow}Befehls-Aliase${colors_off} ein ... "
@@ -11126,7 +11192,7 @@ then
   then
     e_and_l "$ERROR_TAG"
     e_and_l " Die Zugriffsrechte des Wurzelverzeichnis sind nicht optimal [${light_yellow}$ATTRIBS_ROOT${colors_off}]."
-    ask_yes_or_no " Sollen die Rechte auf ${bold_yellow}rwxr-xr-x${colors_off} korrigiert werden "
+    ask_yes_or_no "root_dir_rights" " Sollen die Rechte auf ${bold_yellow}rwxr-xr-x${colors_off} korrigiert werden "
     if [ $? -eq 1 ];
     then
       e_and_l -n " Korrigiere ${light_cyan}Rechte des Wurzelverzeichnis${colors_off}    ... "
@@ -11198,7 +11264,7 @@ then
         e_and_l " - $key_description"
         e_and_l "   Schlüssel ${bold_white}$expired_key${colors_off}"
         RAW_APT_KEY="${expired_key// /}"
-        ask_yes_or_no "   Soll der Schlüssel ${light_yellow}erneuert${colors_off} werden"
+        ask_yes_or_no "" "   Soll der Schlüssel ${light_yellow}erneuert${colors_off} werden"
         KEY_RENEW=$?
         if [ $KEY_RENEW -eq 1 ];
         then
@@ -11227,7 +11293,7 @@ then
         fi
         if [ $KEY_RENEW -eq 0 ];
         then
-          ask_yes_or_no "   Soll der Schlüssel ${light_yellow}gelöscht${colors_off} werden"
+          ask_yes_or_no "" "   Soll der Schlüssel ${light_yellow}gelöscht${colors_off} werden"
           if [ $? -eq 1 ];
           then
             e_and_l -n "   Versuche den alten Schlüssel zu löschen  ... "
@@ -11299,7 +11365,7 @@ then
             THE_OLD_KEY="${APT_TMP_KEY[$knr]}"
             THE_KEY_DESC="${APT_TMP_DSC[$knr]}"
             echo -e "$HALF_MINUS_LINE"
-            ask_yes_or_no " - $THE_KEY_DESC"
+            ask_yes_or_no "" " - $THE_KEY_DESC"
             if [ $? -eq 1 ];
             then
               NEW_APT_FILE_NAME=$(echo "$THE_KEY_DESC" | tr A-Z a-z | sed 's/(//g' | sed 's/)//g' | xargs | sed 's/ /-/g')
@@ -11326,7 +11392,7 @@ then
                   fi
                 else
                   e_and_l " $ERROR_TAG: Die neue Schlüssel-Datei $NEW_APT_KEY_DIR/$NEW_APT_FILE_NAME existiert schon."
-                  ask_yes_or_no " Den veralteten Schlüssel löschen"
+                  ask_yes_or_no "" " Den veralteten Schlüssel löschen"
                   if [ $? -eq 1 ];
                   then
                     e_and_l -n " Lösche veralteten Schlüssel ... "
@@ -11658,13 +11724,13 @@ then
   then
     e_and_l " Es wurden ${bold_yellow}$REMOVE_KERNEL_IDX${colors_off} Einträge von nicht verwendeten ${light_cyan}Kernel-Versionen${colors_off} gefunden."
     e_and_l " Die aktuell verwendete Version ist: ${light_cyan}$CURR_KERNEL_VERSION${colors_off}."
-    ask_yes_or_no " Nicht verwendete Versionen auswählbar löschen"
+    ask_yes_or_no "" " Nicht verwendete Versionen auswählbar löschen"
     if [ $? -eq 1 ];
     then
       kernel_changed=0
       for old_kernel in ${REMOVE_KERNEL_TABLE[@]}
       do
-        ask_yes_or_no " Version ${light_cyan}$old_kernel${colors_off} löschen"
+        ask_yes_or_no "" " Version ${light_cyan}$old_kernel${colors_off} löschen"
         if [ $? -eq 1 ];
         then
           # Kernel selbst löschen
@@ -11709,14 +11775,14 @@ then
       if [ $kernel_changed -gt 0 ];
       then
         e_and_l " Es wurden ${light_yellow}$kernel_changed${colors_off} Einträge gelöscht."
-        ask_yes_or_no " Sollen ${light_cyan}initramfs${colors_off} und ${light_cyan}GRUB-Loader${colors_off} erneuert werden"
+        ask_yes_or_no "" " Sollen ${light_cyan}initramfs${colors_off} und ${light_cyan}GRUB-Loader${colors_off} erneuert werden"
         if [ $? -eq 1 ];
         then
           e_and_l " $ACHTUNG_TAG: Dadurch werden Dateien im Boot-Bereich des Systems verändert, was"
           e_and_l " dazu führen kann, dass sich das System nicht mehr starten lässt, bzw. die"
           e_and_l " Konfiguration des GRUB-Loaders nachträglch manuell angepasst werden muss."
           e_and_l " Mache daher nur weiter, wenn Du Dich damit auskennst und dies tun kannst."
-          ask_yes_or_no " Jetzt wirklich ${bold_white}initramfs${colors_off} und ${bold_white}GRUB-Loader${colors_off} erneuern"
+          ask_yes_or_no "" " Jetzt wirklich ${bold_white}initramfs${colors_off} und ${bold_white}GRUB-Loader${colors_off} erneuern"
           if [ $? -eq 1 ];
           then
             e_and_l -n " Aktualisiere das ${light_yellow}Initial Ram FileSystem${colors_off}  ... "
@@ -11761,7 +11827,7 @@ then
          [ "$IRFS_COMP" != "zstd" ];
       then
         e_and_l " Die aktuelle Kompressions-Methode des initramfs ist nur ${bold_white}$IRFS_COMP${colors_off}."
-        ask_yes_or_no " Soll die ${light_cyan}Kompressions-Rate${colors_off} mit Methode ${bold_white}xz${colors_off} erhöht werden"
+        ask_yes_or_no "compress_initramfs" " Soll die ${light_cyan}Kompressions-Rate${colors_off} mit Methode ${bold_white}xz${colors_off} erhöht werden"
         if [ $? -eq 1 ];
         then
           e_and_l " $ACHTUNG_TAG: Dieser Vorgang verändert wichtige Boot-Dateien und sollte nur nach"
@@ -11810,7 +11876,7 @@ then
   # ===========================================================================
   if lsof -v &>/dev/null;
   then
-    ask_yes_or_no " Den ${light_cyan}APT-Zwischenspeicher${colors_off} und ${light_cyan}Paket-Listen${colors_off} bereinigen"
+    ask_yes_or_no "apt_clear_all" " Den ${light_cyan}APT-Zwischenspeicher${colors_off} und ${light_cyan}Paket-Listen${colors_off} bereinigen"
     if [ $? -eq 1 ];
     then
       # Nur weitermachen, wenn nicht gerade eine andere dpkg-Aktion läuft
@@ -11891,7 +11957,7 @@ then
       QUESTION_TEXT=" Veraltete ${light_cyan}System-Logs${colors_off} löschen (${light_purple}$OLD_LOGS_FILES Dateien, "
       QUESTION_TEXT+=$(show_human_bytes "$OLD_LOGS_BYTES")
       QUESTION_TEXT+="${colors_off})"
-      ask_yes_or_no "$QUESTION_TEXT"
+      ask_yes_or_no "delete_old_syslogs" "$QUESTION_TEXT"
       if [ $? -eq 1 ];
       then
         e_and_l -n " Löschen der veralteten ${light_yellow}System-Log-Dateien${colors_off}  ... "
@@ -11931,7 +11997,7 @@ then
       QUESTION_TEXT=" ${light_cyan}Thumbnail-Cache${colors_off} löschen (${light_purple}$THUMBS_TOTAL_FILES Dateien, "
       QUESTION_TEXT+=$(show_human_bytes "$THUMBS_TOTAL_BYTES")
       QUESTION_TEXT+="${colors_off})"
-      ask_yes_or_no "$QUESTION_TEXT"
+      ask_yes_or_no "delete_thumb_cache" "$QUESTION_TEXT"
       if [ $? -eq 1 ];
       then
         e_and_l -n " Löschen der gespeicherten ${light_yellow}Vorschau-Bilder${colors_off}  ... "
@@ -11977,7 +12043,7 @@ then
     QUESTION_TEXT=" ${light_cyan}Nutzungsdaten von Dateien${colors_off} löschen (${light_purple}$FILES_FOUND_TOTAL_FILES Dateien, "
     QUESTION_TEXT+=$(show_human_bytes "$FILES_FOUND_TOTAL_BYTES")
     QUESTION_TEXT+="${colors_off})"
-    ask_yes_or_no "$QUESTION_TEXT"
+    ask_yes_or_no "delete_user_temp" "$QUESTION_TEXT"
     if [ $? -eq 1 ];
     then
       e_and_l -n " Löschen gespeicherter ${light_yellow}Datei-Nutzungsdaten${colors_off}  ... "
@@ -12010,7 +12076,7 @@ then
   if [ "$USER_USERNAME" != "root" ] &&
      [ $USER_UID -ge 1000 ];
   then
-    ask_yes_or_no "$ACTION_MESSAGE"
+    ask_yes_or_no "check_user_rights" "$ACTION_MESSAGE"
     if [ $? -eq 1 ];
     then
       e_and_l -n " Korrigiere ${light_yellow}Besitzzuordnung${colors_off} eigener Dateien ... "
@@ -12042,7 +12108,7 @@ if [ ${OPTION_FLAG[listonly]} -eq 0 ];
    [ ${OPTION_FLAG[personal]} -eq 1 ];
 then
   e_and_l " ${bold_blue}Einrichtung persönlicher System-Einstellungen${colors_off}"
-  # ask_yes_or_no " Persönliche Einstellungen einrichten"
+  # ask_yes_or_no "" " Persönliche Einstellungen einrichten"
   # if [ $? -eq 1 ];
   # then
     # -----------------------------------------------------------------------
@@ -12197,7 +12263,7 @@ then
         if [ "$DESKTOP_ENVIRONMENT" = "MATE" ] ||
            [ "${USER_CONF_MAO[$IDX_NAME]}" != "true" ];
         then
-          ask_yes_or_no " $SHOW_NAME"
+          ask_yes_or_no "" " $SHOW_NAME"
           DO_THE_CONFIG=$?
           if [ $DO_THE_CONFIG -eq 1 ];
           then
@@ -12347,7 +12413,7 @@ then
         then
           FILE_DATE=$(date -r ${DCONF_USER_FILE} "+%d.%m.%Y %H:%M:%S")
           e_and_l " Es ist schon eine Sicherungsdatei vom ${bold_cyan}$FILE_DATE${colors_off} vorhanden!"
-          ask_yes_or_no " Bestehende Sicherungsdatei überschreiben"
+          ask_yes_or_no "" " Bestehende Sicherungsdatei überschreiben"
           DO_SAVE_FILE=$?
         fi
         if [ $DO_SAVE_FILE -eq 1 ];
@@ -12375,7 +12441,7 @@ then
         then
           FILE_DATE=$(date -r ${DCONF_USER_FILE} "+%d.%m.%Y %H:%M:%S")
           e_and_l " Die Sicherungsdatei hat das Datum ${bold_cyan}$FILE_DATE${colors_off}. Alle aktuellen"
-          ask_yes_or_no " Einstellungen auf diesen Stand zurücksetzen" "$DCONF_USER_FILE"
+          ask_yes_or_no "" " Einstellungen auf diesen Stand zurücksetzen" "$DCONF_USER_FILE"
           if [ $? -eq 1 ];
           then
             e_and_l -n " Sichere aktuelle Einstellungen in ${bold_yellow}${DCONF_USER_BACKUP##*/}${colors_off} ... "
@@ -12539,7 +12605,7 @@ then
         e_and_l "Abbruch"
       else
         e_and_l "$REMOVE_ACTION"
-        ask_yes_or_no " Wirklich ${REMOVE_TEXT[$REMOVE_ACTION]}"
+        ask_yes_or_no "" " Wirklich ${REMOVE_TEXT[$REMOVE_ACTION]}"
         if [ $? -eq 0 ];
         then
           REMOVE_ACTION=-1
@@ -12548,7 +12614,7 @@ then
     done
   else
     e_and_l " Das Programmpaket ${bold_yellow}$REMOVE_PKG_NAME${colors_off} scheint nicht installiert zu sein."
-    ask_yes_or_no " Sollen hinterbliebene Daten gesucht werden"
+    ask_yes_or_no "" " Sollen hinterbliebene Daten gesucht werden"
     if [ $? -eq 1 ];
     then
       REMOVE_ACTION=3
