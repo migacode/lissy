@@ -11774,7 +11774,7 @@ then
   then
     e_and_l " Es wurden ${bold_yellow}$REMOVE_KERNEL_IDX${colors_off} Einträge von nicht verwendeten ${light_cyan}Kernel-Versionen${colors_off} gefunden."
     e_and_l " Die aktuell verwendete Version ist: ${light_cyan}$CURR_KERNEL_VERSION${colors_off}."
-    ask_yes_or_no "" " Nicht verwendete Versionen auswählbar löschen"
+    ask_yes_or_no "remove_unused_kernels" " Nicht verwendete Versionen auswählbar löschen"
     if [ $? -eq 1 ];
     then
       kernel_changed=0
