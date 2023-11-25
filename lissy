@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 24.11.2023
-VERSION="3.98.4"
+# Letzte Änderung: 25.11.2023
+VERSION="3.98.5"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -929,7 +929,12 @@ OPTION_MENU[personal]=4
 OPTION_MENU[revive]=4
 OPTION_MENU[udrivers]=4
 
-OPTION_MENU[autoyorn]=5
+if [ ${#AUTO_ANSWERS[@]} -gt 0 ];
+then
+  OPTION_MENU[autoyorn]=5
+else
+  OPTION_MENU[autoyorn]=0
+fi
 OPTION_MENU[cleantmp]=5
 OPTION_MENU[infoonly]=5
 OPTION_MENU[log]=5
@@ -2301,6 +2306,9 @@ function ask_yes_or_no () {
   QUEST_ID="$1"
   QUESTION="$2? [${bold_yellow}j${colors_off}]a, [${bold_yellow}n${colors_off}]ein, [${bold_yellow}a${colors_off}]nzeigen: "
   FILE_TO_SHOW="$3"
+  # ---------------------------------------------------------------------------
+  # Parameter der Eingabe-Möglichkeiten definieren
+  # ---------------------------------------------------------------------------
   if [ "$FILE_TO_SHOW" != "" ];
   then
     REG_CHARS="[^JjNnAa]*"
@@ -2378,7 +2386,9 @@ function ask_yes_or_no () {
       fi
     fi
   done
+  # ---------------------------------------------------------------------------
   # Antwort speichern
+  # ---------------------------------------------------------------------------
   if [ $INPUT_OK -eq 1 ] &&
      [ "$QUEST_ID" != "" ] &&
      [ "$ANSWER" != "" ];
@@ -2386,7 +2396,7 @@ function ask_yes_or_no () {
     ANSWER="$(echo -n "${ANSWER}" | tr '[:upper:]' '[:lower:]')"
     echo -e "$QUEST_ID:$ANSWER" >> "$AUTO_ANSWER_FILE" 2>/dev/null
   fi
-
+  # ---------------------------------------------------------------------------
   return $IYN_RESULT
 }
 
@@ -2397,12 +2407,13 @@ function ask_yes_or_no () {
 #            1 = true (Ja)
 ###############################################################################
 function ask_yes_no_info () {
+  PACKAGE_NAME="$1"
   # ------------------------------------------------------
   # Hinweis auf bereits installierte Alternative anzeigen
   # ------------------------------------------------------
   TROTZDEM=""
   SIM_PACK_INSTALLED=0
-  CHECK_SIM_PACK="${SIMILAR_PACK[$1]}"
+  CHECK_SIM_PACK="${SIMILAR_PACK[$PACKAGE_NAME]}"
   while [ "$CHECK_SIM_PACK" != "" ];
   do
     get_install_status "$CHECK_SIM_PACK"
@@ -2426,17 +2437,16 @@ function ask_yes_no_info () {
     e_and_l -n "$PRE_SPACE"
     TROTZDEM=" trotzdem"
   fi
-  # -------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
   # Wenn es so gewollt ist (Option force) und nicht bereits ein alternatives
   # Programmpaket installiert ist (welches eventuell in Konflikt steht), dann
   # automatisch ein "Ja" (Installation ohne weitere Rückfrage) zurückgeben
-  # -------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
   if [ ${OPTION_FLAG[force]} -eq 1 ] &&
      [ "$TROTZDEM" = "" ];
   then
     IYN_RESULT=1
   else
-    PACKAGE_NAME=$1
     IYN_RESULT=0
     QUESTION_1="Programmpaket ${light_yellow}$PACKAGE_NAME${colors_off}"
     case $INSTALL_MODE in
@@ -2460,6 +2470,9 @@ function ask_yes_no_info () {
     QUESTION_1+=" ($TMP_PKG_TYPE)"
     QUESTION_1+="$TROTZDEM installieren?"
     QUESTION_2="[${bold_yellow}j${colors_off}]a [${bold_yellow}n${colors_off}]ein"
+    # -------------------------------------------------------------------------
+    # Parameter der Eingabe-Möglichkeiten definieren
+    # -------------------------------------------------------------------------
     if [ $INSTALL_MODE -lt 3 ];
     then
       REG_CHARS="[^JjNnIi]*"
@@ -2467,10 +2480,35 @@ function ask_yes_no_info () {
     else
       REG_CHARS="[^JjNn]*"
     fi
+    # -------------------------------------------------------------------------
     QUESTION_2+=":"
     e_and_l " $QUESTION_1"
     e_and_l -n "$PRE_SPACE $QUESTION_2 "
     INPUT_OK=0
+    # ---------------------------------------------------------------------------
+    # Optional Antwort des vorherigen Durchlaufs verwenden
+    # ---------------------------------------------------------------------------
+    if [ ${OPTION_FLAG[autoyorn]} -eq 1 ] &&
+       [ "$PACKAGE_NAME" != "" ];
+    then
+      ANSWER=$(echo ${AUTO_ANSWERS["pkg_$PACKAGE_NAME"]} | xargs)
+      if [ "$ANSWER" = "j" ];
+      then
+        e_and_l ${dark_grey}$ANSWER${colors_off}
+        IYN_RESULT=1
+        INPUT_OK=1
+      fi
+      if [ "$ANSWER" = "n" ];
+      then
+        e_and_l ${dark_grey}$ANSWER${colors_off}
+        IYN_RESULT=0
+        INPUT_OK=1
+      fi
+    fi
+    # ---------------------------------------------------------------------------
+    # Wenn es keine Antwort aus dem vorherigen Durchlauf gibt, oder dies
+    # nicht gewollt ist, dann erweiterte Ja/Nein-Abfrage durchführen
+    # ---------------------------------------------------------------------------
     while [ $INPUT_OK -eq 0 ]
     do
       # Eingabe-Schleife ------------------------------------------------------
@@ -2504,6 +2542,17 @@ function ask_yes_no_info () {
       fi
     done
   fi
+  # ---------------------------------------------------------------------------
+  # Antwort speichern
+  # ---------------------------------------------------------------------------
+  if [ $INPUT_OK -eq 1 ] &&
+     [ "$PACKAGE_NAME" != "" ] &&
+     [ "$ANSWER" != "" ];
+  then
+    ANSWER="$(echo -n "${ANSWER}" | tr '[:upper:]' '[:lower:]')"
+    echo -e "pkg_$PACKAGE_NAME:$ANSWER" >> "$AUTO_ANSWER_FILE" 2>/dev/null
+  fi
+  # ---------------------------------------------------------------------------
   return $IYN_RESULT
 }
 
@@ -6498,8 +6547,8 @@ then
   e_and_l "            (wird bei GNOME-Desktops ab der Version 3 ignoriert)"
   e_and_l ""
   e_and_l "  autoyorn  Alle Ja/Nein-Abfragen bei der Installation von Programmen"
-  e_and_l "            und Auswahl von Optionen werden automatisch so bentwortet,"
-  e_and_l "            wie sie im vorherigen Programm-Durchlauf auswählt wurden."
+  e_and_l "            und Auswahl von Optionen werden automatisch so beantwortet,"
+  e_and_l "            wie sie im vorherigen Programm-Durchlauf ausgewählt wurden."
   e_and_l ""
   e_and_l "  cleansys  Bereinigt nicht benötigte Daten des Benutzers und"
   e_and_l "            repariert diverse Einstellungen des Systems"
@@ -6758,7 +6807,7 @@ then
     SYS_INFO_TXT+=$'\n'
   fi
 
-  boot_device="$(findmnt -n / 2>/dev/null | awk '{ print $2 }' | sed -E "s/\/dev\///" | sed -E "s/[0-9]//")" # util-linux
+  boot_device="$(findmnt -n / 2>/dev/null | awk '{ print $2 }' | sed -E "s/\/dev\///")" # util-linux
   SYS_INFO_TXT+=" Systempartition: ${bold_yellow}$boot_device${colors_off}"$'\n'
 
   if [ "$DISPLAY_MANAGER" != "" ];
@@ -8716,7 +8765,8 @@ then
       then
         IS_MULTI_BOOT=1
       else
-        # if [ $(ls -la /dev 2>/dev/null | grep -c -E "sd[a-z][1-9]*") -gt 2 ];
+        # Wenn unser Linux nicht von den ersten beiden Partitionen gebootet
+        # wurde, wird es vermutlich nicht das einzige OS auf der Platte sein.
         if [ $(echo $boot_device | grep -c -E "sd[a-z][3-9]") -gt 0 ];
         then
           IS_MULTI_BOOT=1
@@ -8731,10 +8781,10 @@ then
     then
       if [ $(timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -eq 0 ];
       then
-        e_and_l " ${bold_white}Multi-Boot-System${colors_off} gefunden. Einige Betriebssysteme wie MS Windows verwenden"
-        e_and_l " statt UTC (Universal Time Coordinated) das RTC-Format (Real Time Clock) für"
-        e_and_l " Datum und Uhrzeit, was zu unterschiedlichen Zeitangaben führt. Um die Zeit-"
-        e_and_l " Angaben zu vereinheitlichen, kann auch Linux auf RTC umgestellt werden."
+        e_and_l " Einige Betriebssysteme wie MS Windows verwenden für Datum und Uhrzeit das"
+        e_and_l " RTC-Format (Real Time Clock) statt UTC-Format (Universal Time Coordinated),"
+        e_and_l " was auf ${bold_white}Multi-Boot-Systemen${colors_off} zu unterschiedlichen Zeitangaben führen kann."
+        e_and_l " Um die Angaben zu vereinheitlichen, kann Linux auf RTC umgestellt werden."
         ask_yes_or_no "utc_to_rtc" " Die ${light_cyan}Systemzeit auf RTC (Real Time Clock)${colors_off} umstellen"
         if [ $? -eq 1 ];
         then
