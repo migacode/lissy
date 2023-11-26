@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 25.11.2023
-VERSION="3.98.5"
+# Letzte Änderung: 26.11.2023
+VERSION="3.98.6"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -179,11 +179,9 @@ then
   if [ $? -eq 0 ];
   then
     chown -R "$USER_USERNAME:$USER_USERNAME" "$SCRIPT_CONFIG_DIR" &>/dev/null
-    chmod 0755 "$SCRIPT_CONFIG_DIR" &>/dev/null
+    chmod -R 0755 "$SCRIPT_CONFIG_DIR" &>/dev/null
   fi
 fi
-USER_SCRIPT_CONFIG="$SCRIPT_CONFIG_DIR/$SCRIPT_NAME.conf"
-USER_PAKET_LIST="$SCRIPT_CONFIG_DIR/$SCRIPT_NAME.list"
 # Ordner für Downloads und temporäre Dateien
 DOWNLOAD_DIR+="_files"
 if [ ! -d "$DOWNLOAD_DIR" ];
@@ -191,8 +189,8 @@ then
   mkdir -p "$DOWNLOAD_DIR" &>/dev/null
   if [ $? -eq 0 ];
   then
-    chown "$USER_USERNAME:$USER_USERNAME" "$DOWNLOAD_DIR" &>/dev/null
-    chmod 0755 "$DOWNLOAD_DIR" &>/dev/null
+    chown -R "$USER_USERNAME:$USER_USERNAME" "$DOWNLOAD_DIR" &>/dev/null
+    chmod -R 0755 "$DOWNLOAD_DIR" &>/dev/null
   else
     echo -e ""
     echo -e " ${bold_white}$HEADLINE_TITLE v$VERSION${colors_off}"
@@ -201,6 +199,10 @@ then
     exit 1
   fi
 fi
+
+###############################################################################
+# Dateien zur Speicherung von temporären Daten
+###############################################################################
 # Log-Dateien
 LOG_FILE="$DOWNLOAD_DIR/$(date +%Y-%m-%d-%H%M).log"
 LOG_TEMP="$DOWNLOAD_DIR/$(date +%Y-%m-%d-%H%M).tmp"
@@ -208,10 +210,20 @@ LOG_TEMP="$DOWNLOAD_DIR/$(date +%Y-%m-%d-%H%M).tmp"
 LAST_EXIT_CODE="$DOWNLOAD_DIR/laexco"
 
 ###############################################################################
-# Daten für automaische Antworten (autoyorn) einlesen
+# Dateien zur Speicherung von Konfigurationen
+###############################################################################
+# Antworten auf Fragen zur Installation von Programmen
+# und Durchführung von Optionen (autoyorn)
+AUTO_ANSWER_FILE="$SCRIPT_CONFIG_DIR/auto_answers"
+# Paketlisten (saveconf)
+USER_PAKET_LIST="$SCRIPT_CONFIG_DIR/$SCRIPT_NAME.list"
+# Ausgewählte Kategorien und Optionen (saveconf)
+USER_SCRIPT_CONFIG="$SCRIPT_CONFIG_DIR/$SCRIPT_NAME.conf"
+
+###############################################################################
+# Daten für automatische Antworten (autoyorn) einlesen
 ###############################################################################
 declare -A AUTO_ANSWERS
-AUTO_ANSWER_FILE="$SCRIPT_CONFIG_DIR/auto_answers"
 if [ -s "$AUTO_ANSWER_FILE" ];
 then
   while read auto_answer_line;
@@ -223,7 +235,10 @@ then
       AUTO_ANSWERS["$auto_answer_id"]="$auto_answer_txt"
     fi
   done < "$AUTO_ANSWER_FILE"
-  rm -f "$AUTO_ANSWER_FILE" &>/dev/null
+else
+  echo -e "" > "$AUTO_ANSWER_FILE" &>/dev/null
+  chown -R "$USER_USERNAME:$USER_USERNAME" "$AUTO_ANSWER_FILE" &>/dev/null
+  chmod -R 0644 "$AUTO_ANSWER_FILE" &>/dev/null
 fi
 
 ###############################################################################
@@ -313,8 +328,8 @@ function download_icon_file ()
        [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
     then
       mv -f "$LOCAL_DOWNLOAD_FILE" "$PKG_PICTURE_FILE" &>/dev/null
-      chown "root:root" "$PKG_PICTURE_FILE" &>/dev/null
-      chmod 0644 "$PKG_PICTURE_FILE" &>/dev/null
+      chown -R "root:root" "$PKG_PICTURE_FILE" &>/dev/null
+      chmod -R 0644 "$PKG_PICTURE_FILE" &>/dev/null
     else
       remove_file "$LOCAL_DOWNLOAD_FILE"
     fi
@@ -2394,15 +2409,24 @@ function ask_yes_or_no () {
      [ "$ANSWER" != "" ];
   then
     ANSWER="$(echo -n "${ANSWER}" | tr '[:upper:]' '[:lower:]')"
-    echo -e "$QUEST_ID:$ANSWER" >> "$AUTO_ANSWER_FILE" 2>/dev/null
+    NEW_CONFIG_LINE="$QUEST_ID:$ANSWER"
+    if [ $(grep -c -E "$QUEST_ID:" "$AUTO_ANSWER_FILE" 2>/dev/null) -gt 0 ];
+    then
+      # Bestehende Konfig-Zeile ändern
+      sed -i -E "s/$QUEST_ID:.*/$NEW_CONFIG_LINE/gi" "$AUTO_ANSWER_FILE" 2>/dev/null
+    else
+      # Nicht vorhandene Konfig-Zeile hinzufügen
+      echo -e "$NEW_CONFIG_LINE" >> "$AUTO_ANSWER_FILE" 2>/dev/null
+    fi
   fi
   # ---------------------------------------------------------------------------
   return $IYN_RESULT
 }
 
 ###############################################################################
-# Erweiterte Funktion zur Ja/Nein-Abfrage mit Info zu Programmpaketen (kann mit
-# der Option force übersprungen werden, sofern nicht "trotzdem" angegeben ist!)
+# Erweiterte Funktion zur Ja/Nein-Abfrage mit Info zu Programmpaketen
+# Kann mit der Option force übersprungen werden, sofern nicht "trotzdem"
+# angegeben ist, sprich bereits ein alternatives Paket dazu installiert ist!
 # Rückgaben: 0 = false (Nein)
 #            1 = true (Ja)
 ###############################################################################
@@ -2438,12 +2462,23 @@ function ask_yes_no_info () {
     TROTZDEM=" trotzdem"
   fi
   # ---------------------------------------------------------------------------
+  # Prüfen, ob eine Auto-Antwort zur Installation genutzt werden soll
+  # ---------------------------------------------------------------------------
+  CHECK_AUTO_ANSWER=""
+  if [ ${OPTION_FLAG[autoyorn]} -eq 1 ] &&
+     [ "$PACKAGE_NAME" != "" ];
+  then
+    CHECK_AUTO_ANSWER=$(echo ${AUTO_ANSWERS["pkg_$PACKAGE_NAME"]} | xargs)
+  fi
+  # ---------------------------------------------------------------------------
   # Wenn es so gewollt ist (Option force) und nicht bereits ein alternatives
-  # Programmpaket installiert ist (welches eventuell in Konflikt steht), dann
+  # Programmpaket installiert ist (welches eventuell in Konflikt steht), und
+  # auch keine Auto-Antwort zur Installation des Paketes vorhanden ist, dann
   # automatisch ein "Ja" (Installation ohne weitere Rückfrage) zurückgeben
   # ---------------------------------------------------------------------------
   if [ ${OPTION_FLAG[force]} -eq 1 ] &&
-     [ "$TROTZDEM" = "" ];
+     [ "$TROTZDEM" = "" ] &&
+     [ "$CHECK_AUTO_ANSWER" = "" ];
   then
     IYN_RESULT=1
   else
@@ -2550,7 +2585,15 @@ function ask_yes_no_info () {
      [ "$ANSWER" != "" ];
   then
     ANSWER="$(echo -n "${ANSWER}" | tr '[:upper:]' '[:lower:]')"
-    echo -e "pkg_$PACKAGE_NAME:$ANSWER" >> "$AUTO_ANSWER_FILE" 2>/dev/null
+    NEW_CONFIG_LINE="pkg_$PACKAGE_NAME:$ANSWER"
+    if [ $(grep -c -E "pkg_$PACKAGE_NAME:" "$AUTO_ANSWER_FILE" 2>/dev/null) -gt 0 ];
+    then
+      # Bestehende Konfig-Zeile ändern
+      sed -i -E "s/pkg_$PACKAGE_NAME:.*/$NEW_CONFIG_LINE/gi" "$AUTO_ANSWER_FILE" 2>/dev/null
+    else
+      # Nicht vorhandene Konfig-Zeile hinzufügen
+      echo -e "$NEW_CONFIG_LINE" >> "$AUTO_ANSWER_FILE" 2>/dev/null
+    fi
   fi
   # ---------------------------------------------------------------------------
   return $IYN_RESULT
@@ -2707,7 +2750,7 @@ function create_autostart_file () {
   if [ ! -d "$USER_CONFIG_DIR/autostart" ];
   then
     mkdir -p "$USER_CONFIG_DIR/autostart" &>/dev/null
-    chown "$USER_USERNAME:$USER_USERNAME" "$USER_CONFIG_DIR/autostart" &>/dev/null
+    chown -R "$USER_USERNAME:$USER_USERNAME" "$USER_CONFIG_DIR/autostart" &>/dev/null
   fi
   echo -e "[Desktop Entry]" > "$1" 2>/dev/null
   echo -e "Type=Application" >> "$1" 2>/dev/null
@@ -2720,8 +2763,8 @@ function create_autostart_file () {
   echo -e "Hidden=false" >> "$1" 2>/dev/null
   echo -e "X-GNOME-Autostart-enabled=true" >> "$1" 2>/dev/null
   echo -e "X-MATE-Autostart-enabled=true" >> "$1" 2>/dev/null
-  chown "$USER_USERNAME:$USER_USERNAME" "$1" &>/dev/null
-  chmod 0644 "$1" &>/dev/null
+  chown -R "$USER_USERNAME:$USER_USERNAME" "$1" &>/dev/null
+  chmod -R 0644 "$1" &>/dev/null
   return $?
 }
 
@@ -2758,8 +2801,8 @@ function copy_starter_to_desktop () {
         mkdir "$DESKTOP_ICON_DIR" &>/dev/null
         if [ $? -eq 0 ];
         then
-          chown "$USER_USERNAME:$USER_USERNAME" "$DESKTOP_ICON_DIR" &>/dev/null
-          chmod 0755 "$DESKTOP_ICON_DIR" &>/dev/null
+          chown -R "$USER_USERNAME:$USER_USERNAME" "$DESKTOP_ICON_DIR" &>/dev/null
+          chmod -R 0755 "$DESKTOP_ICON_DIR" &>/dev/null
         fi
       fi
 
@@ -2774,8 +2817,8 @@ function copy_starter_to_desktop () {
           mkdir "$ICON_TARGET_DIR" &>/dev/null
           if [ $? -eq 0 ];
           then
-            chown "$USER_USERNAME:$USER_USERNAME" "$ICON_TARGET_DIR" &>/dev/null
-            chmod 0755 "$ICON_TARGET_DIR" &>/dev/null
+            chown -R "$USER_USERNAME:$USER_USERNAME" "$ICON_TARGET_DIR" &>/dev/null
+            chmod -R 0755 "$ICON_TARGET_DIR" &>/dev/null
           else
             ICON_TARGET_DIR="$DESKTOP_ICON_DIR";
           fi
@@ -2902,8 +2945,8 @@ function copy_starter_to_desktop () {
                 mkdir "$ICON_TARGET_DIR" &>/dev/null
                 if [ $? -eq 0 ];
                 then
-                  chown "$USER_USERNAME:$USER_USERNAME" "$ICON_TARGET_DIR" &>/dev/null
-                  chmod 0755 "$ICON_TARGET_DIR" &>/dev/null
+                  chown -R "$USER_USERNAME:$USER_USERNAME" "$ICON_TARGET_DIR" &>/dev/null
+                  chmod -R 0755 "$ICON_TARGET_DIR" &>/dev/null
                 else
                   ICON_TARGET_DIR="$ORG_ICON_TARGET_DIR"
                 fi
@@ -2969,8 +3012,8 @@ function copy_starter_to_desktop () {
                           do_log "$PRE_SPACE Icon für $SEARCH_NAME angelegt: $TARGET_FILE_NAME"
                           ((NEW_ICON_COUNTER+=1))
                           # Sicherheitshalber nochmals Zugriffsrechte setzen
-                          chown "$USER_USERNAME:$USER_USERNAME" "$TARGET_FILE_NAME" &>/dev/null
-                          chmod 0755 "$TARGET_FILE_NAME" &>/dev/null
+                          chown -R "$USER_USERNAME:$USER_USERNAME" "$TARGET_FILE_NAME" &>/dev/null
+                          chmod -R 0755 "$TARGET_FILE_NAME" &>/dev/null
                           CREATE_DESKTOP_RESULT=0
                         else
                           do_log "$PRE_SPACE $ERROR_TAG beim Kopieren des Programmsymbols für $SEARCH_NAME nach $TARGET_FILE_NAME"
@@ -3151,7 +3194,7 @@ function extend_repo_erw () {
     if [ $? -eq 0 ];
     then
       chown -R "root:root" "$LOCAL_KEY_FILE" &>/dev/null
-      chmod 0644 "$LOCAL_KEY_FILE" &>/dev/null
+      chmod -R 0644 "$LOCAL_KEY_FILE" &>/dev/null
       remove_file "$LOCAL_DOWNLOAD_FILE"
       # ------------------------------------
       # 2. Datei mit Quellangaben erstellen
@@ -4174,8 +4217,8 @@ function install_pkg () {
                 then
                   # Heruntergeladenes Konfigurations-Script ausführen mit dem Benutzernamen
                   # als erstem Parameter zur Verwendung im aufgerufenen Konfigurations-Script
-                  chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_CONFIG_FILE" &>/dev/null
-                  chmod a+x "$LOCAL_CONFIG_FILE" &>/dev/null
+                  chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_CONFIG_FILE" &>/dev/null
+                  chmod -R 0755 "$LOCAL_CONFIG_FILE" &>/dev/null
                   echo -e ""
                   ( "$LOCAL_CONFIG_FILE" ${USER_USERNAME} ${DOWNLOAD_DIR} ${RESSOURCE_SERVER_DIR} ${OS_V_CODENAME} 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; ) | tee "$LOG_TEMP"
                   if [ $(cat "$LAST_EXIT_CODE") -eq 0 ];
@@ -4390,7 +4433,7 @@ function install_pkg () {
                    [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
                 then
                   e_and_l "$OK_TAG"
-                  chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+                  chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
                   FAIL_TEXT="$PRE_SPACE Das Paket ${light_yellow}$PAKET${colors_off} wird daher zur Sicherheit ${light_red}nicht${colors_off} installiert!"
                   # Checksumme überprüfen falls vorhanden
                   if [ "$PACKAGE_CSUM_URL" != "" ];
@@ -4413,7 +4456,7 @@ function install_pkg () {
                          [ -s "$LOCAL_CSUM_DATA" ] &&
                          [ $(grep -i -c -E "Error\s*404" "$LOCAL_CSUM_DATA") -eq 0 ];
                       then
-                        chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_CSUM_DATA" &>/dev/null
+                        chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_CSUM_DATA" &>/dev/null
                         # Checksummen vergleichen
                         if [ $(grep -i -c ${CHECKSUM256} "$LOCAL_CSUM_DATA") -gt 0 ] ||
                            [ $(grep -i -c ${CHECKSUM512} "$LOCAL_CSUM_DATA") -gt 0 ];
@@ -4503,8 +4546,8 @@ function install_pkg () {
                 then
                   e_and_l -n "$PRE_SPACE Installation von ${light_yellow}$LOCAL_DOWNLOAD_FILE${colors_off} ... "
                   if [ ${OPTION_FLAG[quiet]} -eq 0 ]; then echo -e ""; fi
-                  chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
-                  chmod 0664 "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+                  chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+                  chmod -R 0664 "$LOCAL_DOWNLOAD_FILE" &>/dev/null
                   if [ ${OPTION_FLAG[quiet]} -eq 1 ];
                   then
                     echo -n '\n\n\n' | apt install "$LOCAL_DOWNLOAD_FILE" -y &>"$LOG_TEMP"
@@ -4592,8 +4635,8 @@ function install_pkg () {
                   # Entpacken bzw. Kopieren
                   # ------------------------
                   # Datei-Attribute setzen
-                  chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
-                  chmod 0664 "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+                  chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+                  chmod -R 0664 "$LOCAL_DOWNLOAD_FILE" &>/dev/null
                   # Datei-Format ermitteln
                   AFTER_ACTION="Entpacke"
                   if [ $(echo -n "$LOCAL_DOWNLOAD_FILE" | grep -i -c ".ZIP") -ne 0 ] ||
@@ -4652,8 +4695,8 @@ function install_pkg () {
                              [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
                           then
                             cp -f "$LOCAL_DOWNLOAD_FILE" "$ICON_TARGET_FILE" &>/dev/null
-                            chown "root:root" "$ICON_TARGET_FILE" &>/dev/null
-                            chmod 0644 "$ICON_TARGET_FILE" &>/dev/null
+                            chown -R "root:root" "$ICON_TARGET_FILE" &>/dev/null
+                            chmod -R 0644 "$ICON_TARGET_FILE" &>/dev/null
                           fi
                           # .desktop-Datei anlegen
                           DESKTOP_FILE="/usr/share/applications/$WPKG_CLEAN_NAME.desktop"
@@ -4669,8 +4712,8 @@ function install_pkg () {
                             echo -e "Terminal=false" >> "$DESKTOP_FILE" 2>/dev/null
                             echo -e "StartupNotify=true" >> "$DESKTOP_FILE" 2>/dev/null
                             echo -e "NoDisplay=false" >> "$DESKTOP_FILE" 2>/dev/null
-                            chown "root:root" "$DESKTOP_FILE" &>/dev/null
-                            chmod 0644 "$DESKTOP_FILE" &>/dev/null
+                            chown -R "root:root" "$DESKTOP_FILE" &>/dev/null
+                            chmod -R 0644 "$DESKTOP_FILE" &>/dev/null
                           fi
                         fi
                       fi
@@ -4749,8 +4792,8 @@ function install_pkg () {
                   then
                     # Heruntergeladenes Konfigurations-Script ausführen mit dem Benutzernamen
                     # als erstem Parameter zur Verwendung im aufgerufenen Konfigurations-Script
-                    chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_CONFIG_FILE" &>/dev/null
-                    chmod a+x "$LOCAL_CONFIG_FILE" &>/dev/null
+                    chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_CONFIG_FILE" &>/dev/null
+                    chmod -R 0755 "$LOCAL_CONFIG_FILE" &>/dev/null
                     echo -e ""
                     ( "$LOCAL_CONFIG_FILE" ${USER_USERNAME} ${DOWNLOAD_DIR} ${RESSOURCE_SERVER_DIR} ${OS_V_CODENAME} 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; ) | tee "$LOG_TEMP"
                     if [ $(cat "$LAST_EXIT_CODE") -eq 0 ];
@@ -5063,8 +5106,8 @@ function remove_dat () {
 function do_remove_items () {
   if [ -s "$REMOVE_ITEM_LIST" ];
   then
-    chown "$USER_USERNAME:$USER_USERNAME" "$REMOVE_ITEM_LIST" &>/dev/null
-    chmod 0664 "$REMOVE_ITEM_LIST" &>/dev/null
+    chown -R "$USER_USERNAME:$USER_USERNAME" "$REMOVE_ITEM_LIST" &>/dev/null
+    chmod -R 0664 "$REMOVE_ITEM_LIST" &>/dev/null
     declare -A REMOVE_ITEM_TABLE
     REMOVE_TABLE_IDX=0
     while read config_path;
@@ -5181,8 +5224,8 @@ function do_remove_items () {
 function do_revive_items () {
   if [ -s "$REVIVE_ITEM_LIST" ];
   then
-    chown "$USER_USERNAME:$USER_USERNAME" "$REVIVE_ITEM_LIST" &>/dev/null
-    chmod 0664 "$REVIVE_ITEM_LIST" &>/dev/null
+    chown -R "$USER_USERNAME:$USER_USERNAME" "$REVIVE_ITEM_LIST" &>/dev/null
+    chmod -R 0664 "$REVIVE_ITEM_LIST" &>/dev/null
     declare -A REVIVE_ITEM_TABLE
     REVIVE_TABLE_IDX=0
     while read config_path;
@@ -5706,8 +5749,8 @@ then
       echo -e "Terminal=true" >> "$STARTER_FILE" 2>/dev/null
       echo -e "StartupNotify=true" >> "$STARTER_FILE" 2>/dev/null
       echo -e "NoDisplay=false" >> "$STARTER_FILE" 2>/dev/null
-      chown "$USER_USERNAME:$USER_USERNAME" "$STARTER_FILE" &>/dev/null
-      chmod 0755 "$STARTER_FILE" &>/dev/null
+      chown -R "$USER_USERNAME:$USER_USERNAME" "$STARTER_FILE" &>/dev/null
+      chmod -R 0755 "$STARTER_FILE" &>/dev/null
       e_and_l "$OK_TAG"
     else
       e_and_l "$ERROR_TAG"
@@ -5934,8 +5977,8 @@ then
      [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
      [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
   then
-    chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
-    chmod a+x "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+    chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+    chmod -R 0755 "$LOCAL_DOWNLOAD_FILE" &>/dev/null
     NEW_VERSION=$(grep -i -E "^\s*version=" "$LOCAL_DOWNLOAD_FILE" | sed -E "s/^\s*version=//i" | sed -E "s/\"//g" | xargs)
     if [ "$VERSION" != "$NEW_VERSION" ];
     then
@@ -6067,7 +6110,7 @@ EOF
 # ---------------------------------------------
       if [ $? -eq 0 ];
       then
-        chown "$USER_USERNAME:$USER_USERNAME" "$DIALOG_RC_FILE" &>/dev/null
+        chown -R "$USER_USERNAME:$USER_USERNAME" "$DIALOG_RC_FILE" &>/dev/null
         REMOVE_DIALOG_RC=1
       fi
     fi
@@ -6442,7 +6485,7 @@ then
   do
     echo -e "OPTION_FLAG[$o]=${OPTION_FLAG[$o]}" >> "$USER_SCRIPT_CONFIG" 2>/dev/null
   done
-  chown "$USER_USERNAME:$USER_USERNAME" "$USER_SCRIPT_CONFIG" &>/dev/null
+  chown -R "$USER_USERNAME:$USER_USERNAME" "$USER_SCRIPT_CONFIG" &>/dev/null
 
   # Paket-Listen und Skip-Liste
   echo -e "# $SCRIPT_CONFIG_HEADLINE" > "$USER_PAKET_LIST" 2>/dev/null
@@ -6454,7 +6497,7 @@ then
   echo -e "" >> "$USER_PAKET_LIST" 2>/dev/null
   echo -e "# Skip-Liste" >> "$USER_PAKET_LIST" 2>/dev/null
   echo -e "SKIP_LIST=\"${SKIP_LIST[@]}\"" >> "$USER_PAKET_LIST" 2>/dev/null
-  chown "$USER_USERNAME:$USER_USERNAME" "$USER_PAKET_LIST" &>/dev/null
+  chown -R "$USER_USERNAME:$USER_USERNAME" "$USER_PAKET_LIST" &>/dev/null
 
 fi
 
@@ -6544,14 +6587,17 @@ then
   # --- OPTIONS START ---
   e_and_l "  addicons  Erstellt Symbole (Icons) für alle Programmpakete der"
   e_and_l "            ausgewählten Kategorien auf dem Desktop des Benutzers"
-  e_and_l "            (wird bei GNOME-Desktops ab der Version 3 ignoriert)"
+  e_and_l "            (wird bei GNOME-Desktops ab der Version 3 ignoriert)."
   e_and_l ""
-  e_and_l "  autoyorn  Alle Ja/Nein-Abfragen bei der Installation von Programmen"
-  e_and_l "            und Auswahl von Optionen werden automatisch so beantwortet,"
-  e_and_l "            wie sie im vorherigen Programm-Durchlauf ausgewählt wurden."
+  e_and_l "  autoyorn  Alle Ja/Nein-Abfragen vor der Installation von Programmen"
+  e_and_l "            und vor der Durchführung von Optionen werden automatisch"
+  e_and_l "            so beantwortet, wie sie im vorherigen Programm-Durchlauf"
+  e_and_l "            ausgewählt wurden."
+  e_and_l "            Hinweis: Bei Verwendung dieser Option überlagern ggf. die"
+  e_and_l "            Antworten zur Installation von Paketen die Option force."
   e_and_l ""
   e_and_l "  cleansys  Bereinigt nicht benötigte Daten des Benutzers und"
-  e_and_l "            repariert diverse Einstellungen des Systems"
+  e_and_l "            repariert diverse Einstellungen des Systems."
   e_and_l ""
   e_and_l "  cleantmp  Alle temporären Dateien von Lissy werden automatisch wieder"
   e_and_l "            gelöscht. Heruntergeladene Dateien wie Setups und Skripte"
@@ -6561,80 +6607,81 @@ then
   e_and_l "            alle vollständig aus dem Download-Verzeichnis entfernt."
   e_and_l ""
   e_and_l "     dload  Stellt gespeicherte Desktop- und Anwendungs-Einstellungen"
-  e_and_l "            aus einer Sicherung wieder her (dconf)"
+  e_and_l "            aus einer Sicherung wieder her (dconf)."
   e_and_l ""
   e_and_l "     dsave  Erstellt eine Sicherung der Einstellungen des Benutzers"
-  e_and_l "            von Desktop und verschiedenen Anwendungen (dconf)"
+  e_and_l "            von Desktop und verschiedenen Anwendungen (dconf)."
   e_and_l ""
   e_and_l "    extras  Ergänzt das System jeweils wahlweise um einige Extras:"
   e_and_l "            zusätzliche Treiber, fehlende Sprach-Unterstützung, ein"
-  e_and_l "            großes Schriftarten-Paket, weitere Mauszeiger und mehr"
+  e_and_l "            großes Schriftarten-Paket, weitere Mauszeiger und mehr."
   e_and_l ""
   e_and_l "  exupdate  Aktualisiert wahlweise Programme, die aus externen Quellen"
   e_and_l "            installiert wurden, oder nicht im Repository der Standard-"
   e_and_l "            Paket-Verwaltung (apt) eingetragen sind und somit auch von"
-  e_and_l "            dieser nicht automatisch aktualisiert werden"
+  e_and_l "            dieser nicht automatisch aktualisiert werden."
   e_and_l ""
-  e_and_l "     force  Überspringt die Ja/Nein-Abfrage vor der Installation"
-  e_and_l "            jedes einzelnen Programmpakets, sofern diese nicht in"
-  e_and_l "            Konflikt mit einem bereits installierten Paket steht."
-  e_and_l "            Hinweis: Diese Option ist nicht identisch mit der von"
-  e_and_l "            apt-get --force (siehe dazu auch Option \"quiet\")!"
+  e_and_l "     force  Überspringt die Ja/Nein-Abfrage vor der Installation jedes"
+  e_and_l "            einzelnen Programmpakets, sofern diese nicht in Konflikt"
+  e_and_l "            mit einem bereits installierten Paket steht, oder bei der"
+  e_and_l "            zusätzlichen Verwendung der Option autoyorn deren eventuell"
+  e_and_l "            gespeicherte Antwort zur Paket-Installation anders lautet."
+  # e_and_l "            (Diese Option ist nicht identisch mit apt-get --force)"
   e_and_l ""
   e_and_l "   foreign  Erlaubt auch die Installation von Programmpaketen für"
-  e_and_l "            sekundäre (Fremd-)Software-Architekturen"
+  e_and_l "            sekundäre (Fremd-)Software-Architekturen."
   e_and_l ""
-  e_and_l "      help  Zeigt diese Hilfe-Seite an"
+  e_and_l "      help  Zeigt diese Hilfe-Seite an."
   e_and_l ""
   e_and_l "  infoonly  Zeigt nur die Liste der Systeminformationen an und führt"
-  e_and_l "            keine weiteren Aktionen durch"
+  e_and_l "            keine weiteren Aktionen durch."
   e_and_l ""
   e_and_l "  instonly  Installiert oder listet nur das direkt danach angegebene"
-  e_and_l "            Programmpaket - setzt die Kategorie-Auswahl außer Kraft"
+  e_and_l "            Programmpaket - setzt die Kategorie-Auswahl außer Kraft."
   e_and_l ""
   e_and_l "   kuplock  Blockiert alle Aktualisierungen des Linux-Kernels bis"
   e_and_l "            die Sperre durch kunlock wieder aufgehoben wird. Alle"
-  e_and_l "            anderen Programmpakete werden weiterhin aktualisiert"
+  e_and_l "            anderen Programmpakete werden weiterhin aktualisiert."
   e_and_l ""
-  e_and_l "   kunlock  Hebt die Sperre der Kernel-Aktualisierungen wieder auf"
+  e_and_l "   kunlock  Hebt die Sperre der Kernel-Aktualisierungen wieder auf."
   e_and_l ""
   e_and_l "  listonly  Zeigt alle in den ausgewählten Kategorien enthaltenen"
   e_and_l "            Programmpakete unabhängig von deren Status an, ohne"
-  e_and_l "            Programmpakete zu installieren oder zu konfigurieren"
+  e_and_l "            Programmpakete zu installieren oder zu konfigurieren."
   e_and_l ""
   e_and_l "       log  Protokolliert alle Aktionen und deren Ergebnisse ohne"
-  e_and_l "            weitere detaillierte Ausgaben in einer Log-Datei"
+  e_and_l "            weitere detaillierte Ausgaben in einer Log-Datei."
   e_and_l ""
   e_and_l "   logfull  Protokolliert alle Aktionen sowie detailliert sämtliche"
-  e_and_l "            Ausgaben der Installationsroutinen in einer Log-Datei"
+  e_and_l "            Ausgaben der Installationsroutinen in einer Log-Datei."
   e_and_l ""
-  e_and_l "   nocolor  Die Ausgabe erfolgt nur in Systemschrift ohne Farben"
+  e_and_l "   nocolor  Die Ausgabe erfolgt nur in Systemschrift ohne Farben."
   e_and_l ""
-  e_and_l "    noinfo  Die Systeminformationen zu Anfang werden nicht angezeigt"
+  e_and_l "    noinfo  Die Systeminformationen zu Anfang werden nicht angezeigt."
   e_and_l ""
   e_and_l "    nomenu  Überspringt das Menü zur Kategorie- und Options-Auswahl"
-  e_and_l "            und berücksichtigt so nur die Kommandozeilen-Parameter"
+  e_and_l "            und berücksichtigt so nur die Kommandozeilen-Parameter."
   e_and_l ""
   e_and_l "  nopkgsrv  Überspringt die Prüfung der Erreichbarkeit von Servern"
-  e_and_l "            wenn die Option cleansys ausgewählt wurde"
+  e_and_l "            wenn die Option cleansys ausgewählt wurde."
   e_and_l ""
   e_and_l "    norepo  Fügt dem Repository keine Einträge für externe Quellen"
   e_and_l "            hinzu und überspringt die Aktualisierung des Repository"
-  e_and_l "            beim Start dieses Scriptes"
+  e_and_l "            beim Start dieses Scriptes."
   e_and_l ""
-  e_and_l "    nosnap  Unterbindet Auswahl und Installation von Snap-Paketen"
+  e_and_l "    nosnap  Unterbindet Auswahl und Installation von Snap-Paketen."
   e_and_l ""
   e_and_l "    notrim  Überspringt das Trimming der Festplatten wenn die Option"
-  e_and_l "            optimize ausgewählt wurde"
+  e_and_l "            optimize ausgewählt wurde."
   e_and_l ""
-  e_and_l "  noupdate  Prüft nicht auf eine neuere Version dieses Scripts"
+  e_and_l "  noupdate  Prüft nicht auf eine neuere Version dieses Scripts."
   e_and_l ""
   e_and_l "  optimize  Aktiviert und optimiert einige System-Einstellungen für"
-  e_and_l "            Firewall, Swapping, Festplattenzugriffe und vieles mehr"
+  e_and_l "            Firewall, Swapping, Festplattenzugriffe und vieles mehr."
   e_and_l ""
   e_and_l "  personal  Führt individuelle persönliche Einstellungen durch, welche"
   e_and_l "            dazu vom Server geladen werden. Zur Nutzung dieser Option"
-  e_and_l "            ist ein geschütztes Verzeichnis bei migano.de erforderlich"
+  e_and_l "            ist ein geschütztes Verzeichnis bei migano.de erforderlich."
   e_and_l ""
 #   e_and_l "     quiet  Unterdrückt alle Ausgaben der Installationsroutinen und"
 #   e_and_l "            bestätigt ggf. soweit dies möglich ist auch automatisch"
@@ -6653,19 +6700,20 @@ then
   e_and_l "    remove  Entfernt ein Programmpaket und löscht optional all dessen"
   e_and_l "            hinterbliebene Daten wie Konfiguration, Starteinträge etc."
   e_and_l ""
-  e_and_l "    revive  Reaktiviert vormals deaktivierte Komponenten"
+  e_and_l "    revive  Reaktiviert vormals deaktivierte Komponenten."
   e_and_l ""
-  e_and_l "  saveconf  Speichert alle durch den Benutzer getätigten Einstellungen"
-  e_and_l "            und verwendet diese beim nächsten Aufruf als Vorauswahl"
+  e_and_l "  saveconf  Speichert alle per Kommandozeile oder im Menü ausgewählten"
+  e_and_l "            Kategorien und Optionen und stellt diese beim nächsten"
+  e_and_l "            Aufruf des Programms wieder als Vorauswahl ein."
   e_and_l ""
   e_and_l "      skip  Überspringt die Installation bestimmter Programmpakete,"
   e_and_l "            mehrere Paketnamen sind durch Leerzeichen zu trennen"
-  e_and_l "            (Paketnamen kann man mit der Option listonly ermitteln)"
+  e_and_l "            (Paketnamen kann man mit der Option listonly ermitteln)."
   e_and_l ""
   e_and_l "    status  Zeigt den Status der ausgewählten Programmpakete an."
   e_and_l "            Sofern nicht die Option norepo angegeben ist, werden dabei"
   e_and_l "            ggf. auch Paketquellen für externe Programmpakete ergänzt,"
-  e_and_l "            jedoch ohne irgendwelche Programmpakete zu installieren"
+  e_and_l "            jedoch ohne irgendwelche Programmpakete zu installieren."
   e_and_l ""
   e_and_l "  udrivers  Installiert alle zur Verfügung stehenden zusätzlichen"
   e_and_l "            Geräte-Treiber für Ubuntu. Achtung: Es wird empfohlen"
@@ -7066,7 +7114,7 @@ then
                 if [ $? -eq 0 ];
                 then
                   chown root:root "$SUDOER_FILE" &>/dev/null
-                  chmod 0440 "$SUDOER_FILE" &>/dev/null
+                  chmod -R 0440 "$SUDOER_FILE" &>/dev/null
                   usermod -a -G adm,dialout,cdrom,sudo,audio,video,plugdev,games,users,input,netdev,gpio,i2c,spi,pi,lpadmin "$NEW_USERNAME"
                   if [ $? -eq 0 ];
                   then
@@ -7378,7 +7426,7 @@ then
                 cp -u --no-dereference "$config_name" "$BACKUP_NAME" &>/dev/null
                 if [ $? -eq 0 ];
                 then
-                  chown "$USER_USERNAME:$USER_USERNAME" "$BACKUP_NAME" &>/dev/null
+                  chown -R "$USER_USERNAME:$USER_USERNAME" "$BACKUP_NAME" &>/dev/null
                   e_and_l " ${bold_purple}Konfiguration${colors_off} gesichert in ${bold_purple}$BACKUP_NAME${colors_off}"
                 fi
               fi
@@ -7393,7 +7441,7 @@ then
               cp -u --no-dereference "$AUTOSTART_FILE" "$BACKUP_FILE" &>/dev/null
               if [ $? -eq 0 ];
               then
-                chown "$USER_USERNAME:$USER_USERNAME" "$BACKUP_FILE" &>/dev/null
+                chown -R "$USER_USERNAME:$USER_USERNAME" "$BACKUP_FILE" &>/dev/null
                 e_and_l " ${bold_purple}Autostart${colors_off} gesichert in ${bold_purple}$BACKUP_FILE${colors_off}"
               fi
             fi
@@ -7968,7 +8016,7 @@ then
              [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
              [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
           then
-            chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+            chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
             7z x "$LOCAL_DOWNLOAD_FILE" -o"$SYSTEM_FONT_DIR/" -y &>"$LOG_TEMP"
             if [ $? -eq 0 ];
             then
@@ -8040,7 +8088,7 @@ then
               [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
               [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
             then
-              chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+              chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
               if [ ! -d "$USER_ICON_DIR" ];
               then
                 mkdir -p "$USER_ICON_DIR" &>/dev/null
@@ -8051,7 +8099,7 @@ then
                 if [ $? -eq 0 ];
                 then
                   chown -R "$USER_USERNAME:$USER_USERNAME" "$USER_ICON_DIR" &>/dev/null
-                  # chmod 0755 "$USER_ICON_DIR" &>/dev/null
+                  # chmod -R 0755 "$USER_ICON_DIR" &>/dev/null
                   remove_file "$LOCAL_DOWNLOAD_FILE"
                   e_and_l "... $OK_TAG"
                   CHANGES_MADE=1
@@ -8115,7 +8163,7 @@ then
               [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
               [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
             then
-              chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+              chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
               unzip -o -qq "$LOCAL_DOWNLOAD_FILE" 'Ambiant-MATE-master/usr/share/icons/*' -d "$DOWNLOAD_DIR/MATE" &>"$LOG_TEMP"
               ICON_RESULT=$?
               unzip -o -qq "$LOCAL_DOWNLOAD_FILE" 'Ambiant-MATE-master/usr/share/themes/*' -d "$DOWNLOAD_DIR/MATE" &>"$LOG_TEMP"
@@ -8577,8 +8625,8 @@ then
                 echo -e "Terminal=false" >> "$WINE_STARTER_FILE" 2>/dev/null
                 echo -e "StartupNotify=false" >> "$WINE_STARTER_FILE" 2>/dev/null
                 echo -e "Categories=Wine;" >> "$WINE_STARTER_FILE" 2>/dev/null
-                chown "root:root" "$WINE_STARTER_FILE" &>/dev/null
-                chmod 0644 "$WINE_STARTER_FILE" &>/dev/null
+                chown -R "root:root" "$WINE_STARTER_FILE" &>/dev/null
+                chmod -R 0644 "$WINE_STARTER_FILE" &>/dev/null
                 download_icon_file "$starter_file"
                 if [ ${OPTION_FLAG[addicons]} -ne 0 ];
                 then
@@ -8631,7 +8679,7 @@ then
                [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
                [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
             then
-              chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+              chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
               if [ ! -d "$USER_AACS_DIR" ];
               then
                 mkdir -p "$USER_AACS_DIR" &>/dev/null
@@ -8643,7 +8691,7 @@ then
                 if [ $? -eq 0 ];
                 then
                   chown -R "$USER_USERNAME:$USER_USERNAME" "$USER_AACS_DIR" &>/dev/null
-                  # chmod 0755 "$USER_AACS_DIR" &>/dev/null
+                  # chmod -R 0755 "$USER_AACS_DIR" &>/dev/null
                   remove_file "$LOCAL_DOWNLOAD_FILE"
                   e_and_l "... $OK_TAG"
                   CHANGES_MADE=1
@@ -9331,7 +9379,7 @@ then
              [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
              [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
           then
-            chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+            chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
             if [ ! -d "$THE_BCD_SCRIPT_DIR" ];
             then
               mkdir -p "$THE_BCD_SCRIPT_DIR" &>"$LOG_TEMP"
@@ -9343,8 +9391,8 @@ then
               mv -f "$LOCAL_DOWNLOAD_FILE" "$THE_BCD_SCRIPT_FILE" &>"$LOG_TEMP"
               if [ $? -eq 0 ];
               then
-                chown "$USER_USERNAME:$USER_USERNAME" "$THE_BCD_SCRIPT_FILE" &>/dev/null
-                chmod 0744 "$THE_BCD_SCRIPT_FILE" &>/dev/null
+                chown -R "$USER_USERNAME:$USER_USERNAME" "$THE_BCD_SCRIPT_FILE" &>/dev/null
+                chmod -R 0744 "$THE_BCD_SCRIPT_FILE" &>/dev/null
                 # 2. Autostart-Eintrag für das Script erzeugen
                 create_autostart_file "$USER_CONFIG_DIR/autostart/$THE_BCD_SCRIPT_NAME.desktop" "Browser-Caches to RAM" "Verlagert Browser-Cache-Ordner auf die RAM Disk und passt die Standard-Ordner je nach Existenz der RAM-Ordner entsprechend an" "$THE_BCD_SCRIPT_FILE" "browser"
                 if [ $? -eq 0 ];
@@ -10446,7 +10494,7 @@ EOF
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m}"
-        chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+        chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
         if [ ! -d "$FONT_CONF_DIR" ];
         then
           mkdir -p "$FONT_CONF_DIR" &>/dev/null
@@ -10496,7 +10544,7 @@ EOF
              [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
              [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
           then
-            chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+            chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
             if [ ! -d "$GTK3_CONF_DIR" ];
             then
               mkdir -p "$GTK3_CONF_DIR" &>/dev/null
@@ -10710,7 +10758,7 @@ EOF
       ln -s "$TARGET_PATH" "$LINK_PATH" &>/dev/null
       if [ $? -eq 0 ];
       then
-        chown "$USER_USERNAME:$USER_USERNAME" "$LINK_PATH" &>/dev/null
+        chown -R "$USER_USERNAME:$USER_USERNAME" "$LINK_PATH" &>/dev/null
         e_and_l "$OK_TAG"
       else
         e_and_l "kann ${bold_red}nicht${colors_off} eingerichtet werden"
@@ -10889,7 +10937,7 @@ EOF
           cp -f "$LOCAL_DOWNLOAD_FILE" "$BASH_ALIAS_FILE" &>/dev/null
           if [ $? -eq 0 ];
           then
-            chmod a+r "$BASH_ALIAS_FILE" &>/dev/null
+            chmod -R 0644 "$BASH_ALIAS_FILE" &>/dev/null
             # /etc/bash.bashrc erweitern
             if [ $(grep -i -c -E "\/etc\/bash_aliases" "$GLOBAL_BASHRC_FILE") -eq 0 ];
             then
@@ -11246,7 +11294,7 @@ then
     if [ $? -eq 1 ];
     then
       e_and_l -n " Korrigiere ${light_cyan}Rechte des Wurzelverzeichnis${colors_off}    ... "
-      chmod 755 / &>"$LOG_TEMP"
+      chmod -R 0755 / &>"$LOG_TEMP"
       if [ $? -eq 0 ];
       then
         e_and_l "$OK_TAG"
@@ -12193,7 +12241,7 @@ then
       USER_CONF_NAM[backpics]="Download der [cs]Dual-Monitor-Hintergrundbilder[ce]"
       USER_CONF_SRC[backpics]=""
       USER_CONF_DST[backpics]=""
-      USER_CONF_COM[backpics]="wget_dir \"https://migano.de/download/lissy/res/wallpapers/\" \"/usr/share/backgrounds/wallpapers\" && chmod 0644 /usr/share/backgrounds/wallpapers/* &>/dev/null"
+      USER_CONF_COM[backpics]="wget_dir \"https://migano.de/download/lissy/res/wallpapers/\" \"/usr/share/backgrounds/wallpapers\" && chmod -R 0644 /usr/share/backgrounds/wallpapers/* &>/dev/null"
       USER_CONF_MAO[backpics]=""
       USER_CONF_MSG[backpics]=""
       # Einstellungen des Desktops und diverser Tools (vollständiger dconf-Baum!)
@@ -12207,7 +12255,7 @@ then
       USER_CONF_NAM[firewall]="Eintragen der eingehenden [cs]Firewall-Regeln[ce]"
       USER_CONF_SRC[firewall]="ufw-config"
       USER_CONF_DST[firewall]=""
-      USER_CONF_COM[firewall]="chmod a+x $DOWNLOAD_DIR/${USER_CONF_SRC[firewall]} && $DOWNLOAD_DIR/${USER_CONF_SRC[firewall]} &>/dev/null"
+      USER_CONF_COM[firewall]="chmod -R 0755 $DOWNLOAD_DIR/${USER_CONF_SRC[firewall]} && $DOWNLOAD_DIR/${USER_CONF_SRC[firewall]} &>/dev/null"
       USER_CONF_MAO[firewall]=""
       USER_CONF_MSG[firewall]=""
       # Favoriten Advanced MATE Menü
@@ -12324,8 +12372,8 @@ then
             # if [ "$IDX_NAME" = "desktopu" ];
             # then
             #   sudo -u ${USER_USERNAME} DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${USER_UID}/bus" dconf dump / 1>${DCONF_USER_BACKUP} 2>/dev/null
-            #   chown "$USER_USERNAME:$USER_USERNAME" "${DCONF_USER_BACKUP}" &>/dev/null
-            #   chmod 0664 "${DCONF_USER_BACKUP}" &>/dev/null
+            #   chown -R "$USER_USERNAME:$USER_USERNAME" "${DCONF_USER_BACKUP}" &>/dev/null
+            #   chmod -R 0664 "${DCONF_USER_BACKUP}" &>/dev/null
             # fi
             # ----------------------------------------------------------
             # Wenn keine Datei im Spiel ist, nur Kommando ausführen ...
@@ -12350,7 +12398,7 @@ then
                  [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
                  [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
               then
-                chown "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+                chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
                 PERSONAL_ACTION_RESULT=0
                 # ... wenn nach dem Download etwas getan werden soll,
                 # dann die entsprechenden Aktionen durchführen
@@ -12394,8 +12442,8 @@ then
                       if [ $(echo -n "${USER_CONF_DST[$IDX_NAME]}" | grep -i -c -E "${USER_HOME_DIR}" 2>/dev/null) -gt 0 ] &&
                          [ -f "${USER_CONF_DST[$IDX_NAME]}" ];
                       then
-                        chown "$USER_USERNAME:$USER_USERNAME" "${USER_CONF_DST[$IDX_NAME]}" &>/dev/null
-                        chmod 0664 "${USER_CONF_DST[$IDX_NAME]}" &>/dev/null
+                        chown -R "$USER_USERNAME:$USER_USERNAME" "${USER_CONF_DST[$IDX_NAME]}" &>/dev/null
+                        chmod -R 0664 "${USER_CONF_DST[$IDX_NAME]}" &>/dev/null
                       fi
                     else
                       e_and_l "$ERROR_TAG $LINENO"
@@ -12473,8 +12521,8 @@ then
           sudo -u ${USER_USERNAME} DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${USER_UID}/bus" dconf dump / 1>${DCONF_USER_FILE} 2>/dev/null
           if [ $? -eq 0 ];
           then
-            chown "$USER_USERNAME:$USER_USERNAME" "${DCONF_USER_FILE}" &>/dev/null
-            chmod 0664 "${DCONF_USER_FILE}" &>/dev/null
+            chown -R "$USER_USERNAME:$USER_USERNAME" "${DCONF_USER_FILE}" &>/dev/null
+            chmod -R 0664 "${DCONF_USER_FILE}" &>/dev/null
             e_and_l "$OK_TAG"
           else
             e_and_l "$ERROR_TAG"
@@ -12498,8 +12546,8 @@ then
             sudo -u ${USER_USERNAME} DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${USER_UID}/bus" dconf dump / 1>${DCONF_USER_BACKUP} 2>/dev/null
             if [ $? -eq 0 ];
             then
-              chown "$USER_USERNAME:$USER_USERNAME" "${DCONF_USER_BACKUP}" &>/dev/null
-              chmod 0664 "${DCONF_USER_BACKUP}" &>/dev/null
+              chown -R "$USER_USERNAME:$USER_USERNAME" "${DCONF_USER_BACKUP}" &>/dev/null
+              chmod -R 0664 "${DCONF_USER_BACKUP}" &>/dev/null
               e_and_l "$OK_TAG"
               e_and_l -n " Stelle Einstellungen aus der Sicherungsdatei wieder her ... "
               sudo -u ${USER_USERNAME} DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${USER_UID}/bus" dconf load / < ${DCONF_USER_FILE} &>/dev/null
