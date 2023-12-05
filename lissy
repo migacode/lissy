@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 26.11.2023
-VERSION="3.98.6"
+# Letzte Änderung: 05.12.2023
+VERSION="3.98.8"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -1006,13 +1006,13 @@ if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORI
 KATEGORIE_PKGS[i]="anydesk ipscan chromium filezilla firefox opera-stable microsoft-edge-stable nomachine realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission-common virt-viewer wireshark"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[i]+=" hexchat warpinator"; fi
 # Multimedia
-KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv parole openshot-qt rhythmbox smplayer vlc webcamoid yt-dlp youtube-dl youtubedl-gui youplay"
+KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv mp3splt parole openshot-qt rhythmbox smplayer vlc webcamoid yt-dlp youtube-dl youtubedl-gui youplay"
 # Netzwerkverbindungen
 KATEGORIE_PKGS[n]="openvpn network-manager-openvpn network-manager-openvpn-gnome vpnc vpnc-scripts network-manager-vpnc network-manager-vpnc-gnome"
 # Spiele
 KATEGORIE_PKGS[s]="0ad alien-arena astromenace atomix billard-gl biniax2 blobwars blockout2 briquolo brutalchess caveexpress chromium-bsu code-the-classics criticalmass cuyo dreamchess enigma extremetuxracer foobillardplus freedoom frogatto frozen-bubble fs-uae gbrainy gcompris-qt gemdropx gnome-games gnubg gweled hedgewars jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter morris naev neverball neverputt nexuiz numptyphysics oolite open-invaders pinball pingus pokerth pybik rocksndiamonds sauerbraten sdl-ball steam supertux supertuxkart teeworlds torcs trigger-rally tuxmath ufoai wesnoth widelands zaz"
 # Systemerweiterungen
-KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dirmngr dpkg-repack e2fsprogs ethtool exfat-fuse exfatprogs extundelete fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends hdparm heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysfsutils sysstat tar tcptrack testdisk traceroute udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
+KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dirmngr dpkg-repack e2fsprogs ethtool exfat-fuse exfatprogs extundelete f3 fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends hdparm heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysfsutils sysstat tar tcptrack testdisk traceroute udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
 # Systemverwaltung
 KATEGORIE_PKGS[v]="backintime-common baobab bleachbit blueman caja copyq czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted grsync grub-customizer gsmartcontrol gtkhash gufw hardinfo kwalletmanager mozo nemo plasma-discover seahorse synaptic system-config-printer timeshift tilda usbview xfce4-taskmanager zulumount-gui"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[v]+=" bulky qt5ct webapp-manager"; fi
@@ -1075,6 +1075,7 @@ AUTO_ADD_PKGS[libreoffice]="libreoffice-gnome"
 AUTO_ADD_PKGS[libreoffice-common]="libreoffice-gnome"
 AUTO_ADD_PKGS[mediainfo]="mediainfo-gui"
 AUTO_ADD_PKGS[mkvtoolnix]="mkvtoolnix-gui"
+AUTO_ADD_PKGS[mp3splt]="mp3splt-gtk"
 AUTO_ADD_PKGS[redshift]="redshift-gtk"
 AUTO_ADD_PKGS[scribus]="scribus-template"
 AUTO_ADD_PKGS[usbauth]="usbauth-notifier"
