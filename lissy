@@ -8796,7 +8796,7 @@ then
   e_and_l " ${bold_blue}Einrichtung und Optimierung von System-Einstellungen${colors_off}"
 
   e_and_l "$HALF_LINE"
-  e_and_l " ${bold_blue}Betriebssystem${colors_off}"
+  e_and_l " ${bold_blue}Multi-Boot${colors_off}"
   e_and_l "$HALF_LINE"
 
   # ===========================================================================
@@ -8889,6 +8889,10 @@ then
   else
     e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
   fi
+
+  e_and_l "$HALF_LINE"
+  e_and_l " ${bold_blue}Betriebssystem${colors_off}"
+  e_and_l "$HALF_LINE"
 
   # ===========================================================================
   # Einschalten der internen Firewall (ufw) und auschalten der UFW-Protokolle
@@ -11131,7 +11135,9 @@ EOF
       while read partition;
       do
         PARTITION_NR=$(echo $partition | cut -d":" -f 1 | xargs)
-        e_and_l -n " - Partition ${light_cyan}$PARTITION_NR${colors_off}: "
+        e_and_l -n " - Partition "
+        if [ $PARTITION_NR -lt 10 ]; then e_and_l -n " "; fi
+        e_and_l -n "${light_cyan}$PARTITION_NR${colors_off}: "
         PARTITION_TYPE=$(echo $partition | cut -d":" -f 5 | xargs)
         PARTITION_TYPE=${PARTITION_TYPE:0:6}
         if [ "$PARTITION_TYPE" = "" ];
@@ -11152,7 +11158,7 @@ EOF
         PARTITION_SIZE=$(show_human_bytes ${PARTITION_SIZE})
         PARTITION_SIZE=${PARTITION_SIZE:0:10}
         e_and_l -n "${light_yellow}$PARTITION_SIZE${colors_off}"
-        ((ANZ_SPACES=12-${#PARTITION_SIZE}))
+        ((ANZ_SPACES=11-${#PARTITION_SIZE}))
         insert_spaces $ANZ_SPACES
         e_and_l -n "... Ausrichtung "
         # if [ $disk_rota -eq 0 ];
