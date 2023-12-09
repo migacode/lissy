@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 05.12.2023
-VERSION="3.98.8"
+# Letzte Änderung: 09.12.2023
+VERSION="3.98.9"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -1024,11 +1024,12 @@ KATEGORIE_PKGS[u]="usbauth"
 KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk doublecmd-common engrampa file-roller freefilesync galculator gedit gnome-characters gucharmap kdeconnect keepass2 kfind klavaro ktouch magnus mousepad nmapsi4 onboard pdfmod plank pluma putty redshift rpi-imager sardu unetbootin usb-creator-common veracrypt xournal"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[z]+=" sticky xed"; fi
 # Windows-API "Wine"
+KATEGORIE_PKGS[w]="dosbox"
 if [ $(apt list "wine-installer" 2>/dev/null | grep -i -c -E "wine-installer") -gt 0 ];
 then
-  KATEGORIE_PKGS[w]="wine-installer"
+  KATEGORIE_PKGS[w]+=" wine-installer"
 else
-  KATEGORIE_PKGS[w]="wine wine64 wine32"
+  KATEGORIE_PKGS[w]+=" wine wine64 wine32"
 fi
 KATEGORIE_PKGS[w]+=" winetricks zenity playonlinux"
 # WireGuard
