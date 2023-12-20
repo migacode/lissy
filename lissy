@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 09.12.2023
-VERSION="3.98.9"
+# Letzte Änderung: 20.12.2023
+VERSION="3.99.0"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -1003,7 +1003,7 @@ KATEGORIE_PKGS[f]="proftpd-basic"
 KATEGORIE_PKGS[g]="blender darktable digikam drawing eom fraqtive geeqie gimp gpicview gpick gwenview imagemagick inkscape krita mandelbulber2 mtpaint pinta rawtherapee shotwell simple-scan xnview"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[g]+=" pix xviewer"; fi
 # Internet
-KATEGORIE_PKGS[i]="anydesk ipscan chromium filezilla firefox opera-stable microsoft-edge-stable nomachine realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission-common virt-viewer wireshark"
+KATEGORIE_PKGS[i]="anydesk ipscan chromium element-desktop filezilla firefox opera-stable microsoft-edge-stable nomachine realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission-common virt-viewer wireshark"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[i]+=" hexchat warpinator"; fi
 # Multimedia
 KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv mp3splt parole openshot-qt rhythmbox smplayer vlc webcamoid yt-dlp youtube-dl youtubedl-gui youplay"
@@ -1163,6 +1163,9 @@ declare -A ERW_REPO_TXT # Repository-Einträge
 # läuft selbst mit viel Aufwand als armhf-Version auf arm64 nur sehr schlecht!
 ERW_AUTH_KEY[anydesk]="https://keys.anydesk.com/repos/DEB-GPG-KEY"
 ERW_REPO_TXT[anydesk]="deb http://deb.anydesk.com/ all main"
+
+ERW_AUTH_KEY[element-desktop]="https://packages.element.io/debian/element-io-archive-keyring.gpg"
+ERW_REPO_TXT[element-desktop]="deb [signed-by=/etc/apt/trusted.gpg.d/element-desktop.gpg] https://packages.element.io/debian/ default main"
 
 ERW_AUTH_KEY[opera-stable]="https://deb.opera.com/archive.key"
 ERW_REPO_TXT[opera-stable]="deb https://deb.opera.com/opera-stable/ stable non-free"
