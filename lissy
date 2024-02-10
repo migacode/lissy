@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 25.01.2024
-VERSION="3.99.2"
+# Letzte Änderung: 10.02.2024
+VERSION="4.00.0"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -385,7 +385,6 @@ function gsettings_set() {
   fi
 }
 
-
 ###############################################################################
 # Systemarchitektur ermitteln
 ###############################################################################
@@ -691,8 +690,6 @@ then
   ARCHITECTURE_MAIN=$(dpkg --print-architecture)
   ARCHITECTURE_OTHER=$(dpkg --print-foreign-architectures)
   ARCHITECTURE_ALL="all|""$ARCHITECTURE_MAIN""|""$ARCHITECTURE_OTHER"
-  SNAP_INSTALLED=$(LANG=en dpkg-query -W -f='${Status}' "snapd" 2>/dev/null | grep -i -c -E "ok installed")
-  SNAPSHOT_SNAPS_LIST="$DOWNLOAD_DIR/snapshot_list.tmp"
 
   # ----------------
   # Display-Manager
@@ -808,6 +805,16 @@ then
 
 fi
 
+# =============================================================================
+# Flatpak und Snap
+# =============================================================================
+FLATPAK_INSTALLED=$(LANG=en dpkg-query -W -f='${Status}' "flatpak" 2>/dev/null | grep -i -c -E "ok installed")
+THE_FLATPAK_REMOTE_LIST="$DOWNLOAD_DIR/flatpak_remote_list"
+THE_FLATPAK_INSTALLED_LIST="$DOWNLOAD_DIR/flatpak_installed_list"
+SNAP_INSTALLED=$(LANG=en dpkg-query -W -f='${Status}' "snapd" 2>/dev/null | grep -i -c -E "ok installed")
+SNAPSHOT_SNAPS_LIST="$DOWNLOAD_DIR/snapshot_list.tmp"
+# =============================================================================
+
 ###############################################################################
 # Listen zur Auswahl der Kategorien definieren
 # HINWEIS: Bei Änderungen auch alle Verbindungen mit CURRENT_CATEGORY und
@@ -868,14 +875,17 @@ declare -A OPTION_TEXT # Angezeigte Bezeichnung der Option
 declare -A OPTION_MENU # Index des Menüpunktes, in dem die Option erscheint
 
 OPTION_LIST=()
-OPTION_LIST+=(nosnap norepo foreign force quiet status listonly addicons) # Menu 2
+OPTION_LIST+=(addflat addsnap norepo foreign force quiet status listonly addicons csubdirs) # Menu 2
 OPTION_LIST+=(extras exupdate udrivers kuplock kunlock optimize notrim cleansys nopkgsrv revive personal dsave dload) # Menu 4
 OPTION_LIST+=(autoyorn infoonly noinfo log logfull noupdate nocolor saveconf cleantmp) # Menu 5
 
-OPTION_TEXT[addicons]="Desktop-Symbole (Icons) für Paketauswahl erstellen"
+OPTION_TEXT[addicons]="Desktop-Symbole (Starter) für Paketauswahl erstellen"
+OPTION_TEXT[addflat]="Flatpak-Pakete auch auswählbar und installierbar"
+OPTION_TEXT[addsnap]="Snap-Pakete auch auswählbar und installierbar"
 OPTION_TEXT[autoyorn]="Fragen automatisch gemäß letztem Durchlauf beantworten"
 OPTION_TEXT[cleansys]="Reparaturen und diverse Bereinigungen durchführen"
 OPTION_TEXT[cleantmp]="Alle temporären Dateien bei Programmende löschen"
+OPTION_TEXT[csubdirs]="Starter für Spiele in Unterordnern kategorisieren"
 OPTION_TEXT[dload]="Gespeicherte Desktop-Einstellungen laden (dconf)"
 OPTION_TEXT[dsave]="Aktuelle Desktop-Einstellungen speichern (dconf)"
 OPTION_TEXT[extras]="Extras (Schriftarten, Mauszeiger etc.) installieren"
@@ -893,7 +903,6 @@ OPTION_TEXT[nocolor]="Ausgabe der Anzeigen und Meldungen ohne Farben"
 OPTION_TEXT[noinfo]="Systeminformationen am Anfang nicht anzeigen"
 OPTION_TEXT[nopkgsrv]="Bei Reparaturen Prüfung der Paketserver auslassen"
 OPTION_TEXT[norepo]="Repository nicht erweitern oder aktualisieren"
-OPTION_TEXT[nosnap]="Keine Snap-Pakete auswählen oder installieren"
 OPTION_TEXT[notrim]="Bei Optimierungen kein SSD-Trimming durchführen"
 OPTION_TEXT[noupdate]="Nicht nach Updates für dieses Skript suchen"
 OPTION_TEXT[optimize]="Diverse Optimierungen des Systems durchführen"
@@ -912,14 +921,17 @@ OPTION_MENU[instonly]=1 # Wird nicht tatsächlich verwendet, Prüfung erfolgt au
 if [ "$DESKTOP_ENVIRONMENT" = "GNOME" ];
 then
   OPTION_MENU[addicons]=0
+  OPTION_MENU[csubdirs]=0
 else
   OPTION_MENU[addicons]=2
+  OPTION_MENU[csubdirs]=2
 fi
+OPTION_MENU[addflat]=2
+OPTION_MENU[addsnap]=2
 OPTION_MENU[force]=2
 OPTION_MENU[foreign]=2
 OPTION_MENU[listonly]=2
 OPTION_MENU[norepo]=2
-OPTION_MENU[nosnap]=2
 OPTION_MENU[status]=2
 
 OPTION_MENU[remove]=3 # Wird nicht tatsächlich verwendet, Prüfung erfolgt auf REMOVE_PKG_NAME
@@ -965,9 +977,11 @@ OPTION_MENU[saveconf]=5
 # HINWEIS: Wenn vor oder nach einem Paket automatisch auch weitere Pakete
 # installiert werden sollen, können diese in AUTO_ADD_PKGS angegeben werden!
 # -----------------------------------------------------------------------------
-# Sollen aus irgendeinem Grund Snap- oder externe Pakete bevorzugt werden, dann
-# können diese in FORCE_SNAPPY_LIST und FORCE_EXTERN_LIST eingetragen werden.
+# Sollen aus irgendeinem Grund Flatpak-, Snap- oder externe Pakete bevorzugt
+# werden, dann können diese in FORCE_FLATPAK_LIST, FORCE_SNAPPY_LIST und
+# FORCE_EXTERN_LIST eingetragen werden.
 # -----------------------------------------------------------------------------
+# In Namen von Flatpak-Paketen Leerzeichen durch Unterstrich ersetzen!
 ###############################################################################
 # Apache und PHP (Webserver)- mit vielen PHP-Modulen in aktueller Version ;)
 PHP_VERSION=$(LANG=en apt show "php" 2>/dev/null | grep -i -E "depends\:\s*")
@@ -1000,22 +1014,23 @@ fi
 # FTP-Server
 KATEGORIE_PKGS[f]="proftpd-basic"
 # Grafik
-KATEGORIE_PKGS[g]="blender darktable digikam drawing eom fraqtive geeqie gimp gpicview gpick gwenview imagemagick inkscape krita mandelbulber2 mtpaint pinta rawtherapee shotwell simple-scan xnview"
+KATEGORIE_PKGS[g]="blender darktable digikam drawing eom fraqtive freecad geeqie gimp gpicview gpick gwenview imagemagick inkscape krita mandelbulber2 mtpaint pinta rawtherapee shotwell simple-scan xnview"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[g]+=" pix xviewer"; fi
 # Internet
 KATEGORIE_PKGS[i]="anydesk ipscan chromium element-desktop filezilla firefox opera-stable microsoft-edge-stable nomachine realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission-common virt-viewer wireshark"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[i]+=" hexchat warpinator"; fi
 # Multimedia
-KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv mp3splt parole openshot-qt rhythmbox smplayer vlc webcamoid yt-dlp youtube-dl youtubedl-gui youplay"
+KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv mp3splt obs-studio openshot-qt parole rhythmbox smplayer vlc webcamoid yt-dlp youtube-dl youtubedl-gui youplay"
 # Netzwerkverbindungen
 KATEGORIE_PKGS[n]="openvpn network-manager-openvpn network-manager-openvpn-gnome vpnc vpnc-scripts network-manager-vpnc network-manager-vpnc-gnome"
 # Spiele
-KATEGORIE_PKGS[s]="0ad alien-arena astromenace atomix billard-gl biniax2 blobwars blockout2 briquolo brutalchess caveexpress chromium-bsu code-the-classics criticalmass cuyo dreamchess endless-sky enigma extremetuxracer flightgear foobillardplus freedoom freegish frogatto frozen-bubble fs-uae gbrainy gcompris-qt gemdropx gnome-games gnubg gweled hedgewars jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter morris naev neverball neverputt nexuiz numptyphysics oolite openarena open-invaders pinball pingus pokerth pybik rocksndiamonds sauerbraten sdl-ball steam supertux supertuxkart teeworlds torcs trigger-rally tuxmath ufoai wesnoth widelands zaz"
+KATEGORIE_PKGS[s]="0ad alien-arena armagetronad astromenace atomix billard-gl biniax2 blockout2 briquolo brutalchess caveexpress code-the-classics criticalmass cuyo dreamchess endless-sky enigma extremetuxracer flobopuyo flightgear foobillardplus freedoom freedroidrpg freegish freetennis frogatto frozen-bubble fs-uae gbrainy gcompris-qt gemdropx gnome-games gnubg gweled jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter megaglest morris naev neverball neverputt nexuiz numptyphysics oolite openarena openclonk open-invaders pinball pingus pokerth pybik quetoo rocksndiamonds sauerbraten sdl-ball speed_dreams steam stunt_rally supertux supertuxkart teeworlds tesseract torcs trigger-rally tuxmath ufoai wesnoth widelands xonotic ysoccer zaz"
 # Systemerweiterungen
 KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dirmngr dpkg-repack e2fsprogs ethtool exfat-fuse exfatprogs extundelete f3 fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends hdparm heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysfsutils sysstat tar tcptrack testdisk traceroute udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
 # Systemverwaltung
 KATEGORIE_PKGS[v]="backintime-common baobab bleachbit blueman caja copyq cpu-x czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted grsync grub-customizer gsmartcontrol gtkhash gufw hardinfo kwalletmanager mozo nemo plasma-discover seahorse stacer synaptic system-config-printer timeshift tilda usbview xfce4-taskmanager zulumount-gui"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[v]+=" bulky qt5ct webapp-manager"; fi
+if [ $FLATPAK_INSTALLED -ne 0 ]; then KATEGORIE_PKGS[v]+=" flatseal gnome-software-plugin-flatpak plasma-discover-backend-flatpak"; fi
 # Tonstudio
 KATEGORIE_PKGS[t]="ardour audacity hydrogen lmms qjackctl qtractor yoshimi zynaddsubfx"
 # USB-Firewall
@@ -1067,8 +1082,8 @@ AUTO_ADD_PKGS[caja]="caja-actions caja-eiciel caja-extensions-common caja-gtkhas
 AUTO_ADD_PKGS[doublecmd-common]="doublecmd-gtk"
 AUTO_ADD_PKGS[frogatto]="frogatto-data"
 AUTO_ADD_PPOS[frogatto]="true"
-AUTO_ADD_PKGS[fs-uae]="fs-uae-launcher"
-AUTO_ADD_PPOS[fs-uae]=""
+# AUTO_ADD_PKGS[fs-uae]="fs-uae-launcher" # Derzeit nicht im Angebot,
+# AUTO_ADD_PPOS[fs-uae]=""  # da auf aktuellem Debian nicht lauffähig
 AUTO_ADD_PKGS[gcompris-qt]="gcompris-qt-data"
 AUTO_ADD_PPOS[gcompris-qt]="true"
 AUTO_ADD_PKGS[krita]="krita-l10n"
@@ -1113,6 +1128,7 @@ AUTO_ADD_PKGS[virtualbox]="virtualbox-ext-pack virtualbox-guest-additions-iso"
 ###############################################################################
 declare -A SIMILAR_PACK
 
+SIMILAR_PACK[alien-arena]="alienarena"
 SIMILAR_PACK[balena-etcher]="unetbootin"
 SIMILAR_PACK[blender]="blender-tpaw"
 SIMILAR_PACK[brasero]="xfburn"
@@ -1120,6 +1136,7 @@ SIMILAR_PACK[celluloid]="parole"
 SIMILAR_PACK[chromium]="chromium-browser"
 SIMILAR_PACK[chromium-browser]="chromium-common"
 SIMILAR_PACK[czkawka]="fslint"
+SIMILAR_PACK[element-desktop]="element"
 SIMILAR_PACK[engrampa]="file-roller"
 SIMILAR_PACK[exfatprogs]="exfat-utils"
 SIMILAR_PACK[file-roller]="xarchiver"
@@ -1144,11 +1161,6 @@ SIMILAR_PACK[transmission-common]="transmission"
 SIMILAR_PACK[usb-creator-common]="balena-etcher"
 SIMILAR_PACK[virtualbox]="virtualbox-7.0"
 SIMILAR_PACK[wine-installer]="wine"
-
-###############################################################################
-# Liste der Architekturen
-###############################################################################
-ARCH_NAME_LIST=('amd64' 'i386' 'arm64' 'armhf')
 
 ###############################################################################
 # Alternative Quellen "ERW": Programmpakete aus den oben stehenden Paketlisten,
@@ -1214,6 +1226,12 @@ PPA_REPO_TXT[makemkv-bin]="ppa:heyarje/makemkv-beta"
 PPA_REPO_SRC[makemkv-bin]="heyarje-ubuntu-makemkv-beta*"
 
 ###############################################################################
+# Liste der Architekturen, zu denen alternative Quellen (DEB und WEB)
+# angeboten werden.
+###############################################################################
+ARCH_NAME_LIST=('amd64' 'i386' 'arm64' 'armhf')
+
+###############################################################################
 # Alternative Quellen "DEB": Programmpakete aus den oben stehenden Paketlisten,
 # welche von Dritt-Anbietern im Format .deb zum Download zur Verfügung gestellt
 # werden und mit apt installiert werden können.
@@ -1259,17 +1277,17 @@ DEB_PKG_CSUM[balena-etcher_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://github.com/VSCodium/vscodium
 DEB_PKG_NAME[codium]="VSCodium"
-DEB_PKG_OLDV[codium]=""
-DEB_PKG_OLDF[codium]=""
-DEB_PKG_VERS[codium]="1.83.0"
+DEB_PKG_OLDV[codium]="1.83.0"
+DEB_PKG_OLDF[codium]="$RESSOURCE_SERVER_DIR/deb/codium_1.83.0.23277_amd64.deb"
+DEB_PKG_VERS[codium]="1.85.2"
 DEB_PKG_MESG[codium]=""
 DEB_PKG_EVAL[codium]=""
-DEB_PKG_FILE[codium_amd64]="$RESSOURCE_SERVER_DIR/deb/codium_1.83.0.23277_amd64.deb"
-DEB_PKG_CSUM[codium_amd64]="$RESSOURCE_SERVER_DIR/deb/codium_1.83.0.23277_amd64.deb.sha"
+DEB_PKG_FILE[codium_amd64]="$RESSOURCE_SERVER_DIR/deb/codium_1.85.2.24019_amd64.deb"
+DEB_PKG_CSUM[codium_amd64]="$RESSOURCE_SERVER_DIR/deb/codium_1.85.2.24019_amd64.deb.sha"
  DEB_PKG_FILE[codium_i386]="" # NUR für 64-bit verfügbar
  DEB_PKG_CSUM[codium_i386]="" # NUR für 64-bit verfügbar
-DEB_PKG_FILE[codium_arm64]="$RESSOURCE_SERVER_DIR/deb/codium_1.83.0.23277_arm64.deb"
-DEB_PKG_CSUM[codium_arm64]="$RESSOURCE_SERVER_DIR/deb/codium_1.83.0.23277_arm64.deb.sha"
+DEB_PKG_FILE[codium_arm64]="$RESSOURCE_SERVER_DIR/deb/codium_1.85.2.24019_arm64.deb"
+DEB_PKG_CSUM[codium_arm64]="$RESSOURCE_SERVER_DIR/deb/codium_1.85.2.24019_arm64.deb.sha"
 DEB_PKG_FILE[codium_armhf]="" # NUR für 64-bit verfügbar
 DEB_PKG_CSUM[codium_armhf]="" # NUR für 64-bit verfügbar
 
@@ -1291,34 +1309,18 @@ then
   DEB_PKG_NAME[hypnotix]="Hypnotix"
   DEB_PKG_OLDV[hypnotix]="2.6"
   DEB_PKG_OLDF[hypnotix]="$RESSOURCE_SERVER_DIR/deb/hypnotix_2.6_LAST_20.04_all.deb"
-  DEB_PKG_VERS[hypnotix]="3.7"
+  DEB_PKG_VERS[hypnotix]="4.3"
   DEB_PKG_MESG[hypnotix]="Benötigt mindestens gtk-4.0!"
   DEB_PKG_EVAL[hypnotix]="[ -d /usr/share/gtk-4.0 ]"
-  DEB_PKG_FILE[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb"
-  DEB_PKG_CSUM[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb.sha"
+  DEB_PKG_FILE[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.3_all.deb"
+  DEB_PKG_CSUM[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.3_all.deb.sha"
   DEB_PKG_FILE[hypnotix_i386]="" # NUR für 64-bit verfügbar
   DEB_PKG_CSUM[hypnotix_i386]="" # NUR für 64-bit verfügbar
-  DEB_PKG_FILE[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb"
-  DEB_PKG_CSUM[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_3.7_all.deb.sha"
+  DEB_PKG_FILE[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.3_all.deb"
+  DEB_PKG_CSUM[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.3_all.deb.sha"
   DEB_PKG_FILE[hypnotix_armhf]="" # NUR für 64-bit verfügbar
   DEB_PKG_CSUM[hypnotix_armhf]="" # NUR für 64-bit verfügbar
 fi
-
-# Download von https://github.com/4gray/iptvnator
-DEB_PKG_NAME[iptvnator]="IPTVnator"
-DEB_PKG_OLDV[iptvnator]=""
-DEB_PKG_OLDF[iptvnator]=""
-DEB_PKG_VERS[iptvnator]="0.14.0"
-DEB_PKG_MESG[iptvnator]=""
-DEB_PKG_EVAL[iptvnator]=""
-DEB_PKG_FILE[iptvnator_amd64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.14.0_amd64.deb"
-DEB_PKG_CSUM[iptvnator_amd64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.14.0_amd64.deb.sha"
-DEB_PKG_FILE[iptvnator_i386]="" # NUR für 64-bit verfügbar
-DEB_PKG_CSUM[iptvnator_i386]="" # NUR für 64-bit verfügbar
-DEB_PKG_FILE[iptvnator_arm64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.14.0_arm64.deb"
-DEB_PKG_CSUM[iptvnator_arm64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.14.0_arm64.deb.sha"
-DEB_PKG_FILE[iptvnator_armhf]="" # NUR für 64-bit verfügbar
-DEB_PKG_CSUM[iptvnator_armhf]="" # NUR für 64-bit verfügbar
 
 # Download von https://angryip.org/download/#linux
 DEB_PKG_NAME[ipscan]="Angry IP Scanner"
@@ -1336,44 +1338,47 @@ DEB_PKG_CSUM[ipscan_arm64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_all.deb.sha"
 DEB_PKG_FILE[ipscan_armhf]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_all.deb"
 DEB_PKG_CSUM[ipscan_armhf]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_all.deb.sha"
 
-# Erstellt mittels dpkg-repack :)
-# In Debian nicht enthalten und ab Ubuntu 22 leider
-# nicht mehr lauffähig wegen fehlender Libraries :(
-# Hinweis: Als Flatpack verfügbar ...
-# DEB_PKG_NAME[lix]="lix"
-# DEB_PKG_OLDV[lix]=""
-# DEB_PKG_OLDF[lix]=""
-# DEB_PKG_VERS[lix]="0.9.29"
-# DEB_PKG_MESG[lix]=""
-# DEB_PKG_EVAL[lix]=""
-# DEB_PKG_FILE[lix_amd64]="$RESSOURCE_SERVER_DIR/deb/lix_0.9.29-1_amd64.deb"
-# DEB_PKG_CSUM[lix_amd64]="$RESSOURCE_SERVER_DIR/deb/lix_0.9.29-1_amd64.deb.sha"
+# Download von https://github.com/4gray/iptvnator
+DEB_PKG_NAME[iptvnator]="IPTVnator"
+DEB_PKG_OLDV[iptvnator]="0.14.0"
+DEB_PKG_OLDF[iptvnator]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.14.0_amd64.deb"
+DEB_PKG_VERS[iptvnator]="0.15.0"
+DEB_PKG_MESG[iptvnator]=""
+DEB_PKG_EVAL[iptvnator]=""
+DEB_PKG_FILE[iptvnator_amd64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.15.0_amd64.deb"
+DEB_PKG_CSUM[iptvnator_amd64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.15.0_amd64.deb.sha"
+DEB_PKG_FILE[iptvnator_i386]="" # NUR für 64-bit verfügbar
+DEB_PKG_CSUM[iptvnator_i386]="" # NUR für 64-bit verfügbar
+DEB_PKG_FILE[iptvnator_arm64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.15.0_arm64.deb"
+DEB_PKG_CSUM[iptvnator_arm64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.15.0_arm64.deb.sha"
+DEB_PKG_FILE[iptvnator_armhf]="" # NUR für 64-bit verfügbar
+DEB_PKG_CSUM[iptvnator_armhf]="" # NUR für 64-bit verfügbar
 
 # Download von https://www.nomachine.com/download/linux&id=1
 DEB_PKG_NAME[nomachine]="NoMachine"
-DEB_PKG_OLDV[nomachine]="8.4.2"
-DEB_PKG_OLDF[nomachine]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.4.2_1_amd64.deb"
-DEB_PKG_VERS[nomachine]="8.8.1"
+DEB_PKG_OLDV[nomachine]="8.8.1"
+DEB_PKG_OLDF[nomachine]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_amd64.deb"
+DEB_PKG_VERS[nomachine]="8.11.3"
 DEB_PKG_MESG[nomachine]=""
 DEB_PKG_EVAL[nomachine]=""
-DEB_PKG_FILE[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_amd64.deb"
-DEB_PKG_CSUM[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_amd64.deb.sha"
- DEB_PKG_FILE[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_i386.deb"
- DEB_PKG_CSUM[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_i386.deb.sha"
-DEB_PKG_FILE[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_arm64.deb"
-DEB_PKG_CSUM[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_arm64.deb.sha"
-DEB_PKG_FILE[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_armhf.deb"
-DEB_PKG_CSUM[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_armhf.deb.sha"
+DEB_PKG_FILE[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_4_amd64.deb"
+DEB_PKG_CSUM[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_4_amd64.deb.sha"
+ DEB_PKG_FILE[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_4_i386.deb"
+ DEB_PKG_CSUM[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_4_i386.deb.sha"
+DEB_PKG_FILE[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_3_arm64.deb"
+DEB_PKG_CSUM[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_3_arm64.deb.sha"
+DEB_PKG_FILE[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_3_armhf.deb"
+DEB_PKG_CSUM[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_3_armhf.deb.sha"
 
 # Download von https://www.opera.com/de/download
 DEB_PKG_NAME[opera-stable]="Opera"
-DEB_PKG_OLDV[opera-stable]=""
-DEB_PKG_OLDF[opera-stable]=""
-DEB_PKG_VERS[opera-stable]="102.0.4880.70"
+DEB_PKG_OLDV[opera-stable]="102.0.4880.70"
+DEB_PKG_OLDF[opera-stable]="$RESSOURCE_SERVER_DIR/deb/opera-stable_102.0.4880.70_amd64.deb"
+DEB_PKG_VERS[opera-stable]="106.0.4998.70"
 DEB_PKG_MESG[opera-stable]=""
 DEB_PKG_EVAL[opera-stable]=""
-DEB_PKG_FILE[opera-stable_amd64]="$RESSOURCE_SERVER_DIR/deb/opera-stable_102.0.4880.70_amd64.deb"
-DEB_PKG_CSUM[opera-stable_amd64]="$RESSOURCE_SERVER_DIR/deb/opera-stable_102.0.4880.70_amd64.deb.sha"
+DEB_PKG_FILE[opera-stable_amd64]="$RESSOURCE_SERVER_DIR/deb/opera-stable_106.0.4998.70_amd64.deb"
+DEB_PKG_CSUM[opera-stable_amd64]="$RESSOURCE_SERVER_DIR/deb/opera-stable_106.0.4998.70_amd64.deb.sha"
  DEB_PKG_FILE[opera-stable_i386]="" # NUR für 64-bit verfügbar
  DEB_PKG_CSUM[opera-stable_i386]="" # NUR für 64-bit verfügbar
 DEB_PKG_FILE[opera-stable_arm64]="" # NICHT für ARM verfügbar
@@ -1383,45 +1388,45 @@ DEB_PKG_CSUM[opera-stable_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://www.realvnc.com/de/connect/download/vnc/linux
 DEB_PKG_NAME[realvnc-vnc-server]="VNC Server"
-DEB_PKG_OLDV[realvnc-vnc-server]="6.9.1"
-DEB_PKG_OLDF[realvnc-vnc-server]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-6.9.1-Linux-x64.deb"
-DEB_PKG_VERS[realvnc-vnc-server]="7.6.1"
+DEB_PKG_OLDV[realvnc-vnc-server]="7.6.1"
+DEB_PKG_OLDF[realvnc-vnc-server]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.6.1-Linux-x64.deb"
+DEB_PKG_VERS[realvnc-vnc-server]="7.9.0"
 DEB_PKG_MESG[realvnc-vnc-server]=""
 DEB_PKG_EVAL[realvnc-vnc-server]=""
-DEB_PKG_FILE[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.6.1-Linux-x64.deb"
-DEB_PKG_CSUM[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.6.1-Linux-x64.deb.sha"
+DEB_PKG_FILE[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.9.0-Linux-x64.deb"
+DEB_PKG_CSUM[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.9.0-Linux-x64.deb.sha"
  DEB_PKG_FILE[realvnc-vnc-server_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
  DEB_PKG_CSUM[realvnc-vnc-server_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
-DEB_PKG_FILE[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.6.1-Linux-ARM64.deb"
-DEB_PKG_CSUM[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.6.1-Linux-ARM64.deb.sha"
-DEB_PKG_FILE[realvnc-vnc-server_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.6.1-Linux-ARMHF.deb"
-DEB_PKG_CSUM[realvnc-vnc-server_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.6.1-Linux-ARMHF.deb.sha"
+DEB_PKG_FILE[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.9.0-Linux-ARM64.deb"
+DEB_PKG_CSUM[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.9.0-Linux-ARM64.deb.sha"
+DEB_PKG_FILE[realvnc-vnc-server_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.9.0-Linux-ARM.deb"
+DEB_PKG_CSUM[realvnc-vnc-server_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.9.0-Linux-ARM.deb.sha"
 
 # Download von https://www.realvnc.com/de/connect/download/viewer/linux
 DEB_PKG_NAME[realvnc-vnc-viewer]="VNC Viewer"
-DEB_PKG_OLDV[realvnc-vnc-viewer]="6.22.315"
-DEB_PKG_OLDF[realvnc-vnc-viewer]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-6.22.315-Linux-x64.deb"
-DEB_PKG_VERS[realvnc-vnc-viewer]="7.6.1"
+DEB_PKG_OLDV[realvnc-vnc-viewer]="7.6.1"
+DEB_PKG_OLDF[realvnc-vnc-viewer]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.6.1-Linux-x64.deb"
+DEB_PKG_VERS[realvnc-vnc-viewer]="7.9.0"
 DEB_PKG_MESG[realvnc-vnc-viewer]=""
 DEB_PKG_EVAL[realvnc-vnc-viewer]=""
-DEB_PKG_FILE[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.6.1-Linux-x64.deb"
-DEB_PKG_CSUM[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.6.1-Linux-x64.deb.sha"
+DEB_PKG_FILE[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.9.0-Linux-x64.deb"
+DEB_PKG_CSUM[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.9.0-Linux-x64.deb.sha"
  DEB_PKG_FILE[realvnc-vnc-viewer_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
  DEB_PKG_CSUM[realvnc-vnc-viewer_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
-DEB_PKG_FILE[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.6.1-Linux-ARM64.deb"
-DEB_PKG_CSUM[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.6.1-Linux-ARM64.deb.sha"
-DEB_PKG_FILE[realvnc-vnc-viewer_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.6.1-Linux-ARMHF.deb"
-DEB_PKG_CSUM[realvnc-vnc-viewer_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.6.1-Linux-ARMHF.deb.sha"
+DEB_PKG_FILE[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.9.0-Linux-ARM64.deb"
+DEB_PKG_CSUM[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.9.0-Linux-ARM64.deb.sha"
+DEB_PKG_FILE[realvnc-vnc-viewer_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.9.0-Linux-ARM.deb"
+DEB_PKG_CSUM[realvnc-vnc-viewer_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.9.0-Linux-ARM.deb.sha"
 
 # Download von https://github.com/raspberrypi/rpi-imager
 DEB_PKG_NAME[rpi-imager]="RPi-Imager"
-DEB_PKG_OLDV[rpi-imager]=""
-DEB_PKG_OLDF[rpi-imager]=""
-DEB_PKG_VERS[rpi-imager]="1.7.5"
+DEB_PKG_OLDV[rpi-imager]="1.7.5"
+DEB_PKG_OLDF[rpi-imager]="$RESSOURCE_SERVER_DIR/deb/rpi-imager_1.7.5_amd64.deb"
+DEB_PKG_VERS[rpi-imager]="1.8.5"
 DEB_PKG_MESG[rpi-imager]=""
 DEB_PKG_EVAL[rpi-imager]=""
-DEB_PKG_FILE[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/deb/rpi-imager_1.7.5_amd64.deb"
-DEB_PKG_CSUM[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/deb/rpi-imager_1.7.5_amd64.deb.sha"
+DEB_PKG_FILE[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/deb/rpi-imager_1.8.5_amd64.deb"
+DEB_PKG_CSUM[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/deb/rpi-imager_1.8.5_amd64.deb.sha"
  DEB_PKG_FILE[rpi-imager_i386]="" # NUR für 64-bit verfügbar
  DEB_PKG_CSUM[rpi-imager_i386]="" # NUR für 64-bit verfügbar
 DEB_PKG_FILE[rpi-imager_arm64]="" # NICHT für ARM verfügbar
@@ -1499,8 +1504,8 @@ DEB_PKG_CSUM[usb-creator-gtk_armhf]="" # NICHT für ARM verfügbar
 
 # -----------------------------------------------------------------------------
 # Download von https://veracrypt.fr/en/Downloads.html
-# ACHTUNG: BEI ÄNDERUNGEN AUCH DIE DATEI "veracrypt-1.25.9-sha256sum.txt" DOWNLOADEN
-#          UND AUF DEM SERVER ALS "veracrypt-1.25.9-sha256sum.sha" SPEICHERN !!!
+# ACHTUNG: BEI ÄNDERUNGEN AUCH DIE DATEI "veracrypt-1.23.4-sha256sum.txt" DOWNLOADEN
+#          UND AUF DEM SERVER ALS "veracrypt-1.23.4-sha256sum.sha" SPEICHERN !!!
 # VeraCrypt bietet weiter differenzierte Pakete an ----------------------------
 OPSYS_PART=""
 # Zuerst testen ob Ubuntu ...
@@ -1519,29 +1524,29 @@ then
   DEB_PKG_NAME[veracrypt]="VeraCrypt"
   DEB_PKG_OLDV[veracrypt]=""
   DEB_PKG_OLDF[veracrypt]=""
-  DEB_PKG_VERS[veracrypt]="1.25.9"
+  DEB_PKG_VERS[veracrypt]="1.26.7"
   DEB_PKG_MESG[veracrypt]=""
   DEB_PKG_EVAL[veracrypt]=""
-  DEB_PKG_FILE[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.25.9-$OPSYS_PART-amd64.deb"
-  DEB_PKG_CSUM[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.25.9-sha256sum.sha"
+  DEB_PKG_FILE[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.7-$OPSYS_PART-amd64.deb"
+  DEB_PKG_CSUM[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.7-sha256sum.sha"
    DEB_PKG_FILE[veracrypt_i386]="" # Nur als generischer Installer verfügbar (nicht aufgenommen)
    DEB_PKG_CSUM[veracrypt_i386]="" # Nur als generischer Installer verfügbar (nicht aufgenommen)
-  DEB_PKG_FILE[veracrypt_arm64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.25.9-$OPSYS_PART-arm64.deb"
-  DEB_PKG_CSUM[veracrypt_arm64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.25.9-sha256sum.sha"
-  DEB_PKG_FILE[veracrypt_armhf]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.25.9-$OPSYS_PART-armhf.deb"
-  DEB_PKG_CSUM[veracrypt_armhf]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.25.9-sha256sum.sha"
+  DEB_PKG_FILE[veracrypt_arm64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.7-$OPSYS_PART-arm64.deb"
+  DEB_PKG_CSUM[veracrypt_arm64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.7-sha256sum.sha"
+  DEB_PKG_FILE[veracrypt_armhf]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.7-$OPSYS_PART-armhf.deb"
+  DEB_PKG_CSUM[veracrypt_armhf]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.7-sha256sum.sha"
 fi
 # -----------------------------------------------------------------------------
 
 # Download von https://www.xnview.com/de/xnviewmp/#downloads
 DEB_PKG_NAME[xnview]="XnView MP"
-DEB_PKG_OLDV[xnview]="1.4.4"
-DEB_PKG_OLDF[xnview]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.00-linux-x64.deb"
-DEB_PKG_VERS[xnview]="1.5.5"
+DEB_PKG_OLDV[xnview]="1.5.5"
+DEB_PKG_OLDF[xnview]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.5.5-linux-x64.deb"
+DEB_PKG_VERS[xnview]="1.6.4"
 DEB_PKG_MESG[xnview]=""
 DEB_PKG_EVAL[xnview]=""
-DEB_PKG_FILE[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.5.5-linux-x64.deb"
-DEB_PKG_CSUM[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.5.5-linux-x64.deb.sha"
+DEB_PKG_FILE[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.6.4-linux-x64.deb"
+DEB_PKG_CSUM[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.6.4-linux-x64.deb.sha"
  DEB_PKG_FILE[xnview_i386]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_0.89-linux-x32.deb"
  DEB_PKG_CSUM[xnview_i386]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_0.89-linux-x32.deb.sha"
 DEB_PKG_FILE[xnview_arm64]="" # NICHT für ARM verfügbar
@@ -1555,8 +1560,11 @@ DEB_PKG_CSUM[xnview_armhf]="" # NICHT für ARM verfügbar
 # auf neueren Rechnern laufen, werden diese zudem nur für amd64 angeboten.
 # Manche Pakete sind obwohl nicht im Repo trotzdem auf den Debian-Servern
 # verfügbar unter: https://www.debian.org/distrib/packages#search_packages
+# Achtung: Da die reinen Debian-Pakete auf Ubuntu eventuell nicht laufen,
+# werden diese auf Ubuntu-basierenden Systemen auch nicht angeboten.
 # -----------------------------------------------------------------------------
-if [ $(echo "$DEBIAN_CODE" | grep -i -c -E "bookworm") -gt 0 ];
+if [ $(echo "$DEBIAN_CODE" | grep -i -c -E "bookworm") -gt 0 ] &&
+   [ $(uname -a 2>/dev/null | grep -i -c -E "ubuntu") -eq 0 ];
 then
 
   DEB_PKG_NAME[alien-arena]="Alien Arena"
@@ -1590,7 +1598,7 @@ then
   DEB_PKG_OLDV[astromenace-data-src]=""
   DEB_PKG_OLDF[astromenace-data-src]=""
   DEB_PKG_VERS[astromenace-data-src]="1.3.2"
-  DEB_PKG_MESG[astromenace-data-src]=""
+  DEB_PKG_MESG[astromenace-data-src]="Benötigt eine schnelle Grafikkarte"
   DEB_PKG_EVAL[astromenace-data-src]=""
   DEB_PKG_FILE[astromenace-data-src_amd64]="$RESSOURCE_SERVER_DIR/deb/astromenace-data-src_1.3.2+repack-3_all.deb"
   DEB_PKG_CSUM[astromenace-data-src_amd64]="$RESSOURCE_SERVER_DIR/deb/astromenace-data-src_1.3.2+repack-3_all.deb.sha"
@@ -1727,13 +1735,13 @@ then
   if [ $(uname -a 2>/dev/null | grep -i -c -E "debian") ];
   then
     DEB_PKG_NAME[virtualbox-7.0]="VirtualBox 7.0"
-    DEB_PKG_OLDV[virtualbox-7.0]=""
-    DEB_PKG_OLDF[virtualbox-7.0]=""
-    DEB_PKG_VERS[virtualbox-7.0]="7.0.10"
+    DEB_PKG_OLDV[virtualbox-7.0]="7.0.10"
+    DEB_PKG_OLDF[virtualbox-7.0]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.10-158379~Debian~bookworm_amd64.deb"
+    DEB_PKG_VERS[virtualbox-7.0]="7.0.14"
     DEB_PKG_MESG[virtualbox-7.0]=""
     DEB_PKG_EVAL[virtualbox-7.0]=""
-    DEB_PKG_FILE[virtualbox-7.0_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.10-158379~Debian~bookworm_amd64.deb"
-    DEB_PKG_CSUM[virtualbox-7.0_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.10-158379~Debian~bookworm_amd64.deb.sha"
+    DEB_PKG_FILE[virtualbox-7.0_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.14-161095~Debian~bookworm_amd64.deb"
+    DEB_PKG_CSUM[virtualbox-7.0_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.14-161095~Debian~bookworm_amd64.deb.sha"
   fi
 
 fi
@@ -1826,15 +1834,15 @@ WEB_PKG_NAME[czkawka]="Czkawka"
 WEB_PKG_CATY[czkawka]="System;Utility"
 WEB_PKG_OLDV[czkawka]="4.1.0"
 WEB_PKG_OLDF[czkawka]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_4.1.0"
-WEB_PKG_VERS[czkawka]="6.0.0"
+WEB_PKG_VERS[czkawka]="6.1.0"
 WEB_PKG_MESG[czkawka]="Benötigt mindestens gtk-4.0!"
 WEB_PKG_EVAL[czkawka]="[ -d /usr/share/gtk-4.0 ]"
-WEB_PKG_FILE[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.0.0"
-WEB_PKG_CSUM[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.0.0.sha"
- WEB_PKG_FILE[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.0.0"
- WEB_PKG_CSUM[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.0.0.sha"
-WEB_PKG_FILE[czkawka_arm64]="" # Ab Ubuntu 21 nur als Snap
-WEB_PKG_CSUM[czkawka_arm64]="" # Ab Ubuntu 21 nur als Snap
+WEB_PKG_FILE[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.1.0"
+WEB_PKG_CSUM[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.1.0.sha"
+ WEB_PKG_FILE[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.1.0"
+ WEB_PKG_CSUM[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.1.0.sha"
+WEB_PKG_FILE[czkawka_arm64]="" # NICHT verfügbar
+WEB_PKG_CSUM[czkawka_arm64]="" # NICHT verfügbar
 WEB_PKG_FILE[czkawka_armhf]="" # NICHT verfügbar
 WEB_PKG_CSUM[czkawka_armhf]="" # NICHT verfügbar
 
@@ -1843,11 +1851,11 @@ WEB_PKG_NAME[freefilesync]="FreeFileSync"
 WEB_PKG_CATY[freefilesync]="System;Utility"
 WEB_PKG_OLDV[freefilesync]="12.2"
 WEB_PKG_OLDF[freefilesync]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_12.2_Linux.tar.gz"
-WEB_PKG_VERS[freefilesync]="13.0"
+WEB_PKG_VERS[freefilesync]="13.3"
 WEB_PKG_MESG[freefilesync]=""
 WEB_PKG_EVAL[freefilesync]=""
-WEB_PKG_FILE[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_13.0_Linux.tar.gz"
-WEB_PKG_CSUM[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_13.0_Linux.tar.gz.sha"
+WEB_PKG_FILE[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_13.3_Linux.tar.gz"
+WEB_PKG_CSUM[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_13.3_Linux.tar.gz.sha"
  WEB_PKG_FILE[freefilesync_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
  WEB_PKG_CSUM[freefilesync_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
 WEB_PKG_FILE[freefilesync_arm64]="" # NICHT für ARM verfügbar
@@ -1946,13 +1954,13 @@ WEB_PKG_CSUM[sardu_armhf]="" # NICHT für ARM verfügbar
 # Download von https://www.torproject.org/de/download/
 WEB_PKG_NAME[tor-browser]="Tor Browser"
 WEB_PKG_CATY[tor-browser]="Network;WebBrowser"
-WEB_PKG_OLDV[tor-browser]="12.0.5"
-WEB_PKG_OLDF[tor-browser]="tor-browser-linux64-12.0.5_ALL.tar.xz"
-WEB_PKG_VERS[tor-browser]="12.5.5"
+WEB_PKG_OLDV[tor-browser]="12.5.5"
+WEB_PKG_OLDF[tor-browser]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux64-12.5.5_ALL.tar.xz"
+WEB_PKG_VERS[tor-browser]="13.0.9"
 WEB_PKG_MESG[tor-browser]=""
 WEB_PKG_EVAL[tor-browser]=""
-WEB_PKG_FILE[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux64-12.5.5_ALL.tar.xz"
-WEB_PKG_CSUM[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux64-12.5.5_ALL.tar.xz.sha"
+WEB_PKG_FILE[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux-x86_64-13.0.9.tar.xz"
+WEB_PKG_CSUM[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux-x86_64-13.0.9.tar.xz.sha"
  WEB_PKG_FILE[tor-browser_i386]="" # Für Linux nur als 64-bit verfügbar
  WEB_PKG_CSUM[tor-browser_i386]="" # Für Linux nur als 64-bit verfügbar
 WEB_PKG_FILE[tor-browser_arm64]="" # Auf ARM nur für Android verfügbar (Raspberry hat kein SSE2)
@@ -1977,7 +1985,7 @@ WEB_PKG_CSUM[unetbootin_arm64]="" # NICHT für ARM verfügbar
 WEB_PKG_FILE[unetbootin_armhf]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[unetbootin_armhf]="" # NICHT für ARM verfügbar
 
-# Download von https://codeberg.org/ralfhersel/youplay
+# Download von https://codeberg.org/ralfhersel/youplay/releases
 WEB_PKG_NAME[youplay]="YouPlay"
 WEB_PKG_CATY[youplay]="AudioVideo;Video"
 WEB_PKG_OLDV[youplay]=""
@@ -2001,17 +2009,22 @@ WEB_PKG_CSUM[youplay_armhf]="" # NICHT für ARM verfügbar
 # im Repo haben und somit von apt auch nicht automatisch aktualisiert werden.
 # Dient als Basis für die Updates dieser Programme mit der Option "exupdate".
 ###############################################################################
-EXUPDATE_PKG_LIST=('balena-etcher' 'code-the-classics' 'codium' 'czkawka' 'freefilesync' 'hypnotix' 'ipscan' 'iptvnator' 'nomachine' 'openshot-qt' 'tor-browser' 'sardu' 'unetbootin' 'veracrypt' 'xnview' 'youplay')
+EXUPDATE_PKG_LIST=('balena-etcher' 'code-the-classics' 'codium' 'czkawka' 'freefilesync' 'hypnotix' 'ipscan' 'iptvnator' 'nomachine' 'openshot-qt' 'realvnc-vnc-server' 'realvnc-vnc-viewer' 'rpi-imager' 'sardu' 'tor-browser' 'unetbootin' 'veracrypt' 'xnview' 'youplay')
 
 ###############################################################################
-# Pakete, die warum auch immer vorzugsweise als Snap installiert werden sollen.
+# Pakete, die warum auch immer bevorzugt als Flatpak installiert werden sollen.
+###############################################################################
+FORCE_FLATPAK_LIST=()
+
+###############################################################################
+# Pakete, die warum auch immer bevorzugt als Snap installiert werden sollen.
 ###############################################################################
 FORCE_SNAPPY_LIST=('chromium')
 
 ###############################################################################
 # Pakete, die warum auch immer aus externen Quellen installiert werden sollen.
 ###############################################################################
-FORCE_EXTERN_LIST=(  )
+FORCE_EXTERN_LIST=()
 
 ###############################################################################
 # Auf dem Raspberry Pi grundsätzlich mangels Hardware-Support, Performance
@@ -2109,7 +2122,7 @@ POST_INST_CONF[wireguard]="$RESSOURCE_SERVER_DIR/scripts/wireguard_post_inst"
 # neu erzeugt, d.h. diese müssen dazu natürlich vorhanden sein.
 ###############################################################################
 declare -A PKG_ICON_LIST
-declare -A PKG_ICON_XDIR # Extra Verzeichnis, falls dieses angelegt werden soll
+declare -A PKG_ICON_XDIR # Extra Ordner, falls dieser angelegt werden soll
 
 PKG_ICON_LIST[code-the-classics]="boing bunner cavern myriapod soccer"
 PKG_ICON_XDIR[code-the-classics]="Code the Classics"
@@ -2133,8 +2146,58 @@ PKG_ICON_LIST[zynaddsubfx]=""
 PKG_ICON_XDIR[zynaddsubfx]="ZynAddSubFX"
 
 ###############################################################################
+# Zusätzliche Unterordner für Starter von Spielen
+###############################################################################
+declare -A GAME_DIR_SUB_NAME # Name des Unterordners
+declare -A GAME_DIR_SUB_LIST # Liste der Pakete (Starter) für in den Unterordner
+# Index-Liste (Kategorien) der Daten zu den Unterordnern
+GAME_DIR_CAT_LIST=( 'action' 'adventure' 'blocksnmarbles' 'cardsnboards' 'dexterity' 'emulator' 'jumpnrun' 'logic' 'race' 'role' 'shooter' 'simulation' 'sports' 'strategy' )
+
+GAME_DIR_SUB_NAME[action]="Action"
+GAME_DIR_SUB_LIST[action]="astromenace criticalmass marsshooter open-invaders"
+
+GAME_DIR_SUB_NAME[adventure]="Abenteuer"
+GAME_DIR_SUB_LIST[adventure]="beneath-a-steel-sky"
+
+GAME_DIR_SUB_NAME[blocksnmarbles]="Blöcke und Murmeln"
+GAME_DIR_SUB_LIST[blocksnmarbles]="blockout2 biniax2 briquolo cuyo flobopuyo frozen-bubble gemdropx gweled jag kdiamond lbreakout2 sdl-ball zaz"
+
+GAME_DIR_SUB_NAME[cardsnboards]="Karten- und Brettspiele"
+GAME_DIR_SUB_LIST[cardsnboards]="brutalchess dreamchess gnubg kmahjongg knights kpat kreversi morris pokerth"
+
+GAME_DIR_SUB_NAME[dexterity]="Geschicklichkeit"
+GAME_DIR_SUB_LIST[dexterity]="freegish neverball pinball"
+
+GAME_DIR_SUB_NAME[emulator]="Emulatoren"
+GAME_DIR_SUB_LIST[emulator]="fs-uae"
+
+GAME_DIR_SUB_NAME[jumpnrun]="Laufen und Springen"
+GAME_DIR_SUB_LIST[jumpnrun]="caveexpress freedroidrpg frogatto kapman lix openclonk pingus rocksndiamonds supertux teeworlds"
+
+GAME_DIR_SUB_NAME[logic]="Logik- und Denkspiele"
+GAME_DIR_SUB_LIST[logic]="atomix enigma gbrainy gcompris gcompris-qt katomic numptyphysics ksudoku pybik tuxmath"
+
+GAME_DIR_SUB_NAME[race]="Rennen"
+GAME_DIR_SUB_LIST[race]="armagetronad extremetuxracer speed_dreams stunt_rally supertuxkart torcs trigger-rally"
+
+GAME_DIR_SUB_NAME[role]="Rollenspiele"
+GAME_DIR_SUB_LIST[role]=""
+
+GAME_DIR_SUB_NAME[shooter]="Shooter"
+GAME_DIR_SUB_LIST[shooter]="alien-arena alienarena freedoom nexuiz openarena quetoo sauerbraten tesseract xonotic"
+
+GAME_DIR_SUB_NAME[simulation]="Simulation"
+GAME_DIR_SUB_LIST[simulation]="flightgear"
+
+GAME_DIR_SUB_NAME[sports]="Sport"
+GAME_DIR_SUB_LIST[sports]="billard-gl foobillardplus freetennis neverputt ysoccer"
+
+GAME_DIR_SUB_NAME[strategy]="Strategie"
+GAME_DIR_SUB_LIST[strategy]="0ad endless-sky megaglest naev oolite ufoai wesnoth widelands"
+
+###############################################################################
 # Zusätzliche Desktop-Symbole zur Ergänzung des Ordners "Systemverwaltung".
-# Icons, die nur dann erstellt werden, wenn das entsprechende Programmpaket
+# Starter, die nur dann erstellt werden, wenn das entsprechende Programmpaket
 # bereits installiert ist, OHNE dieses Paket selbst neu zu installieren.
 # Das betrifft bspw. Programme aus den Systemerweiterungen oder Tools (GUIs)
 # für die Konfiguration von Kernel-Modulen sowie externen Treibern.
@@ -2166,8 +2229,9 @@ REJECT_ICONS=( 'alacarte-made' 'caja-autorun-software' 'caja-browser' 'caja-comp
 ###############################################################################
 # Desktop-Icons die bspw. aufgrund ihres Dateinamens unvermeidbar zusätzlich
 # falsch angelegt werden und am Ende des Scriptes gelöscht werden sollen.
+# ACHTUNG: Pfadangaben und Dateinamen dürfen keine Leerzeichen enthalten!
 ###############################################################################
-WRONG_ICONS=('Internet/chromium-bsu.desktop')
+WRONG_ICONS=('Internet/chromium-bsu.desktop' 'Spiele/org.flightgear.FlightGear.desktop' 'Spiele/Fliegen/org.flightgear.FlightGear.desktop')
 
 ###############################################################################
 # Zu manchen Programmpaketen werden keine Desktop-Symbolbilder installiert oder
@@ -2194,6 +2258,7 @@ else
     DESKTOP_DIR="/home/$USER_USERNAME/Desktop"
   fi
 fi
+DESKTOP_ICON_DIR="$DESKTOP_DIR/Neue Icons"
 
 ###############################################################################
 # Parameter und Variablen initialisieren
@@ -2261,17 +2326,18 @@ function ask_for_install_mode () {
   INST_MODES="$2"
   e_and_l " ${light_yellow}$1${colors_off} ist von mehreren Quellen verfügbar:"
   a=1
-  while [ $a -lt 5 ];
+  while [ $a -lt 7 ];
   do
     if [ $(echo "$INST_MODES" | grep -c -E "$a") -gt 0 ];
     then
       e_and_l -n "$PRE_SPACE [${bold_yellow}$a${colors_off}]"
       TMP_PKG_VERSION=""
       case $a in
-        1) TMP_PKG_VERSION=$(get_pkg_apt_version  "$1" 0) ;;
-        2) TMP_PKG_VERSION=$(get_pkg_snap_version "$1" 0) ;;
-        3) TMP_PKG_VERSION=$(get_pkg_deb_version  "$1")   ;;
-        4) TMP_PKG_VERSION=$(get_pkg_web_version  "$1")   ;;
+        1) TMP_PKG_VERSION=$(get_pkg_apt_version  "$1" 0)    ;;
+        2) TMP_PKG_VERSION=$(get_pkg_snap_version "$1" 0)    ;;
+        3) TMP_PKG_VERSION=$(get_pkg_deb_version  "$1")      ;;
+        4) TMP_PKG_VERSION=$(get_pkg_web_version  "$1")      ;;
+        6) TMP_PKG_VERSION=$(get_pkg_flatpak_version "$1" 0) ;;
       esac
       if [ "$TMP_PKG_VERSION" != "" ];
       then
@@ -2282,6 +2348,7 @@ function ask_for_install_mode () {
         2) e_and_l "$TMP_PKG_VERSION als Snap"                  ;;
         3) e_and_l "$TMP_PKG_VERSION als externes Paket (.deb)" ;;
         4) e_and_l "$TMP_PKG_VERSION als ausführbare Datei(en)" ;;
+        6) e_and_l "$TMP_PKG_VERSION als Flatpak"               ;;
       esac
     fi
     ((a+=1))
@@ -2481,6 +2548,7 @@ function ask_yes_no_info () {
   # auch keine Auto-Antwort zur Installation des Paketes vorhanden ist, dann
   # automatisch ein "Ja" (Installation ohne weitere Rückfrage) zurückgeben
   # ---------------------------------------------------------------------------
+  INPUT_OK=0
   if [ ${OPTION_FLAG[force]} -eq 1 ] &&
      [ "$TROTZDEM" = "" ] &&
      [ "$CHECK_AUTO_ANSWER" = "" ];
@@ -2502,18 +2570,23 @@ function ask_yes_no_info () {
       4) TMP_PKG_TYPE="WEB"
          TMP_PKG_VERSION=$(get_pkg_web_version "$PACKAGE_NAME")
          ;;
+      6) TMP_PKG_TYPE="FLAT"
+         TMP_PKG_VERSION=$(get_pkg_flatpak_version "$PACKAGE_NAME" 0)
+         ;;
     esac
     if [ "$TMP_PKG_VERSION" != "" ];
     then
       QUESTION_1+=" ${light_yellow}$TMP_PKG_VERSION${colors_off}"
     fi
-    QUESTION_1+=" ($TMP_PKG_TYPE)"
+    QUESTION_1+=" (${light_purple}$TMP_PKG_TYPE${colors_off})"
     QUESTION_1+="$TROTZDEM installieren?"
     QUESTION_2="[${bold_yellow}j${colors_off}]a [${bold_yellow}n${colors_off}]ein"
     # -------------------------------------------------------------------------
     # Parameter der Eingabe-Möglichkeiten definieren
     # -------------------------------------------------------------------------
-    if [ $INSTALL_MODE -lt 3 ];
+    if [ $INSTALL_MODE -eq 1 ] || # apt
+       [ $INSTALL_MODE -eq 2 ] || # snap
+       [ $INSTALL_MODE -eq 6 ];   # flatpak
     then
       REG_CHARS="[^JjNnIi]*"
       QUESTION_2+=" [${bold_yellow}i${colors_off}]nfo"
@@ -2524,7 +2597,6 @@ function ask_yes_no_info () {
     QUESTION_2+=":"
     e_and_l " $QUESTION_1"
     e_and_l -n "$PRE_SPACE $QUESTION_2 "
-    INPUT_OK=0
     # ---------------------------------------------------------------------------
     # Optional Antwort des vorherigen Durchlaufs verwenden
     # ---------------------------------------------------------------------------
@@ -2566,7 +2638,12 @@ function ask_yes_no_info () {
         echo -e "${light_yellow}"
         if [ $INSTALL_MODE -eq 1 ]; then apt show "$PACKAGE_NAME"; fi
         if [ $INSTALL_MODE -eq 2 ]; then snap info "$PACKAGE_NAME"; fi
-        if [ $INSTALL_MODE -gt 2 ]; then echo -e "$PRE_SPACE Zu diesem Paket sind leider keine Informationen verfügbar."; fi
+        if [ $INSTALL_MODE -eq 3 ] ||
+           [ $INSTALL_MODE -eq 4 ];
+        then
+          echo -e "$PRE_SPACE Zu diesem Paket sind leider keine Informationen verfügbar."
+        fi
+        if [ $INSTALL_MODE -eq 6 ]; then flatpak remote-info flathub $(get_pkg_flatpak_reference ${PACKAGE_NAME} 0); fi
         echo -e "${colors_off}"
         e_and_l "$PRE_SPACE $QUESTION_1"
         e_and_l -n "$PRE_SPACE $QUESTION_2 "
@@ -2665,7 +2742,7 @@ function clean_on_exit () {
      [ "$DOWNLOAD_DIR" != "/tmp" ] &&
      [ -d "$DOWNLOAD_DIR" ];
   then
-    # Wenn gewünscht alle Dateien im Download-Verzeichnis löschen
+    # Wenn gewünscht alle Dateien im Download-Ordner löschen
     # (dabei eigene Log-Dateien auslassen)
     if [ ${OPTION_FLAG[cleantmp]} -eq 1 ];
     then
@@ -2673,7 +2750,7 @@ function clean_on_exit () {
     fi
     # Alle verbliebenen Dateien dem Benutzer zu eigen machen
     chown -R "$USER_USERNAME:$USER_USERNAME" "$DOWNLOAD_DIR" &>/dev/null
-    # Download-Verzeichnis ganz löschen wenn keine Dateien mehr darin sind
+    # Download-Ordner ganz löschen wenn keine Dateien mehr darin sind
     if [ $(ls -A "$DOWNLOAD_DIR" | wc -w) -eq 0 ];
     then
       rmdir "$DOWNLOAD_DIR" &>/dev/null
@@ -2800,7 +2877,6 @@ function copy_starter_to_desktop () {
     then
 
       # Hauptordner "Neue Icons" erstellen
-      DESKTOP_ICON_DIR="$DESKTOP_DIR/Neue Icons"
       if [ ! -d "$DESKTOP_ICON_DIR" ];
       then
         mkdir "$DESKTOP_ICON_DIR" &>/dev/null
@@ -2835,7 +2911,6 @@ function copy_starter_to_desktop () {
 
           # -----------------------------------------------------------
           # Suchen des zum Paket passenden Starter-(.desktop)-Eintrags
-          # Ein leidiges Thema, umso mehr wenn Snap dazukommt ...
           # -----------------------------------------------------------
           # Namen der Starter-Dateien für diverse Pakete anpassen
           SEARCH_NAME="$1"
@@ -2857,24 +2932,24 @@ function copy_starter_to_desktop () {
           SEARCH_RESULT_ALL=(  )
 
           # -------------------------------------------------------------------
-          # Paketname = Dateiname ---------------------------------------------
+          # 1. Dateiname entspricht dem Paketnamen ----------------------------
           # -------------------------------------------------------------------
-          # 1. Datei mit Paketnamen im Raspi-Ordner suchen
+          # 1.1. Datei mit Paketnamen im Raspi-Ordner suchen
           if [ -d "/usr/share/raspi-ui-overrides/applications" ];
           then
             SEARCH_RESULT_TMP=$(find "/usr/share/raspi-ui-overrides/applications" -iname "$SEARCH_NAME".desktop -print 2>/dev/null)
             if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
           fi
 
-          # 2. Datei mit Paketnamen im Benutzer-Ordner suchen
+          # 1.2. Datei mit Paketnamen im Benutzer-Ordner suchen
           SEARCH_RESULT_TMP=$(find "$USER_HOME_DIR/.local/share/applications/" -iname "$SEARCH_NAME".desktop -print 2>/dev/null)
           if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
-          # 3. Datei mit Paketnamen im System-Ordner suchen
+          # 1.3. Datei mit Paketnamen im System-Ordner suchen
           SEARCH_RESULT_TMP=$(find /usr/share/applications/ -iname "$SEARCH_NAME".desktop -print 2>/dev/null)
           if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
-          # 4. Datei mit Paketnamen im Snap-Ordner suchen
+          # 1.4. Datei mit Paketnamen im Snap-Ordner suchen
           if [ -d "/var/lib/snapd/desktop/applications" ];
           then
             SEARCH_RESULT_TMP=$(find /var/lib/snapd/desktop/applications -iname "$SEARCH_NAME".desktop -print 2>/dev/null)
@@ -2882,34 +2957,62 @@ function copy_starter_to_desktop () {
           fi
 
           # -------------------------------------------------------------------
-          # Paketname kommt in Datei vor --------------------------------------
+          # 2. Paketname kommt in Datei vor -----------------------------------
           # -------------------------------------------------------------------
-          # 5. Auftreten des Paketnamens an relevanten Stellen innerhalb der Dateien im Benutzer-Ordner suchen
+          # 2.1. Auftreten des Paketnamens innerhalb der Dateien im Benutzer-Ordner suchen
+          # ALT: SEARCH_RESULT_TMP=$(find "$USER_HOME_DIR"/.local/share/applications -type f -iname "*.desktop" -exec grep -i -l -o -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" {} \;)
+          # Schneller, da ohnehin sämtliche Dateien in diesem Ordner durchsucht werden mit:
           SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" "$USER_HOME_DIR"/.local/share/applications/* 2>/dev/null)
           if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
-          # 6. Auftreten des Paketnamens an relevanten Stellen innerhalb der Dateien im System-Ordner suchen
+          # 2.2. Auftreten des Paketnamens innerhalb der Dateien im System-Ordner suchen
+          # ALT: SEARCH_RESULT_TMP=$(find /usr/share/applications -type f -iname "*.desktop" -exec grep -i -l -o -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" {} \;)
+          # Schneller, da ohnehin sämtliche Dateien in diesem Ordner durchsucht werden mit:
           SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" /usr/share/applications/* 2>/dev/null)
           if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
-          # 7. Auftreten des Paketnamens an spezifischen Stellen innerhalb der Dateien im System-Ordner suchen
+          # 2.3. Auftreten des Paketnamens innerhalb der Dateien im System-Ordner suchen
+          # ALT: SEARCH_RESULT_TMP=$(find /usr/share/applications -type f -iname "*.desktop" -exec grep -i -l -o -E "(X-Ubuntu-Gettext-Domain)=\b$SEARCH_NAME\b" {} \;)
+          # Schneller, da ohnehin sämtliche Dateien in diesem Ordner durchsucht werden mit:
           SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "(X-Ubuntu-Gettext-Domain)=\b$SEARCH_NAME\b" /usr/share/applications/* 2>/dev/null)
           if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
-          # 8. Auftreten des Paketnamens an relevanten Stellen innerhalb der Dateien im Snap-Ordner suchen
+          # 2.4. Auftreten des Paketnamens innerhalb der Dateien im Snap-Ordner suchen
           if [ -d "/var/lib/snapd/desktop/applications" ];
           then
-            SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" /var/lib/snapd/desktop/applications/* 2>/dev/null)
+            # Bei Snaps liegen die Starter nicht alle in einem separaten Ordner, sondern
+            # zusammen mit diversen Binärdateien unter einem Pfad. Daher wird dem grep hier
+            # ein find vorangestellt, um nur die .desktop-Dateien durchsuchen zu müssen.
+            # ALT: SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" /var/lib/snapd/desktop/applications/* 2>/dev/null)
+            SEARCH_RESULT_TMP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -exec grep -i -l -o -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" {} \;)
+            if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
+            # ALT: SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "(X-SnapInstanceName)=\b$SEARCH_NAME\b" /var/lib/snapd/desktop/applications/* 2>/dev/null)
+            SEARCH_RESULT_TMP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -exec grep -i -l -o -E "(X-SnapInstanceName)=\b$SEARCH_NAME\b" {} \;)
             if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
           fi
 
-          # 9. Auftreten des Paketnamens an spezifischen Stellen innerhalb der Dateien im System-Ordner suchen
-          SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "(X-SnapInstanceName)=\b$SEARCH_NAME\b" /var/lib/snapd/desktop/applications/* 2>/dev/null)
-          if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
+          # 2.5. Auftreten des Paketnamens innerhalb der Dateien im Flatpak-Ordner suchen
+          if [ -d "/var/lib/flatpak/app" ];
+          then
+            # Bei Flatpaks heißen die Starter wie der Referenz-Text der Pakete.
+            # Blöderweise gibt es davon gleich mehrere, von denen aber nicht alle
+            # funktionieren, weil diese nur den Paketnamen ohne den erforderlichen
+            # vollständigen Aufruf per flatpak-Kommando beinhalten!
+            THE_FLATPAK_REF_STRING=$(get_pkg_flatpak_reference ${SEARCH_NAME} 1)
+            if [ "$THE_FLATPAK_REF_STRING" != "" ];
+            then
+              # Bei Flatpaks liegen die Starter nicht alle in einem separaten Ordner, sondern
+              # zusammen mit diversen Binärdateien unter einem Pfad. Daher wird dem grep hier
+              # ein find vorangestellt, um nur die .desktop-Dateien durchsuchen zu müssen.
+              # ALT: SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^\s*exec\s*=\s*(/usr/bin/flatpak)*(.)*$THE_FLATPAK_REF_STRING" /var/lib/flatpak/app/* 2>/dev/null)
+              SEARCH_RESULT_TMP=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -exec grep -i -l -o -E "^\s*exec\s*=\s*(/usr/bin/flatpak)*(.)*$THE_FLATPAK_REF_STRING" {} \;)
+              if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
+            fi
+          fi
 
-          # -------------------------------------------------------------------
-          # 10. Dateinamen aus vordefinierter Liste in PKG_ICON_LIST verwenden
-          # -------------------------------------------------------------------
+          # ------------------------------------------------------------------
+          # 3. Dateinamen aus vordefinierter Liste in PKG_ICON_LIST verwenden
+          # ------------------------------------------------------------------
           tmp_list=${PKG_ICON_LIST[$SEARCH_NAME]};
           if [ "$tmp_list" != "" ]
           then
@@ -2940,7 +3043,8 @@ function copy_starter_to_desktop () {
           # -------------------------------------------------------------------
           if [ ${#ICON_LIST_ARRAY[@]} -gt 0 ];
           then
-            # Extra-Verzeichnis prüfen und ggf. anlegen
+
+            # Extra-Ordner prüfen und ggf. anlegen
             if [ "${PKG_ICON_XDIR[$SEARCH_NAME]}" != "" ];
             then
               ICON_TARGET_DIR+="/${PKG_ICON_XDIR[$SEARCH_NAME]}"
@@ -2957,6 +3061,35 @@ function copy_starter_to_desktop () {
                 fi
               fi
             fi
+
+            # Zusätzliche Unterordner prüfen und ggf. anlegen
+            if [ ${OPTION_FLAG[csubdirs]} -eq 1 ];
+            then
+              for sub_folder in ${GAME_DIR_CAT_LIST[@]};
+              do
+                for paket_for_folder in ${GAME_DIR_SUB_LIST[$sub_folder]};
+                do
+                  if [ "$paket_for_folder" == "$SEARCH_NAME" ];
+                  then
+                    ICON_TARGET_DIR+="/${GAME_DIR_SUB_NAME[$sub_folder]}"
+                    if [ ! -d "$ICON_TARGET_DIR" ];
+                    then
+                      ORG_ICON_TARGET_DIR="$ICON_TARGET_DIR"
+                      mkdir "$ICON_TARGET_DIR" &>/dev/null
+                      if [ $? -eq 0 ];
+                      then
+                        chown -R "$USER_USERNAME:$USER_USERNAME" "$ICON_TARGET_DIR" &>/dev/null
+                        chmod -R 0755 "$ICON_TARGET_DIR" &>/dev/null
+                      else
+                        ICON_TARGET_DIR="$ORG_ICON_TARGET_DIR"
+                      fi
+                    fi
+                    break
+                  fi
+                done
+              done
+            fi
+
             LAST_BASE_NAME=""
             for desktop_file in ${ICON_LIST_ARRAY[@]};
             do
@@ -3259,6 +3392,8 @@ function extend_repo_ppa () {
 #            3 = Ordner mit ausführbaren Dateien in /opt gefunden
 #            4 = Ordner mit ausführbaren Dateien in /home/USER/apps gefunden
 #            5 = Ordner mit ausführbaren Dateien in /usr/share gefunden
+#            6 = installiert als Flatpak-Paket
+#
 # ACHTUNG: Der Rückgabewert entspricht NICHT dem INSTALL_MODE!
 ###############################################################################
 function get_install_status () {
@@ -3368,7 +3503,22 @@ function get_install_status () {
       fi
     fi
   fi
+  # -------------------------------------------
+  # 6. Prüfen ob als Flatpak-Paket installiert
+  # -------------------------------------------
+  if [ $PKG_INSTALL_STATUS -eq 0 ] &&
+     [ $FLATPAK_INSTALLED -ne 0 ] &&
+     [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
+  then
+    if [ $(grep -c -i -P "^${1//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST}) -gt 0 ];
+    then
+      PKG_INSTALL_STATUS=6
+      TMP_FLATPAK_VERSION=$(grep -i -P "^${1//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 2)
+      PKG_VERSION=$(clean_pkg_version "$TMP_FLATPAK_VERSION")
+    fi
+  fi
   # -----------------------------------------------------------------
+
   return $PKG_INSTALL_STATUS
 }
 
@@ -3594,6 +3744,48 @@ function get_pkg_snap_version () {
 }
 
 ###############################################################################
+# Funktion zur Ermittlung einer Paket-Version als Flatpak (FLAT)
+###############################################################################
+function get_pkg_flatpak_version () {
+  INFO_TYPE=$2 # 0 = verfügbare Version, 1 = installierte Version ermitteln
+  if [ $INFO_TYPE -eq 0 ];
+  then
+    if [ -s "$THE_FLATPAK_REMOTE_LIST" ];
+    then
+      TMP_FLATPAK_VERSION=$(grep -i -P "^${1//_/ }\t" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 2)
+    fi
+  else
+    if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
+    then
+      TMP_FLATPAK_VERSION=$(grep -i -P "^${1//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 2)
+    fi
+  fi
+  THE_FLAT_PKG_VERSION=$(clean_pkg_version "$TMP_FLATPAK_VERSION")
+  echo -e "$THE_FLAT_PKG_VERSION"
+}
+
+###############################################################################
+# Funktion zur Ermittlung des Referenz-Strings eines Flatpaks
+###############################################################################
+function get_pkg_flatpak_reference () {
+  INFO_TYPE=$2
+  # 0 = verfügbare Version mit Architektur
+  # 1 = installierte Version ohne Architektur
+  if [ $INFO_TYPE -eq 0 ];
+  then
+    if [ -s "$THE_FLATPAK_REMOTE_LIST" ];
+    then
+      echo -e $(grep -i -P "^${1//_/ }\t" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 3)
+    fi
+  else
+    if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
+    then
+      echo -e $(grep -i -P "^${1//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 3 | cut -d'/' -f 1 | xargs)
+    fi
+  fi
+}
+
+###############################################################################
 # Funktion zur Ermittlung einer Paket-Version einer ausführbaren Datei (WEB)
 ###############################################################################
 function get_pkg_web_version () {
@@ -3797,32 +3989,72 @@ function install_pkg () {
     # ------------------------
     # NEU (mit AUTO_ADD_PKGS)
     # ------------------------
-    BASE_PACK_FOUND=0
+    PRE_REQ_PKG_NAME=""
+    PRE_REQ_PKG_INST_STATUS=0
+    # Wenn das zu installierende Paket selbst ein Basispaket ist, zu dem
+    # genau ein anderes Paket vorher installiert werden soll (bspw. -data),
+    # dann das vorher zu installierende Paket prüfen.
     for base_pack in ${!AUTO_ADD_PKGS[@]};
     do
-      if [ $BASE_PACK_FOUND -eq 0 ];
+      if [ "$base_pack" == "$PAKET" ];
       then
-      BASE_PACK_ADD_LIST="${AUTO_ADD_PKGS[$base_pack]}"
-      for add_pack in ${BASE_PACK_ADD_LIST};
-      do
-        if [ "$PAKET" == "$add_pack" ] &&
-           [ "${AUTO_ADD_PPOS[$base_pack]}" != "true" ];
+        if [ "${AUTO_ADD_PPOS[$base_pack]}" == "true" ];
         then
-          ORG_PKG_VERSION="$PKG_VERSION"
-          get_install_status "$base_pack"
-          if [ $? -eq 0 ];
+          PRE_REQ_ADD_LIST="${AUTO_ADD_PKGS[$base_pack]}"
+          if [ ${#PRE_REQ_ADD_LIST[@]} -eq 1 ];
           then
-            SKIP_THIS=1
-            # SKIP_REASON=" (unerfüllte Abhängigkeit)"
-            SKIP_REASON=" (${light_cyan}$base_pack${colors_off} ist nicht installiert)"
+            PRE_REQ_PKG_NAME=${PRE_REQ_ADD_LIST[0]}
+            ORG_PKG_VERSION="$PKG_VERSION"
+            get_install_status "$PRE_REQ_PKG_NAME"
+            PRE_REQ_PKG_INST_STATUS=$?
+            PKG_VERSION="$ORG_PKG_VERSION"
           fi
-          PKG_VERSION="$ORG_PKG_VERSION"
-          BASE_PACK_FOUND=1
-          break
         fi
-      done
       fi
     done
+    BASE_PKG_NAME=""
+    BASE_PKG_INST_STATUS=0
+    # Wenn das zu installierende Paket ein Basispaket hat, welches vorher
+    # installiert werden soll, dann den Status dieses Basispaketes prüfen.
+    for base_pack in ${!AUTO_ADD_PKGS[@]};
+    do
+      if [ "${AUTO_ADD_PPOS[$base_pack]}" != "true" ];
+      then
+        if [ "$BASE_PKG_NAME" == "" ];
+        then
+          BASE_PKG_ADD_LIST="${AUTO_ADD_PKGS[$base_pack]}"
+          for add_pack in ${BASE_PKG_ADD_LIST};
+          do
+            if [ "$PAKET" == "$add_pack" ];
+            then
+              BASE_PKG_NAME="$base_pack"
+              ORG_PKG_VERSION="$PKG_VERSION"
+              get_install_status "$BASE_PKG_NAME"
+              BASE_PKG_INST_STATUS=$?
+              if [ $BASE_PKG_INST_STATUS -eq 0 ];
+              then
+                SKIP_THIS=1
+                SKIP_REASON=" (${light_cyan}$base_pack${colors_off} ist nicht installiert)"
+              fi
+              PKG_VERSION="$ORG_PKG_VERSION"
+              break
+            fi
+          done
+        fi
+      fi
+    done
+
+# TODO
+# Wenn ein Basispaket zu diesem Paket als STD/DEB/WEB installiert ist, als Erweiterung ebenfalls nur STD/DEB/WEB anbieten
+# Wenn ein Basispaket zu diesem Paket als SNAP installiert ist, als Erweiterung ebenfalls nur SNAP anbieten1
+# Wenn ein Basispaket zu diesem Paket als FLAT installiert ist, als Erweiterung ebenfalls nur FLAT anbieten
+# Wenn das Basispaket nicht installiert ist, aber das zu installierende Paket ein SNAP oder FLAT ist, dann dieses trotzdem anbieten
+# echo -e "---"
+# echo -e "PRE_REQ_PKG_NAME: $PRE_REQ_PKG_NAME"
+# echo -e "PRE_REQ_PKG_STAT: $PRE_REQ_PKG_INST_STATUS"
+# echo -e "BASE_PKG_NAME:    $BASE_PKG_NAME"
+# echo -e "BASE_PKG_STAT:    $BASE_PKG_INST_STATUS"
+# echo -e "---"
 
     # ----------------------------------------------------------------
     # Nur weitermachen, wenn das Paket nicht übersprungen werden soll
@@ -3847,7 +4079,7 @@ function install_pkg () {
       # also bevorzugt als Snap zu installieren ist
       # ----------------------------------------------------------
       FORCE_THIS_SNAPPY=0
-      if [ ${OPTION_FLAG[nosnap]} -eq 0 ] &&
+      if [ ${OPTION_FLAG[addsnap]} -eq 1 ] &&
          [ $SNAP_INSTALLED -ne 0 ] &&
          [ ${#FORCE_SNAPPY_LIST[@]} -ne 0 ];
       then
@@ -3856,6 +4088,25 @@ function install_pkg () {
           if [ "$PAKET" = "$snap_this_pkg" ];
           then
             FORCE_THIS_SNAPPY=1
+            break
+          fi
+        done
+      fi
+
+      # ----------------------------------------------------------
+      # Prüfen ob das Paket in der Force-Flatpak-Liste enthalten
+      # ist, also bevorzugt als Flatpak zu installieren ist
+      # ----------------------------------------------------------
+      FORCE_THIS_FLATPAK=0
+      if [ ${OPTION_FLAG[addflat]} -eq 1 ] &&
+         [ $FLATPAK_INSTALLED -ne 0 ] &&
+         [ ${#FORCE_FLATPAK_LIST[@]} -ne 0 ];
+      then
+        for flatpak_this_pkg in ${FORCE_FLATPAK_LIST[@]};
+        do
+          if [ "$PAKET" = "$flatpak_this_pkg" ];
+          then
+            FORCE_THIS_FLATPAK=1
             break
           fi
         done
@@ -3881,9 +4132,10 @@ function install_pkg () {
       # -------------------------------------------------------------
       # 1.1. Prüfen ob Paket im Standard-Repository (oder im zweiten
       #      Durchlauf mit erweitertem Repository) verfügbar ist,
-      #      sofern nicht Snap- oder externe Pakete bevorzugt werden
+      #      sofern nicht ein anderes Paketformat bevorzugt wird
       # -------------------------------------------------------------
       if [ $FORCE_THIS_SNAPPY -eq 0 ] &&
+         [ $FORCE_THIS_FLATPAK -eq 0 ] &&
          [ $FORCE_THIS_EXTERN -eq 0 ];
       then
         if [ $(apt list "$PAKET" -a 2>/dev/null | grep -i -E "$PAKET" | grep -i -c -E "$ARCHITECTURE_ALL") -gt 0 ];
@@ -3897,7 +4149,7 @@ function install_pkg () {
       # 1.2. Prüfen ob das Programmpaket als Snap-Paket verfügbar ist (SNAP)
       #      (Bei Aufruf von install_pkg nach Erweiterung der Repos auslassen)
       # -----------------------------------------------------------------------
-      if [ ${OPTION_FLAG[nosnap]} -eq 0 ] &&
+      if [ ${OPTION_FLAG[addsnap]} -eq 1 ] &&
          [ $SNAP_INSTALLED -ne 0 ] &&
          [ "$LAST_ERW_PACK" = "" ] &&
          [ "$LAST_PPA_PACK" = "" ];
@@ -3910,13 +4162,30 @@ function install_pkg () {
         fi
       fi
 
+      # -----------------------------------------------------------------------
+      # 1.3. Prüfen ob das Programmpaket als Flatpak-Paket verfügbar ist (FLAT)
+      #      (Bei Aufruf von install_pkg nach Erweiterung der Repos auslassen)
+      # -----------------------------------------------------------------------
+      if [ ${OPTION_FLAG[addflat]} -eq 1 ] &&
+         [ $FLATPAK_INSTALLED -ne 0 ] &&
+         [ "$LAST_ERW_PACK" = "" ] &&
+         [ "$LAST_PPA_PACK" = "" ];
+      then
+        if [ $(grep -c -i -P "^${PAKET//_/ }\t" ${THE_FLATPAK_REMOTE_LIST}) -gt 0 ];
+        then
+          INST_MODE_LIST+=",6"
+          INSTALL_MODE=6
+        fi
+      fi
+
       if [ $FORCE_THIS_SNAPPY -eq 0 ] &&
+         [ $FORCE_THIS_FLATPAK -eq 0 ] &&
          [ $FORCE_THIS_EXTERN -eq 0 ];
       then
         # -----------------------------------------------------------------------
-        # 1.3. Prüfen ob es für das Paket Eintragungen zur Erweiterung des Repo
-        #      gibt, diese ggf. durchführen und install_pkg neu aufrufen (ERW),
-        #      sofern nicht Snap- oder externe Pakete bevorzugt werden
+        # 1.4.1. Prüfen ob es für das Paket Eintragungen zur Erweiterung des
+        #        Repo gibt (ERW), diese durchführen und install_pkg neu aufrufen
+        #        sofern nicht eine andere Paketverwaltung bevorzugt wird
         # -----------------------------------------------------------------------
         if [ ${OPTION_FLAG[norepo]} -eq 0 ] &&
            [ "$LAST_ERW_PACK" != "$PAKET" ];
@@ -3936,8 +4205,8 @@ function install_pkg () {
           fi
         fi
         # -----------------------------------------------------------------------
-        # 1.4. Prüfen ob es für das Paket Eintragungen zur Erweiterung des Repo
-        #      gibt, diese ggf. durchführen und install_pkg neu aufrufen (PPA)
+        # 1.4.2. Prüfen ob es für das Paket Eintragungen zur Erweiterung des
+        #        Repo gibt (PPA), diese durchführen und install_pkg neu aufrufen
         # -----------------------------------------------------------------------
         if [ ${OPTION_FLAG[norepo]} -eq 0 ] &&
            [ "$LAST_PPA_PACK" != "$PAKET" ];
@@ -4065,12 +4334,13 @@ function install_pkg () {
 
       # -------------------------------------------------------------
       # 1.7. Prüfen ob Paket im Standard-Repository vorhanden ist,
-      #      sofern Snap- oder externe Pakete bevorzugt wurden,
+      #      sofern ein anderes Paketformat bevorzugt wurde,
       #      aber kein solches Paket gefunden wurde
       # -------------------------------------------------------------
       if [ $INSTALL_MODE -eq 0 ];
       then
         if [ $FORCE_THIS_SNAPPY -ne 0 ] ||
+           [ $FORCE_THIS_FLATPAK -ne 0 ] ||
            [ $FORCE_THIS_EXTERN -ne 0 ];
         then
           if [ $(apt list "$PAKET" -a 2>/dev/null | grep -i -E "$PAKET" | grep -i -c -E "$ARCHITECTURE_ALL") -gt 0 ];
@@ -4409,7 +4679,45 @@ function install_pkg () {
                   ((PAKETS_SKIP+=1))
                   ((PAKETS_NOAVAIL-=1))
                 fi
-              fi
+              fi  # Ende INSTALL_MODE 2 (Snap)
+
+              # -----------------------------------------------------------------
+              # Installation mit flatpak
+              # -----------------------------------------------------------------
+              if [ $INSTALL_MODE -eq 6 ];
+              then
+                if [ ${OPTION_FLAG[quiet]} -eq 1 ];
+                then
+                  echo -n '\n\n\n' | flatpak install $(get_pkg_flatpak_reference ${PAKET} 0) --noninteractive -y &>"$LOG_TEMP"
+                  INSTALL_RESULT=$?
+                else
+                  { flatpak install $(get_pkg_flatpak_reference ${PAKET} 0) --noninteractive -y 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; } | tee "$LOG_TEMP"
+                  INSTALL_RESULT=$(cat "$LAST_EXIT_CODE")
+                  remove_file "$LAST_EXIT_CODE"
+                fi
+                if [ ${OPTION_FLAG[quiet]} -eq 1 ];
+                then
+                  if [ $INSTALL_RESULT -eq 0 ];
+                  then
+                    e_and_l "$OK_TAG"
+                  else
+                    e_and_l "$ERROR_TAG"
+                  fi
+                else
+                  if [ $INSTALL_RESULT -eq 0 ];
+                  then
+                    do_log "$OK_TAG"
+                  else
+                    do_log "$ERROR_TAG"
+                  fi
+                fi
+                # Interne Liste der installierten Flatpak-Pakete aktualisieren
+                if [ $INSTALL_RESULT -eq 0 ];
+                then
+                  flatpak list --app --columns=name,version,ref > "$THE_FLATPAK_INSTALLED_LIST" 2>/dev/null
+                fi
+                add_full_log
+              fi # Ende INSTALL_MODE 6 (Flatpak)
 
               # -----------------------------------------------------------------
               # Download einer Datei zum Installieren oder Entpacken / Kopieren
@@ -4868,10 +5176,11 @@ function install_pkg () {
           if [ ${#INST_MODE_LIST} -eq 3 ]; # "0,n" z.B. "0,2"
           then
             case $INSTALL_MODE in
-              1) PKG_VERSION=$(get_pkg_apt_version  "$PAKET" 0) ;;
-              2) PKG_VERSION=$(get_pkg_snap_version "$PAKET" 0) ;;
-              3) PKG_VERSION=$(get_pkg_deb_version  "$PAKET")   ;;
-              4) PKG_VERSION=$(get_pkg_web_version  "$PAKET")   ;;
+              1) PKG_VERSION=$(get_pkg_apt_version  "$PAKET" 0)    ;;
+              2) PKG_VERSION=$(get_pkg_snap_version "$PAKET" 0)    ;;
+              3) PKG_VERSION=$(get_pkg_deb_version  "$PAKET")      ;;
+              4) PKG_VERSION=$(get_pkg_web_version  "$PAKET")      ;;
+              6) PKG_VERSION=$(get_pkg_flatpak_version "$PAKET" 0) ;;
             esac
             if [ "$PKG_VERSION" != "" ] &&
                [ "$PKG_VERSION" != "0" ];
@@ -4901,6 +5210,7 @@ function install_pkg () {
                   IMODE_MSG+=" für ${light_purple}$PKG_FOREIGN_ARCH${colors_off}"
                 fi
                 ;;
+              6) IMODE_MSG+=" als ${light_purple}Flatpak${colors_off}" ;;
             esac
           fi
           # -----------------------------------------
@@ -4948,6 +5258,7 @@ function install_pkg () {
         2) IMODE_MSG+="als ${light_purple}Snap${colors_off}" ;;
       3|4) IMODE_MSG+="in ${light_purple}$THE_PKG_INST_DIR${colors_off}" ;;
         5) IMODE_MSG+="in ${light_purple}$THE_PKG_INST_DIR${colors_off}" ;;
+        6) IMODE_MSG+="als ${light_purple}Flatpak${colors_off}" ;;
     esac
     e_and_l "$IMODE_MSG installiert"
 
@@ -5041,17 +5352,28 @@ function remove_cfg () {
   # Betroffene Ordner und Dateien ermitteln und daraus eine Liste erstellen ---
   REMOVE_ITEM_LIST="$DOWNLOAD_DIR/remove_config_list"
   echo -e -n "" > "$REMOVE_ITEM_LIST"
-  if [ $INST_STATUS -eq 2 ] ||
-     [ $2 -eq 1 ];
+  # Alles außer Flatpak
+  if [ $INST_STATUS -ne 6 ];
   then
-    find ${USER_HOME_DIR} -iname "$1" -type d,f 2>/dev/null | grep -i -E "snap\/" >> "$REMOVE_ITEM_LIST"
-    find ${USER_HOME_DIR} -iname ".$1" -type d,f 2>/dev/null | grep -i -E "snap\/" >> "$REMOVE_ITEM_LIST"
+    if [ $INST_STATUS -eq 2 ] ||
+       [ $2 -eq 1 ];
+    then
+      find ${USER_HOME_DIR} -iname "$1" -type d,f 2>/dev/null | grep -i -E "snap\/" >> "$REMOVE_ITEM_LIST"
+      find ${USER_HOME_DIR} -iname ".$1" -type d,f 2>/dev/null | grep -i -E "snap\/" >> "$REMOVE_ITEM_LIST"
+    fi
+    if [ $INST_STATUS -ne 2 ] ||
+       [ $2 -eq 1 ];
+    then
+      find ${USER_HOME_DIR} -iname "$1" -type d,f 2>/dev/null | grep -v -i -E "snap\/" >> "$REMOVE_ITEM_LIST"
+      find ${USER_HOME_DIR} -iname ".$1" -type d,f 2>/dev/null | grep -v -i -E "snap\/" >> "$REMOVE_ITEM_LIST"
+    fi
   fi
-  if [ $INST_STATUS -ne 2 ] ||
-     [ $2 -eq 1 ];
+  # Flatpak
+  if [ $INST_STATUS -eq 6 ];
   then
-    find ${USER_HOME_DIR} -iname "$1" -type d,f 2>/dev/null | grep -v -i -E "snap\/" >> "$REMOVE_ITEM_LIST"
-    find ${USER_HOME_DIR} -iname ".$1" -type d,f 2>/dev/null | grep -v -i -E "snap\/" >> "$REMOVE_ITEM_LIST"
+    THE_FLATPAK_REF_STRING=$(get_pkg_flatpak_reference $1 1)
+    find ${USER_HOME_DIR} -iname "$THE_FLATPAK_REF_STRING" -type d,f 1>>"$REMOVE_ITEM_LIST" 2>/dev/null
+    find ${USER_HOME_DIR} -iname ".$THE_FLATPAK_REF_STRING" -type d,f 1>>"$REMOVE_ITEM_LIST" 2>/dev/null
   fi
   echo -e "$FERTIG_TAG"
   do_remove_items 0
@@ -5085,7 +5407,14 @@ function remove_dat () {
 #   done
 #   e_and_l "$SEARCH_METHOD"
 # -----------------------------------------------------------------------------
-  find / -iname "*$1*" -type d,f 1>>"$REMOVE_ITEM_LIST" 2>/dev/null
+  if [ $INST_STATUS -eq 6 ];
+  then
+    THE_SEARCH_STRING=$(get_pkg_flatpak_reference $1 1)
+  else
+    THE_SEARCH_STRING="$1"
+  fi
+# -----------------------------------------------------------------------------
+  find / -iname "*$THE_SEARCH_STRING*" -type d,f 1>>"$REMOVE_ITEM_LIST" 2>/dev/null
 # -----------------------------------------------------------------------------
 #   if [ "$SEARCH_METHOD" = "i" ] ||
 #      [ "$SEARCH_METHOD" = "I" ];
@@ -5334,8 +5663,13 @@ function do_revive_items () {
 # Funktion zum Löschen der Starter / Desktopsymbole eines Programmpakets
 ###############################################################################
 function remove_ico {
-  THE_PKG_REAL_NAME="$1"
-  do_log " Lösche Starter zu $THE_PKG_REAL_NAME"
+  if [ $INST_STATUS -eq 6 ];
+  then
+    THE_PKG_REAL_NAME=$(get_pkg_flatpak_reference $1 1)
+  else
+    THE_PKG_REAL_NAME="$1"
+  fi
+  do_log " Lösche Starter zu $1"
   # Starter mit dem gleichen Dateinamen wie das Programm selbst
   remove_file "/usr/share/applications/$THE_PKG_REAL_NAME.desktop"
   find "$USER_HOME_DIR" -type f -iname "$THE_PKG_REAL_NAME.desktop" -delete &>"$LOG_TEMP"
@@ -5359,8 +5693,10 @@ function remove_pkg () {
   THE_PKG_REAL_NAME="$1"
   THE_REMOVE_MODE=$2 # 0 = einfaches entfernen, 1 = entfernen mit purge
   e_and_l -n " Löschen von ${bold_yellow}$THE_PKG_REAL_NAME${colors_off} ... "
+
   # ----------------------------
   # Mit apt installierte Pakete
+  # ----------------------------
   if [ $INST_STATUS -eq 1 ];
   then
     e_and_l ""
@@ -5372,8 +5708,10 @@ function remove_pkg () {
     fi
     REMOVE_RESULT=$(cat "$LAST_EXIT_CODE")
   fi
+
   # -----------------------------
   # Als Snap installierte Pakete
+  # -----------------------------
   if [ $INST_STATUS -eq 2 ];
   then
     e_and_l ""
@@ -5385,9 +5723,13 @@ function remove_pkg () {
     fi
     REMOVE_RESULT=$(cat "$LAST_EXIT_CODE")
   fi
+
   # ---------------------------------------------------------
-  # In /opt oder dem Benutzerverzeichnis gespeicherte Pakete
-  if [ $INST_STATUS -gt 2 ];
+  # In /opt oder dem Benutzer-Ordner gespeicherte Pakete
+  # ---------------------------------------------------------
+  if [ $INST_STATUS -eq 3 ] ||
+     [ $INST_STATUS -eq 4 ] ||
+     [ $INST_STATUS -eq 5 ];
   then
     # Dateien und Paket-Ordner in /opt löschen
     REMOVE_OPT_RESULT=0
@@ -5449,6 +5791,18 @@ function remove_pkg () {
       e_and_l "$ERROR_TAG"
     fi
   fi
+
+  # --------------------------------
+  # Als Flatpak installierte Pakete
+  # --------------------------------
+  if [ $INST_STATUS -eq 6 ];
+  then
+    e_and_l ""
+    { flatpak uninstall $(get_pkg_flatpak_reference ${THE_PKG_REAL_NAME} 1) --noninteractive -y 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; } | tee "$LOG_TEMP"
+    REMOVE_RESULT=$(cat "$LAST_EXIT_CODE")
+  fi
+  # --------------------------------
+
   add_full_log
   remove_file "$LAST_EXIT_CODE"
 }
@@ -5819,22 +6173,22 @@ do
   ((ARG_POS+=1))
   if [ "$arg" = "instonly" ];
   then
-    INST_ONLY_PKG=$(echo "${!ARG_POS}" | sed -E 's/[^A-Za-z0-9\.\_\-]//g' | tr A-Z a-z | xargs)
+    INST_ONLY_PKG=$(echo "${!ARG_POS}" | tr A-Z a-z | sed -E 's/[^a-z0-9\.\_\-]//g' | xargs)
   fi
 done
-# -------------------------------------------------------------
+# ----------------------------------------------------------
 # 2.2 Ermitteln ob ein einzelnes Paket entfernt werden soll
-# -------------------------------------------------------------
+# ----------------------------------------------------------
 ARG_POS=1
 OPTION_FLAG[remove]=0
 REMOVE_PKG_NAME=""
 for arg in ${ARGUMENT_LIST[@]};
 do
-  # Erstes Argument hinter "remove" als zu installierendes Paket ermitteln
+  # Erstes Argument hinter "remove" als zu entfernendes Paket ermitteln
   ((ARG_POS+=1))
   if [ "$arg" = "remove" ];
   then
-    REMOVE_PKG_NAME=$(echo "${!ARG_POS}" | sed -E 's/[^A-Za-z0-9\.\_\-]//g' | tr A-Z a-z | xargs)
+    REMOVE_PKG_NAME=$(echo "${!ARG_POS}" | tr A-Z a-z | sed -E 's/[^a-z0-9\.\_\-]//g' | xargs)
     if [ "$REMOVE_PKG_NAME" != "" ];
     then
       OPTION_FLAG[remove]=1
@@ -6192,7 +6546,9 @@ EOF
           NEW_INST_ONLY=$(dialog --backtitle "$MENU_TITLE" --no-mouse --no-lines --no-shadow --colors --inputbox "Name des zu installierenden Pakets:" 8 50 "$INST_ONLY_PKG" 3>&1 1>&2 2>&3)
           if [ $? -eq 0 ];
           then
-            INST_ONLY_PKG=$(echo "$NEW_INST_ONLY" | tr A-Z a-z | sed -E 's/[^a-z0-9\.\_\-]//g' | xargs)
+            # Flatpak-Paketnamen können Leerzeichen enthalten,
+            # Leerzeichen daher als Eingabe erlauben und maskieren
+            INST_ONLY_PKG=$(echo "$NEW_INST_ONLY" | tr A-Z a-z | sed -E 's/[^a-z0-9\.\_\-\ ]//g' | sed -E 's/\ /\_/g' | xargs)
             if [ "$INST_ONLY_PKG" != "" ];
             then
               OPTION_FLAG[instonly]=1
@@ -6256,7 +6612,7 @@ EOF
           NEW_REMOVE_PKG=$(dialog --backtitle "$MENU_TITLE" --no-mouse --no-lines --no-shadow --colors --inputbox "Name des zu löschenden Pakets:" 8 50 "$REMOVE_PKG_NAME" 3>&1 1>&2 2>&3)
           if [ $? -eq 0 ];
           then
-            REMOVE_PKG_NAME=$(echo "$NEW_REMOVE_PKG" | tr A-Z a-z | sed -E 's/[^a-z0-9\.\_\-]//g' | xargs)
+            REMOVE_PKG_NAME=$(echo "$NEW_REMOVE_PKG" | tr A-Z a-z | sed -E 's/[^a-z0-9\.\_\-\ ]//g' | sed -E 's/\ /\_/g' | xargs)
             if [ "$REMOVE_PKG_NAME" != "" ];
             then
               OPTION_FLAG[remove]=1
@@ -6381,9 +6737,9 @@ EOF
       if [ ${OPTION_FLAG[status]} -eq 0 ];
       then
         if [[ ${KATEGORIE_FLAG[gx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "GNOME" ]] ||
-           [[ ${KATEGORIE_FLAG[lx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "LXDE"  ]] ||
-           [[ ${KATEGORIE_FLAG[mt]} -eq 1 && $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -eq 0  ]] ||
-           [[ ${KATEGORIE_FLAG[mx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "MATE"  ]];
+           [[ ${KATEGORIE_FLAG[lx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "LXDE" ]] ||
+           [[ ${KATEGORIE_FLAG[mt]} -eq 1 && $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -eq 0 ]] ||
+           [[ ${KATEGORIE_FLAG[mx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "MATE" ]];
         then
           MENU_INFO_TEXT="\Z1\ZbWarnung\Zn: Es wurden Tool-Pakete ausgewählt, die nicht für diesen Desktop vorgesehen sind."
         fi
@@ -6524,7 +6880,11 @@ then
 fi
 
 # Ab GNOME 3 keine Icons mehr auf dem Desktop erstellen
-if [ $GNOME_PLATFORM -gt 2 ]; then OPTION_FLAG[addicons]=0; fi
+if [ $GNOME_PLATFORM -gt 2 ];
+then
+  OPTION_FLAG[addicons]=0
+  OPTION_FLAG[csubdirs]=0
+fi
 
 ###############################################################################
 # Log-Datei eröffnen und Kopfzeile anzeigen
@@ -6590,9 +6950,13 @@ then
   e_and_l " $HALF_LINE"
   e_and_l ""
   # --- OPTIONS START ---
-  e_and_l "  addicons  Erstellt Symbole (Icons) für alle Programmpakete der"
+  e_and_l "   addflat  Erlaubt die Auswahl und Installation von Flatpak-Paketen."
+  e_and_l ""
+  e_and_l "  addicons  Erstellt Symbole (Starter) für alle Programmpakete der"
   e_and_l "            ausgewählten Kategorien auf dem Desktop des Benutzers"
   e_and_l "            (wird bei GNOME-Desktops ab der Version 3 ignoriert)."
+  e_and_l ""
+  e_and_l "   addsnap  Erlaubt die Auswahl und Installation von Snap-Paketen."
   e_and_l ""
   e_and_l "  autoyorn  Alle Ja/Nein-Abfragen vor der Installation von Programmen"
   e_and_l "            und vor der Durchführung von Optionen werden automatisch"
@@ -6607,9 +6971,11 @@ then
   e_and_l "  cleantmp  Alle temporären Dateien von Lissy werden automatisch wieder"
   e_and_l "            gelöscht. Heruntergeladene Dateien wie Setups und Skripte"
   e_and_l "            sowie Listen bleiben hingegen zur Nachvollziehbarkeit auch"
-  e_and_l "            nach Ende des Programms im Download-Verzeichnis erhalten."
+  e_and_l "            nach Ende des Programms im Download-Ordner erhalten."
   e_and_l "            Bei Verwendung dieser Option werden auch diese Dateien"
-  e_and_l "            alle vollständig aus dem Download-Verzeichnis entfernt."
+  e_and_l "            alle vollständig aus dem Download-Ordner entfernt."
+  e_and_l ""
+  e_and_l "  csubdirs  Starter für Spiele mit Unterordnern weiter kategorisieren."
   e_and_l ""
   e_and_l "     dload  Stellt gespeicherte Desktop- und Anwendungs-Einstellungen"
   e_and_l "            aus einer Sicherung wieder her (dconf)."
@@ -6673,8 +7039,6 @@ then
   e_and_l "    norepo  Fügt dem Repository keine Einträge für externe Quellen"
   e_and_l "            hinzu und überspringt die Aktualisierung des Repository"
   e_and_l "            beim Start dieses Scriptes."
-  e_and_l ""
-  e_and_l "    nosnap  Unterbindet Auswahl und Installation von Snap-Paketen."
   e_and_l ""
   e_and_l "    notrim  Überspringt das Trimming der Festplatten wenn die Option"
   e_and_l "            optimize ausgewählt wurde."
@@ -7239,30 +7603,98 @@ then
 fi
 
 ###############################################################################
-# Die Snap-Verwaltung installieren, wenn noch nicht installiert aber verfügbar
+# Die Flatpak- und Snap-Verwaltung installieren, wenn noch nicht installiert
 ###############################################################################
-if [ $TOTAL_PACKS -gt 0 ] &&
-   [ ${OPTION_FLAG[nosnap]} -eq 0 ] &&
-   [ $SNAP_INSTALLED -eq 0 ] &&
-   [ $(apt list "snapd" 2>/dev/null | grep -i -c "snapd") -gt 0 ];
+if [ $TOTAL_PACKS -gt 0 ];
 then
-  e_and_l ""
-  e_and_l " $ACHTUNG_TAG: Die Snap-Paketverwaltung ist nicht installiert."
-  ask_yes_or_no "install_snap" " Die Snap-Paketverwaltung jetzt installieren"
-  if [ $? -eq 1 ];
+  # FLATPAK
+  if [ ${OPTION_FLAG[addflat]} -eq 1 ] &&
+     [ $FLATPAK_INSTALLED -eq 0 ] &&
+     [ $(apt list "flatpak" 2>/dev/null | grep -i -c "flatpak") -gt 0 ];
   then
-    e_and_l -n " Installiere die ${light_yellow}Snap-Paketverwaltung${colors_off}, bitte warten ... "
-    apt install "snapd" -y &>"$LOG_TEMP"
-    if [ $? -eq 0 ];
+    e_and_l ""
+    e_and_l " $ACHTUNG_TAG: Die Flatpak-Paketverwaltung ist nicht installiert."
+    ask_yes_or_no "install_flatpak" " Die Flatpak-Paketverwaltung jetzt installieren"
+    if [ $? -eq 1 ];
     then
-      SNAP_INSTALLED=1
-      e_and_l "$OK_TAG"
-    else
-      e_and_l "$ERROR_TAG"
+      e_and_l -n " Installiere die ${light_yellow}Flatpak-Paketverwaltung${colors_off}, bitte warten ... "
+      apt install flatpak -y &>"$LOG_TEMP"
+      if [ $? -eq 0 ];
+      then
+        FLATPAK_INSTALLED=1
+        e_and_l "$OK_TAG"
+      else
+        e_and_l "$ERROR_TAG"
+      fi
+      add_full_log
     fi
-    add_full_log
+    e_and_l ""
+    e_and_l "$FULL_LINE"
   fi
-  e_and_l ""
+  # SNAP
+  if [ ${OPTION_FLAG[addsnap]} -eq 1 ] &&
+     [ $SNAP_INSTALLED -eq 0 ] &&
+     [ $(apt list "snapd" 2>/dev/null | grep -i -c "snapd") -gt 0 ];
+  then
+    e_and_l ""
+    e_and_l " $ACHTUNG_TAG: Die Snap-Paketverwaltung ist nicht installiert."
+    ask_yes_or_no "install_snap" " Die Snap-Paketverwaltung jetzt installieren"
+    if [ $? -eq 1 ];
+    then
+      e_and_l -n " Installiere die ${light_yellow}Snap-Paketverwaltung${colors_off}, bitte warten ... "
+      # Installations-Blockade für Snap von Linux Mint aufheben
+      SNAP_BLOCKING_FILE="/etc/apt/preferences.d/nosnap.pref"
+      if [ -s "$SNAP_BLOCKING_FILE" ];
+      then
+        mv -f "$SNAP_BLOCKING_FILE" "$SNAP_BLOCKING_FILE.bak" &>/dev/null
+      fi
+      # Snap installieren
+      apt install snapd -y &>"$LOG_TEMP"
+      if [ $? -eq 0 ];
+      then
+        SNAP_INSTALLED=1
+        e_and_l "$OK_TAG"
+      else
+        e_and_l "$ERROR_TAG"
+      fi
+      add_full_log
+    fi
+    e_and_l ""
+    e_and_l "$FULL_LINE"
+  fi
+fi
+
+###############################################################################
+# Das Flatpak-Repo und die Flatpak-Listen aktualisieren
+###############################################################################
+if [ $FLATPAK_INSTALLED -ne 0 ];
+then
+  # Standard-Flatpak-Repo (Flathub) hinzufügen
+  if [ $(flatpak remotes | grep -c -i -E "flathub") -eq 0 ];
+  then
+    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo &>/dev/null
+  fi
+  if [ ${OPTION_FLAG[addflat]} -eq 1 ];
+  then
+    e_and_l -n " Aktualisierung des Flatpak-Repository, bitte warten ... "
+    # Flatpak-Repo-Updates nur einmal täglich durchführen
+    if [ $(find "$DOWNLOAD_DIR" -type f -iname "flatpak_appstream_update_blocker" -mtime -1 -print0 2>/dev/null | grep -i -c -E "flatpak_appstream_update_blocker") -eq 0 ];
+    then
+      echo -e $(date) > "$DOWNLOAD_DIR/flatpak_appstream_update_blocker" 2>/dev/null
+      flatpak update --appstream flathub 2>/dev/null
+      remove_file "$THE_FLATPAK_REMOTE_LIST"
+    fi
+    # Liste der verfügbaren Flatpaks erstellen
+    if [ ! -s "$THE_FLATPAK_REMOTE_LIST" ];
+    then
+      flatpak remote-ls --app --columns=name,version,ref > "$THE_FLATPAK_REMOTE_LIST" 2>/dev/null
+    fi
+    e_and_l "$OK_TAG"
+  fi
+  # Liste der installierten Flatpaks erstellen (immer)
+  e_and_l -n " Aktualisierung der Flatpak-Status-Infos, bitte warten ... "
+  flatpak list --app --columns=name,version,ref > "$THE_FLATPAK_INSTALLED_LIST" 2>/dev/null
+  e_and_l "$OK_TAG"
   e_and_l "$FULL_LINE"
 fi
 
@@ -7317,6 +7749,7 @@ then
     if [ $INST_STATUS -gt 0 ];
     then
       if [ $INST_STATUS -eq 2 ]; then e_and_l -n " als ${light_purple}SNAP${colors_off}"; fi
+      if [ $INST_STATUS -eq 6 ]; then e_and_l -n " als ${light_purple}FLAT${colors_off}"; fi
       e_and_l " installiert."
       # Prüfen ob eine höhere Versionsnummer verfügbar ist
       UPDATE_AVAILABLE=0
@@ -7707,9 +8140,14 @@ then
     SEARCH_RESULT_SNAP=""
     if [ -d "/var/lib/snapd/desktop/applications" ];
     then
-      SEARCH_RESULT_SNAP=$(ls "/var/lib/snapd/desktop/applications" | grep -i -E "gnome.*\.desktop")
+      SEARCH_RESULT_SNAP=$(ls -R "/var/lib/snapd/desktop/applications" | grep -i -E "gnome.*\.desktop")
     fi
-    SEARCH_ICON_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]}"
+    SEARCH_RESULT_FLATPAK=""
+    if [ -d "/var/lib/flatpak/app" ];
+    then
+      SEARCH_RESULT_FLATPAK=$(ls -R "/var/lib/flatpak/app" | grep -i -E "gnome.*\.desktop")
+    fi
+    SEARCH_ICON_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
     EXCLUDE_ICON_LIST="${PKG_ICON_LIST[gnome-games]}"
     copy_icon_list
   fi
@@ -7727,24 +8165,15 @@ then
     SEARCH_RESULT_SNAP=""
     if [ -d "/var/lib/snapd/desktop/applications" ];
     then
-      SEARCH_RESULT_SNAP=$(ls "/var/lib/snapd/desktop/applications" | grep -i -E "(\-)*mate\-.*\.desktop")
+      SEARCH_RESULT_SNAP=$(ls -R "/var/lib/snapd/desktop/applications" | grep -i -E "(\-)*mate\-.*\.desktop")
     fi
-    SEARCH_ICON_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]}"
+    SEARCH_RESULT_FLATPAK=""
+    if [ -d "/var/lib/flatpak/app" ];
+    then
+      SEARCH_RESULT_FLATPAK=$(ls -R "/var/lib/flatpak/app" | grep -i -E "(\-)*mate\-.*\.desktop")
+    fi
+    SEARCH_ICON_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
     create_extra_icon "matecc" # Control-Center / Steuerzentrale separat ("-" fehlt im Namen)
-    EXCLUDE_ICON_LIST=""
-    copy_icon_list
-  fi
-
-  # ---------------------------------------------------------------------------
-  # Cinnamon Tools Icons
-  # ---------------------------------------------------------------------------
-  if [ "$DESKTOP_ENVIRONMENT" = "Cinnamon" ];
-  then
-    NEW_ICON_COUNTER=0
-    e_and_l " ${bold_blue}Cinnamon Tools${colors_off}"
-    e_and_l " Erstelle zusätzliche Programmsymbole des Cinnamon-Desktop ... "
-    KAT_SHORT_NAME="Cinnamon Tools"
-    SEARCH_ICON_RESULT=$(ls "/usr/share/applications" | grep -i -E "cinnamon\-.*\.desktop")
     EXCLUDE_ICON_LIST=""
     copy_icon_list
   fi
@@ -7762,9 +8191,28 @@ then
     SEARCH_RESULT_SNAP=""
     if [ -d "/var/lib/snapd/desktop/applications" ];
     then
-      SEARCH_RESULT_SNAP=$(ls "/var/lib/snapd/desktop/applications" | grep -i -E "^lx.*\.desktop")
+      SEARCH_RESULT_SNAP=$(ls -R "/var/lib/snapd/desktop/applications" | grep -i -E "^lx.*\.desktop")
     fi
-    SEARCH_ICON_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]}"
+    SEARCH_RESULT_FLATPAK=""
+    if [ -d "/var/lib/flatpak/app" ];
+    then
+      SEARCH_RESULT_FLATPAK=$(ls -R "/var/lib/flatpak/app" | grep -i -E "^lx.*\.desktop")
+    fi
+    SEARCH_ICON_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
+    EXCLUDE_ICON_LIST=""
+    copy_icon_list
+  fi
+
+  # ---------------------------------------------------------------------------
+  # Cinnamon Tools Icons
+  # ---------------------------------------------------------------------------
+  if [ "$DESKTOP_ENVIRONMENT" = "Cinnamon" ];
+  then
+    NEW_ICON_COUNTER=0
+    e_and_l " ${bold_blue}Cinnamon Tools${colors_off}"
+    e_and_l " Erstelle zusätzliche Programmsymbole des Cinnamon-Desktop ... "
+    KAT_SHORT_NAME="Cinnamon Tools"
+    SEARCH_ICON_RESULT=$(ls "/usr/share/applications" | grep -i -E "cinnamon\-.*\.desktop")
     EXCLUDE_ICON_LIST=""
     copy_icon_list
   fi
@@ -7788,18 +8236,63 @@ then
   fi
 
   # ---------------------------------------------------------------------------
+  # Icons bereinigen
+  # ---------------------------------------------------------------------------
+  e_and_l " ${bold_blue}Bereinigung${colors_off}"
+  e_and_l -n " Bereinige die Programmsymbole (Starter) auf dem Desktop ... "
+  ICONS_REMOVED=0
+  # ---------------------------------------------------------------------------
   # Falsch zugeordnete Icons entfernen
   # ---------------------------------------------------------------------------
-  DESKTOP_ICON_DIR="$DESKTOP_DIR/Neue Icons"
   for desktop_icon in ${WRONG_ICONS[@]};
   do
     THE_WRONG_FILE="$DESKTOP_ICON_DIR/$desktop_icon"
     if [ -s "$THE_WRONG_FILE" ];
     then
       rm -f "$THE_WRONG_FILE" &>/dev/null
+      ((ICONS_REMOVED+=1))
       ((ALL_ICON_COUNTER-=1))
     fi
   done
+  # ---------------------------------------------------------------------------
+  # Mehrfach gefundene Starter (für KDE) bereinigen
+  # ---------------------------------------------------------------------------
+  while read the_kde_icon;
+  do
+    the_std_icon="${the_kde_icon/-kde.desktop/.desktop}"
+    # Wenn zwei Starter existieren, dann den überflüssigen "falschen" löschen
+    if [ "$the_std_icon" != "$the_kde_icon" ] &&
+       [ -s "$the_std_icon" ] &&
+       [ -s "$the_kde_icon" ];
+    then
+      if [ "$DESKTOP_ENVIRONMENT" != "KDE" ];
+      then
+        rm -f "$the_kde_icon" &>/dev/null
+      else
+        rm -f "$the_std_icon" &>/dev/null
+      fi
+      ((ICONS_REMOVED+=1))
+      ((ALL_ICON_COUNTER-=1))
+    fi
+  done <<< $(find "$DESKTOP_ICON_DIR" -type f -iname "*-kde".desktop -print)
+  # ---------------------------------------------------------------------------
+  # Leere Ordner entfernen
+  # ---------------------------------------------------------------------------
+  while read dir_entry;
+  do
+    if [ $(ls -A "$dir_entry" | wc -w) -eq 0 ];
+    then
+      rmdir "$dir_entry" &>/dev/null
+    fi
+  done <<< $(find "$DESKTOP_ICON_DIR" -type d -print)
+  # ---------------------------------------------------------------------------
+  e_and_l "$OK_TAG"
+  if [ $ICONS_REMOVED -gt 0 ];
+  then
+    e_and_l " Es wurden ${bold_yellow}$ICONS_REMOVED${colors_off} ungültige Programmsymbole wieder entfernt."
+  fi
+  e_and_l "$FULL_LINE"
+  # ---------------------------------------------------------------------------
 
 fi
 
@@ -11327,7 +11820,7 @@ then
 
   # Datei mit Quell-Angaben des Systems (Ubuntu und Partner)
   SOURCES_LIST_FILE="/etc/apt/sources.list"
-  # Verzeichnis mit Dateien, die weitere Quell-Angaben beinhalten
+  # Ordner mit Dateien, die weitere Quell-Angaben beinhalten
   SOURCES_LIST_DIR="/etc/apt/sources.list.d"
   # Temporäre Dateien zum Bearbeiten der Quell-Listen
   ALL_SOURCE_FILES="$DOWNLOAD_DIR/all_source_files.tmp" # Liste aller Dateien mit Quellen
@@ -12247,7 +12740,7 @@ then
       declare -A USER_CONF_MSG # Meldung, die nach der Aktion angezeigt wird
       # Interne Index-Liste der durchzuführenden Einstellungen (NICHT identisch mit Paketnamen!)
       # USER_CONF_LIST=('backpics' 'desktopu' 'firewall' 'matemenu' 'bookmark' 'mimeapps' 'doublcmd' 'kateconf' 'geanycfg' 'smplayer' 'redshift' 'teamview')
-      USER_CONF_LIST=('backpics' 'firewall' 'matemenu' 'bookmark' 'mimeapps' 'doublcmd' 'kateconf' 'geanycfg' 'smplayer' 'redshift' 'teamview')
+      USER_CONF_LIST=('backpics' 'firewall' 'matemenu' 'bookmark' 'mimeapps' 'doublcmd' 'smplayer' 'redshift' 'teamview')
       # Download der Hintergrundbilder
       USER_CONF_NAM[backpics]="Download der [cs]Dual-Monitor-Hintergrundbilder[ce]"
       USER_CONF_SRC[backpics]=""
@@ -12298,38 +12791,38 @@ then
       USER_CONF_MAO[doublcmd]=""
       USER_CONF_MSG[doublcmd]=""
       # Kate
-      THE_KATE_VERSION=$(get_pkg_apt_version "kate" 1)
-      if [ "$THE_KATE_VERSION" = "" ];
-      then
-        THE_KATE_VERSION=$(get_pkg_snap_version "kate" 1)
-      fi
-      THE_KATE_VERSION=$(echo -n "${THE_KATE_VERSION:0:2}" | xargs)
-      if [ "$THE_KATE_VERSION" = "" ]; then THE_KATE_VERSION=0; fi
-      USER_CONF_NAM[kateconf]="Konfiguration des Programms [cs]Kate$THE_KATE_VERSION (Editor)[ce]"
-      if [ $THE_KATE_VERSION -lt 20 ];
-      then
-        # Kate bis Version 19 (einschließlich)
-        # Alle Konfigurations-Dateien zum Überschreiben
-        USER_CONF_SRC[kateconf]="kate-settings.7z"
-        USER_CONF_DST[kateconf]="${USER_CONFIG_DIR}"
-        USER_CONF_COM[kateconf]="7z x \"$DOWNLOAD_DIR/${USER_CONF_SRC[kateconf]}\" -o\"${USER_CONF_DST[kateconf]}\" -y &>/dev/null && chown \"$USER_USERNAME\":\"$USER_USERNAME\" $USER_CONFIG_DIR/kate* &>/dev/null"
-        USER_CONF_MAO[kateconf]=""
-        USER_CONF_MSG[kateconf]=""
-      else
-        # Kate ab Version 20 (Nur Farb-Codes zum manuellen Import)
-        USER_CONF_SRC[kateconf]="kate_colors.theme"
-        USER_CONF_DST[kateconf]=""
-        USER_CONF_COM[kateconf]="mv -f \"${DOWNLOAD_DIR}/${USER_CONF_SRC[kateconf]}\" \"${DOWNLOAD_DIR}/kate_color_set.theme\" &>/dev/null"
-        USER_CONF_MAO[kateconf]=""
-        USER_CONF_MSG[kateconf]="Bitte die Datei ${light_yellow}kate_color_set.theme${colors_off} noch manuell importieren."
-      fi
+#       THE_KATE_VERSION=$(get_pkg_apt_version "kate" 1)
+#       if [ "$THE_KATE_VERSION" = "" ];
+#       then
+#         THE_KATE_VERSION=$(get_pkg_snap_version "kate" 1)
+#       fi
+#       THE_KATE_VERSION=$(echo -n "${THE_KATE_VERSION:0:2}" | xargs)
+#       if [ "$THE_KATE_VERSION" = "" ]; then THE_KATE_VERSION=0; fi
+#       USER_CONF_NAM[kateconf]="Konfiguration des Programms [cs]Kate$THE_KATE_VERSION (Editor)[ce]"
+#       if [ $THE_KATE_VERSION -lt 20 ];
+#       then
+#         # Kate bis Version 19 (einschließlich)
+#         # Alle Konfigurations-Dateien zum Überschreiben
+#         USER_CONF_SRC[kateconf]="kate-settings.7z"
+#         USER_CONF_DST[kateconf]="${USER_CONFIG_DIR}"
+#         USER_CONF_COM[kateconf]="7z x \"$DOWNLOAD_DIR/${USER_CONF_SRC[kateconf]}\" -o\"${USER_CONF_DST[kateconf]}\" -y &>/dev/null && chown \"$USER_USERNAME\":\"$USER_USERNAME\" $USER_CONFIG_DIR/kate* &>/dev/null"
+#         USER_CONF_MAO[kateconf]=""
+#         USER_CONF_MSG[kateconf]=""
+#       else
+#         # Kate ab Version 20 (Nur Farb-Codes zum manuellen Import)
+#         USER_CONF_SRC[kateconf]="kate_colors.theme"
+#         USER_CONF_DST[kateconf]=""
+#         USER_CONF_COM[kateconf]="mv -f \"${DOWNLOAD_DIR}/${USER_CONF_SRC[kateconf]}\" \"${DOWNLOAD_DIR}/kate_color_set.theme\" &>/dev/null"
+#         USER_CONF_MAO[kateconf]=""
+#         USER_CONF_MSG[kateconf]="Bitte die Datei ${light_yellow}kate_color_set.theme${colors_off} noch manuell importieren."
+#       fi
       # Geany
-      USER_CONF_NAM[geanycfg]="Konfiguration des Programms [cs]Geany (Editor)[ce]"
-      USER_CONF_SRC[geanycfg]="geany.7z"
-      USER_CONF_DST[geanycfg]="${USER_CONFIG_DIR}"
-      USER_CONF_COM[geanycfg]="7z x \"$DOWNLOAD_DIR/${USER_CONF_SRC[geanycfg]}\" -o\"${USER_CONF_DST[geanycfg]}\" -y &>/dev/null && chown -R \"$USER_USERNAME\":\"$USER_USERNAME\" $USER_CONFIG_DIR/geany &>/dev/null"
-      USER_CONF_MAO[geanycfg]=""
-      USER_CONF_MSG[geanycfg]=""
+#       USER_CONF_NAM[geanycfg]="Konfiguration des Programms [cs]Geany (Editor)[ce]"
+#       USER_CONF_SRC[geanycfg]="geany.7z"
+#       USER_CONF_DST[geanycfg]="${USER_CONFIG_DIR}"
+#       USER_CONF_COM[geanycfg]="7z x \"$DOWNLOAD_DIR/${USER_CONF_SRC[geanycfg]}\" -o\"${USER_CONF_DST[geanycfg]}\" -y &>/dev/null && chown -R \"$USER_USERNAME\":\"$USER_USERNAME\" $USER_CONFIG_DIR/geany &>/dev/null"
+#       USER_CONF_MAO[geanycfg]=""
+#       USER_CONF_MSG[geanycfg]=""
       # SMPlayer
       USER_CONF_NAM[smplayer]="Konfiguration des Programms [cs]SMPlayer[ce]"
       USER_CONF_SRC[smplayer]="smplayer.ini"
@@ -12606,10 +13099,12 @@ then
     # Prüfen ob mehrere Versionen installiert sind und Auswahl dazu anzeigen
     # -------------------------------------------------------------------------
     INST_MODE_LIST="0"
+
     if [ $(LANG=en dpkg-query -W -f='${Status}' "$REMOVE_PKG_NAME" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
     then
       INST_MODE_LIST+=",1"
     fi
+
     if [ $SNAP_INSTALLED -ne 0 ];
     then
       if [ $(LANG=en snap info "$REMOVE_PKG_NAME" 2>/dev/null | grep -i -c -E "installed\:") -ne 0 ];
@@ -12617,6 +13112,7 @@ then
         INST_MODE_LIST+=",2"
       fi
     fi
+
     OPT_PKG_INST_NAME="${DEB_PKG_NAME[$REMOVE_PKG_NAME]}"
     if [ "$OPT_PKG_INST_NAME" = "" ];
     then
@@ -12630,6 +13126,7 @@ then
     then
       INST_MODE_LIST+=",3"
     fi
+
     WEB_PKG_INST_NAME="${WEB_PKG_NAME[$REMOVE_PKG_NAME]}"
     if [ "$WEB_PKG_INST_NAME" = "" ];
     then
@@ -12639,9 +13136,20 @@ then
     then
       INST_MODE_LIST+=",4"
     fi
+
+    if [ $FLATPAK_INSTALLED -ne 0 ] &&
+       [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
+    then
+      if [ $(grep -c -i -P "^${REMOVE_PKG_NAME//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST}) -gt 0 ];
+      then
+        INST_MODE_LIST+=",6"
+      fi
+    fi
+
     if [ ${#INST_MODE_LIST} -gt 3 ]; # "0,n" z.B. "0,2,4"
     then
       e_and_l " Das Programm ${bold_yellow}$REMOVE_PKG_NAME${colors_off} ist mehrfach installiert:"
+
       if [ $(echo "$INST_MODE_LIST" | grep -c -E ",1") -ne 0 ];
       then
         TMP_PKG_VERSION=$(get_pkg_apt_version "$REMOVE_PKG_NAME" 0)
@@ -12649,6 +13157,7 @@ then
         if [ "$TMP_PKG_VERSION" != "" ]; then e_and_l -n "Version $TMP_PKG_VERSION "; fi
         e_and_l "als Paket aus dem Standard-Repository"
       fi
+
       if [ $(echo "$INST_MODE_LIST" | grep -c -E ",2") -ne 0 ];
       then
         TMP_PKG_VERSION=$(get_pkg_snap_version "$REMOVE_PKG_NAME" 0)
@@ -12656,6 +13165,7 @@ then
         if [ "$TMP_PKG_VERSION" != "" ]; then e_and_l -n "Version $TMP_PKG_VERSION "; fi
         e_and_l "als Snap-Paket"
       fi
+
       if [ $(echo "$INST_MODE_LIST" | grep -c -E ",3") -ne 0 ];
       then
         TMP_PKG_VERSION=$(get_pkg_deb_version "$REMOVE_PKG_NAME")
@@ -12663,6 +13173,7 @@ then
         if [ "$TMP_PKG_VERSION" != "" ]; then e_and_l -n "Version $TMP_PKG_VERSION "; fi
         e_and_l "in /opt/$OPT_PKG_INST_NAME"
       fi
+
       if [ $(echo "$INST_MODE_LIST" | grep -c -E ",4") -ne 0 ];
       then
         TMP_PKG_VERSION=$(get_pkg_web_version "$REMOVE_PKG_NAME")
@@ -12670,13 +13181,22 @@ then
         if [ "$TMP_PKG_VERSION" != "" ]; then e_and_l -n "Version $TMP_PKG_VERSION "; fi
         e_and_l "in $WEB_PKG_DIR/$WEB_PKG_INST_NAME"
       fi
+
+      if [ $(echo "$INST_MODE_LIST" | grep -c -E ",6") -ne 0 ];
+      then
+        TMP_PKG_VERSION=$(get_pkg_flatpak_version "$REMOVE_PKG_NAME" 1)
+        e_and_l -n " [${bold_white}6${colors_off}] "
+        if [ "$TMP_PKG_VERSION" != "" ]; then e_and_l -n "Version $TMP_PKG_VERSION "; fi
+        e_and_l "als Flatpak"
+      fi
+
       e_and_l -n " Bitte auswählen, welche Version entfernt werden soll: "
       INST_STATUS=0
       while [ $INST_STATUS -eq 0 ];
       do
         read -N 1 -r -s INST_STATUS
         INST_STATUS=$(echo $INST_STATUS | sed 's/[^0-9]*//g')
-        if [ "$INST_STATUS" = "" ] ||
+        if [ "$INST_STATUS" == "" ] ||
            [ $(echo "$INST_MODE_LIST" | grep -c -E "$INST_STATUS") -eq 0 ];
         then
           INST_STATUS=0
@@ -12690,8 +13210,9 @@ then
       2) TMP_PKG_TYPE="SNAP" ;;
       3) TMP_PKG_TYPE="DEB"  ;;
       4) TMP_PKG_TYPE="WEB"  ;;
+      6) TMP_PKG_TYPE="FLAT" ;;
     esac
-    echo -e ""
+    # echo -e ""
     e_and_l " Optionen zur Entfernung von ${bold_yellow}$REMOVE_PKG_NAME${colors_off} (${bold_purple}$TMP_PKG_TYPE${colors_off}):"
     i=0
     while [ $i -lt 4 ];
@@ -12735,6 +13256,7 @@ then
   # ---------------------------------------------------------------------------
   if [ $REMOVE_ACTION -gt 0 ];
   then
+
     # Nicht installiertes Paket, "nur" hinterbliebene Daten löschen
     if [ $INST_STATUS -eq 0 ];
     then
@@ -12757,6 +13279,7 @@ then
       remove_cfg "$REMOVE_PKG_NAME" 1
       remove_dat "$REMOVE_PKG_NAME"
     fi
+
     # Standard-Paketverwaltung (apt) und Snaps
     if [ $INST_STATUS -eq 1 ] ||
        [ $INST_STATUS -eq 2 ];
@@ -12792,6 +13315,7 @@ then
         fi
       fi
     fi
+
     # Ordner mit ausführbaren Dateien
     if [ $INST_STATUS -eq 3 ] ||
        [ $INST_STATUS -eq 4 ];
@@ -12828,7 +13352,7 @@ then
           e_and_l " $ACHTUNG_TAG: Das Programm verfügt über ein eigenes De-Installations-Skript."
           e_and_l " Zu finden unter: ${light_yellow}$REMOVE_SCRIPT_FOUND${colors_off}"
           e_and_l " Bitte dieses zuerst manuell ausführen und danach nochmals versuchen."
-        else # ... sonst Verzeichnis löschen
+        else # ... sonst Ordner löschen
           rm -d -f -r "$THE_PKG_INST_DIR"
           if [ $? -eq 0 ];
           then
@@ -12848,6 +13372,28 @@ then
         fi
       fi
     fi
+
+    # Flatpak
+    if [ $INST_STATUS -eq 6 ];
+    then
+      e_and_l -n " ${light_blue}Schritt 1/$REMOVE_ACTION:${colors_off}"
+      remove_pkg "$REMOVE_PKG_NAME" 0
+      if [ $REMOVE_RESULT -eq 0 ];
+      then
+        remove_ico "$REMOVE_PKG_NAME"
+        if [ $REMOVE_ACTION -gt 1 ];
+        then
+          remove_cfg "$REMOVE_PKG_NAME" 0
+        fi
+        if [ $REMOVE_ACTION -gt 2 ];
+        then
+          remove_dat "$REMOVE_PKG_NAME"
+        fi
+        # Interne Liste der installierten Flatpak-Pakete aktualisieren
+        flatpak list --app --columns=name,version,ref > "$THE_FLATPAK_INSTALLED_LIST" 2>/dev/null
+      fi
+    fi
+
     echo -e ""
   fi
   # ---------------------------------------------------------------------------
