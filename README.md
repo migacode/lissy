@@ -1,4 +1,4 @@
-<b>Lissy</b> ist das All-in-One-Tool für alle Debian-basierten Linux-Systeme, optimiert für Ubuntu und Raspbian.
+<b>Lissy</b> ist das All-in-One-Tool für alle Debian-basierten Linux-Systeme.
 Dieses Skript ermöglicht die automatisierte Installation von Programmpaketen aus verschiedenen Quellen einschließlich der Konfiguration der Programme und Erstellung von Programmsymbolen (Startern) auf dem Desktop. Die zur Verfügung stehenden Programmpakete sind dazu in Kategorien geordnet, welche individuell aus- oder abgewählt und beliebig angepasst werden können. Zudem stehen diverse Optionen zur Verfügung, mit denen sich die Auswahl von Programmpaketen und der Ablauf des Skriptes individuell anpassen lassen.
 Auch die Installation nur eines einzelnen Programmpakets sowie das vollständige Entfernen eines Programmpakets, optional einschließlich seiner Konfiguration und sonstigen zugehörigen Daten, ist sehr einfach möglich.
 Darüber hinaus können weitere System-Komponenten wie Treiber und Schriftarten installiert werden, sowie zahlreiche Optimierungen des Systems durchgeführt werden.<br />
