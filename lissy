@@ -37,7 +37,7 @@
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
 # Letzte Änderung: 11.02.2024
-VERSION="4.00.0"
+VERSION="4.00.1"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -2153,28 +2153,28 @@ PKG_ICON_XDIR[zynaddsubfx]="ZynAddSubFX"
 declare -A GAME_DIR_SUB_NAME # Name des Unterordners
 declare -A GAME_DIR_SUB_LIST # Liste der Pakete (Starter) für in den Unterordner
 # Index-Liste (Kategorien) der Daten zu den Unterordnern
-GAME_DIR_CAT_LIST=( 'action' 'adventure' 'blocksnmarbles' 'cardsnboards' 'dexterity' 'emulator' 'jumpnrun' 'logic' 'race' 'role' 'shooter' 'simulation' 'sports' 'strategy' )
+GAME_DIR_CAT_LIST=( 'action' 'adventure' 'blocksnmarbles' 'breakout' 'cardsnboards' 'emulator' 'jumpnrun' 'logic' 'race' 'role' 'shooter' 'simulation' 'sports' 'strategy' )
 
 GAME_DIR_SUB_NAME[action]="Action"
 GAME_DIR_SUB_LIST[action]="astromenace criticalmass marsshooter open-invaders"
 
 GAME_DIR_SUB_NAME[adventure]="Abenteuer"
-GAME_DIR_SUB_LIST[adventure]="beneath-a-steel-sky"
+GAME_DIR_SUB_LIST[adventure]=""
 
 GAME_DIR_SUB_NAME[blocksnmarbles]="Blöcke und Murmeln"
-GAME_DIR_SUB_LIST[blocksnmarbles]="blockout2 biniax2 briquolo cuyo flobopuyo frozen-bubble gemdropx gweled jag kdiamond lbreakout2 sdl-ball zaz"
+GAME_DIR_SUB_LIST[blocksnmarbles]="blockout2 biniax2 cuyo flobopuyo frozen-bubble gemdropx gweled jag kdiamond zaz"
+
+GAME_DIR_SUB_NAME[breakout]="Breakout"
+GAME_DIR_SUB_LIST[breakout]="briquolo lbreakout2 sdl-ball"
 
 GAME_DIR_SUB_NAME[cardsnboards]="Karten- und Brettspiele"
 GAME_DIR_SUB_LIST[cardsnboards]="brutalchess dreamchess gnubg kmahjongg knights kpat kreversi morris pokerth"
-
-GAME_DIR_SUB_NAME[dexterity]="Geschicklichkeit"
-GAME_DIR_SUB_LIST[dexterity]="freegish neverball pinball"
 
 GAME_DIR_SUB_NAME[emulator]="Emulatoren"
 GAME_DIR_SUB_LIST[emulator]="fs-uae"
 
 GAME_DIR_SUB_NAME[jumpnrun]="Laufen und Springen"
-GAME_DIR_SUB_LIST[jumpnrun]="caveexpress freedroidrpg frogatto kapman lix openclonk pingus rocksndiamonds supertux teeworlds"
+GAME_DIR_SUB_LIST[jumpnrun]="caveexpress freedroidrpg freegish frogatto kapman lix neverball openclonk pingus rocksndiamonds supertux teeworlds"
 
 GAME_DIR_SUB_NAME[logic]="Logik- und Denkspiele"
 GAME_DIR_SUB_LIST[logic]="atomix enigma gbrainy gcompris gcompris-qt katomic numptyphysics ksudoku pybik tuxmath"
@@ -2192,7 +2192,7 @@ GAME_DIR_SUB_NAME[simulation]="Simulation"
 GAME_DIR_SUB_LIST[simulation]="flightgear"
 
 GAME_DIR_SUB_NAME[sports]="Sport"
-GAME_DIR_SUB_LIST[sports]="billard-gl foobillardplus freetennis neverputt ysoccer"
+GAME_DIR_SUB_LIST[sports]="billard-gl foobillardplus freetennis neverputt pinball ysoccer"
 
 GAME_DIR_SUB_NAME[strategy]="Strategie"
 GAME_DIR_SUB_LIST[strategy]="0ad endless-sky megaglest naev oolite ufoai wesnoth widelands"
@@ -2233,7 +2233,7 @@ REJECT_ICONS=( 'alacarte-made' 'caja-autorun-software' 'caja-browser' 'caja-comp
 # falsch angelegt werden und am Ende des Scriptes gelöscht werden sollen.
 # ACHTUNG: Pfadangaben und Dateinamen dürfen keine Leerzeichen enthalten!
 ###############################################################################
-WRONG_ICONS=('Internet/chromium-bsu.desktop' 'Spiele/org.flightgear.FlightGear.desktop' 'Spiele/Fliegen/org.flightgear.FlightGear.desktop')
+WRONG_ICONS=('Internet/chromium-bsu.desktop' 'Spiele/org.flightgear.FlightGear.desktop' 'Spiele/Simulation/org.flightgear.FlightGear.desktop')
 
 ###############################################################################
 # Zu manchen Programmpaketen werden keine Desktop-Symbolbilder installiert oder
