@@ -36,7 +36,7 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 10.02.2024
+# Letzte Änderung: 11.02.2024
 VERSION="4.00.0"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
@@ -1022,9 +1022,9 @@ if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORI
 # Multimedia
 KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv mp3splt obs-studio openshot-qt parole rhythmbox smplayer vlc webcamoid yt-dlp youtube-dl youtubedl-gui youplay"
 # Netzwerkverbindungen
-KATEGORIE_PKGS[n]="openvpn network-manager-openvpn network-manager-openvpn-gnome vpnc vpnc-scripts network-manager-vpnc network-manager-vpnc-gnome"
+KATEGORIE_PKGS[n]="openvpn vpnc vpnc-scripts"
 # Spiele
-KATEGORIE_PKGS[s]="0ad alien-arena armagetronad astromenace atomix billard-gl biniax2 blockout2 briquolo brutalchess caveexpress code-the-classics criticalmass cuyo dreamchess endless-sky enigma extremetuxracer flobopuyo flightgear foobillardplus freedoom freedroidrpg freegish freetennis frogatto frozen-bubble fs-uae gbrainy gcompris-qt gemdropx gnome-games gnubg gweled jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter megaglest morris naev neverball neverputt nexuiz numptyphysics oolite openarena openclonk open-invaders pinball pingus pokerth pybik quetoo rocksndiamonds sauerbraten sdl-ball speed_dreams steam stunt_rally supertux supertuxkart teeworlds tesseract torcs trigger-rally tuxmath ufoai wesnoth widelands xonotic ysoccer zaz"
+KATEGORIE_PKGS[s]="0ad alien-arena armagetronad astromenace atomix billard-gl biniax2 blockout2 briquolo brutalchess caveexpress code-the-classics criticalmass cuyo dreamchess endless-sky enigma extremetuxracer flightgear flobopuyo foobillardplus freedoom freedroidrpg freegish freetennis frogatto frozen-bubble fs-uae gbrainy gcompris-qt gemdropx gnome-games gnubg gweled jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter megaglest morris naev neverball neverputt nexuiz numptyphysics oolite openarena openclonk open-invaders pinball pingus pokerth pybik quetoo rocksndiamonds sauerbraten sdl-ball speed_dreams steam stunt_rally supertux supertuxkart teeworlds tesseract torcs trigger-rally tuxmath ufoai wesnoth widelands xonotic ysoccer zaz"
 # Systemerweiterungen
 KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dirmngr dpkg-repack e2fsprogs ethtool exfat-fuse exfatprogs extundelete f3 fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends hdparm heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysfsutils sysstat tar tcptrack testdisk traceroute udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
 # Systemverwaltung
@@ -1092,11 +1092,13 @@ AUTO_ADD_PKGS[libreoffice-common]="libreoffice-gnome"
 AUTO_ADD_PKGS[mediainfo]="mediainfo-gui"
 AUTO_ADD_PKGS[mkvtoolnix]="mkvtoolnix-gui"
 AUTO_ADD_PKGS[mp3splt]="mp3splt-gtk"
+AUTO_ADD_PKGS[openvpn]="network-manager-openvpn network-manager-openvpn-gnome"
 AUTO_ADD_PKGS[redshift]="redshift-gtk"
 AUTO_ADD_PKGS[scribus]="scribus-template"
 AUTO_ADD_PKGS[usbauth]="usbauth-notifier"
 AUTO_ADD_PKGS[usb-creator-common]="usb-creator-gtk"
 AUTO_ADD_PKGS[virtualbox]="virtualbox-ext-pack virtualbox-guest-additions-iso"
+AUTO_ADD_PKGS[vpnc]="network-manager-vpnc network-manager-vpnc-gnome"
 
 ###############################################################################
 # Einige Programme sind nicht in jedem Repository enthalten und können dann
@@ -2924,6 +2926,7 @@ function copy_starter_to_desktop () {
           fi
           SEARCH_NAME="${SEARCH_NAME/-stable/}"
           # Bekannte Unterschiede zwischen Paket- und Starter-Dateinamen
+          SEARCH_NAME="${SEARCH_NAME/obs-studio/com.obsproject.studio}"
           SEARCH_NAME="${SEARCH_NAME/realvnc-vnc-server/realvnc-vncserver-service}"
           SEARCH_NAME="${SEARCH_NAME/realvnc-vnc-viewer/realvnc-vncviewer}"
           SEARCH_NAME="${SEARCH_NAME/steam-launcher/steam}"
@@ -3005,7 +3008,7 @@ function copy_starter_to_desktop () {
               # zusammen mit diversen Binärdateien unter einem Pfad. Daher wird dem grep hier
               # ein find vorangestellt, um nur die .desktop-Dateien durchsuchen zu müssen.
               # ALT: SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^\s*exec\s*=\s*(/usr/bin/flatpak)*(.)*$THE_FLATPAK_REF_STRING" /var/lib/flatpak/app/* 2>/dev/null)
-              SEARCH_RESULT_TMP=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -exec grep -i -l -o -E "^\s*exec\s*=\s*(/usr/bin/flatpak)*(.)*$THE_FLATPAK_REF_STRING" {} \;)
+              SEARCH_RESULT_TMP=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -exec grep -i -l -o -E "^\s*exec\s*=\s*(/usr/bin/flatpak)(.)*$THE_FLATPAK_REF_STRING" {} \;)
               if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
             fi
           fi
