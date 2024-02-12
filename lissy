@@ -902,7 +902,7 @@ OPTION_TEXT[logfull]="Vollständige Log-Datei aller Aktionen erstellen"
 OPTION_TEXT[nocolor]="Ausgabe der Anzeigen und Meldungen ohne Farben"
 OPTION_TEXT[noinfo]="Systeminformationen am Anfang nicht anzeigen"
 OPTION_TEXT[nopkgsrv]="Bei Reparaturen Prüfung der Paketserver auslassen"
-OPTION_TEXT[norepo]="Repository nicht erweitern oder aktualisieren"
+OPTION_TEXT[norepo]="Standard-Repository nicht erweitern und aktualisieren"
 OPTION_TEXT[notrim]="Bei Optimierungen kein SSD-Trimming durchführen"
 OPTION_TEXT[noupdate]="Nicht nach Updates für dieses Skript suchen"
 OPTION_TEXT[optimize]="Diverse Optimierungen des Systems durchführen"
@@ -4831,8 +4831,8 @@ function install_pkg () {
                   e_and_l "$PRE_SPACE Die Datei konnte ${bold_red}nicht${colors_off} heruntergeladen werden!"
                   add_full_log
                   INSTALL_RESULT=1
+                  DOWNLOAD_RESULT=1 # NICHT Weitermachen
                 fi
-
               fi
 
               FOREIGN_WARNING="$PRE_SPACE $ACHTUNG_TAG: Dieses Programmpaket ist nicht für die Haupt-Architektur dieses"$'\n'
@@ -7603,7 +7603,8 @@ then
   if [ ${OPTION_FLAG[norepo]} -eq 0 ] &&
      [ ${OPTION_FLAG[listonly]} -eq 0 ];
   then
-    repo_update " ${bold_blue}Aktualisierung des Repository${colors_off}, bitte warten ... "
+    e_and_l " ${bold_blue}Aktualisierung der Paketlisten${colors_off}"
+    repo_update " Aktualisierung des Standard-Repository, bitte warten ... "
   fi
 fi
 
@@ -7732,7 +7733,7 @@ then
     THE_PKG_INST_NAME="${WEB_PKG_NAME[$pkg_name]}"
     NEW_PKG_INST_VERS="${WEB_PKG_VERS[$pkg_name]}"
     NEW_PKG_INST_FILE="${WEB_PKG_FILE[$IDX_NAME]}"
-    if [ "$THE_PKG_INST_NAME" = "" ];
+    if [ "$NEW_PKG_INST_FILE" == "" ];
     then
       THE_PKG_INST_NAME="${DEB_PKG_NAME[$pkg_name]}"
       NEW_PKG_INST_VERS="${DEB_PKG_VERS[$pkg_name]}"
@@ -7756,41 +7757,45 @@ then
       if [ $INST_STATUS -eq 2 ]; then e_and_l -n " als ${light_purple}SNAP${colors_off}"; fi
       if [ $INST_STATUS -eq 6 ]; then e_and_l -n " als ${light_purple}FLAT${colors_off}"; fi
       e_and_l " installiert."
-      # Prüfen ob eine höhere Versionsnummer verfügbar ist
+      # Prüfen ob überhaupt eine Datei zur Installation vorhanden ist
       UPDATE_AVAILABLE=0
-      CUR_PKG_VER_1=$(echo $PKG_VERSION | cut -d"." -f 1)
-      CUR_PKG_VER_2=$(echo $PKG_VERSION | cut -d"." -f 2)
-      CUR_PKG_VER_3=$(echo $PKG_VERSION | cut -d"." -f 3)
-      NEW_PKG_VER_1=$(echo $NEW_PKG_INST_VERS | cut -d"." -f 1)
-      NEW_PKG_VER_2=$(echo $NEW_PKG_INST_VERS | cut -d"." -f 2)
-      NEW_PKG_VER_3=$(echo $NEW_PKG_INST_VERS | cut -d"." -f 3)
-      if [ "$CUR_PKG_VER_1" != "" ] &&
-         [ "$NEW_PKG_VER_1" != "" ];
+      if [ "$NEW_PKG_INST_FILE" != "" ];
       then
-        if [ $CUR_PKG_VER_1 -lt $NEW_PKG_VER_1 ];
+        # Prüfen ob eine höhere Versionsnummer verfügbar ist
+        CUR_PKG_VER_1=$(echo $PKG_VERSION | cut -d"." -f 1)
+        CUR_PKG_VER_2=$(echo $PKG_VERSION | cut -d"." -f 2)
+        CUR_PKG_VER_3=$(echo $PKG_VERSION | cut -d"." -f 3)
+        NEW_PKG_VER_1=$(echo $NEW_PKG_INST_VERS | cut -d"." -f 1)
+        NEW_PKG_VER_2=$(echo $NEW_PKG_INST_VERS | cut -d"." -f 2)
+        NEW_PKG_VER_3=$(echo $NEW_PKG_INST_VERS | cut -d"." -f 3)
+        if [ "$CUR_PKG_VER_1" != "" ] &&
+          [ "$NEW_PKG_VER_1" != "" ];
         then
-          UPDATE_AVAILABLE=1
-        fi
-      fi
-      if [ $UPDATE_AVAILABLE -eq 0 ];
-      then
-        if [ "$CUR_PKG_VER_2" != "" ] &&
-           [ "$NEW_PKG_VER_2" != "" ];
-        then
-          if [ $CUR_PKG_VER_2 -lt $NEW_PKG_VER_2 ];
+          if [ $CUR_PKG_VER_1 -lt $NEW_PKG_VER_1 ];
           then
             UPDATE_AVAILABLE=1
           fi
         fi
-      fi
-      if [ $UPDATE_AVAILABLE -eq 0 ];
-      then
-        if [ "$CUR_PKG_VER_3" != "" ] &&
-           [ "$NEW_PKG_VER_3" != "" ];
+        if [ $UPDATE_AVAILABLE -eq 0 ];
         then
-          if [ $CUR_PKG_VER_3 -lt $NEW_PKG_VER_3 ];
+          if [ "$CUR_PKG_VER_2" != "" ] &&
+            [ "$NEW_PKG_VER_2" != "" ];
           then
-            UPDATE_AVAILABLE=1
+            if [ $CUR_PKG_VER_2 -lt $NEW_PKG_VER_2 ];
+            then
+              UPDATE_AVAILABLE=1
+            fi
+          fi
+        fi
+        if [ $UPDATE_AVAILABLE -eq 0 ];
+        then
+          if [ "$CUR_PKG_VER_3" != "" ] &&
+            [ "$NEW_PKG_VER_3" != "" ];
+          then
+            if [ $CUR_PKG_VER_3 -lt $NEW_PKG_VER_3 ];
+            then
+              UPDATE_AVAILABLE=1
+            fi
           fi
         fi
       fi
@@ -8246,51 +8251,54 @@ then
   e_and_l " ${bold_blue}Bereinigung${colors_off}"
   e_and_l -n " Bereinige die Programmsymbole (Starter) auf dem Desktop ... "
   ICONS_REMOVED=0
-  # ---------------------------------------------------------------------------
-  # Falsch zugeordnete Icons entfernen
-  # ---------------------------------------------------------------------------
-  for desktop_icon in ${WRONG_ICONS[@]};
-  do
-    THE_WRONG_FILE="$DESKTOP_ICON_DIR/$desktop_icon"
-    if [ -s "$THE_WRONG_FILE" ];
-    then
-      rm -f "$THE_WRONG_FILE" &>/dev/null
-      ((ICONS_REMOVED+=1))
-      ((ALL_ICON_COUNTER-=1))
-    fi
-  done
-  # ---------------------------------------------------------------------------
-  # Mehrfach gefundene Starter (für KDE) bereinigen
-  # ---------------------------------------------------------------------------
-  while read the_kde_icon;
-  do
-    the_std_icon="${the_kde_icon/-kde.desktop/.desktop}"
-    # Wenn zwei Starter existieren, dann den überflüssigen "falschen" löschen
-    if [ "$the_std_icon" != "$the_kde_icon" ] &&
-       [ -s "$the_std_icon" ] &&
-       [ -s "$the_kde_icon" ];
-    then
-      if [ "$DESKTOP_ENVIRONMENT" != "KDE" ];
+  if [ -d "$DESKTOP_ICON_DIR" ];
+  then
+    # ---------------------------------------------------------------------------
+    # Falsch zugeordnete Icons entfernen
+    # ---------------------------------------------------------------------------
+    for desktop_icon in ${WRONG_ICONS[@]};
+    do
+      THE_WRONG_FILE="$DESKTOP_ICON_DIR/$desktop_icon"
+      if [ -s "$THE_WRONG_FILE" ];
       then
-        rm -f "$the_kde_icon" &>/dev/null
-      else
-        rm -f "$the_std_icon" &>/dev/null
+        rm -f "$THE_WRONG_FILE" &>/dev/null
+        ((ICONS_REMOVED+=1))
+        ((ALL_ICON_COUNTER-=1))
       fi
-      ((ICONS_REMOVED+=1))
-      ((ALL_ICON_COUNTER-=1))
-    fi
-  done <<< $(find "$DESKTOP_ICON_DIR" -type f -iname "*-kde".desktop -print)
-  # ---------------------------------------------------------------------------
-  # Leere Ordner entfernen
-  # ---------------------------------------------------------------------------
-  while read dir_entry;
-  do
-    if [ $(ls -A "$dir_entry" | wc -w) -eq 0 ];
-    then
-      rmdir "$dir_entry" &>/dev/null
-    fi
-  done <<< $(find "$DESKTOP_ICON_DIR" -type d -print)
-  # ---------------------------------------------------------------------------
+    done
+    # ---------------------------------------------------------------------------
+    # Mehrfach gefundene Starter (für KDE) bereinigen
+    # ---------------------------------------------------------------------------
+    while read the_kde_icon;
+    do
+      the_std_icon="${the_kde_icon/-kde.desktop/.desktop}"
+      # Wenn zwei Starter existieren, dann den überflüssigen "falschen" löschen
+      if [ "$the_std_icon" != "$the_kde_icon" ] &&
+        [ -s "$the_std_icon" ] &&
+        [ -s "$the_kde_icon" ];
+      then
+        if [ "$DESKTOP_ENVIRONMENT" != "KDE" ];
+        then
+          rm -f "$the_kde_icon" &>/dev/null
+        else
+          rm -f "$the_std_icon" &>/dev/null
+        fi
+        ((ICONS_REMOVED+=1))
+        ((ALL_ICON_COUNTER-=1))
+      fi
+    done <<< $(find "$DESKTOP_ICON_DIR" -type f -iname "*-kde".desktop -print)
+    # ---------------------------------------------------------------------------
+    # Leere Ordner entfernen
+    # ---------------------------------------------------------------------------
+    while read dir_entry;
+    do
+      if [ $(ls -A "$dir_entry" | wc -w) -eq 0 ];
+      then
+        rmdir "$dir_entry" &>/dev/null
+      fi
+    done <<< $(find "$DESKTOP_ICON_DIR" -type d -print)
+    # ---------------------------------------------------------------------------
+  fi
   e_and_l "$OK_TAG"
   if [ $ICONS_REMOVED -gt 0 ];
   then
