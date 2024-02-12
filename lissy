@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 11.02.2024
-VERSION="4.00.1"
+# Letzte Änderung: 12.02.2024
+VERSION="4.00.2"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -1224,6 +1224,9 @@ fi
 declare -A PPA_REPO_TXT # Repository-Einträge
 declare -A PPA_REPO_SRC # Datei mit Quellangaben (siehe auch Hinweis oben!)
 
+PPA_REPO_TXT[grub-customizer]="ppa:danielrichter2007/grub-customizer"
+PPA_REPO_SRC[grub-customizer]=""
+
 PPA_REPO_TXT[makemkv-bin]="ppa:heyarje/makemkv-beta"
 PPA_REPO_SRC[makemkv-bin]="heyarje-ubuntu-makemkv-beta*"
 
@@ -1292,16 +1295,6 @@ DEB_PKG_FILE[codium_arm64]="$RESSOURCE_SERVER_DIR/deb/codium_1.85.2.24019_arm64.
 DEB_PKG_CSUM[codium_arm64]="$RESSOURCE_SERVER_DIR/deb/codium_1.85.2.24019_arm64.deb.sha"
 DEB_PKG_FILE[codium_armhf]="" # NUR für 64-bit verfügbar
 DEB_PKG_CSUM[codium_armhf]="" # NUR für 64-bit verfügbar
-
-# Erstellt mittels dpkg-repack :)
-DEB_PKG_NAME[grub-customizer]="Grub Customizer"
-DEB_PKG_OLDV[grub-customizer]="5.1.0"
-DEB_PKG_OLDF[grub-customizer]="$RESSOURCE_SERVER_DIR/deb/grub-customizer_5.1.0-3build1_amd64.deb"
-DEB_PKG_VERS[grub-customizer]="5.2.2"
-DEB_PKG_MESG[grub-customizer]=""
-DEB_PKG_EVAL[grub-customizer]=""
-DEB_PKG_FILE[grub-customizer_amd64]="$RESSOURCE_SERVER_DIR/deb/grub-customizer_5.2.2-2_amd64.deb"
-DEB_PKG_CSUM[grub-customizer_amd64]="$RESSOURCE_SERVER_DIR/deb/grub-customizer_5.2.2-2_amd64.deb.sha"
 
 # Download von https://ftp5.gwdg.de/pub/linux/debian/mint/packages/pool/main/h/hypnotix
 # oder https://github.com/linuxmint/hypnotix/releases
@@ -1640,6 +1633,15 @@ then
   DEB_PKG_EVAL[gcompris-qt-data]=""
   DEB_PKG_FILE[gcompris-qt-data_amd64]="$RESSOURCE_SERVER_DIR/deb/gcompris-qt-data_3.1-2_all.deb"
   DEB_PKG_CSUM[gcompris-qt-data_amd64]="$RESSOURCE_SERVER_DIR/deb/gcompris-qt-data_3.1-2_all.deb.sha"
+
+  DEB_PKG_NAME[grub-customizer]="Grub Customizer"
+  DEB_PKG_OLDV[grub-customizer]=""
+  DEB_PKG_OLDF[grub-customizer]=""
+  DEB_PKG_VERS[grub-customizer]="5.2.2"
+  DEB_PKG_MESG[grub-customizer]=""
+  DEB_PKG_EVAL[grub-customizer]=""
+  DEB_PKG_FILE[grub-customizer_amd64]="$RESSOURCE_SERVER_DIR/deb/grub-customizer_5.2.2-2_amd64.deb"
+  DEB_PKG_CSUM[grub-customizer_amd64]="$RESSOURCE_SERVER_DIR/deb/grub-customizer_5.2.2-2_amd64.deb.sha"
 
   DEB_PKG_NAME[libdvd-pkg]="libdvd-pkg"
   DEB_PKG_OLDV[libdvd-pkg]=""
