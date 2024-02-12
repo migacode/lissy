@@ -37,7 +37,7 @@
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
 # Letzte Änderung: 12.02.2024
-VERSION="4.00.2"
+VERSION="4.00.3"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -7682,7 +7682,7 @@ then
   fi
   if [ ${OPTION_FLAG[addflat]} -eq 1 ];
   then
-    e_and_l -n " Aktualisierung des Flatpak-Repository, bitte warten ... "
+    e_and_l -n " Aktualisierung des Flatpak-Repository, bitte warten  ... "
     # Flatpak-Repo-Updates nur einmal täglich durchführen
     if [ $(find "$DOWNLOAD_DIR" -type f -iname "flatpak_appstream_update_blocker" -mtime -1 -print0 2>/dev/null | grep -i -c -E "flatpak_appstream_update_blocker") -eq 0 ];
     then
@@ -7698,7 +7698,7 @@ then
     e_and_l "$OK_TAG"
   fi
   # Liste der installierten Flatpaks erstellen (immer)
-  e_and_l -n " Aktualisierung der Flatpak-Status-Infos, bitte warten ... "
+  e_and_l -n " Aktualisierung der Flatpak-Statusinfos, bitte warten ... "
   flatpak list --app --columns=name,version,ref > "$THE_FLATPAK_INSTALLED_LIST" 2>/dev/null
   e_and_l "$OK_TAG"
   e_and_l "$FULL_LINE"
