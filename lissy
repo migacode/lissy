@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 12.02.2024
-VERSION="4.00.3"
+# Letzte Änderung: 01.03.2024
+VERSION="4.00.4"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -6142,6 +6142,12 @@ NO_MENU=0
 if [ -s "$USER_SCRIPT_CONFIG" ];
 then
   . "$USER_SCRIPT_CONFIG"
+  # Sicherheitshalber die Flags für "Nur Status amzeigen" und
+  # Überspringen der Ja/Nain-Abfrage vor Installation auf inaktiv setzen
+  OPTION_FLAG[status]=0
+  OPTION_FLAG[force]=0
+  # Alte Konfiguration komplett löschen
+  remove_file "$USER_SCRIPT_CONFIG"
 fi
 # Paket-Listen und Skip-Liste
 if [ -s "$USER_PAKET_LIST" ];
