@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 01.03.2024
-VERSION="4.00.4"
+# Letzte Änderung: 03.03.2024
+VERSION="4.00.5"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -1017,14 +1017,14 @@ KATEGORIE_PKGS[f]="proftpd-basic"
 KATEGORIE_PKGS[g]="blender darktable digikam drawing eom fraqtive freecad geeqie gimp gpicview gpick gwenview imagemagick inkscape krita mandelbulber2 mtpaint pinta rawtherapee shotwell simple-scan xnview"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[g]+=" pix xviewer"; fi
 # Internet
-KATEGORIE_PKGS[i]="anydesk ipscan chromium element-desktop filezilla firefox opera-stable microsoft-edge-stable nomachine realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission-common virt-viewer wireshark"
+KATEGORIE_PKGS[i]="anydesk ipscan chromium element-desktop filezilla firefox opera-stable microsoft-edge-stable nomachine realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission virt-viewer wireshark"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[i]+=" hexchat warpinator"; fi
 # Multimedia
 KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv mp3splt obs-studio openshot-qt parole rhythmbox smplayer vlc webcamoid yt-dlp youtube-dl youtubedl-gui youplay"
 # Netzwerkverbindungen
 KATEGORIE_PKGS[n]="openvpn vpnc vpnc-scripts"
 # Spiele
-KATEGORIE_PKGS[s]="0ad alien-arena armagetronad astromenace atomix billard-gl biniax2 blockout2 briquolo brutalchess caveexpress code-the-classics criticalmass cuyo dreamchess endless-sky enigma extremetuxracer flightgear flobopuyo foobillardplus freedoom freedroidrpg freegish freetennis frogatto frozen-bubble fs-uae gbrainy gcompris-qt gemdropx gnome-games gnubg gweled jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter megaglest morris naev neverball neverputt nexuiz numptyphysics oolite openarena openclonk open-invaders pinball pingus pokerth pybik quetoo rocksndiamonds sauerbraten sdl-ball speed_dreams steam stunt_rally supertux supertuxkart teeworlds tesseract torcs trigger-rally tuxmath ufoai wesnoth widelands xonotic ysoccer zaz"
+KATEGORIE_PKGS[s]="0ad alien-arena armagetronad atomix billard-gl biniax2 blockout2 briquolo brutalchess caveexpress code-the-classics criticalmass cuyo dreamchess endless-sky enigma extremetuxracer flightgear flobopuyo foobillardplus freedoom freedroidrpg freegish freetennis frogatto frozen-bubble fs-uae gbrainy gcompris-qt gemdropx gnome-games gnubg gweled jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter megaglest morris naev neverball neverputt nexuiz numptyphysics oolite openarena openclonk open-invaders pinball pingus pokerth pybik quetoo rocksndiamonds sauerbraten sdl-ball speed_dreams steam stunt_rally supertux supertuxkart teeworlds tesseract torcs trigger-rally tuxmath ufoai wesnoth widelands xonotic ysoccer zaz"
 # Systemerweiterungen
 KATEGORIE_PKGS[x]="apt-file apturl arj ccd2iso cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dirmngr dpkg-repack e2fsprogs ethtool exfat-fuse exfatprogs extundelete f3 fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends hdparm heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sed screen smartmontools smbclient sqlite3 sshguard sysbench sysfsutils sysstat tar tcptrack testdisk traceroute udftools ufw unzip usbutils util-linux wget whois zstd zulumount-cli"
 # Systemverwaltung
@@ -1076,8 +1076,6 @@ declare -A AUTO_ADD_PPOS # Wenn "true" zusätzliche Pakete VOR Basispaket einfü
 
 AUTO_ADD_PKGS[alien-arena]="alien-arena-data"
 AUTO_ADD_PPOS[alien-arena]="true"
-AUTO_ADD_PKGS[astromenace]="astromenace-data-src"
-AUTO_ADD_PPOS[astromenace]="true"
 AUTO_ADD_PKGS[caja]="caja-actions caja-eiciel caja-extensions-common caja-gtkhash caja-image-converter caja-mediainfo caja-open-terminal caja-rename caja-seahorse caja-sendto caja-share caja-wallpaper caja-xattr-tags"
 AUTO_ADD_PKGS[doublecmd-common]="doublecmd-gtk"
 AUTO_ADD_PKGS[frogatto]="frogatto-data"
@@ -1161,7 +1159,7 @@ SIMILAR_PACK[pdfchain]="pdfmod"
 SIMILAR_PACK[pdfarranger]="pdfmod"
 SIMILAR_PACK[pinta]="drawing"
 SIMILAR_PACK[steam]="steam-launcher"
-SIMILAR_PACK[transmission-common]="transmission"
+SIMILAR_PACK[transmission]="transmission-common"
 SIMILAR_PACK[usb-creator-common]="balena-etcher"
 SIMILAR_PACK[virtualbox]="virtualbox-7.0"
 SIMILAR_PACK[wine-installer]="wine"
@@ -1581,24 +1579,6 @@ then
   DEB_PKG_EVAL[alien-arena-data]=""
   DEB_PKG_FILE[alien-arena-data_amd64]="$RESSOURCE_SERVER_DIR/deb/alien-arena-data_7.71.3+ds-1_all.deb"
   DEB_PKG_CSUM[alien-arena-data_amd64]="$RESSOURCE_SERVER_DIR/deb/alien-arena-data_7.71.3+ds-1_all.deb.sha"
-
-  DEB_PKG_NAME[astromenace]="Astromenace"
-  DEB_PKG_OLDV[astromenace]=""
-  DEB_PKG_OLDF[astromenace]=""
-  DEB_PKG_VERS[astromenace]="1.3.2"
-  DEB_PKG_MESG[astromenace]=""
-  DEB_PKG_EVAL[astromenace]=""
-  DEB_PKG_FILE[astromenace_amd64]="$RESSOURCE_SERVER_DIR/deb/astromenace_1.3.2+repack-7_amd64.deb"
-  DEB_PKG_CSUM[astromenace_amd64]="$RESSOURCE_SERVER_DIR/deb/astromenace_1.3.2+repack-7_amd64.deb.sha"
-
-  DEB_PKG_NAME[astromenace-data-src]="Astromenace Data"
-  DEB_PKG_OLDV[astromenace-data-src]=""
-  DEB_PKG_OLDF[astromenace-data-src]=""
-  DEB_PKG_VERS[astromenace-data-src]="1.3.2"
-  DEB_PKG_MESG[astromenace-data-src]="Benötigt eine schnelle Grafikkarte"
-  DEB_PKG_EVAL[astromenace-data-src]=""
-  DEB_PKG_FILE[astromenace-data-src_amd64]="$RESSOURCE_SERVER_DIR/deb/astromenace-data-src_1.3.2+repack-3_all.deb"
-  DEB_PKG_CSUM[astromenace-data-src_amd64]="$RESSOURCE_SERVER_DIR/deb/astromenace-data-src_1.3.2+repack-3_all.deb.sha"
 
   DEB_PKG_NAME[frogatto]="Frogatto"
   DEB_PKG_OLDV[frogatto]=""
@@ -2160,7 +2140,7 @@ declare -A GAME_DIR_SUB_LIST # Liste der Pakete (Starter) für in den Unterordne
 GAME_DIR_CAT_LIST=( 'action' 'adventure' 'blocksnmarbles' 'breakout' 'cardsnboards' 'emulator' 'jumpnrun' 'logic' 'race' 'role' 'shooter' 'simulation' 'sports' 'strategy' )
 
 GAME_DIR_SUB_NAME[action]="Action"
-GAME_DIR_SUB_LIST[action]="astromenace criticalmass marsshooter open-invaders"
+GAME_DIR_SUB_LIST[action]="criticalmass marsshooter open-invaders"
 
 GAME_DIR_SUB_NAME[adventure]="Abenteuer"
 GAME_DIR_SUB_LIST[adventure]=""
