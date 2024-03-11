@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 03.03.2024
-VERSION="4.00.5"
+# Letzte Änderung: 11.03.2024
+VERSION="4.00.6"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -9300,27 +9300,34 @@ then
   # ===========================================================================
   # Umstellung der Systemzeit auf RTC wie bei Microsoft Windows (statt UTC)
   # ===========================================================================
-  IS_MULTI_BOOT=0
-  if [ -d "/boot/efi/EFI/Microsoft/Boot" ];
-  then
-    IS_MULTI_BOOT=1
-  else
-    grub_config="/boot/grub/grub.cfg"
-    if [ -f "$grub_config" ];
-    then
-      if [ $(grep -c -i -E "windows" "$grub_config" 2>/dev/null) -gt 0 ];
-      then
-        IS_MULTI_BOOT=1
-      else
-        # Wenn unser Linux nicht von den ersten beiden Partitionen gebootet
-        # wurde, wird es vermutlich nicht das einzige OS auf der Platte sein.
-        if [ $(echo $boot_device | grep -c -E "sd[a-z][3-9]") -gt 0 ];
-        then
-          IS_MULTI_BOOT=1
-        fi
-      fi
-    fi
-  fi
+  #   IS_MULTI_BOOT=0
+  #   if [ -d "/boot/efi/EFI/Microsoft/Boot" ];
+  #   then
+  #     IS_MULTI_BOOT=1
+  #   else
+  #     grub_config="/boot/grub/grub.cfg"
+  #     if [ -f "$grub_config" ];
+  #     then
+  #       if [ $(grep -c -i -E "windows" "$grub_config" 2>/dev/null) -gt 0 ];
+  #       then
+  #         IS_MULTI_BOOT=1
+  #       else
+  #         # Wenn unser Linux nicht von den ersten beiden Partitionen gebootet
+  #         # wurde, wird es vermutlich nicht das einzige OS auf der Platte sein.
+  #         if [ $(echo $boot_device | grep -c -E "sd[a-z][3-9]") -gt 0 ];
+  #         then
+  #           IS_MULTI_BOOT=1
+  #         fi
+  #       fi
+  #     fi
+  #   fi
+  # ---------------------------------------------------------------------------
+  # So schön die vorherige Prüfung auch ist, aber es kann ja auch sein, dass
+  # man Windows und Linux auf zwei physikalisch getrennten Laufwerken in dem
+  # selben System hat und per Hardware umschaltet - daher also immer anbieten
+  # ---------------------------------------------------------------------------
+  IS_MULTI_BOOT=1
+  # ---------------------------------------------------------------------------
   ACTION_MESSAGE=" Umstellung der ${light_cyan}Systemzeit auf RTC${colors_off} (MS Win)"
   if [ $IS_MULTI_BOOT -ne 0 ];
   then
