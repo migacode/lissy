@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 11.03.2024
-VERSION="4.00.6"
+# Letzte Änderung: 14.03.2024
+VERSION="4.00.7"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -7252,7 +7252,7 @@ then
 
   if [ "$WINE_VERSION" != "" ];
   then
-    SYS_INFO_TXT+=" Wine: ${bold_yellow}$WINE_VERSION${colors_off}"$'\n'
+    SYS_INFO_TXT+=" Wine-Version: ${bold_yellow}$WINE_VERSION${colors_off}"$'\n'
   fi
 
   SYS_INFO_TXT+=" Hostname: ${bold_yellow}$(hostname)${colors_off}"$'\n'
@@ -8911,7 +8911,7 @@ then
             done
             if [ $MATE_ACTIVE_SS_FILES -gt 0 ];
             then
-              e_and_l " $HINWEIS_TAG: Mit dem MATE- und X-ScreenSaver sind zwei Bildschirmschoner aktiv."
+              e_and_l " $HINWEIS_TAG: Mit dem MATE- und XScreenSaver sind zwei Bildschirmschoner aktiv."
               ask_yes_or_no "deactivate_mate_screensaver" " MATE-Screensaver vollständig deaktivieren (empfohlen)"
               if [ $? -eq 1 ];
               then
@@ -10010,7 +10010,7 @@ then
       fi
     fi
   else
-    e_and_l "$(skip_text "$ACTION_MESSAGE  " "kein PowerMgmnt")"
+    e_and_l "$(skip_text "$ACTION_MESSAGE  " "$NA_TXT")"
   fi
 
   # ===========================================================================
@@ -12396,6 +12396,16 @@ then
           if [ $? -eq 1 ];
           then
             e_and_l -n " Aktualisiere das ${light_yellow}Initial Ram FileSystem${colors_off}  ... "
+            # Resume-Eintrag zurücksetzen
+            # (Kann helfen Time-Outs oder Panics beim Booten durch die Suche
+            #  nach nicht mehr vorhandenen Partitionen zu eliminieren ;)
+            RESUME_FILE="/etc/initramfs-tools/conf.d/resume"
+            if [ -s "$RESUME_FILE" ];
+            then
+              mv -f "$RESUME_FILE" "$RESUME_FILE.org" &>/dev/null
+              echo -e "RESUME=none" > "$RESUME_FILE" 2>/dev/null
+            fi
+            # Initial Ram FileSystem erneuern
             update-initramfs -u &>"$LOG_TEMP"
             if [ $? -eq 0 ];
             then
@@ -12404,6 +12414,7 @@ then
               e_and_l "$ERROR_TAG"
             fi
             add_full_log
+            # GRUB-Loader erneuern
             e_and_l -n " Aktualisiere die Einträge im ${light_yellow}GRUB-Loader${colors_off} ... "
             update-grub &>"$LOG_TEMP"
             if [ $? -eq 0 ];
