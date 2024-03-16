@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 14.03.2024
-VERSION="4.00.7"
+# Letzte Änderung: 16.03.2024
+VERSION="4.00.8"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -876,7 +876,7 @@ declare -A OPTION_MENU # Index des Menüpunktes, in dem die Option erscheint
 
 OPTION_LIST=()
 OPTION_LIST+=(addflat addsnap norepo foreign force quiet status listonly addicons csubdirs) # Menu 2
-OPTION_LIST+=(extras exupdate udrivers kuplock kunlock optimize notrim cleansys nopkgsrv revive personal dsave dload) # Menu 4
+OPTION_LIST+=(extras exupdate udrivers kuplock kunlock optimize notrim cleansys nopkgsrv setutc revive personal dsave dload) # Menu 4
 OPTION_LIST+=(autoyorn infoonly noinfo log logfull noupdate nocolor saveconf cleantmp) # Menu 5
 
 OPTION_TEXT[addicons]="Desktop-Symbole (Starter) für Paketauswahl erstellen"
@@ -911,6 +911,7 @@ OPTION_TEXT[quiet]="DERZEIT NICHT VERWENDET!"
 OPTION_TEXT[remove]="Ein Programmpaket und zugehörige Daten löschen"
 OPTION_TEXT[revive]="Reaktivierung vormals deaktivierter Komponenten"
 OPTION_TEXT[saveconf]="Einstellungen für nächsten Aufruf speichern"
+OPTION_TEXT[setutc]="Systemzeit auf Universal Time Coordinated umstellen"
 OPTION_TEXT[status]="Nur Status der Pakete anzeigen (nicht installieren)"
 OPTION_TEXT[udrivers]="Aktualisierte Treiber für Ubuntu suchen"
 
@@ -954,8 +955,15 @@ OPTION_MENU[notrim]=4
 OPTION_MENU[optimize]=4
 OPTION_MENU[personal]=4
 OPTION_MENU[revive]=4
+OPTION_MENU[setutc]=0
+if timedatectl &>/dev/null;
+then
+  if [ $(timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -gt 0 ];
+  then
+    OPTION_MENU[setutc]=4
+  fi
+fi
 OPTION_MENU[udrivers]=4
-
 if [ ${#AUTO_ANSWERS[@]} -gt 0 ];
 then
   OPTION_MENU[autoyorn]=5
@@ -5319,6 +5327,7 @@ function ready_for_action () {
         ${OPTION_FLAG[personal]} -eq 0 &&
         ${OPTION_FLAG[remove]}   -eq 0 &&
         ${OPTION_FLAG[revive]}   -eq 0 &&
+        ${OPTION_FLAG[setutc]}   -eq 0 &&
         ${OPTION_FLAG[udrivers]} -eq 0 ]];
   then
     return 1
@@ -7067,6 +7076,8 @@ then
   e_and_l "  saveconf  Speichert alle per Kommandozeile oder im Menü ausgewählten"
   e_and_l "            Kategorien und Optionen und stellt diese beim nächsten"
   e_and_l "            Aufruf des Programms wieder als Vorauswahl ein."
+  e_and_l ""
+  e_and_l "    setutc  Stellt die Systemzeit auf Universal Time Coordinated (UTC)."
   e_and_l ""
   e_and_l "      skip  Überspringt die Installation bestimmter Programmpakete,"
   e_and_l "            mehrere Paketnamen sind durch Leerzeichen zu trennen"
@@ -9286,79 +9297,115 @@ fi
 # Einrichtung und Optimierung von System-Einstellungen
 ###############################################################################
 if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
+   [[ ${OPTION_FLAG[setutc]} -eq 1 || ${OPTION_FLAG[optimize]} -eq 1 ]];
+then
+  e_and_l " ${bold_blue}Einrichtung und Optimierung von System-Einstellungen${colors_off}"
+  e_and_l "$HALF_LINE"
+fi
+
+# ===========================================================================
+# Umstellung der Systemzeit auf Universal Time Coordinated (UTC) separat!
+# ===========================================================================
+if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
+   [ ${OPTION_FLAG[setutc]} -eq 1 ];
+then
+  ACTION_MESSAGE=" Umstellung der ${light_cyan}Systemzeit auf UTC${colors_off}         "
+  if timedatectl &>/dev/null;
+  then
+    if [ $(timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -gt 0 ];
+    then
+      e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
+      timedatectl set-local-rtc 0 --adjust-system-clock 2>/dev/null
+      if [ $? -eq 0 ];
+      then
+        e_and_l "$OK_TAG"
+        e_and_l "$REBOOT_MSG"
+      else
+        e_and_l "$ERROR_TAG"
+      fi
+    else
+      e_and_l "$ACTION_MESSAGE ... $NC_TAG"
+    fi
+  else
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
+  fi
+  e_and_l "$HALF_LINE"
+fi
+
+if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
    [ ${OPTION_FLAG[optimize]} -eq 1 ];
 then
 
   CHANGES_MADE=0
 
-  e_and_l " ${bold_blue}Einrichtung und Optimierung von System-Einstellungen${colors_off}"
-
-  e_and_l "$HALF_LINE"
   e_and_l " ${bold_blue}Multi-Boot${colors_off}"
   e_and_l "$HALF_LINE"
 
-  # ===========================================================================
-  # Umstellung der Systemzeit auf RTC wie bei Microsoft Windows (statt UTC)
-  # ===========================================================================
-  #   IS_MULTI_BOOT=0
-  #   if [ -d "/boot/efi/EFI/Microsoft/Boot" ];
-  #   then
-  #     IS_MULTI_BOOT=1
-  #   else
-  #     grub_config="/boot/grub/grub.cfg"
-  #     if [ -f "$grub_config" ];
-  #     then
-  #       if [ $(grep -c -i -E "windows" "$grub_config" 2>/dev/null) -gt 0 ];
-  #       then
-  #         IS_MULTI_BOOT=1
-  #       else
-  #         # Wenn unser Linux nicht von den ersten beiden Partitionen gebootet
-  #         # wurde, wird es vermutlich nicht das einzige OS auf der Platte sein.
-  #         if [ $(echo $boot_device | grep -c -E "sd[a-z][3-9]") -gt 0 ];
-  #         then
-  #           IS_MULTI_BOOT=1
-  #         fi
-  #       fi
-  #     fi
-  #   fi
-  # ---------------------------------------------------------------------------
-  # So schön die vorherige Prüfung auch ist, aber es kann ja auch sein, dass
-  # man Windows und Linux auf zwei physikalisch getrennten Laufwerken in dem
-  # selben System hat und per Hardware umschaltet - daher also immer anbieten
-  # ---------------------------------------------------------------------------
-  IS_MULTI_BOOT=1
-  # ---------------------------------------------------------------------------
-  ACTION_MESSAGE=" Umstellung der ${light_cyan}Systemzeit auf RTC${colors_off} (MS Win)"
-  if [ $IS_MULTI_BOOT -ne 0 ];
+  if [ ${OPTION_FLAG[setutc]} -eq 0 ];
   then
-    if timedatectl &>/dev/null;
+    # ===========================================================================
+    # Umstellung der Systemzeit auf RTC wie bei Microsoft Windows (statt UTC)
+    # ===========================================================================
+    #   IS_MULTI_BOOT=0
+    #   if [ -d "/boot/efi/EFI/Microsoft/Boot" ];
+    #   then
+    #     IS_MULTI_BOOT=1
+    #   else
+    #     grub_config="/boot/grub/grub.cfg"
+    #     if [ -f "$grub_config" ];
+    #     then
+    #       if [ $(grep -c -i -E "windows" "$grub_config" 2>/dev/null) -gt 0 ];
+    #       then
+    #         IS_MULTI_BOOT=1
+    #       else
+    #         # Wenn unser Linux nicht von den ersten beiden Partitionen gebootet
+    #         # wurde, wird es vermutlich nicht das einzige OS auf der Platte sein.
+    #         if [ $(echo $boot_device | grep -c -E "sd[a-z][3-9]") -gt 0 ];
+    #         then
+    #           IS_MULTI_BOOT=1
+    #         fi
+    #       fi
+    #     fi
+    #   fi
+    # ---------------------------------------------------------------------------
+    # So schön die vorherige Prüfung auch ist, aber es kann ja auch sein, dass
+    # man Windows und Linux auf zwei physikalisch getrennten Laufwerken in dem
+    # selben System hat und per Hardware umschaltet - daher also immer anbieten
+    # ---------------------------------------------------------------------------
+    IS_MULTI_BOOT=1
+    # ---------------------------------------------------------------------------
+    ACTION_MESSAGE=" Umstellung der ${light_cyan}Systemzeit auf RTC${colors_off} (MS Win)"
+    if [ $IS_MULTI_BOOT -ne 0 ];
     then
-      if [ $(timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -eq 0 ];
+      if timedatectl &>/dev/null;
       then
-        e_and_l " Einige Betriebssysteme wie MS Windows verwenden für Datum und Uhrzeit das"
-        e_and_l " RTC-Format (Real Time Clock) statt UTC-Format (Universal Time Coordinated),"
-        e_and_l " was auf ${bold_white}Multi-Boot-Systemen${colors_off} zu unterschiedlichen Zeitangaben führen kann."
-        e_and_l " Um die Angaben zu vereinheitlichen, kann Linux auf RTC umgestellt werden."
-        ask_yes_or_no "utc_to_rtc" " Die ${light_cyan}Systemzeit auf RTC (Real Time Clock)${colors_off} umstellen"
-        if [ $? -eq 1 ];
+        if [ $(timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -eq 0 ];
         then
-          e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
-          timedatectl set-local-rtc 1 --adjust-system-clock 2>/dev/null
-          if [ $? -eq 0 ];
+          e_and_l " Einige Betriebssysteme wie MS Windows verwenden für Datum und Uhrzeit das"
+          e_and_l " RTC-Format (Real Time Clock) statt UTC-Format (Universal Time Coordinated),"
+          e_and_l " was auf ${bold_white}Multi-Boot-Systemen${colors_off} zu unterschiedlichen Zeitangaben führen kann."
+          e_and_l " Um die Angaben zu vereinheitlichen, kann Linux auf RTC umgestellt werden."
+          ask_yes_or_no "utc_to_rtc" " Die ${light_cyan}Systemzeit auf RTC (Real Time Clock)${colors_off} umstellen"
+          if [ $? -eq 1 ];
           then
-            e_and_l "$OK_TAG"
-          else
-            e_and_l "$ERROR_TAG"
+            e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
+            timedatectl set-local-rtc 1 --adjust-system-clock 2>/dev/null
+            if [ $? -eq 0 ];
+            then
+              e_and_l "$OK_TAG"
+            else
+              e_and_l "$ERROR_TAG"
+            fi
           fi
+        else
+          e_and_l "$ACTION_MESSAGE ... $NC_TAG"
         fi
       else
-        e_and_l "$ACTION_MESSAGE ... $NC_TAG"
+        e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
       fi
     else
       e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
     fi
-  else
-    e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
   fi
 
   # ===========================================================================
@@ -12414,16 +12461,22 @@ then
               e_and_l "$ERROR_TAG"
             fi
             add_full_log
-            # GRUB-Loader erneuern
-            e_and_l -n " Aktualisiere die Einträge im ${light_yellow}GRUB-Loader${colors_off} ... "
-            update-grub &>"$LOG_TEMP"
-            if [ $? -eq 0 ];
+            # GRUB-Loader erneuern (wenn vorhanden)
+            ACTION_MESSAGE=" Aktualisiere die Einträge im ${light_yellow}GRUB-Loader${colors_off} ... "
+            if update-grub --help &>/dev/null;
             then
-              e_and_l "$OK_TAG"
+              e_and_l -n "$ACTION_MESSAGE"
+              update-grub &>"$LOG_TEMP"
+              if [ $? -eq 0 ];
+              then
+                e_and_l "$OK_TAG"
+              else
+                e_and_l "$ERROR_TAG"
+              fi
+              add_full_log
             else
-              e_and_l "$ERROR_TAG"
+              e_and_l "$(skip_text "$ACTION_MESSAGE" "$NV_TXT")"
             fi
-            add_full_log
           fi
         fi
       fi
