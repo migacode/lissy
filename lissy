@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 16.03.2024
-VERSION="4.00.9"
+# Letzte Änderung: 17.03.2024
+VERSION="4.01.0"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -10673,7 +10673,7 @@ then
   fi
 
   e_and_l "$HALF_LINE"
-  e_and_l " ${bold_blue}Desktop${colors_off}"
+  e_and_l " ${bold_blue}Anmeldung (Login)${colors_off}"
   e_and_l "$HALF_LINE"
 
   # ===========================================================================
@@ -10910,7 +10910,7 @@ EOF
     else # .... sonst unter lightdm eine neue Datei anlegen
       if [ "$DISPLAY_MANAGER" = "lightdm" ];
       then
-        echo -e "[Greeter]" > "$NUMLOCK_FILE" 2>/dev/null
+        echo -e "[greeter]" > "$NUMLOCK_FILE" 2>/dev/null
         echo -e "activate-numlock=true"$'\n' >> "$NUMLOCK_FILE" 2>/dev/null
         if [ $? -eq 0 ];
         then
@@ -10969,17 +10969,24 @@ EOF
   # ===========================================================================
   # Hintergrundbild des Anmeldebildschirms ändern
   # ===========================================================================
-  LDM_GREETER_FILE="$LDM_CONF_DIR/lightdm-gtk-greeter.conf"
-  ACTION_MESSAGE=" ${light_cyan}Hintergrund des Anmeldebildschirms${colors_off} ändern"
+  LDM_GREETER_FILE="$LDM_CONF_DIR/lightdm-gtk-greeter.conf" # Debian
+  if [ ! -f "$LDM_GREETER_FILE" ]
+  then
+    LDM_GREETER_FILE="$LDM_CONF_DIR/slick-greeter.conf" # Linux Mint
+  fi
+  ACTION_MESSAGE=" Hintergrundbild von Anmeldung/Login ändern"
   if [ -f "$LDM_GREETER_FILE" ]
   then
+    CURRENT_LOGIN_BG=$(grep -i -E "^\s*background\s*=" ${LDM_GREETER_FILE} | sed -E "s/^\s*background\s*=//" | xargs)
+    if [ "$CURRENT_LOGIN_BG" == "" ]; then CURRENT_LOGIN_BG="Standard"; fi
+    e_and_l " ${light_cyan}Hintergrundbild${colors_off}: ${dark_grey}$CURRENT_LOGIN_BG${colors_off}"
     ask_yes_or_no "login_background" "$ACTION_MESSAGE"
     if [ $? -eq 1 ];
     then
       THE_NEW_BG_FILE="NONE"
       while [ "$THE_NEW_BG_FILE" == "NONE" ];
       do
-        e_and_l -n " Neues Hintergrundbild: "
+        e_and_l -n " Neues Bild: "
         read THE_NEW_BG_FILE
         if [ "$THE_NEW_BG_FILE" != "" ] &&
            [[ ! -s "$THE_NEW_BG_FILE" || -d "$THE_NEW_BG_FILE" ]];
@@ -10987,7 +10994,7 @@ EOF
           THE_NEW_BG_FILE="NONE"
         fi
       done
-      e_and_l -n " Ändere ${light_yellow}Hintergrund des Anmeldebildschirms${colors_off}  ... "
+      e_and_l -n " Ändere ${light_yellow}Hintergrundbild von Anmeldung/Login${colors_off} ... "
       if [ "$THE_NEW_BG_FILE" != "" ];
       then
         NEW_CFG_LINE="background=$THE_NEW_BG_FILE"
@@ -10998,7 +11005,7 @@ EOF
       # Alle aktuellen Vorkommen auskommentieren (deaktivieren)
       sed -i -E "s/^\s*background/# background/g" "$LDM_GREETER_FILE"
       # SED-Option /a fügt eine Zeile hinter dem Match ein ;)
-      sed -i -E "/^\s*\[greeter\]/a$NEW_CFG_LINE" "$LDM_GREETER_FILE"
+      sed -i -E "/^\s*\[(G|g)reeter\]/a$NEW_CFG_LINE" "$LDM_GREETER_FILE"
       if [ $? -eq 0 ];
       then
         e_and_l "$OK_TAG"
@@ -11008,8 +11015,12 @@ EOF
       fi
     fi
   else
-    e_and_l "$(skip_text "$ACTION_MESSAGE " "nur bei LDM")"
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "nur bei LDM")"
   fi
+
+  e_and_l "$HALF_LINE"
+  e_and_l " ${bold_blue}Desktop${colors_off}"
+  e_and_l "$HALF_LINE"
 
   # ===========================================================================
   # Anzeige der Tastatur-LEDs einschalten
