@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 17.03.2024
-VERSION="4.01.0"
+# Letzte Änderung: 20.03.2024
+VERSION="4.01.1"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -876,7 +876,7 @@ declare -A OPTION_MENU # Index des Menüpunktes, in dem die Option erscheint
 
 OPTION_LIST=()
 OPTION_LIST+=(addflat addsnap norepo foreign force quiet status listonly addicons csubdirs) # Menu 2
-OPTION_LIST+=(extras exupdate udrivers kuplock kunlock optimize notrim cleansys nopkgsrv setutc revive personal dsave dload) # Menu 4
+OPTION_LIST+=(extras exupdate udrivers kuplock kunlock optimize cleansys setutc revive personal dsave dload) # Menu 4
 OPTION_LIST+=(autoyorn infoonly noinfo log logfull noupdate nocolor saveconf cleantmp) # Menu 5
 
 OPTION_TEXT[addicons]="Desktop-Symbole (Starter) für Paketauswahl erstellen"
@@ -901,9 +901,7 @@ OPTION_TEXT[log]="Einfache Log-Datei der wichtigsten Aktionen erstellen"
 OPTION_TEXT[logfull]="Vollständige Log-Datei aller Aktionen erstellen"
 OPTION_TEXT[nocolor]="Ausgabe der Anzeigen und Meldungen ohne Farben"
 OPTION_TEXT[noinfo]="Systeminformationen am Anfang nicht anzeigen"
-OPTION_TEXT[nopkgsrv]="Bei Reparaturen Prüfung der Paketserver auslassen"
 OPTION_TEXT[norepo]="Standard-Repository nicht erweitern und aktualisieren"
-OPTION_TEXT[notrim]="Bei Optimierungen kein SSD-Trimming durchführen"
 OPTION_TEXT[noupdate]="Nicht nach Updates für dieses Skript suchen"
 OPTION_TEXT[optimize]="Diverse Optimierungen des Systems durchführen"
 OPTION_TEXT[personal]="Persönliche Einstellungen vom Server laden"
@@ -950,8 +948,6 @@ else
   OPTION_MENU[kuplock]=0
   OPTION_MENU[kunlock]=4
 fi
-OPTION_MENU[nopkgsrv]=4
-OPTION_MENU[notrim]=4
 OPTION_MENU[optimize]=4
 OPTION_MENU[personal]=4
 OPTION_MENU[revive]=4
@@ -7035,15 +7031,9 @@ then
   e_and_l "    nomenu  Überspringt das Menü zur Kategorie- und Options-Auswahl"
   e_and_l "            und berücksichtigt so nur die Kommandozeilen-Parameter."
   e_and_l ""
-  e_and_l "  nopkgsrv  Überspringt die Prüfung der Erreichbarkeit von Servern"
-  e_and_l "            wenn die Option cleansys ausgewählt wurde."
-  e_and_l ""
   e_and_l "    norepo  Fügt dem Repository keine Einträge für externe Quellen"
   e_and_l "            hinzu und überspringt die Aktualisierung des Repository"
   e_and_l "            beim Start dieses Scriptes."
-  e_and_l ""
-  e_and_l "    notrim  Überspringt das Trimming der Festplatten wenn die Option"
-  e_and_l "            optimize ausgewählt wurde."
   e_and_l ""
   e_and_l "  noupdate  Prüft nicht auf eine neuere Version dieses Scripts."
   e_and_l ""
@@ -11832,9 +11822,10 @@ EOF
           # -------------------------------------------------------------------
           # Trimming der SSDs
           # -------------------------------------------------------------------
-          if [ ${OPTION_FLAG[notrim]} -eq 0 ];
+          ask_yes_or_no "trim_ssd" " ${light_cyan}Trimming der SSD(s)${colors_off} durchführen"
+          if [ $? -eq 1 ];
           then
-            e_and_l -n " Führe ${light_cyan}Trimming der SSD${colors_off} durch, bitte warten ... "
+            e_and_l -n " Führe ${light_yellow}Trimming der SSD${colors_off} durch, bitte warten ... "
             fstrim --all &>"$LOG_TEMP"
             if [ $? -eq 0 ];
             then
@@ -12301,16 +12292,15 @@ then
     # -------------------------------------------------------------------------
     if [ -s "$SOURCES_URI_LIST" ];
     then
-      ACTION_MESSAGE=" Prüfung der ${light_cyan}Erreichbarkeit der Paketserver${colors_off}"
-      if [ ${OPTION_FLAG[nopkgsrv]} -eq 0 ];
+      ask_yes_or_no "chkpkgsrv" " Prüfung der ${light_cyan}Erreichbarkeit der Paketserver${colors_off}"
+      if [ $? -eq 1 ];
       then
         # Doppelte URIs entfernen
         THE_TEMP_FILE="$DOWNLOAD_DIR/tmp_uri_list.tmp"
         awk '!seen[$0]++' "$SOURCES_URI_LIST" > "$THE_TEMP_FILE" 2>/dev/null
         remove_file "$SOURCES_URI_LIST"
         mv "$THE_TEMP_FILE" "$SOURCES_URI_LIST" &>/dev/null
-        e_and_l "$HALF_LINE"
-        e_and_l "$ACTION_MESSAGE:"
+        e_and_l " Prüfe die ${light_yellow}Erreichbarkeit der Paketserver${colors_off}:"
         # Nur zur Ermittlung des längsten Namens --------------------------------
         MAX_NAME_LENGTH=0
         while read src_uri;
@@ -12381,8 +12371,6 @@ then
             remove_file "$TEST_FILE"
           fi
         done < "$SOURCES_URI_LIST"
-      else
-        e_and_l "$(skip_text "$ACTION_MESSAGE" "nicht ausgewählt")"
       fi
     fi
   else # Keine Paketquellen gefunden
