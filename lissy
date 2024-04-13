@@ -37,7 +37,7 @@
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
 # Letzte Änderung: 13.04.2024
-VERSION="4.01.3"
+VERSION="4.01.4"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -834,7 +834,7 @@ KATEGORIE_TEXT[a]="Webserver (Apache und PHP)"
 KATEGORIE_TEXT[b]="Büro (Office-Anwendungen, E-book- und PDF-Tools)"
 KATEGORIE_TEXT[c]="Cloud-Clients (Clients für Online-Datenspeicher)"
 KATEGORIE_TEXT[f]="FTP-Server (ProFTPD)"
-KATEGORIE_TEXT[fo]="Forensik-Paket (Achtung: Sehr groß und nur für Experten)"
+KATEGORIE_TEXT[fo]="Forensik-Pakete (Umfangreiche Sammlung nur für Experten)"
 KATEGORIE_TEXT[g]="Grafik (Bild- und Foto-Bearbeitung)"
 KATEGORIE_TEXT[i]="Internet (Browser, Mail, Chat, File-Transfer und Tools)"
 KATEGORIE_TEXT[m]="Multimedia (Media-Player, Konverter und Brenn-Software)"
@@ -1024,8 +1024,8 @@ KATEGORIE_PKGS[fo]="forensics-full forensics-samples-all"
 KATEGORIE_PKGS[g]="blender darktable digikam drawing eom fraqtive freecad geeqie gimp gpicview gpick gwenview imagemagick inkscape krita mandelbulber2 mtpaint pinta rawtherapee shotwell simple-scan xnview"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[g]+=" pix xviewer"; fi
 # Internet
-KATEGORIE_PKGS[i]="anydesk ipscan chromium element-desktop filezilla firefox opera-stable microsoft-edge-stable nomachine realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission virt-viewer wireshark"
-if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[i]+=" hexchat warpinator"; fi
+KATEGORIE_PKGS[i]="anydesk chromium element-desktop filezilla firefox ipscan linssid microsoft-edge-stable nomachine opera-stable packetsender realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission virt-viewer wireshark"
+if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[i]+=" hexchat warpinator webapp-manager"; fi
 # Multimedia
 KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv mp3splt obs-studio openshot-qt parole rhythmbox smplayer vlc webcamoid yt-dlp youtube-dl youtubedl-gui youplay"
 # Netzwerkverbindungen
@@ -1034,9 +1034,10 @@ KATEGORIE_PKGS[n]="openvpn vpnc vpnc-scripts"
 KATEGORIE_PKGS[s]="0ad alien-arena armagetronad atomix billard-gl biniax2 blockout2 briquolo brutalchess caveexpress code-the-classics criticalmass cuyo dreamchess endless-sky enigma extremetuxracer flightgear flobopuyo foobillardplus freedoom freedroidrpg freegish freetennis frogatto frozen-bubble fs-uae gbrainy gcompris-qt gemdropx gnome-games gnubg gweled jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter megaglest morris naev neverball neverputt nexuiz numptyphysics oolite openarena openclonk open-invaders pinball pingus pokerth pybik quetoo rocksndiamonds sauerbraten sdl-ball speed_dreams steam stunt_rally supertux supertuxkart teeworlds tesseract torcs trigger-rally tuxmath ufoai wesnoth widelands xonotic ysoccer zaz"
 # Systemerweiterungen
 KATEGORIE_PKGS[x]="alien apt-file apturl arj arp-scan ccd2iso chkrootkit cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dirmngr dpkg-repack e2fsprogs ethtool exfat-fuse exfatprogs extundelete f3 fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends hdparm heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sane-utils sed screen smartmontools smbclient sqlite3 sshguard sysbench sysfsutils sysstat tar tcptrack testdisk traceroute udftools ufw unzip usbutils util-linux wget whois xsltproc zstd zulumount-cli"
+if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[x]+=" lsb"; fi
 # Systemverwaltung
 KATEGORIE_PKGS[v]="backintime-common baobab bleachbit blueman caja copyq cpu-x czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted grsync grub-customizer gsmartcontrol gtkhash gufw hardinfo kwalletmanager mozo nemo plasma-discover seahorse stacer synaptic system-config-printer timeshift tilda usbview xfce4-taskmanager zulumount-gui"
-if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[v]+=" bulky qt5ct webapp-manager"; fi
+if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[v]+=" bulky qt5ct"; fi
 if [ $FLATPAK_INSTALLED -ne 0 ]; then KATEGORIE_PKGS[v]+=" flatseal gnome-software-plugin-flatpak plasma-discover-backend-flatpak"; fi
 # Tonstudio
 KATEGORIE_PKGS[t]="ardour audacity hydrogen lmms qjackctl qtractor yoshimi zynaddsubfx"
