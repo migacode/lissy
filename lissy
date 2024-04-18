@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 13.04.2024
-VERSION="4.01.4"
+# Letzte Änderung: 18.04.2024
+VERSION="4.01.6"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -1391,35 +1391,35 @@ DEB_PKG_CSUM[opera-stable_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://www.realvnc.com/de/connect/download/vnc/linux
 DEB_PKG_NAME[realvnc-vnc-server]="VNC Server"
-DEB_PKG_OLDV[realvnc-vnc-server]="7.6.1"
-DEB_PKG_OLDF[realvnc-vnc-server]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.6.1-Linux-x64.deb"
-DEB_PKG_VERS[realvnc-vnc-server]="7.9.0"
+DEB_PKG_OLDV[realvnc-vnc-server]="7.9.0"
+DEB_PKG_OLDF[realvnc-vnc-server]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.9.0-Linux-x64.deb"
+DEB_PKG_VERS[realvnc-vnc-server]="7.10.0"
 DEB_PKG_MESG[realvnc-vnc-server]=""
 DEB_PKG_EVAL[realvnc-vnc-server]=""
-DEB_PKG_FILE[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.9.0-Linux-x64.deb"
-DEB_PKG_CSUM[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.9.0-Linux-x64.deb.sha"
+DEB_PKG_FILE[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.10.0-Linux-x64.deb"
+DEB_PKG_CSUM[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.10.0-Linux-x64.deb.sha"
  DEB_PKG_FILE[realvnc-vnc-server_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
  DEB_PKG_CSUM[realvnc-vnc-server_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
-DEB_PKG_FILE[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.9.0-Linux-ARM64.deb"
-DEB_PKG_CSUM[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.9.0-Linux-ARM64.deb.sha"
-DEB_PKG_FILE[realvnc-vnc-server_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.9.0-Linux-ARM.deb"
-DEB_PKG_CSUM[realvnc-vnc-server_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.9.0-Linux-ARM.deb.sha"
+DEB_PKG_FILE[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.10.0-Linux-ARM64.deb"
+DEB_PKG_CSUM[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.10.0-Linux-ARM64.deb.sha"
+DEB_PKG_FILE[realvnc-vnc-server_armhf]="" # Ab Version 7 nicht mehr verfügbar für 32bit
+DEB_PKG_CSUM[realvnc-vnc-server_armhf]="" # Ab Version 7 nicht mehr verfügbar für 32bit
 
 # Download von https://www.realvnc.com/de/connect/download/viewer/linux
 DEB_PKG_NAME[realvnc-vnc-viewer]="VNC Viewer"
-DEB_PKG_OLDV[realvnc-vnc-viewer]="7.6.1"
-DEB_PKG_OLDF[realvnc-vnc-viewer]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.6.1-Linux-x64.deb"
-DEB_PKG_VERS[realvnc-vnc-viewer]="7.9.0"
+DEB_PKG_OLDV[realvnc-vnc-viewer]="7.9.0"
+DEB_PKG_OLDF[realvnc-vnc-viewer]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.9.0-Linux-x64.deb"
+DEB_PKG_VERS[realvnc-vnc-viewer]="7.10.0"
 DEB_PKG_MESG[realvnc-vnc-viewer]=""
 DEB_PKG_EVAL[realvnc-vnc-viewer]=""
-DEB_PKG_FILE[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.9.0-Linux-x64.deb"
-DEB_PKG_CSUM[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.9.0-Linux-x64.deb.sha"
+DEB_PKG_FILE[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.10.0-Linux-x64.deb"
+DEB_PKG_CSUM[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.10.0-Linux-x64.deb.sha"
  DEB_PKG_FILE[realvnc-vnc-viewer_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
  DEB_PKG_CSUM[realvnc-vnc-viewer_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
-DEB_PKG_FILE[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.9.0-Linux-ARM64.deb"
-DEB_PKG_CSUM[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.9.0-Linux-ARM64.deb.sha"
-DEB_PKG_FILE[realvnc-vnc-viewer_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.9.0-Linux-ARM.deb"
-DEB_PKG_CSUM[realvnc-vnc-viewer_armhf]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.9.0-Linux-ARM.deb.sha"
+DEB_PKG_FILE[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.10.0-Linux-ARM64.deb"
+DEB_PKG_CSUM[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.10.0-Linux-ARM64.deb.sha"
+DEB_PKG_FILE[realvnc-vnc-viewer_armhf]="" # Ab Version 7 nicht mehr verfügbar für 32bit
+DEB_PKG_CSUM[realvnc-vnc-viewer_armhf]="" # Ab Version 7 nicht mehr verfügbar für 32bit
 
 # Download von https://github.com/raspberrypi/rpi-imager
 DEB_PKG_NAME[rpi-imager]="RPi-Imager"
@@ -2009,6 +2009,15 @@ EXUPDATE_PKG_LIST=('balena-etcher' 'code-the-classics' 'codium' 'czkawka' 'freef
 # Pakete, die warum auch immer bevorzugt als Flatpak installiert werden sollen.
 ###############################################################################
 FORCE_FLATPAK_LIST=()
+
+###############################################################################
+# Für Flatpak-Pakete, die in der Liste der installierten (!) Flatpaks mit
+# anderen Namen angezeigt werden und somit nicht automatisiert gefunden werden
+# können, kann der zu suchende Name in FLATPAK_LISTED_NAME hinterlegt werden.
+###############################################################################
+declare -A FLATPAK_LISTED_NAME
+
+FLATPAK_LISTED_NAME[lix]="Simon Naarmann"
 
 ###############################################################################
 # Pakete, die warum auch immer bevorzugt als Snap installiert werden sollen.
@@ -3505,10 +3514,15 @@ function get_install_status () {
      [ $FLATPAK_INSTALLED -ne 0 ] &&
      [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
   then
-    if [ $(grep -c -i -P "^${1//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST}) -gt 0 ];
+    FLATPAK_NAME=$1
+    if [ "${FLATPAK_LISTED_NAME[$FLATPAK_NAME]}" != "" ];
+    then
+      FLATPAK_NAME="${FLATPAK_LISTED_NAME[$FLATPAK_NAME]}"
+    fi
+    if [ $(grep -c -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST}) -gt 0 ];
     then
       PKG_INSTALL_STATUS=6
-      TMP_FLATPAK_VERSION=$(grep -i -P "^${1//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 2)
+      TMP_FLATPAK_VERSION=$(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 2)
       PKG_VERSION=$(clean_pkg_version "$TMP_FLATPAK_VERSION")
     fi
   fi
@@ -3742,17 +3756,23 @@ function get_pkg_snap_version () {
 # Funktion zur Ermittlung einer Paket-Version als Flatpak (FLAT)
 ###############################################################################
 function get_pkg_flatpak_version () {
-  INFO_TYPE=$2 # 0 = verfügbare Version, 1 = installierte Version ermitteln
+  FLATPAK_NAME=$1
+  INFO_TYPE=$2    # 0 = verfügbare Version, 1 = installierte Version ermitteln
+  if [ $INFO_TYPE -eq 1 ] &&
+     [ "${FLATPAK_LISTED_NAME[$FLATPAK_NAME]}" != "" ];
+  then
+    FLATPAK_NAME="${FLATPAK_LISTED_NAME[$FLATPAK_NAME]}"
+  fi
   if [ $INFO_TYPE -eq 0 ];
   then
     if [ -s "$THE_FLATPAK_REMOTE_LIST" ];
     then
-      TMP_FLATPAK_VERSION=$(grep -i -P "^${1//_/ }\t" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 2)
+      TMP_FLATPAK_VERSION=$(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 2)
     fi
   else
     if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
     then
-      TMP_FLATPAK_VERSION=$(grep -i -P "^${1//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 2)
+      TMP_FLATPAK_VERSION=$(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 2)
     fi
   fi
   THE_FLAT_PKG_VERSION=$(clean_pkg_version "$TMP_FLATPAK_VERSION")
@@ -3763,19 +3783,25 @@ function get_pkg_flatpak_version () {
 # Funktion zur Ermittlung des Referenz-Strings eines Flatpaks
 ###############################################################################
 function get_pkg_flatpak_reference () {
+  FLATPAK_NAME=$1
   INFO_TYPE=$2
   # 0 = verfügbare Version mit Architektur
   # 1 = installierte Version ohne Architektur
+  if [ $INFO_TYPE -eq 1 ] &&
+     [ "${FLATPAK_LISTED_NAME[$FLATPAK_NAME]}" != "" ];
+  then
+    FLATPAK_NAME="${FLATPAK_LISTED_NAME[$FLATPAK_NAME]}"
+  fi
   if [ $INFO_TYPE -eq 0 ];
   then
     if [ -s "$THE_FLATPAK_REMOTE_LIST" ];
     then
-      echo -e $(grep -i -P "^${1//_/ }\t" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 3)
+      echo -e $(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 3)
     fi
   else
     if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
     then
-      echo -e $(grep -i -P "^${1//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 3 | cut -d'/' -f 1 | xargs)
+      echo -e $(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 3 | cut -d'/' -f 1 | xargs)
     fi
   fi
 }
