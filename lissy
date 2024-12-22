@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 17.11.2024
-VERSION="4.01.8"
+# Letzte Änderung: 18.11.2024
+VERSION="4.11.2"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -1093,8 +1093,8 @@ AUTO_ADD_PPOS[frogatto]="true"
 AUTO_ADD_PKGS[gcompris-qt]="gcompris-qt-data"
 AUTO_ADD_PPOS[gcompris-qt]="true"
 AUTO_ADD_PKGS[krita]="krita-l10n"
-AUTO_ADD_PKGS[libreoffice]="libreoffice-gnome"
-AUTO_ADD_PKGS[libreoffice-common]="libreoffice-gnome"
+AUTO_ADD_PKGS[libreoffice]="libreoffice-gnome libreoffice-l10n-de"
+AUTO_ADD_PKGS[libreoffice-common]="libreoffice-gnome libreoffice-l10n-de"
 AUTO_ADD_PKGS[mediainfo]="mediainfo-gui"
 AUTO_ADD_PKGS[mkvtoolnix]="mkvtoolnix-gui"
 AUTO_ADD_PKGS[mp3splt]="mp3splt-gtk"
@@ -1274,13 +1274,13 @@ declare -A DEB_PKG_OLDF # Download-URL der Vorgänger-Version (nur amd64)
 # Download von https://github.com/balena-io/etcher/releases/latest (https://www.balena.io/etcher/)
 # ACHTUNG: Auch als WEB-Version eingetragen (s.u.)!
 DEB_PKG_NAME[balena-etcher]="balenaEtcher"
-DEB_PKG_OLDV[balena-etcher]="1.18.4"
-DEB_PKG_OLDF[balena-etcher]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.4_amd64.deb"
-DEB_PKG_VERS[balena-etcher]="1.18.11"
+DEB_PKG_OLDV[balena-etcher]="1.18.11"
+DEB_PKG_OLDF[balena-etcher]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.11_amd64.deb"
+DEB_PKG_VERS[balena-etcher]="1.19.25"
 DEB_PKG_MESG[balena-etcher]=""
 DEB_PKG_EVAL[balena-etcher]=""
-DEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.11_amd64.deb"
-DEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.11_amd64.deb.sha"
+DEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.19.25_amd64.deb"
+DEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.19.25_amd64.deb.sha"
  DEB_PKG_FILE[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
  DEB_PKG_CSUM[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
 DEB_PKG_FILE[balena-etcher_arm64]="" # NICHT für ARM verfügbar
@@ -1290,17 +1290,17 @@ DEB_PKG_CSUM[balena-etcher_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://github.com/VSCodium/vscodium
 DEB_PKG_NAME[codium]="VSCodium"
-DEB_PKG_OLDV[codium]="1.83.0"
-DEB_PKG_OLDF[codium]="$RESSOURCE_SERVER_DIR/deb/codium_1.83.0.23277_amd64.deb"
-DEB_PKG_VERS[codium]="1.85.2"
+DEB_PKG_OLDV[codium]="1.85.2"
+DEB_PKG_OLDF[codium]="$RESSOURCE_SERVER_DIR/deb/codium_1.85.2.24019_amd64.deb"
+DEB_PKG_VERS[codium]="1.96.2"
 DEB_PKG_MESG[codium]=""
 DEB_PKG_EVAL[codium]=""
-DEB_PKG_FILE[codium_amd64]="$RESSOURCE_SERVER_DIR/deb/codium_1.85.2.24019_amd64.deb"
-DEB_PKG_CSUM[codium_amd64]="$RESSOURCE_SERVER_DIR/deb/codium_1.85.2.24019_amd64.deb.sha"
+DEB_PKG_FILE[codium_amd64]="$RESSOURCE_SERVER_DIR/deb/codium_1.96.2.24355_amd64.deb"
+DEB_PKG_CSUM[codium_amd64]="$RESSOURCE_SERVER_DIR/deb/codium_1.96.2.24355_amd64.deb.sha"
  DEB_PKG_FILE[codium_i386]="" # NUR für 64-bit verfügbar
  DEB_PKG_CSUM[codium_i386]="" # NUR für 64-bit verfügbar
-DEB_PKG_FILE[codium_arm64]="$RESSOURCE_SERVER_DIR/deb/codium_1.85.2.24019_arm64.deb"
-DEB_PKG_CSUM[codium_arm64]="$RESSOURCE_SERVER_DIR/deb/codium_1.85.2.24019_arm64.deb.sha"
+DEB_PKG_FILE[codium_arm64]="$RESSOURCE_SERVER_DIR/deb/codium_1.96.2.24355_arm64.deb"
+DEB_PKG_CSUM[codium_arm64]="$RESSOURCE_SERVER_DIR/deb/codium_1.96.2.24355_arm64.deb.sha"
 DEB_PKG_FILE[codium_armhf]="" # NUR für 64-bit verfügbar
 DEB_PKG_CSUM[codium_armhf]="" # NUR für 64-bit verfügbar
 
@@ -1312,15 +1312,15 @@ then
   DEB_PKG_NAME[hypnotix]="Hypnotix"
   DEB_PKG_OLDV[hypnotix]="2.6"
   DEB_PKG_OLDF[hypnotix]="$RESSOURCE_SERVER_DIR/deb/hypnotix_2.6_LAST_20.04_all.deb"
-  DEB_PKG_VERS[hypnotix]="4.3"
+  DEB_PKG_VERS[hypnotix]="4.8"
   DEB_PKG_MESG[hypnotix]="Benötigt mindestens gtk-4.0!"
   DEB_PKG_EVAL[hypnotix]="[ -d /usr/share/gtk-4.0 ]"
-  DEB_PKG_FILE[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.3_all.deb"
-  DEB_PKG_CSUM[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.3_all.deb.sha"
+  DEB_PKG_FILE[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.8_all.deb"
+  DEB_PKG_CSUM[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.8_all.deb.sha"
   DEB_PKG_FILE[hypnotix_i386]="" # NUR für 64-bit verfügbar
   DEB_PKG_CSUM[hypnotix_i386]="" # NUR für 64-bit verfügbar
-  DEB_PKG_FILE[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.3_all.deb"
-  DEB_PKG_CSUM[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.3_all.deb.sha"
+  DEB_PKG_FILE[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.8_all.deb"
+  DEB_PKG_CSUM[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.8_all.deb.sha"
   DEB_PKG_FILE[hypnotix_armhf]="" # NUR für 64-bit verfügbar
   DEB_PKG_CSUM[hypnotix_armhf]="" # NUR für 64-bit verfügbar
 fi
@@ -1343,45 +1343,45 @@ DEB_PKG_CSUM[ipscan_armhf]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.1_all.deb.sha"
 
 # Download von https://github.com/4gray/iptvnator
 DEB_PKG_NAME[iptvnator]="IPTVnator"
-DEB_PKG_OLDV[iptvnator]="0.14.0"
-DEB_PKG_OLDF[iptvnator]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.14.0_amd64.deb"
-DEB_PKG_VERS[iptvnator]="0.15.0"
+DEB_PKG_OLDV[iptvnator]="0.15.0"
+DEB_PKG_OLDF[iptvnator]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.15.0_amd64.deb"
+DEB_PKG_VERS[iptvnator]="0.16.0"
 DEB_PKG_MESG[iptvnator]=""
 DEB_PKG_EVAL[iptvnator]=""
-DEB_PKG_FILE[iptvnator_amd64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.15.0_amd64.deb"
-DEB_PKG_CSUM[iptvnator_amd64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.15.0_amd64.deb.sha"
+DEB_PKG_FILE[iptvnator_amd64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.16.0_amd64.deb"
+DEB_PKG_CSUM[iptvnator_amd64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.16.0_amd64.deb.sha"
 DEB_PKG_FILE[iptvnator_i386]="" # NUR für 64-bit verfügbar
 DEB_PKG_CSUM[iptvnator_i386]="" # NUR für 64-bit verfügbar
-DEB_PKG_FILE[iptvnator_arm64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.15.0_arm64.deb"
-DEB_PKG_CSUM[iptvnator_arm64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.15.0_arm64.deb.sha"
+DEB_PKG_FILE[iptvnator_arm64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.16.0_arm64.deb"
+DEB_PKG_CSUM[iptvnator_arm64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.16.0_arm64.deb.sha"
 DEB_PKG_FILE[iptvnator_armhf]="" # NUR für 64-bit verfügbar
 DEB_PKG_CSUM[iptvnator_armhf]="" # NUR für 64-bit verfügbar
 
 # Download von https://www.nomachine.com/download/linux&id=1
 DEB_PKG_NAME[nomachine]="NoMachine"
-DEB_PKG_OLDV[nomachine]="8.8.1"
-DEB_PKG_OLDF[nomachine]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.8.1_1_amd64.deb"
-DEB_PKG_VERS[nomachine]="8.11.3"
+DEB_PKG_OLDV[nomachine]="8.11.3"
+DEB_PKG_OLDF[nomachine]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_4_amd64.deb"
+DEB_PKG_VERS[nomachine]="8.14.2"
 DEB_PKG_MESG[nomachine]=""
 DEB_PKG_EVAL[nomachine]=""
-DEB_PKG_FILE[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_4_amd64.deb"
-DEB_PKG_CSUM[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_4_amd64.deb.sha"
- DEB_PKG_FILE[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_4_i386.deb"
- DEB_PKG_CSUM[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_4_i386.deb.sha"
-DEB_PKG_FILE[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_3_arm64.deb"
-DEB_PKG_CSUM[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_3_arm64.deb.sha"
-DEB_PKG_FILE[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_3_armhf.deb"
-DEB_PKG_CSUM[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_3_armhf.deb.sha"
+DEB_PKG_FILE[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_amd64.deb"
+DEB_PKG_CSUM[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_amd64.deb.sha"
+ DEB_PKG_FILE[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_i386.deb"
+ DEB_PKG_CSUM[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_i386.deb.sha"
+DEB_PKG_FILE[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_arm64.deb"
+DEB_PKG_CSUM[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_arm64.deb.sha"
+DEB_PKG_FILE[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_armhf.deb"
+DEB_PKG_CSUM[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_armhf.deb.sha"
 
 # Download von https://www.opera.com/de/download
 DEB_PKG_NAME[opera-stable]="Opera"
-DEB_PKG_OLDV[opera-stable]="102.0.4880.70"
-DEB_PKG_OLDF[opera-stable]="$RESSOURCE_SERVER_DIR/deb/opera-stable_102.0.4880.70_amd64.deb"
-DEB_PKG_VERS[opera-stable]="106.0.4998.70"
+DEB_PKG_OLDV[opera-stable]="106.0.4998.70"
+DEB_PKG_OLDF[opera-stable]="$RESSOURCE_SERVER_DIR/deb/opera-stable_106.0.4998.70_amd64.deb"
+DEB_PKG_VERS[opera-stable]="115.0.5322.70"
 DEB_PKG_MESG[opera-stable]=""
 DEB_PKG_EVAL[opera-stable]=""
-DEB_PKG_FILE[opera-stable_amd64]="$RESSOURCE_SERVER_DIR/deb/opera-stable_106.0.4998.70_amd64.deb"
-DEB_PKG_CSUM[opera-stable_amd64]="$RESSOURCE_SERVER_DIR/deb/opera-stable_106.0.4998.70_amd64.deb.sha"
+DEB_PKG_FILE[opera-stable_amd64]="$RESSOURCE_SERVER_DIR/deb/opera-stable_115.0.5322.109_amd64.deb"
+DEB_PKG_CSUM[opera-stable_amd64]="$RESSOURCE_SERVER_DIR/deb/opera-stable_115.0.5322.109_amd64.deb.sha"
  DEB_PKG_FILE[opera-stable_i386]="" # NUR für 64-bit verfügbar
  DEB_PKG_CSUM[opera-stable_i386]="" # NUR für 64-bit verfügbar
 DEB_PKG_FILE[opera-stable_arm64]="" # NICHT für ARM verfügbar
@@ -1391,33 +1391,33 @@ DEB_PKG_CSUM[opera-stable_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://www.realvnc.com/de/connect/download/vnc/linux
 DEB_PKG_NAME[realvnc-vnc-server]="VNC Server"
-DEB_PKG_OLDV[realvnc-vnc-server]="7.9.0"
-DEB_PKG_OLDF[realvnc-vnc-server]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.9.0-Linux-x64.deb"
-DEB_PKG_VERS[realvnc-vnc-server]="7.10.0"
+DEB_PKG_OLDV[realvnc-vnc-server]="7.10.0"
+DEB_PKG_OLDF[realvnc-vnc-server]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.10.0-Linux-x64.deb"
+DEB_PKG_VERS[realvnc-vnc-server]="7.13.1"
 DEB_PKG_MESG[realvnc-vnc-server]=""
 DEB_PKG_EVAL[realvnc-vnc-server]=""
-DEB_PKG_FILE[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.10.0-Linux-x64.deb"
-DEB_PKG_CSUM[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.10.0-Linux-x64.deb.sha"
+DEB_PKG_FILE[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.13.1-Linux-x64.deb"
+DEB_PKG_CSUM[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.13.1-Linux-x64.deb.sha"
  DEB_PKG_FILE[realvnc-vnc-server_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
  DEB_PKG_CSUM[realvnc-vnc-server_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
-DEB_PKG_FILE[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.10.0-Linux-ARM64.deb"
-DEB_PKG_CSUM[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.10.0-Linux-ARM64.deb.sha"
+DEB_PKG_FILE[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.13.1-Linux-ARM64.deb"
+DEB_PKG_CSUM[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.13.1-Linux-ARM64.deb.sha"
 DEB_PKG_FILE[realvnc-vnc-server_armhf]="" # Ab Version 7 nicht mehr verfügbar für 32bit
 DEB_PKG_CSUM[realvnc-vnc-server_armhf]="" # Ab Version 7 nicht mehr verfügbar für 32bit
 
 # Download von https://www.realvnc.com/de/connect/download/viewer/linux
 DEB_PKG_NAME[realvnc-vnc-viewer]="VNC Viewer"
-DEB_PKG_OLDV[realvnc-vnc-viewer]="7.9.0"
-DEB_PKG_OLDF[realvnc-vnc-viewer]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.9.0-Linux-x64.deb"
-DEB_PKG_VERS[realvnc-vnc-viewer]="7.10.0"
+DEB_PKG_OLDV[realvnc-vnc-viewer]="7.10.0"
+DEB_PKG_OLDF[realvnc-vnc-viewer]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.10.0-Linux-x64.deb"
+DEB_PKG_VERS[realvnc-vnc-viewer]="7.13.1"
 DEB_PKG_MESG[realvnc-vnc-viewer]=""
 DEB_PKG_EVAL[realvnc-vnc-viewer]=""
-DEB_PKG_FILE[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.10.0-Linux-x64.deb"
-DEB_PKG_CSUM[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.10.0-Linux-x64.deb.sha"
+DEB_PKG_FILE[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.13.1-Linux-x64.deb"
+DEB_PKG_CSUM[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.13.1-Linux-x64.deb.sha"
  DEB_PKG_FILE[realvnc-vnc-viewer_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
  DEB_PKG_CSUM[realvnc-vnc-viewer_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
-DEB_PKG_FILE[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.10.0-Linux-ARM64.deb"
-DEB_PKG_CSUM[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.10.0-Linux-ARM64.deb.sha"
+DEB_PKG_FILE[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.13.1-Linux-ARM64.deb"
+DEB_PKG_CSUM[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.13.1-Linux-ARM64.deb.sha"
 DEB_PKG_FILE[realvnc-vnc-viewer_armhf]="" # Ab Version 7 nicht mehr verfügbar für 32bit
 DEB_PKG_CSUM[realvnc-vnc-viewer_armhf]="" # Ab Version 7 nicht mehr verfügbar für 32bit
 
@@ -1474,13 +1474,13 @@ DEB_PKG_CSUM[teamviewer_armhf]=""
 # Erstellt mittels dpkg-repack :)
 # (Ginge aber auch per Download von https://pkgs.org/download/usb-creator-common)
 DEB_PKG_NAME[usb-creator-common]="USB-Creator-Common"
-DEB_PKG_OLDV[usb-creator-common]=""
-DEB_PKG_OLDF[usb-creator-common]=""
-DEB_PKG_VERS[usb-creator-common]="0.0.3.13"
+DEB_PKG_OLDV[usb-creator-common]="0.0.3.13"
+DEB_PKG_OLDF[usb-creator-common]="$RESSOURCE_SERVER_DIR/deb/usb-creator-common_0.3.13_amd64.deb"
+DEB_PKG_VERS[usb-creator-common]="0.0.3.17"
 DEB_PKG_MESG[usb-creator-common]=""
 DEB_PKG_EVAL[usb-creator-common]=""
-DEB_PKG_FILE[usb-creator-common_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-common_0.3.13_amd64.deb"
-DEB_PKG_CSUM[usb-creator-common_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-common_0.3.13_amd64.deb.sha"
+DEB_PKG_FILE[usb-creator-common_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-common_0.3.17_all.deb"
+DEB_PKG_CSUM[usb-creator-common_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-common_0.3.17_all.deb.sha"
  DEB_PKG_FILE[usb-creator-common_i386]="" # NUR für 64-bit gepackt
  DEB_PKG_CSUM[usb-creator-common_i386]="" # NUR für 64-bit gepackt
 DEB_PKG_FILE[usb-creator-common_arm64]="" # NICHT für ARM verfügbar
@@ -1491,13 +1491,13 @@ DEB_PKG_CSUM[usb-creator-common_armhf]="" # NICHT für ARM verfügbar
 # Erstellt mittels dpkg-repack :)
 # (Ginge aber auch per Download von https://pkgs.org/download/usb-creator-gtk)
 DEB_PKG_NAME[usb-creator-gtk]="USB-Creator-GTK"
-DEB_PKG_OLDV[usb-creator-gtk]=""
-DEB_PKG_OLDF[usb-creator-gtk]=""
-DEB_PKG_VERS[usb-creator-gtk]="0.0.3.13"
+DEB_PKG_OLDV[usb-creator-gtk]="0.0.3.13"
+DEB_PKG_OLDF[usb-creator-gtk]="$RESSOURCE_SERVER_DIR/deb/usb-creator-gtk_0.3.13_amd64.deb"
+DEB_PKG_VERS[usb-creator-gtk]="0.0.3.17"
 DEB_PKG_MESG[usb-creator-gtk]=""
 DEB_PKG_EVAL[usb-creator-gtk]=""
-DEB_PKG_FILE[usb-creator-gtk_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-gtk_0.3.13_amd64.deb"
-DEB_PKG_CSUM[usb-creator-gtk_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-gtk_0.3.13_amd64.deb.sha"
+DEB_PKG_FILE[usb-creator-gtk_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-gtk_0.3.17_all.deb"
+DEB_PKG_CSUM[usb-creator-gtk_amd64]="$RESSOURCE_SERVER_DIR/deb/usb-creator-gtk_0.3.17_all.deb.sha"
  DEB_PKG_FILE[usb-creator-gtk_i386]="" # NUR für 64-bit gepackt
  DEB_PKG_CSUM[usb-creator-gtk_i386]="" # NUR für 64-bit gepackt
 DEB_PKG_FILE[usb-creator-gtk_arm64]="" # NICHT für ARM verfügbar
@@ -1507,8 +1507,8 @@ DEB_PKG_CSUM[usb-creator-gtk_armhf]="" # NICHT für ARM verfügbar
 
 # -----------------------------------------------------------------------------
 # Download von https://veracrypt.fr/en/Downloads.html
-# ACHTUNG: BEI ÄNDERUNGEN AUCH DIE DATEI "veracrypt-1.23.4-sha256sum.txt" DOWNLOADEN
-#          UND AUF DEM SERVER ALS "veracrypt-1.23.4-sha256sum.sha" SPEICHERN !!!
+# ACHTUNG: BEI ÄNDERUNGEN AUCH DIE DATEI "veracrypt-1.yx.z-sha256sum.txt" DOWNLOADEN
+#          UND AUF DEM SERVER ALS "veracrypt-1.xy.z-sha256sum.sha" SPEICHERN !!!
 # VeraCrypt bietet weiter differenzierte Pakete an ----------------------------
 OPSYS_PART=""
 # Zuerst testen ob Ubuntu ...
@@ -1527,29 +1527,29 @@ then
   DEB_PKG_NAME[veracrypt]="VeraCrypt"
   DEB_PKG_OLDV[veracrypt]=""
   DEB_PKG_OLDF[veracrypt]=""
-  DEB_PKG_VERS[veracrypt]="1.26.7"
+  DEB_PKG_VERS[veracrypt]="1.26.14"
   DEB_PKG_MESG[veracrypt]=""
   DEB_PKG_EVAL[veracrypt]=""
-  DEB_PKG_FILE[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.7-$OPSYS_PART-amd64.deb"
-  DEB_PKG_CSUM[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.7-sha256sum.sha"
+  DEB_PKG_FILE[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.14-$OPSYS_PART-amd64.deb"
+  DEB_PKG_CSUM[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.14-sha256sum.sha"
    DEB_PKG_FILE[veracrypt_i386]="" # Nur als generischer Installer verfügbar (nicht aufgenommen)
    DEB_PKG_CSUM[veracrypt_i386]="" # Nur als generischer Installer verfügbar (nicht aufgenommen)
-  DEB_PKG_FILE[veracrypt_arm64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.7-$OPSYS_PART-arm64.deb"
-  DEB_PKG_CSUM[veracrypt_arm64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.7-sha256sum.sha"
-  DEB_PKG_FILE[veracrypt_armhf]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.7-$OPSYS_PART-armhf.deb"
-  DEB_PKG_CSUM[veracrypt_armhf]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.7-sha256sum.sha"
+  DEB_PKG_FILE[veracrypt_arm64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.14-$OPSYS_PART-arm64.deb"
+  DEB_PKG_CSUM[veracrypt_arm64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.14-sha256sum.sha"
+  DEB_PKG_FILE[veracrypt_armhf]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.14-$OPSYS_PART-armhf.deb"
+  DEB_PKG_CSUM[veracrypt_armhf]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.14-sha256sum.sha"
 fi
 # -----------------------------------------------------------------------------
 
 # Download von https://www.xnview.com/de/xnviewmp/#downloads
 DEB_PKG_NAME[xnview]="XnView MP"
-DEB_PKG_OLDV[xnview]="1.5.5"
-DEB_PKG_OLDF[xnview]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.5.5-linux-x64.deb"
-DEB_PKG_VERS[xnview]="1.6.4"
+DEB_PKG_OLDV[xnview]="1.6.4"
+DEB_PKG_OLDF[xnview]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.6.4-linux-x64.deb"
+DEB_PKG_VERS[xnview]=""
 DEB_PKG_MESG[xnview]=""
 DEB_PKG_EVAL[xnview]=""
-DEB_PKG_FILE[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.6.4-linux-x64.deb"
-DEB_PKG_CSUM[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.6.4-linux-x64.deb.sha"
+DEB_PKG_FILE[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.8.3-linux-x64.deb"
+DEB_PKG_CSUM[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.8.3-linux-x64.deb.sha"
  DEB_PKG_FILE[xnview_i386]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_0.89-linux-x32.deb"
  DEB_PKG_CSUM[xnview_i386]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_0.89-linux-x32.deb.sha"
 DEB_PKG_FILE[xnview_arm64]="" # NICHT für ARM verfügbar
@@ -1729,13 +1729,13 @@ then
   if [ $(uname -a 2>/dev/null | grep -i -c -E "debian") ];
   then
     DEB_PKG_NAME[virtualbox-7.0]="VirtualBox 7.0"
-    DEB_PKG_OLDV[virtualbox-7.0]="7.0.10"
-    DEB_PKG_OLDF[virtualbox-7.0]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.10-158379~Debian~bookworm_amd64.deb"
-    DEB_PKG_VERS[virtualbox-7.0]="7.0.14"
+    DEB_PKG_OLDV[virtualbox-7.0]="7.0.14"
+    DEB_PKG_OLDF[virtualbox-7.0]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.14-161095~Debian~bookworm_amd64.deb"
+    DEB_PKG_VERS[virtualbox-7.0]="7.1.4"
     DEB_PKG_MESG[virtualbox-7.0]=""
     DEB_PKG_EVAL[virtualbox-7.0]=""
-    DEB_PKG_FILE[virtualbox-7.0_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.14-161095~Debian~bookworm_amd64.deb"
-    DEB_PKG_CSUM[virtualbox-7.0_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.0_7.0.14-161095~Debian~bookworm_amd64.deb.sha"
+    DEB_PKG_FILE[virtualbox-7.0_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.1_7.1.4-165100~Debian~bookworm_amd64.deb"
+    DEB_PKG_CSUM[virtualbox-7.0_amd64]="$RESSOURCE_SERVER_DIR/deb/virtualbox-7.1_7.1.4-165100~Debian~bookworm_amd64.deb.sha"
   fi
 
 fi
@@ -1792,13 +1792,13 @@ declare -A WEB_PKG_OLDF # Download-URL der Vorgänger-Version (nur amd64)
 # ACHTUNG: Auch als DEB eingetragen (s.o.)!
 WEB_PKG_NAME[balena-etcher]="balenaEtcher"
 WEB_PKG_CATY[balena-etcher]="System;Utility"
-WEB_PKG_OLDV[balena-etcher]="1.18.4"
-WEB_PKG_OLDF[balena-etcher]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.4-x64.AppImage"
-WEB_PKG_VERS[balena-etcher]="1.18.11"
+WEB_PKG_OLDV[balena-etcher]="1.18.11"
+WEB_PKG_OLDF[balena-etcher]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.11-x64.AppImage"
+WEB_PKG_VERS[balena-etcher]="1.19.25"
 WEB_PKG_MESG[balena-etcher]=""
 WEB_PKG_EVAL[balena-etcher]=""
-WEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.11-x64.AppImage"
-WEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.11-x64.AppImage.sha"
+WEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.19.25-x64.AppImage"
+WEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.19.25-x64.AppImage.sha"
  WEB_PKG_FILE[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
  WEB_PKG_CSUM[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
 WEB_PKG_FILE[balena-etcher_arm64]="" # NICHT für ARM verfügbar
@@ -1826,15 +1826,15 @@ WEB_PKG_CSUM[code-the-classics_armhf]="$RESSOURCE_SERVER_DIR/web/Code-the-Classi
 # Download von https://github.com/qarmin/czkawka/releases
 WEB_PKG_NAME[czkawka]="Czkawka"
 WEB_PKG_CATY[czkawka]="System;Utility"
-WEB_PKG_OLDV[czkawka]="4.1.0"
-WEB_PKG_OLDF[czkawka]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_4.1.0"
-WEB_PKG_VERS[czkawka]="6.1.0"
+WEB_PKG_OLDV[czkawka]="6.1.0"
+WEB_PKG_OLDF[czkawka]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.1.0"
+WEB_PKG_VERS[czkawka]="8.0.0"
 WEB_PKG_MESG[czkawka]="Benötigt mindestens gtk-4.0!"
 WEB_PKG_EVAL[czkawka]="[ -d /usr/share/gtk-4.0 ]"
-WEB_PKG_FILE[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.1.0"
-WEB_PKG_CSUM[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.1.0.sha"
- WEB_PKG_FILE[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.1.0"
- WEB_PKG_CSUM[czkawka_i386]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_6.1.0.sha"
+WEB_PKG_FILE[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_8.0.0"
+WEB_PKG_CSUM[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_8.0.0.sha"
+ WEB_PKG_FILE[czkawka_i386]="" # NICHT verfügbar
+ WEB_PKG_CSUM[czkawka_i386]="" # NICHT verfügbar
 WEB_PKG_FILE[czkawka_arm64]="" # NICHT verfügbar
 WEB_PKG_CSUM[czkawka_arm64]="" # NICHT verfügbar
 WEB_PKG_FILE[czkawka_armhf]="" # NICHT verfügbar
@@ -1843,13 +1843,13 @@ WEB_PKG_CSUM[czkawka_armhf]="" # NICHT verfügbar
 # Download von https://freefilesync.org/download.php
 WEB_PKG_NAME[freefilesync]="FreeFileSync"
 WEB_PKG_CATY[freefilesync]="System;Utility"
-WEB_PKG_OLDV[freefilesync]="12.2"
-WEB_PKG_OLDF[freefilesync]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_12.2_Linux.tar.gz"
-WEB_PKG_VERS[freefilesync]="13.3"
+WEB_PKG_OLDV[freefilesync]="13.3"
+WEB_PKG_OLDF[freefilesync]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_13.3_Linux.tar.gz"
+WEB_PKG_VERS[freefilesync]="13.9"
 WEB_PKG_MESG[freefilesync]=""
 WEB_PKG_EVAL[freefilesync]=""
-WEB_PKG_FILE[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_13.3_Linux.tar.gz"
-WEB_PKG_CSUM[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_13.3_Linux.tar.gz.sha"
+WEB_PKG_FILE[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_13.9_Linux.tar.gz"
+WEB_PKG_CSUM[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_13.9_Linux.tar.gz.sha"
  WEB_PKG_FILE[freefilesync_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
  WEB_PKG_CSUM[freefilesync_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
 WEB_PKG_FILE[freefilesync_arm64]="" # NICHT für ARM verfügbar
@@ -1916,11 +1916,11 @@ WEB_PKG_NAME[openshot-qt]="OpenShot"
 WEB_PKG_CATY[openshot-qt]="AudioVideo;Video"
 WEB_PKG_OLDV[openshot-qt]="2.6.1"
 WEB_PKG_OLDF[openshot-qt]="$RESSOURCE_SERVER_DIR/web/OpenShot-v2.6.1-x86_64.AppImage"
-WEB_PKG_VERS[openshot-qt]="3.1.1"
+WEB_PKG_VERS[openshot-qt]="3.2.1"
 WEB_PKG_MESG[openshot-qt]="Mindestens 4GB RAM erforderlich!"
 WEB_PKG_EVAL[openshot-qt]="[ $MEMORY_TOTAL -gt 4000000000 ]"
-WEB_PKG_FILE[openshot-qt_amd64]="$RESSOURCE_SERVER_DIR/web/OpenShot-v3.1.1-x86_64.AppImage"
-WEB_PKG_CSUM[openshot-qt_amd64]="$RESSOURCE_SERVER_DIR/web/OpenShot-v3.1.1-x86_64.AppImage.sha"
+WEB_PKG_FILE[openshot-qt_amd64]="$RESSOURCE_SERVER_DIR/web/OpenShot-v3.2.1-x86_64.AppImage"
+WEB_PKG_CSUM[openshot-qt_amd64]="$RESSOURCE_SERVER_DIR/web/OpenShot-v3.2.1-x86_64.AppImage.sha"
  WEB_PKG_FILE[openshot-qt_i386]="" # Für Linux nur als 64-bit verfügbar
  WEB_PKG_CSUM[openshot-qt_i386]="" # Für Linux nur als 64-bit verfügbar
 WEB_PKG_FILE[openshot-qt_arm64]="" # NICHT für ARM verfügbar
@@ -1948,13 +1948,13 @@ WEB_PKG_CSUM[sardu_armhf]="" # NICHT für ARM verfügbar
 # Download von https://www.torproject.org/de/download/
 WEB_PKG_NAME[tor-browser]="Tor Browser"
 WEB_PKG_CATY[tor-browser]="Network;WebBrowser"
-WEB_PKG_OLDV[tor-browser]="12.5.5"
-WEB_PKG_OLDF[tor-browser]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux64-12.5.5_ALL.tar.xz"
-WEB_PKG_VERS[tor-browser]="13.0.9"
+WEB_PKG_OLDV[tor-browser]="13.0.9"
+WEB_PKG_OLDF[tor-browser]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux-x86_64-13.0.9.tar.xz"
+WEB_PKG_VERS[tor-browser]="14.0.3"
 WEB_PKG_MESG[tor-browser]=""
 WEB_PKG_EVAL[tor-browser]=""
-WEB_PKG_FILE[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux-x86_64-13.0.9.tar.xz"
-WEB_PKG_CSUM[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux-x86_64-13.0.9.tar.xz.sha"
+WEB_PKG_FILE[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux-x86_64-14.0.3.tar.xz"
+WEB_PKG_CSUM[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux-x86_64-14.0.3.tar.xz.sha"
  WEB_PKG_FILE[tor-browser_i386]="" # Für Linux nur als 64-bit verfügbar
  WEB_PKG_CSUM[tor-browser_i386]="" # Für Linux nur als 64-bit verfügbar
 WEB_PKG_FILE[tor-browser_arm64]="" # Auf ARM nur für Android verfügbar (Raspberry hat kein SSE2)
@@ -2018,6 +2018,8 @@ FORCE_FLATPAK_LIST=()
 declare -A FLATPAK_LISTED_NAME
 
 FLATPAK_LISTED_NAME[lix]="Simon Naarmann"
+FLATPAK_LISTED_NAME[quetoo]="jdolan"
+FLATPAK_LISTED_NAME[sauerbraten]="Wouter van Oortmerssen and others"
 
 ###############################################################################
 # Pakete, die warum auch immer bevorzugt als Snap installiert werden sollen.
@@ -2065,6 +2067,7 @@ declare -A PRE_INST_CONF
 PRE_INST_CONF[anydesk]="$RESSOURCE_SERVER_DIR/scripts/anydesk_pre_inst"
 PRE_INST_CONF[steam]="$RESSOURCE_SERVER_DIR/scripts/steam_pre_inst"
 PRE_INST_CONF[steam-launcher]="$RESSOURCE_SERVER_DIR/scripts/steam_pre_inst"
+PRE_INST_CONF[veracrypt]="$RESSOURCE_SERVER_DIR/scripts/veracrypt_pre_inst"
 PRE_INST_CONF[wine]="$RESSOURCE_SERVER_DIR/scripts/wine_pre_inst"
 
 ###############################################################################
@@ -2115,6 +2118,20 @@ POST_INST_CONF[virtualbox]="usermod -a -G vboxusers $USER_USERNAME"
 POST_INST_CONF[virtualbox-7.0]="$RESSOURCE_SERVER_DIR/scripts/virtualbox-7.0_post_inst"
 POST_INST_CONF[wine]="$RESSOURCE_SERVER_DIR/scripts/wine_post_inst"
 POST_INST_CONF[wireguard]="$RESSOURCE_SERVER_DIR/scripts/wireguard_post_inst"
+
+###############################################################################
+# Wenn zu Programmpaketen VOR deren Entfernung eine Konfiguration des Systems
+# erforderlich ist, kann diese ebenfalls automatisiert durchgeführt werden.
+# Dazu kann das entsprechende Kommando entweder direkt angegeben werden, oder
+# eine URL zum Download eines auszuführenden Scripts (s.a. RESSOURCE_SERVER_DIR).
+# Hinweis: Nach der Ausführung eines externen Scriptes wird das Hauptscript
+# (außer im Quiet-Modus) mit einer Aufforderung zum Drücken der Enter-Taste
+# pausiert, um Meldungen des externen Scriptes nicht zu überlesen.
+# Nach Kommandos wird das Hauptscript nicht pausiert und sofort fortgeführt.
+###############################################################################
+declare -A PRE_REMOVE_CONF
+
+PRE_REMOVE_CONF[veracrypt]="$RESSOURCE_SERVER_DIR/scripts/veracrypt_pre_remove"
 
 ###############################################################################
 # Für Progamme, deren Starter / Desktop-Symbole nicht den gleichen Dateinamen
@@ -3515,7 +3532,16 @@ function get_install_status () {
      [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
   then
     FLATPAK_NAME=$1
-    if [ "${FLATPAK_LISTED_NAME[$FLATPAK_NAME]}" != "" ];
+    # 6.1 Paket mit seinem tatsächlichen Paketnamen finden
+    if [ $(grep -c -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST}) -gt 0 ];
+    then
+      PKG_INSTALL_STATUS=6
+      TMP_FLATPAK_VERSION=$(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 2)
+      PKG_VERSION=$(clean_pkg_version "$TMP_FLATPAK_VERSION")
+    fi
+    # 6.2 Paket finden, wenn es mit anderem Namen gelistet wird
+    if [ $PKG_INSTALL_STATUS -ne 6 ] &&
+       [ "${FLATPAK_LISTED_NAME[$FLATPAK_NAME]}" != "" ];
     then
       FLATPAK_NAME="${FLATPAK_LISTED_NAME[$FLATPAK_NAME]}"
     fi
@@ -3754,55 +3780,109 @@ function get_pkg_snap_version () {
 
 ###############################################################################
 # Funktion zur Ermittlung einer Paket-Version als Flatpak (FLAT)
+# Sehr lästig, dass in der Liste der Flatpaks bei manchen Pakete ein Kommentar
+# anstelle des Paketnamens angezeigt wird ... s. FLATPAK_LISTED_NAME :(
 ###############################################################################
 function get_pkg_flatpak_version () {
-  FLATPAK_NAME=$1
-  INFO_TYPE=$2    # 0 = verfügbare Version, 1 = installierte Version ermitteln
-  if [ $INFO_TYPE -eq 1 ] &&
-     [ "${FLATPAK_LISTED_NAME[$FLATPAK_NAME]}" != "" ];
-  then
-    FLATPAK_NAME="${FLATPAK_LISTED_NAME[$FLATPAK_NAME]}"
-  fi
-  if [ $INFO_TYPE -eq 0 ];
-  then
-    if [ -s "$THE_FLATPAK_REMOTE_LIST" ];
+  INFO_TYPE=$2
+  TMP_FLATPAK_VERSION=""
+  i=1
+  while [ $i -lt 3 ] &&
+        [ "$TMP_FLATPAK_VERSION" == "" ];
+  do
+    FLATPAK_NAME=""
+    # Im ersten Durchlauf Paket suchen, dass mit seinem Namen angezeigt wird
+    if [ $i -eq 1 ];
     then
-      TMP_FLATPAK_VERSION=$(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 2)
+      FLATPAK_NAME=$1
     fi
-  else
-    if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
+    # Wenn im ersten Durchlauf kein Paket gefunden wurde, im zweiten Lauf das
+    # Paket suchen, dass mit einem bestimmten anderen Namen angezeigt wird
+    if [ $i -eq 2 ];
     then
-      TMP_FLATPAK_VERSION=$(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 2)
+      if [ "${FLATPAK_LISTED_NAME[$1]}" != "" ];
+      then
+        FLATPAK_NAME="${FLATPAK_LISTED_NAME[$1]}"
+      fi
     fi
-  fi
+    # Version nur ermitteln, wenn ein Paketname vorhanden ist
+    if [ "$FLATPAK_NAME" != "" ];
+    then
+      # Verfügbare Version ermitteln
+      if [ $INFO_TYPE -eq 0 ];
+      then
+        if [ -s "$THE_FLATPAK_REMOTE_LIST" ];
+        then
+          TMP_FLATPAK_VERSION=$(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 2)
+        fi
+      fi
+      # Installierte Version ermitteln
+      if [ $INFO_TYPE -eq 1 ];
+      then
+        if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
+        then
+          TMP_FLATPAK_VERSION=$(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 2)
+        fi
+      fi
+    fi
+    ((i++))
+  done
   THE_FLAT_PKG_VERSION=$(clean_pkg_version "$TMP_FLATPAK_VERSION")
   echo -e "$THE_FLAT_PKG_VERSION"
 }
 
 ###############################################################################
 # Funktion zur Ermittlung des Referenz-Strings eines Flatpaks
+# Sehr lästig, dass in der Liste der Flatpaks bei manchen Pakete ein Kommentar
+# anstelle des Paketnamens angezeigt wird ... s. FLATPAK_LISTED_NAME :(
 ###############################################################################
 function get_pkg_flatpak_reference () {
-  FLATPAK_NAME=$1
   INFO_TYPE=$2
-  # 0 = verfügbare Version mit Architektur
-  # 1 = installierte Version ohne Architektur
-  if [ $INFO_TYPE -eq 1 ] &&
-     [ "${FLATPAK_LISTED_NAME[$FLATPAK_NAME]}" != "" ];
-  then
-    FLATPAK_NAME="${FLATPAK_LISTED_NAME[$FLATPAK_NAME]}"
-  fi
-  if [ $INFO_TYPE -eq 0 ];
-  then
-    if [ -s "$THE_FLATPAK_REMOTE_LIST" ];
+  TMP_FLATPAK_REFERENCE=""
+  i=1
+  while [ $i -lt 3 ] &&
+        [ "$TMP_FLATPAK_REFERENCE" == "" ];
+  do
+    FLATPAK_NAME=""
+    # Im ersten Durchlauf Paket suchen, dass mit seinem Namen angezeigt wird
+    if [ $i -eq 1 ];
     then
-      echo -e $(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 3)
+      FLATPAK_NAME=$1
     fi
-  else
-    if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
+    # Wenn im ersten Durchlauf kein Paket gefunden wurde, im zweiten Lauf das
+    # Paket suchen, dass mit einem bestimmten anderen Namen angezeigt wird
+    if [ $i -eq 2 ];
     then
-      echo -e $(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 3 | cut -d'/' -f 1 | xargs)
+      if [ "${FLATPAK_LISTED_NAME[$1]}" != "" ];
+      then
+        FLATPAK_NAME="${FLATPAK_LISTED_NAME[$1]}"
+      fi
     fi
+    # Version nur ermitteln, wenn ein Paketname vorhanden ist
+    if [ "$FLATPAK_NAME" != "" ];
+    then
+      # Verfügbare Version mit Architektur
+      if [ $INFO_TYPE -eq 0 ];
+      then
+        if [ -s "$THE_FLATPAK_REMOTE_LIST" ];
+        then
+          TMP_FLATPAK_REFERENCE=$(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 3)
+        fi
+      fi
+      # Installierte Version ohne Architektur
+      if [ $INFO_TYPE -eq 1 ];
+      then
+        if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
+        then
+          TMP_FLATPAK_REFERENCE=$(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 3 | cut -d'/' -f 1 | xargs)
+        fi
+      fi
+    fi
+    ((i++))
+  done
+  if [ "$TMP_FLATPAK_REFERENCE" != "" ];
+  then
+    echo -e "$TMP_FLATPAK_REFERENCE"
   fi
 }
 
@@ -5722,13 +5802,83 @@ function remove_pkg () {
   if [ $INST_STATUS -eq 1 ];
   then
     e_and_l ""
-    if [ $THE_REMOVE_MODE -eq 0 ];
+
+    # -----------------------------------------------------------------
+    # Prüfen, ob Voraussetzungen zum Entfernen des Pakets gegeben sind
+    # -----------------------------------------------------------------
+    PRE_CONF_RESULT=0
+    if [ "${PRE_REMOVE_CONF[$THE_PKG_REAL_NAME]}" != "" ];
     then
-      { apt remove "$THE_PKG_REAL_NAME" -y 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; } | tee "$LOG_TEMP"
-    else
-      { apt purge "$THE_PKG_REAL_NAME" -y 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; } | tee "$LOG_TEMP"
+      e_and_l ""
+      e_and_l -n " Führe vorbereitende ${light_yellow}Konfiguration${colors_off} für ${light_yellow}$THE_PKG_REAL_NAME${colors_off} durch ... "
+      PRE_ACTION="${PRE_REMOVE_CONF[$THE_PKG_REAL_NAME]}"
+      if [ $(echo -n "$PRE_ACTION" | grep -i -c -E "^\s*http") -gt 0 ];
+      then
+        CONFIG_FILE_NAME="${PRE_ACTION##*/}"
+        CONFIG_URL="$PRE_ACTION"
+        LOCAL_CONFIG_FILE="$DOWNLOAD_DIR/$CONFIG_FILE_NAME"
+        wget -nv -O "$LOCAL_CONFIG_FILE" "$CONFIG_URL" &>"$LOG_TEMP"
+        if [ $? -eq 0 ] &&
+           [ -s "$LOCAL_CONFIG_FILE" ] &&
+           [ $(grep -i -c -E "Error\s*404" "$LOCAL_CONFIG_FILE") -eq 0 ];
+        then
+          # Heruntergeladenes Konfigurations-Script ausführen mit dem Benutzernamen
+          # als erstem Parameter zur Verwendung im aufgerufenen Konfigurations-Script
+          chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_CONFIG_FILE" &>/dev/null
+          chmod -R 0755 "$LOCAL_CONFIG_FILE" &>/dev/null
+          echo -e ""
+          ( "$LOCAL_CONFIG_FILE" ${USER_USERNAME} ${DOWNLOAD_DIR} ${RESSOURCE_SERVER_DIR} ${OS_V_CODENAME} 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; ) | tee "$LOG_TEMP"
+          if [ $(cat "$LAST_EXIT_CODE") -eq 0 ];
+          then
+            do_log "$OK_TAG"
+          else
+            do_log "$ERROR_TAG"
+            PRE_CONF_RESULT=1
+          fi
+          # Konfigurations-Script löschen
+          # remove_file "$LOCAL_CONFIG_FILE"
+        else
+          e_and_l ""
+          e_and_l "$PRE_SPACE $ERROR_TAG: Das Konfigurations-Script konnte nicht geladen werden!"
+          # Durch wget eventuell angelegte unbrauchbare Datei löschen
+          remove_file "$LOCAL_CONFIG_FILE"
+          PRE_CONF_RESULT=1
+        fi
+        echo -e ""
+        if [ ${OPTION_FLAG[quiet]} -eq 0 ]; then echo -e -n "$PRE_SPACE Bitte ${bold_white}Enter${colors_off} drücken zum Weitermachen ... "; read dummy; fi
+      else
+        echo -e ""
+        { eval "$PRE_ACTION" 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; } | tee "$LOG_TEMP"
+        if [ $(cat "$LAST_EXIT_CODE") -eq 0 ];
+        then
+          do_log "$OK_TAG"
+        else
+          do_log "$ERROR_TAG"
+          PRE_CONF_RESULT=1
+        fi
+      fi
+      remove_file "$LAST_EXIT_CODE"
+      do_log "Aktion: $PRE_ACTION"
+      add_full_log
+      echo -e ""
+      # if [ $PRE_CONF_RESULT -eq 0 ]; then e_and_l -n "$PRE_SPACE"; fi
     fi
-    REMOVE_RESULT=$(cat "$LAST_EXIT_CODE")
+    # -----------------------------------------------------------------
+    # Paket nur entfernen, wenn ggf. Voraussetzungen dazu erfüllt sind
+    # -----------------------------------------------------------------
+    if [ $PRE_CONF_RESULT -eq 0 ];
+    then
+      if [ $THE_REMOVE_MODE -eq 0 ];
+      then
+        { apt remove "$THE_PKG_REAL_NAME" -y 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; } | tee "$LOG_TEMP"
+      else
+        { apt purge "$THE_PKG_REAL_NAME" -y 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; } | tee "$LOG_TEMP"
+      fi
+      REMOVE_RESULT=$(cat "$LAST_EXIT_CODE")
+    else
+      REMOVE_RESULT=1
+    fi
+
   fi
 
   # -----------------------------
