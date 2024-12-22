@@ -36,7 +36,7 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 18.11.2024
+# Letzte Änderung: 22.11.2024
 VERSION="4.11.2"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
