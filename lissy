@@ -37,7 +37,7 @@
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
 # Letzte Änderung: 26.12.2024
-VERSION="4.12.1"
+VERSION="4.12.2"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -1555,7 +1555,7 @@ fi
 DEB_PKG_NAME[xnview]="XnView MP"
 DEB_PKG_OLDV[xnview]="1.6.4"
 DEB_PKG_OLDF[xnview]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.6.4-linux-x64.deb"
-DEB_PKG_VERS[xnview]=""
+DEB_PKG_VERS[xnview]="1.8.3"
 DEB_PKG_MESG[xnview]=""
 DEB_PKG_EVAL[xnview]=""
 DEB_PKG_FILE[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.8.3-linux-x64.deb"
