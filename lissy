@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 22.11.2024
-VERSION="4.11.2"
+# Letzte Änderung: 26.12.2024
+VERSION="4.12.0"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -1024,7 +1024,7 @@ KATEGORIE_PKGS[fo]="forensics-full forensics-samples-all"
 KATEGORIE_PKGS[g]="blender darktable digikam drawing eom fraqtive freecad geeqie gimp gpicview gpick gwenview imagemagick inkscape krita mandelbulber2 mtpaint pinta rawtherapee shotwell simple-scan xnview"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[g]+=" pix xviewer"; fi
 # Internet
-KATEGORIE_PKGS[i]="anydesk chromium element-desktop filezilla firefox ipscan linssid microsoft-edge-stable nomachine opera-stable packetsender realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission virt-viewer wireshark"
+KATEGORIE_PKGS[i]="anydesk chromium element-desktop filezilla firefox ipscan linssid microsoft-edge-stable opera-stable packetsender realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission virt-viewer wireshark"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[i]+=" hexchat warpinator webapp-manager"; fi
 # Multimedia
 KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv gthumb gtkpod handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv mp3splt obs-studio openshot-qt parole rhythmbox smplayer vlc webcamoid yt-dlp youtube-dl youtubedl-gui youplay"
@@ -1357,21 +1357,31 @@ DEB_PKG_CSUM[iptvnator_arm64]="$RESSOURCE_SERVER_DIR/deb/iptvnator_0.16.0_arm64.
 DEB_PKG_FILE[iptvnator_armhf]="" # NUR für 64-bit verfügbar
 DEB_PKG_CSUM[iptvnator_armhf]="" # NUR für 64-bit verfügbar
 
+# ------------------------------------------------------------------
+# HINWEIS: nomachine wurde wegen Kompatibilitätsproblemen mit
+# NVIDIA-OpenGL-Treibern vorläufig entfernt! Wenn nomachine wieder
+# angeboten werden soll, auch folgende Änderungen hinzufügen:
+# - KATEGORIE_PKGS[i] um 'nomachine' erweitern
+# - EXUPDATE_PKG_LIST um 'nomachine' erweitern
+# - REJECT_ICONS erweitern um 'NoMachine-base-' 'NoMachine-status-'
+# ------------------------------------------------------------------
 # Download von https://www.nomachine.com/download/linux&id=1
-DEB_PKG_NAME[nomachine]="NoMachine"
-DEB_PKG_OLDV[nomachine]="8.11.3"
-DEB_PKG_OLDF[nomachine]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_4_amd64.deb"
-DEB_PKG_VERS[nomachine]="8.14.2"
-DEB_PKG_MESG[nomachine]=""
-DEB_PKG_EVAL[nomachine]=""
-DEB_PKG_FILE[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_amd64.deb"
-DEB_PKG_CSUM[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_amd64.deb.sha"
- DEB_PKG_FILE[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_i386.deb"
- DEB_PKG_CSUM[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_i386.deb.sha"
-DEB_PKG_FILE[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_arm64.deb"
-DEB_PKG_CSUM[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_arm64.deb.sha"
-DEB_PKG_FILE[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_armhf.deb"
-DEB_PKG_CSUM[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_armhf.deb.sha"
+# ------------------------------------------------------------------
+# DEB_PKG_NAME[nomachine]="NoMachine"
+# DEB_PKG_OLDV[nomachine]="8.11.3"
+# DEB_PKG_OLDF[nomachine]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.11.3_4_amd64.deb"
+# DEB_PKG_VERS[nomachine]="8.14.2"
+# DEB_PKG_MESG[nomachine]=""
+# DEB_PKG_EVAL[nomachine]=""
+# DEB_PKG_FILE[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_amd64.deb"
+# DEB_PKG_CSUM[nomachine_amd64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_amd64.deb.sha"
+#  DEB_PKG_FILE[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_i386.deb"
+#  DEB_PKG_CSUM[nomachine_i386]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_i386.deb.sha"
+# DEB_PKG_FILE[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_arm64.deb"
+# DEB_PKG_CSUM[nomachine_arm64]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_arm64.deb.sha"
+# DEB_PKG_FILE[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_armhf.deb"
+# DEB_PKG_CSUM[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_armhf.deb.sha"
+# ------------------------------------------------------------------
 
 # Download von https://www.opera.com/de/download
 DEB_PKG_NAME[opera-stable]="Opera"
@@ -2003,7 +2013,7 @@ WEB_PKG_CSUM[youplay_armhf]="" # NICHT für ARM verfügbar
 # im Repo haben und somit von apt auch nicht automatisch aktualisiert werden.
 # Dient als Basis für die Updates dieser Programme mit der Option "exupdate".
 ###############################################################################
-EXUPDATE_PKG_LIST=('balena-etcher' 'code-the-classics' 'codium' 'czkawka' 'freefilesync' 'hypnotix' 'ipscan' 'iptvnator' 'nomachine' 'openshot-qt' 'realvnc-vnc-server' 'realvnc-vnc-viewer' 'rpi-imager' 'sardu' 'tor-browser' 'unetbootin' 'veracrypt' 'xnview' 'youplay')
+EXUPDATE_PKG_LIST=('balena-etcher' 'code-the-classics' 'codium' 'czkawka' 'freefilesync' 'hypnotix' 'ipscan' 'iptvnator' 'openshot-qt' 'realvnc-vnc-server' 'realvnc-vnc-viewer' 'rpi-imager' 'sardu' 'tor-browser' 'unetbootin' 'veracrypt' 'xnview' 'youplay')
 
 ###############################################################################
 # Pakete, die warum auch immer bevorzugt als Flatpak installiert werden sollen.
@@ -2244,7 +2254,7 @@ FORCE_ICONS=( 'caja' 'pi-gpk-prefs' 'pi-gpk-log' 'pi-gpk-update-viewer' )
 # Auszulassende Desktop-Icons (Teil des DATEInamens ohne Pfadangabe und Endung)
 # welche ausgelassen und nicht mit auf den Desktop kopiert werden sollen.
 ###############################################################################
-REJECT_ICONS=( 'alacarte-made' 'caja-autorun-software' 'caja-browser' 'caja-computer' 'caja-folder-handler' 'caja-home' 'clamtk-kde' 'mate-panel' 'mate-network-scheme' 'mate-theme-installer' 'mozo-made' 'NoMachine-base-' 'NoMachine-status-' 'org.gnome.Evolution-alarm-notify')
+REJECT_ICONS=( 'alacarte-made' 'caja-autorun-software' 'caja-browser' 'caja-computer' 'caja-folder-handler' 'caja-home' 'clamtk-kde' 'mate-panel' 'mate-network-scheme' 'mate-theme-installer' 'mozo-made' 'org.gnome.Evolution-alarm-notify')
 
 ###############################################################################
 # Desktop-Icons die bspw. aufgrund ihres Dateinamens unvermeidbar zusätzlich
