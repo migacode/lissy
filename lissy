@@ -37,7 +37,7 @@
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
 # Letzte Änderung: 29.12.2024
-VERSION="4.12.3"
+VERSION="4.12.5"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -1031,7 +1031,7 @@ KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv gthumb gtkpod hand
 # Netzwerkverbindungen
 KATEGORIE_PKGS[n]="openvpn vpnc vpnc-scripts"
 # Spiele
-KATEGORIE_PKGS[s]="0ad alien-arena armagetronad atomix billard-gl biniax2 blockout2 briquolo brutalchess caveexpress code-the-classics criticalmass cuyo dreamchess endless-sky enigma extremetuxracer flightgear flobopuyo foobillardplus freedoom freedroidrpg freegish freetennis frogatto frozen-bubble fs-uae gbrainy gcompris-qt gemdropx gnome-games gnubg gweled jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter megaglest morris naev neverball neverputt nexuiz numptyphysics oolite openarena openclonk open-invaders pinball pingus pokerth pybik quetoo rocksndiamonds sauerbraten sdl-ball speed_dreams steam stunt_rally supertux supertuxkart teeworlds tesseract torcs trigger-rally tuxmath ufoai wesnoth widelands xonotic ysoccer zaz"
+KATEGORIE_PKGS[s]="0ad alien-arena armagetronad atomix billard-gl biniax2 blockout2 briquolo brutalchess caveexpress code-the-classics criticalmass cuyo dreamchess endless-sky enigma extremetuxracer flightgear flobopuyo foobillardplus freedoom freedroidrpg freegish freetennis frogatto frozen-bubble fs-uae gbrainy gcompris-qt gemdropx gnome-games gnubg gweled jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakout2 lix marsshooter megaglest morris naev neverball neverputt nexuiz numptyphysics oolite openarena openclonk open-invaders peg-e pinball pingus pokerth pybik quetoo rocksndiamonds sauerbraten sdl-ball speed_dreams steam stunt_rally supertux supertuxkart teeworlds tesseract torcs trigger-rally tuxmath ufoai wesnoth widelands xonotic ysoccer zaz"
 # Systemerweiterungen
 KATEGORIE_PKGS[x]="alien apt-file apturl arj arp-scan calc ccd2iso chkrootkit cifs-utils clonezilla cpu-checker curl dconf-cli diffutils dirmngr dpkg-repack e2fsprogs ethtool exfat-fuse exfatprogs extundelete f3 fail2ban fdisk ffmpegthumbnailer firejail ftp gdisk git gpart gvfs-backends hdparm heif-gdk-pixbuf heif-thumbnailer htop iat img2pdf jfsutils lhasa libaacs0 libbluray2 libbluray-bdj libbluray-bin libdvd-pkg libfuse2 lsof lrzip lshw lzip lzop menu msr-tools mtools nano ncompress neofetch net-tools nmap numlockx openssh-server p7zip-full partclone partimage pciutils pdfcrack pdfresurrect ppa-purge qpdf resolvconf rsync samba sane-utils sed screen smartmontools smbclient sqlite3 sshguard sysbench sysfsutils sysstat tar tcpdump tcptrack testdisk traceroute udftools ufw unzip usbutils util-linux wget whois xsltproc zstd zulumount-cli"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[x]+=" lsb"; fi
@@ -2194,7 +2194,7 @@ GAME_DIR_SUB_NAME[jumpnrun]="Laufen und Springen"
 GAME_DIR_SUB_LIST[jumpnrun]="caveexpress freedroidrpg freegish frogatto kapman lix neverball openclonk pingus rocksndiamonds supertux teeworlds"
 
 GAME_DIR_SUB_NAME[logic]="Logik- und Denkspiele"
-GAME_DIR_SUB_LIST[logic]="atomix enigma gbrainy gcompris gcompris-qt katomic numptyphysics ksudoku pybik tuxmath"
+GAME_DIR_SUB_LIST[logic]="atomix enigma gbrainy gcompris gcompris-qt katomic numptyphysics peg-e ksudoku pybik tuxmath"
 
 GAME_DIR_SUB_NAME[race]="Rennen"
 GAME_DIR_SUB_LIST[race]="armagetronad extremetuxracer speed_dreams stunt_rally supertuxkart torcs trigger-rally"
