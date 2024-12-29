@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 26.12.2024
-VERSION="4.12.2"
+# Letzte Änderung: 29.12.2024
+VERSION="4.12.3"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -937,8 +937,8 @@ OPTION_MENU[status]=2
 OPTION_MENU[remove]=3 # Wird nicht tatsächlich verwendet, Prüfung erfolgt auf REMOVE_PKG_NAME
 
 OPTION_MENU[cleansys]=4
-OPTION_MENU[dload]=4
-OPTION_MENU[dsave]=4
+OPTION_MENU[dload]=0 # Derzeit nicht im Menü angeboten
+OPTION_MENU[dsave]=0 # Derzeit nicht im Menü angeboten
 OPTION_MENU[extras]=4
 OPTION_MENU[exupdate]=4
 if [ $KERNEL_IS_LOCKED -eq 0 ];
@@ -2019,17 +2019,6 @@ EXUPDATE_PKG_LIST=('balena-etcher' 'code-the-classics' 'codium' 'czkawka' 'freef
 # Pakete, die warum auch immer bevorzugt als Flatpak installiert werden sollen.
 ###############################################################################
 FORCE_FLATPAK_LIST=()
-
-###############################################################################
-# Für Flatpak-Pakete, die in der Liste der installierten (!) Flatpaks mit
-# anderen Namen angezeigt werden und somit nicht automatisiert gefunden werden
-# können, kann der zu suchende Name in FLATPAK_LISTED_NAME hinterlegt werden.
-###############################################################################
-declare -A FLATPAK_LISTED_NAME
-
-FLATPAK_LISTED_NAME[lix]="Simon Naarmann"
-FLATPAK_LISTED_NAME[quetoo]="jdolan"
-FLATPAK_LISTED_NAME[sauerbraten]="Wouter van Oortmerssen and others"
 
 ###############################################################################
 # Pakete, die warum auch immer bevorzugt als Snap installiert werden sollen.
@@ -3541,25 +3530,15 @@ function get_install_status () {
      [ $FLATPAK_INSTALLED -ne 0 ] &&
      [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
   then
-    FLATPAK_NAME=$1
-    # 6.1 Paket mit seinem tatsächlichen Paketnamen finden
-    if [ $(grep -c -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST}) -gt 0 ];
+    FLATPAK_NAME=$(echo "$1" | sed 's/[ -_]//g' | xargs)
+    if [ $PKG_INSTALL_STATUS -ne 6 ];
     then
-      PKG_INSTALL_STATUS=6
-      TMP_FLATPAK_VERSION=$(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 2)
-      PKG_VERSION=$(clean_pkg_version "$TMP_FLATPAK_VERSION")
-    fi
-    # 6.2 Paket finden, wenn es mit anderem Namen gelistet wird
-    if [ $PKG_INSTALL_STATUS -ne 6 ] &&
-       [ "${FLATPAK_LISTED_NAME[$FLATPAK_NAME]}" != "" ];
-    then
-      FLATPAK_NAME="${FLATPAK_LISTED_NAME[$FLATPAK_NAME]}"
-    fi
-    if [ $(grep -c -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST}) -gt 0 ];
-    then
-      PKG_INSTALL_STATUS=6
-      TMP_FLATPAK_VERSION=$(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 2)
-      PKG_VERSION=$(clean_pkg_version "$TMP_FLATPAK_VERSION")
+      if [ $(grep -c -i -E "\.$FLATPAK_NAME\/" ${THE_FLATPAK_INSTALLED_LIST}) -gt 0 ];
+      then
+        PKG_INSTALL_STATUS=6
+        TMP_FLATPAK_VERSION=$(grep -i -E "\.$FLATPAK_NAME\/" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 2 | xargs)
+        PKG_VERSION=$(clean_pkg_version "$TMP_FLATPAK_VERSION")
+      fi
     fi
   fi
   # -----------------------------------------------------------------
@@ -3790,106 +3769,57 @@ function get_pkg_snap_version () {
 
 ###############################################################################
 # Funktion zur Ermittlung einer Paket-Version als Flatpak (FLAT)
-# Sehr lästig, dass in der Liste der Flatpaks bei manchen Pakete ein Kommentar
-# anstelle des Paketnamens angezeigt wird ... s. FLATPAK_LISTED_NAME :(
 ###############################################################################
 function get_pkg_flatpak_version () {
+  FLATPAK_NAME=$(echo "$1" | sed 's/[ -_]//g' | xargs)
   INFO_TYPE=$2
   TMP_FLATPAK_VERSION=""
-  i=1
-  while [ $i -lt 3 ] &&
-        [ "$TMP_FLATPAK_VERSION" == "" ];
-  do
-    FLATPAK_NAME=""
-    # Im ersten Durchlauf Paket suchen, dass mit seinem Namen angezeigt wird
-    if [ $i -eq 1 ];
+  # Verfügbare Version ermitteln
+  if [ $INFO_TYPE -eq 0 ];
+  then
+    if [ -s "$THE_FLATPAK_REMOTE_LIST" ];
     then
-      FLATPAK_NAME=$1
+      TMP_FLATPAK_VERSION=$(grep -i -E "\.$FLATPAK_NAME\/" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 2)
     fi
-    # Wenn im ersten Durchlauf kein Paket gefunden wurde, im zweiten Lauf das
-    # Paket suchen, dass mit einem bestimmten anderen Namen angezeigt wird
-    if [ $i -eq 2 ];
+  fi
+  # Installierte Version ermitteln
+  if [ $INFO_TYPE -eq 1 ];
+  then
+    if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
     then
-      if [ "${FLATPAK_LISTED_NAME[$1]}" != "" ];
-      then
-        FLATPAK_NAME="${FLATPAK_LISTED_NAME[$1]}"
-      fi
+      TMP_FLATPAK_VERSION=$(grep -i -E "\.$FLATPAK_NAME\/" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 2)
     fi
-    # Version nur ermitteln, wenn ein Paketname vorhanden ist
-    if [ "$FLATPAK_NAME" != "" ];
-    then
-      # Verfügbare Version ermitteln
-      if [ $INFO_TYPE -eq 0 ];
-      then
-        if [ -s "$THE_FLATPAK_REMOTE_LIST" ];
-        then
-          TMP_FLATPAK_VERSION=$(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 2)
-        fi
-      fi
-      # Installierte Version ermitteln
-      if [ $INFO_TYPE -eq 1 ];
-      then
-        if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
-        then
-          TMP_FLATPAK_VERSION=$(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 2)
-        fi
-      fi
-    fi
-    ((i++))
-  done
+  fi
   THE_FLAT_PKG_VERSION=$(clean_pkg_version "$TMP_FLATPAK_VERSION")
-  echo -e "$THE_FLAT_PKG_VERSION"
+  if [ "$THE_FLAT_PKG_VERSION" != "" ];
+  then
+    echo -e "$THE_FLAT_PKG_VERSION"
+  fi
 }
 
 ###############################################################################
 # Funktion zur Ermittlung des Referenz-Strings eines Flatpaks
-# Sehr lästig, dass in der Liste der Flatpaks bei manchen Pakete ein Kommentar
-# anstelle des Paketnamens angezeigt wird ... s. FLATPAK_LISTED_NAME :(
 ###############################################################################
 function get_pkg_flatpak_reference () {
+  FLATPAK_NAME=$(echo "$1" | sed 's/[ -_]//g' | xargs)
   INFO_TYPE=$2
   TMP_FLATPAK_REFERENCE=""
-  i=1
-  while [ $i -lt 3 ] &&
-        [ "$TMP_FLATPAK_REFERENCE" == "" ];
-  do
-    FLATPAK_NAME=""
-    # Im ersten Durchlauf Paket suchen, dass mit seinem Namen angezeigt wird
-    if [ $i -eq 1 ];
+  # Verfügbare Version mit Architektur
+  if [ $INFO_TYPE -eq 0 ];
+  then
+    if [ -s "$THE_FLATPAK_REMOTE_LIST" ];
     then
-      FLATPAK_NAME=$1
+      TMP_FLATPAK_REFERENCE=$(grep -i -E "\.$FLATPAK_NAME\/" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 3 | xargs)
     fi
-    # Wenn im ersten Durchlauf kein Paket gefunden wurde, im zweiten Lauf das
-    # Paket suchen, dass mit einem bestimmten anderen Namen angezeigt wird
-    if [ $i -eq 2 ];
+  fi
+  # Installierte Version ohne Architektur
+  if [ $INFO_TYPE -eq 1 ];
+  then
+    if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
     then
-      if [ "${FLATPAK_LISTED_NAME[$1]}" != "" ];
-      then
-        FLATPAK_NAME="${FLATPAK_LISTED_NAME[$1]}"
-      fi
+      TMP_FLATPAK_REFERENCE=$(grep -i -E "\.$FLATPAK_NAME\/" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 3 | cut -d'/' -f 1 | xargs)
     fi
-    # Version nur ermitteln, wenn ein Paketname vorhanden ist
-    if [ "$FLATPAK_NAME" != "" ];
-    then
-      # Verfügbare Version mit Architektur
-      if [ $INFO_TYPE -eq 0 ];
-      then
-        if [ -s "$THE_FLATPAK_REMOTE_LIST" ];
-        then
-          TMP_FLATPAK_REFERENCE=$(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 3)
-        fi
-      fi
-      # Installierte Version ohne Architektur
-      if [ $INFO_TYPE -eq 1 ];
-      then
-        if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
-        then
-          TMP_FLATPAK_REFERENCE=$(grep -i -P "^${FLATPAK_NAME//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 3 | cut -d'/' -f 1 | xargs)
-        fi
-      fi
-    fi
-    ((i++))
-  done
+  fi
   if [ "$TMP_FLATPAK_REFERENCE" != "" ];
   then
     echo -e "$TMP_FLATPAK_REFERENCE"
@@ -4282,7 +4212,8 @@ function install_pkg () {
          [ "$LAST_ERW_PACK" = "" ] &&
          [ "$LAST_PPA_PACK" = "" ];
       then
-        if [ $(grep -c -i -P "^${PAKET//_/ }\t" ${THE_FLATPAK_REMOTE_LIST}) -gt 0 ];
+        FLATPAK_NAME=$(echo "$PAKET" | sed 's/[ -_]//g' | xargs)
+        if [ $(grep -i -E "\.$FLATPAK_NAME\/" ${THE_FLATPAK_REMOTE_LIST}) -gt 0 ];
         then
           INST_MODE_LIST+=",6"
           INSTALL_MODE=6
@@ -7165,12 +7096,12 @@ then
   e_and_l ""
   e_and_l "  csubdirs  Starter für Spiele mit Unterordnern weiter kategorisieren."
   e_and_l ""
-  e_and_l "     dload  Stellt gespeicherte Desktop- und Anwendungs-Einstellungen"
-  e_and_l "            aus einer Sicherung wieder her (dconf)."
-  e_and_l ""
-  e_and_l "     dsave  Erstellt eine Sicherung der Einstellungen des Benutzers"
-  e_and_l "            von Desktop und verschiedenen Anwendungen (dconf)."
-  e_and_l ""
+  # e_and_l "     dload  Stellt gespeicherte Desktop- und Anwendungs-Einstellungen"
+  # e_and_l "            aus einer Sicherung wieder her (dconf)."
+  # e_and_l ""
+  # e_and_l "     dsave  Erstellt eine Sicherung der Einstellungen des Benutzers"
+  # e_and_l "            von Desktop und verschiedenen Anwendungen (dconf)."
+  # e_and_l ""
   e_and_l "    extras  Ergänzt das System jeweils wahlweise um einige Extras:"
   e_and_l "            zusätzliche Treiber, fehlende Sprach-Unterstützung, ein"
   e_and_l "            großes Schriftarten-Paket, weitere Mauszeiger und mehr."
@@ -13446,7 +13377,8 @@ then
     if [ $FLATPAK_INSTALLED -ne 0 ] &&
        [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
     then
-      if [ $(grep -c -i -P "^${REMOVE_PKG_NAME//_/ }\t" ${THE_FLATPAK_INSTALLED_LIST}) -gt 0 ];
+      FLATPAK_RNAM=$(echo "$REMOVE_PKG_NAME" | sed 's/[ -_]//g' | xargs)
+      if [ $(grep -c -i -E "\.$FLATPAK_RNAM\/" ${THE_FLATPAK_INSTALLED_LIST}) -gt 0 ];
       then
         INST_MODE_LIST+=",6"
       fi
