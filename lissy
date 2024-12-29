@@ -4213,7 +4213,7 @@ function install_pkg () {
          [ "$LAST_PPA_PACK" = "" ];
       then
         FLATPAK_NAME=$(echo "$PAKET" | sed 's/[ -_]//g' | xargs)
-        if [ $(grep -i -E "\.$FLATPAK_NAME\/" ${THE_FLATPAK_REMOTE_LIST}) -gt 0 ];
+        if [ $(grep -c -i -E "\.$FLATPAK_NAME\/" ${THE_FLATPAK_REMOTE_LIST}) -gt 0 ];
         then
           INST_MODE_LIST+=",6"
           INSTALL_MODE=6
