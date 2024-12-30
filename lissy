@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 29.12.2024
-VERSION="4.12.5"
+# Letzte Änderung: 30.12.2024
+VERSION="4.12.6"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -1027,7 +1027,7 @@ if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORI
 KATEGORIE_PKGS[i]="anydesk chromium element-desktop filezilla firefox ipscan linssid microsoft-edge-stable opera-stable packetsender realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram-desktop thunderbird tor-browser transmission virt-viewer wireshark"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[i]+=" hexchat warpinator webapp-manager"; fi
 # Multimedia
-KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv gthumb gtkpod handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv mp3splt obs-studio openshot-qt parole rhythmbox smplayer vlc webcamoid yt-dlp youtube-dl youtubedl-gui youplay"
+KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv gthumb gtkpod handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv mp3splt obs-studio openshot-qt parole rhythmbox shotcut smplayer vlc webcamoid yt-dlp youtube-dl youtubedl-gui youplay"
 # Netzwerkverbindungen
 KATEGORIE_PKGS[n]="openvpn vpnc vpnc-scripts"
 # Spiele
@@ -1166,6 +1166,7 @@ SIMILAR_PACK[parole]="mpv"
 SIMILAR_PACK[pdfchain]="pdfmod"
 SIMILAR_PACK[pdfarranger]="pdfmod"
 SIMILAR_PACK[pinta]="drawing"
+SIMILAR_PACK[shotcut]="openshot-qt"
 SIMILAR_PACK[steam]="steam-launcher"
 SIMILAR_PACK[transmission]="transmission-common"
 SIMILAR_PACK[usb-creator-common]="balena-etcher"
@@ -1955,6 +1956,23 @@ WEB_PKG_CSUM[sardu_arm64]="" # NICHT für ARM verfügbar
 WEB_PKG_FILE[sardu_armhf]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[sardu_armhf]="" # NICHT für ARM verfügbar
 
+# Download von https://www.shotcut.org/download/
+WEB_PKG_NAME[shotcut]="Shotcut"
+WEB_PKG_CATY[shotcut]="AudioVideo;Video"
+WEB_PKG_OLDV[shotcut]=""
+WEB_PKG_OLDF[shotcut]=""
+WEB_PKG_VERS[shotcut]="24.11.17"
+WEB_PKG_MESG[shotcut]="Mindestens 4GB RAM erforderlich!"
+WEB_PKG_EVAL[shotcut]="[ $MEMORY_TOTAL -gt 4000000000 ]"
+WEB_PKG_FILE[shotcut_amd64]="$RESSOURCE_SERVER_DIR/web/shotcut-linux-x86_64-241117.AppImage"
+WEB_PKG_CSUM[shotcut_amd64]="$RESSOURCE_SERVER_DIR/web/shotcut-linux-x86_64-241117.AppImage.sha"
+ WEB_PKG_FILE[shotcut_i386]="" # Für Linux nur als 64-bit verfügbar
+ WEB_PKG_CSUM[shotcut_i386]="" # Für Linux nur als 64-bit verfügbar
+WEB_PKG_FILE[shotcut_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[shotcut_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_FILE[shotcut_armhf]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[shotcut_armhf]="" # NICHT für ARM verfügbar
+
 # Download von https://www.torproject.org/de/download/
 WEB_PKG_NAME[tor-browser]="Tor Browser"
 WEB_PKG_CATY[tor-browser]="Network;WebBrowser"
@@ -2013,7 +2031,7 @@ WEB_PKG_CSUM[youplay_armhf]="" # NICHT für ARM verfügbar
 # im Repo haben und somit von apt auch nicht automatisch aktualisiert werden.
 # Dient als Basis für die Updates dieser Programme mit der Option "exupdate".
 ###############################################################################
-EXUPDATE_PKG_LIST=('balena-etcher' 'code-the-classics' 'codium' 'czkawka' 'freefilesync' 'hypnotix' 'ipscan' 'iptvnator' 'openshot-qt' 'realvnc-vnc-server' 'realvnc-vnc-viewer' 'rpi-imager' 'sardu' 'tor-browser' 'unetbootin' 'veracrypt' 'xnview' 'youplay')
+EXUPDATE_PKG_LIST=('balena-etcher' 'code-the-classics' 'codium' 'czkawka' 'freefilesync' 'hypnotix' 'ipscan' 'iptvnator' 'openshot-qt' 'realvnc-vnc-server' 'realvnc-vnc-viewer' 'rpi-imager' 'sardu' 'shotcut' 'tor-browser' 'unetbootin' 'veracrypt' 'xnview' 'youplay')
 
 ###############################################################################
 # Pakete, die warum auch immer bevorzugt als Flatpak installiert werden sollen.
