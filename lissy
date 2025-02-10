@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 28.01.2025
-VERSION="4.13.1"
+# Letzte Änderung: 10.02.2025
+VERSION="4.2.10"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -889,7 +889,7 @@ OPTION_TEXT[cleantmp]="Alle temporären Dateien bei Programmende löschen"
 OPTION_TEXT[csubdirs]="Starter für Spiele in Unterordnern kategorisieren"
 OPTION_TEXT[dload]="Gespeicherte Desktop-Einstellungen laden (dconf)"
 OPTION_TEXT[dsave]="Aktuelle Desktop-Einstellungen speichern (dconf)"
-OPTION_TEXT[extras]="Extras (Schriftarten, Mauszeiger etc.) installieren"
+OPTION_TEXT[extras]="Extras (Firmware, Schriften, Cursor etc.) installieren"
 OPTION_TEXT[exupdate]="Programmpakete aus externen Quellen aktualisieren"
 OPTION_TEXT[force]="Ja/Nein-Abfrage vor jeder Installation überspringen"
 OPTION_TEXT[foreign]="Auch Pakete für Fremd-Architekturen installieren"
@@ -7445,7 +7445,7 @@ then
   # Zum Downloaden und Entpacken von Dateien benötigte Komponenten
   # ===========================================================================
   ALL_COMPONENTS_AVAIL=1
-  COMPONENTS_REQUIRED=('coreutils' 'diffutils' 'lsof' 'p7zip-full' 'sed' 'tar' 'util-linux' 'wget')
+  COMPONENTS_REQUIRED=('coreutils' 'diffutils' 'lshw' 'lsof' 'p7zip-full' 'sed' 'tar' 'util-linux' 'wget')
   if [ $DCONF_NEEDED -eq 1 ];
   then
     COMPONENTS_REQUIRED+=('dconf-cli')
@@ -8503,11 +8503,71 @@ then
   if [ ${OPTION_FLAG[extras]} -eq 1 ] ||
      [ ${OPTION_FLAG[udrivers]} -eq 1 ];
   then
-    e_and_l " ${bold_blue}Installation weiterer System-Komponenten${colors_off}"
+
+    e_and_l "$FULL_LINE"
+    e_and_l " ${bold_blue}Installation von Firmware und Gerätetreibern${colors_off}"
     e_and_l "$HALF_LINE"
 
     # ===========================================================================
-    # Zusätzliche Gerätetreiber installieren
+    # Microcode für Intel-CPUs installieren
+    # ===========================================================================
+    ACTION_MESSAGE=" Installation des ${light_cyan}Microcode für Intel-CPUs${colors_off}  ..."
+    if [ $(LANG=en lshw -short 2>/dev/null | grep -i processor | grep -c -i intel) -gt 0 ];
+    then
+      if [ $(LANG=en dpkg-query -W -f='${Status}' "intel-microcode" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+      then
+        ask_yes_or_no "intel-microcode" " ${bold_yellow}Microcode für Intel-CPUs${colors_off} installieren"
+        if [ $? -eq 1 ];
+        then
+          e_and_l -n " Installiere ${bold_yellow}Microcode für Intel-CPUs${colors_off}       ... "
+          apt install intel-microcode -y &>"$LOG_TEMP"
+          if [ $? -eq 0 ];
+          then
+            e_and_l "$OK_TAG"
+            CHANGES_MADE=1
+          else
+            e_and_l "$ERROR_TAG"
+          fi
+          add_full_log
+        fi
+      else
+        e_and_l "$ACTION_MESSAGE $NC_TAG"
+      fi
+    else
+      e_and_l "$(skip_text "$ACTION_MESSAGE " "$NV_TXT")"
+    fi
+
+    # ===========================================================================
+    # Firmware für WiFi-Chipsatz installieren
+    # ===========================================================================
+    ACTION_MESSAGE=" Installation d. ${light_cyan}Firmware für WiFi-Chipsatz${colors_off} ..."
+    if [ $(LANG=en lshw -short 2>/dev/null | grep -i network | grep -c -i wifi) -gt 0 ];
+    then
+      if [ $(LANG=en dpkg-query -W -f='${Status}' "firmware-iwlwifi" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+      then
+        ask_yes_or_no "firmware-iwlwifi" " ${bold_yellow}Firmware für WiFi-Chipsatz${colors_off} installieren"
+        if [ $? -eq 1 ];
+        then
+          e_and_l -n " Installiere ${bold_yellow}Firmware für WiFi-Chipsatz${colors_off}     ... "
+          apt install firmware-iwlwifi -y &>"$LOG_TEMP"
+          if [ $? -eq 0 ];
+          then
+            e_and_l "$OK_TAG"
+            CHANGES_MADE=1
+          else
+            e_and_l "$ERROR_TAG"
+          fi
+          add_full_log
+        fi
+      else
+        e_and_l "$ACTION_MESSAGE $NC_TAG"
+      fi
+    else
+      e_and_l "$(skip_text "$ACTION_MESSAGE " "$NV_TXT")"
+    fi
+
+    # ===========================================================================
+    # Zusätzliche Gerätetreiber in Ubuntu installieren
     # ===========================================================================
     ACTION_MESSAGE=" Nach zusätzlichen ${light_cyan}Geräte-Treibern${colors_off} suchen"
     if [ ${OPTION_FLAG[udrivers]} -eq 1 ];
@@ -8558,8 +8618,13 @@ then
       e_and_l "$(skip_text "$ACTION_MESSAGE  " "nicht ausgewählt")"
     fi
 
+    e_and_l "$HALF_LINE"
+
     if [ ${OPTION_FLAG[extras]} -eq 1 ];
     then
+
+      e_and_l " ${bold_blue}Installation weiterer System-Komponenten${colors_off}"
+      e_and_l "$HALF_LINE"
 
       # ===========================================================================
       # Einstellung der Sprachumgebung (des Systems) auf deutsch (oder andere)
