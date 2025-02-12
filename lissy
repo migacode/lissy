@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 10.02.2025
-VERSION="4.2.10"
+# Letzte Änderung: 12.02.2025
+VERSION="4.2.12"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -6170,6 +6170,36 @@ function skip_text () {
 }
 
 ###############################################################################
+# Funktion zur Umwandlung eines Zeitstempels (Sekunden) in einen lesbaren Text
+###############################################################################
+function time_to_string() {
+  I_SECONDS=$1
+  SHORT_MODE=$2
+  if [ "$SHORT_MODE" == "" ];
+  then
+    STR_DAY="Tage"
+    STR_HUR="Stunden"
+    STR_MIN="Minuten"
+    STR_SEC="Sekunden"
+  else
+    STR_DAY="d"
+    STR_HUR="h"
+    STR_MIN="m"
+    STR_SEC="s"
+  fi
+  T_DAYS=$((I_SECONDS / (24 * 60 * 60)))
+  T_HOURS=$(((I_SECONDS / 3600) - (T_DAYS * 24)))
+  T_MINUTES=$(((I_SECONDS / 60) - (T_DAYS * 24 * 60) - (T_HOURS * 60)))
+  T_I_SECONDS=$((I_SECONDS - (T_DAYS * 24 * 60 * 60) - (T_HOURS * 60 * 60) - (T_MINUTES * 60)))
+  TIME_STRING=""
+  if [ $T_DAYS    -gt 0 ]; then TIME_STRING="$T_DAYS$STR_DAY "; fi
+  if [ $T_HOURS   -gt 0 ]; then TIME_STRING="$TIME_STRING$T_HOURS$STR_HUR "; fi
+  if [ $T_MINUTES -gt 0 ]; then TIME_STRING="$TIME_STRING$T_MINUTES$STR_MIN "; fi
+  TIME_STRING="$TIME_STRING$T_I_SECONDS$STR_SEC"
+  echo -n "$TIME_STRING"
+}
+
+###############################################################################
 # Funktion zum Download mehrer "einfacher" Dateien (ohne die Erweiterungen
 # für HTML-Webseiten einschließlich deren Verknüpfungen und Medien) von
 # einem Server-Verzeichnis in einen lokalen Ordner.
@@ -11876,8 +11906,8 @@ EOF
       disk_name=$(echo ${disk_name:0:8} | xargs)
       e_and_l "$HALF_LINE"
       e_and_l -n " Prüfe ${bold_white}$disk_name${colors_off}"
-      if [ "$DISK_MODEL" != "" ]; then e_and_l -n " ($DISK_MODEL)"; fi
-      if [ "$DISK_SERIAL" != "" ]; then e_and_l -n " [SN $DISK_SERIAL]"; fi
+      if [ "$DISK_MODEL" != "" ]; then e_and_l -n " (${light_cyan}$DISK_MODEL${colors_off})"; fi
+      if [ "$DISK_SERIAL" != "" ]; then e_and_l -n " [SN ${light_yellow}$DISK_SERIAL${colors_off}]"; fi
       e_and_l ""
       # ----------
       # S.M.A.R.T
@@ -11998,6 +12028,29 @@ EOF
         #   e_and_l "nicht geprüft ${dark_grey}(keine SSD)${colors_off}"
         # fi
       done
+      # ---------------------------------------
+      # Laufzeit
+      # ---------------------------------------
+      DISK_TIMESTAMP=$(smartctl -x ${DEVICE_NAME} 2>/dev/null | grep -i timestamp | awk '{print $4}' | xargs)
+      if [ "$DISK_TIMESTAMP" != "" ];
+      then
+        e_and_l -n " - Angabe der ${light_cyan}Summe der Laufzeit${colors_off}     ... "
+        DISK_TIMESTAMP=$((DISK_TIMESTAMP / 1000))
+        DISK_UPTIME=$(time_to_string $DISK_TIMESTAMP true)
+        echo -e "${light_yellow}$DISK_UPTIME${colors_off}"
+      fi
+      # ---------------------------------------
+      # Anzahl geschriebene Bytes
+      # ---------------------------------------
+      DISK_TOTAL_LBA=$(smartctl -x ${DEVICE_NAME} 2>/dev/null | grep -i lbas_wr | awk '{print $8}' | xargs)
+      if [ "$DISK_TOTAL_LBA" != "" ];
+      then
+        e_and_l -n " - Anzahl der ${light_cyan}geschriebenen Bytes${colors_off}    ... "
+        TOTAL_BYTES_WRITTEN=$((DISK_TOTAL_LBA * 512))
+        TOTAL_BYTES_WRITTEN=$(show_human_bytes ${TOTAL_BYTES_WRITTEN} "M")
+        echo -e "${light_yellow}$TOTAL_BYTES_WRITTEN${colors_off}"
+      fi
+      # ---------------------------------------
     done < "$THE_DISK_LIST"
     # -------------------------------------------------------------------------
     # Weitere Aktionen nur wenn eine SSD vorhanden ist
