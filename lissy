@@ -37,7 +37,7 @@
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
 # Letzte Änderung: 19.02.2025
-VERSION="4.2.19"
+VERSION="4.2.20"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -7159,7 +7159,7 @@ then
   e_and_l "            ausgewählt wurden."
   e_and_l "            Hinweis: Bei Verwendung dieser Option überlagern ggf. die"
   e_and_l "            Antworten zur Installation von Paketen die Option force."
-  e_and_l "            Diese Option selbst wird durch Option notoall überlagert."
+  e_and_l "            Diese Option autoyorn wird durch Option notoall überlagert."
   e_and_l ""
   e_and_l "  cleansys  Bereinigt nicht benötigte Daten des Benutzers und"
   e_and_l "            repariert diverse Einstellungen des Systems."
@@ -11921,9 +11921,14 @@ EOF
     # -------------------------------------------------------------------------
     while read disk_data;
     do
+      # Informationen zur Disk ermitteln
       disk_name="$(echo ${disk_data} | awk '{print $1}' | xargs)"
       disk_rota=$(echo ${disk_data} | awk '{print $2}' | xargs)
       DEVICE_NAME="/dev/${disk_name}"
+      # Hersteller (Family)
+      DISK_FAMILY=$(smartctl -x ${DEVICE_NAME} 2>/dev/null | grep -i -E "Model\s*Family" | sed -E "s/Model\s*Family\s*:*//i" | xargs)
+      DISK_FAMILY=${DISK_FAMILY:0:40}
+      # Bezeichnung (Model)
       DISK_MODEL=$(LANG=en smartctl -i -d sat ${DEVICE_NAME} 2>/dev/null | grep -i -E "device\s*model" | cut -d":" -f 2 | xargs)
       if [ "$DISK_MODEL" = "" ];
       then
@@ -11935,13 +11940,15 @@ EOF
       fi
       DISK_MODEL=${DISK_MODEL:0:40}
       DISK_MODEL=$(echo ${DISK_MODEL//_/ } | xargs)
+      # Seriennummer
       DISK_SERIAL=$(LANG=en smartctl -i -d sat ${DEVICE_NAME} 2>/dev/null | grep -i -E "serial\s*number" | cut -d":" -f 2 | xargs)
+      # Start der Ausgabe
       disk_name=$(echo ${disk_name:0:8} | xargs)
       e_and_l "$HALF_LINE"
-      e_and_l -n " Prüfe ${bold_white}$disk_name${colors_off}"
-      if [ "$DISK_MODEL" != "" ]; then e_and_l -n " (${light_cyan}$DISK_MODEL${colors_off})"; fi
-      if [ "$DISK_SERIAL" != "" ]; then e_and_l -n " [SN ${light_yellow}$DISK_SERIAL${colors_off}]"; fi
-      e_and_l ""
+      e_and_l " Prüfe ${bold_white}$DEVICE_NAME${colors_off}"
+      if [ "$DISK_FAMILY" != "" ]; then e_and_l " Hersteller:   ${light_cyan}$DISK_FAMILY${colors_off}"; fi
+      if [ "$DISK_MODEL"  != "" ]; then e_and_l " Bezeichnung:  ${light_cyan}$DISK_MODEL${colors_off}"; fi
+      if [ "$DISK_SERIAL" != "" ]; then e_and_l " Seriennummer: ${light_yellow}$DISK_SERIAL${colors_off}"; fi
       # ----------
       # S.M.A.R.T
       # ----------
@@ -12064,23 +12071,37 @@ EOF
       # ---------------------------------------
       # Laufzeit
       # ---------------------------------------
-      # 1. Aus der Angabe des Zeitstempels berechnen
+      POH_FROM_SMART=""
+      e_and_l -n " - Angabe der ${light_cyan}Summe der Laufzeit${colors_off}     ... "
+      # 1. Angabe aus dem GP-Logs auslesen
+      DISK_POWER_ON=$(smartctl -x ${DEVICE_NAME} 2>/dev/null | grep -E "0x01\s*0x010\s*4" | awk '{print $4}' | xargs)
+      # Wenn nicht im GP-Log gefunden den SMART-Wert einlesen
+      if [ "$DISK_POWER_ON" == "" ];
+      then
+        DISK_POWER_ON=$(smartctl -x ${DEVICE_NAME} 2>/dev/null | grep -i -E "Power_On_Hours" | awk '{print $8}' | xargs)
+        POH_FROM_SMART=" (SMART)"
+      fi
+      # 2. Angabe des Zeitstempels auslesen und formatieren
       DISK_TIMESTAMP=$(smartctl -x ${DEVICE_NAME} 2>/dev/null | grep -i timestamp | awk '{print $4}' | xargs)
       if [ "$DISK_TIMESTAMP" != "" ];
       then
-        e_and_l -n " - Angabe der ${light_cyan}Summe der Laufzeit${colors_off}     ... "
-        DISK_TIMESTAMP=$((DISK_TIMESTAMP / 1000))
-        DISK_UPTIME=$(time_to_string $DISK_TIMESTAMP true)
-        echo -e -n "${light_yellow}$DISK_UPTIME${colors_off}"
-        # 2. Zusätzlich die Angabe der Stunden auslesen
-        # DISK_POWER_ON=$(smartctl -x ${DEVICE_NAME} 2>/dev/null | grep -E "0x01\s*0x010\s*4" | awk '{print $4}' | xargs)
-        DISK_POWER_ON=$(smartctl -x ${DEVICE_NAME} 2>/dev/null | grep -i 'power-on hours' | awk '{print $4}' | xargs)
+        DISK_TIMESTAMP=$((DISK_TIMESTAMP / 1000)) # Timestamp ist in 1000stel Sekunden gespeichert
+      else
         if [ "$DISK_POWER_ON" != "" ];
         then
-          e_and_l -n " ${light_grey}[~${DISK_POWER_ON}h]${colors_off}"
+          DISK_TIMESTAMP=$((DISK_POWER_ON * 60 * 60)) # Stunden in Sekunden umrechnen
+        else
+          DISK_TIMESTAMP=""
         fi
-        e_and_l ""
       fi
+      DISK_UPTIME=$(time_to_string $DISK_TIMESTAMP true)
+      e_and_l -n "${light_yellow}$DISK_UPTIME${colors_off}"
+      if [ "$DISK_POWER_ON" != "" ];
+      then
+        if [ "$DISK_TIMESTAMP" != "" ]; then e_and_l -n " / "; fi
+        e_and_l -n "${light_yellow}~ ${DISK_POWER_ON} Stunden${dark_grey}$POH_FROM_SMART${colors_off}"
+      fi
+      e_and_l ""
       # ---------------------------------------
       # Anzahl geschriebene Bytes
       # ---------------------------------------
