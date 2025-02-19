@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (immer sechs Zeichen lang ;)
-# Letzte Änderung: 12.02.2025
-VERSION="4.2.12"
+# Letzte Änderung: 19.02.2025
+VERSION="4.2.19"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -878,7 +878,7 @@ declare -A OPTION_MENU # Index des Menüpunktes, in dem die Option erscheint
 OPTION_LIST=()
 OPTION_LIST+=(addflat addsnap norepo foreign force quiet status listonly addicons csubdirs) # Menu 2
 OPTION_LIST+=(extras exupdate udrivers kuplock kunlock optimize cleansys setutc revive personal dsave dload) # Menu 4
-OPTION_LIST+=(autoyorn infoonly noinfo log logfull noupdate nocolor saveconf cleantmp) # Menu 5
+OPTION_LIST+=(autoyorn notoall infoonly noinfo log logfull noupdate nocolor saveconf cleantmp) # Menu 5
 
 OPTION_TEXT[addicons]="Desktop-Symbole (Starter) für Paketauswahl erstellen"
 OPTION_TEXT[addflat]="Flatpak-Pakete auch auswählbar und installierbar"
@@ -903,6 +903,7 @@ OPTION_TEXT[logfull]="Vollständige Log-Datei aller Aktionen erstellen"
 OPTION_TEXT[nocolor]="Ausgabe der Anzeigen und Meldungen ohne Farben"
 OPTION_TEXT[noinfo]="Systeminformationen am Anfang nicht anzeigen"
 OPTION_TEXT[norepo]="Standard-Repository nicht erweitern und aktualisieren"
+OPTION_TEXT[notoall]="Alle Abfragen automatisch mit Nein beantworten"
 OPTION_TEXT[noupdate]="Nicht nach Updates für dieses Skript suchen"
 OPTION_TEXT[optimize]="Diverse Optimierungen des Systems durchführen"
 OPTION_TEXT[personal]="Persönliche Einstellungen vom Server laden"
@@ -973,6 +974,7 @@ OPTION_MENU[log]=5
 OPTION_MENU[logfull]=5
 OPTION_MENU[nocolor]=5
 OPTION_MENU[noinfo]=5
+OPTION_MENU[notoall]=5
 OPTION_MENU[noupdate]=5
 OPTION_MENU[saveconf]=5
 
@@ -2422,7 +2424,8 @@ function ask_for_install_mode () {
 
 ###############################################################################
 # Erweiterte Funktion zur Ja/Nein-Abfrage mit optionaler Anzeige einer Datei
-# HINWEIS: Diese Abfrage wird auch mit der Option force NICHT übersprungen
+# HINWEIS: Diese Abfrage wird mit der Option "force" NICHT übersprungen, mit
+# der Option "notoall" allerdings schon.
 # Rückgaben: 0 = false (Nein)
 #            1 = true (Ja)
 ###############################################################################
@@ -2431,216 +2434,30 @@ function ask_yes_or_no () {
   QUESTION="$2? [${bold_yellow}j${colors_off}]a, [${bold_yellow}n${colors_off}]ein, [${bold_yellow}a${colors_off}]nzeigen: "
   FILE_TO_SHOW="$3"
   # ---------------------------------------------------------------------------
-  # Parameter der Eingabe-Möglichkeiten definieren
+  # Überspringen wenn Abfragen automatisch mit Nein beantwortet werden sollen
   # ---------------------------------------------------------------------------
-  if [ "$FILE_TO_SHOW" != "" ];
+  if [ ${OPTION_FLAG[notoall]} -ne 1 ];
   then
-    REG_CHARS="[^JjNnAa]*"
-    e_and_l -n "$QUESTION"
-  else
-    REG_CHARS="[^JjNn]*"
-    e_and_l -n "$2? [${bold_yellow}j${colors_off}]a oder [${bold_yellow}n${colors_off}]ein: "
-  fi
-  IYN_RESULT=0
-  INPUT_OK=0
-  # ---------------------------------------------------------------------------
-  # Optional Antwort des vorherigen Durchlaufs verwenden
-  # ---------------------------------------------------------------------------
-  if [ ${OPTION_FLAG[autoyorn]} -eq 1 ] &&
-     [ "$QUEST_ID" != "" ];
-  then
-    ANSWER=$(echo ${AUTO_ANSWERS["$QUEST_ID"]} | xargs)
-    if [ "$ANSWER" = "j" ];
-    then
-      e_and_l ${dark_grey}$ANSWER${colors_off}
-      IYN_RESULT=1
-      INPUT_OK=1
-    fi
-    if [ "$ANSWER" = "n" ];
-    then
-      e_and_l ${dark_grey}$ANSWER${colors_off}
-      IYN_RESULT=0
-      INPUT_OK=1
-    fi
-  fi
-  # ---------------------------------------------------------------------------
-  # Wenn es keine Antwort aus dem vorherigen Durchlauf gibt, oder dies
-  # nicht gewollt ist, dann erweiterte Ja/Nein-Abfrage durchführen
-  # ---------------------------------------------------------------------------
-  while [ $INPUT_OK -eq 0 ]
-  do
-    # Eingabe-Schleife --------------------------------------------------------
-    ANSWER=""
-    while [ "$ANSWER" = "" ];
-    do
-      read -N 1 -r -s ANSWER
-      ANSWER=$(echo $ANSWER | sed "s/$REG_CHARS//g")
-    done
-    e_and_l "$ANSWER"
-    # Ja ----------------------------------------------------------------------
-    if [ "$ANSWER" = "J" ] ||
-       [ "$ANSWER" = "j" ];
-    then
-      IYN_RESULT=1
-      INPUT_OK=1
-    fi
-    # Nein --------------------------------------------------------------------
-    if [ "$ANSWER" = "N" ] ||
-       [ "$ANSWER" = "n" ];
-    then
-      INPUT_OK=1
-    fi
-    # Datei anzeigen ----------------------------------------------------------
-    if [ "$FILE_TO_SHOW" != "" ];
-    then
-      if [ "$ANSWER" = "A" ] ||
-         [ "$ANSWER" = "a" ];
-      then
-        echo -e "${light_yellow}"
-        more "$FILE_TO_SHOW"
-        echo -e "${colors_off}"
-      fi
-    fi
-    # Wenn eine Datei angezeigt wurde erneut abfragen -------------------------
-    if [ $INPUT_OK -eq 0 ];
-    then
-      if [ "$FILE_TO_SHOW" != "" ];
-      then
-        e_and_l -n "$QUESTION"
-      fi
-    fi
-  done
-  # ---------------------------------------------------------------------------
-  # Antwort speichern
-  # ---------------------------------------------------------------------------
-  if [ $INPUT_OK -eq 1 ] &&
-     [ "$QUEST_ID" != "" ] &&
-     [ "$ANSWER" != "" ];
-  then
-    ANSWER="$(echo -n "${ANSWER}" | tr '[:upper:]' '[:lower:]')"
-    NEW_CONFIG_LINE="$QUEST_ID:$ANSWER"
-    if [ $(grep -c -E "$QUEST_ID:" "$AUTO_ANSWER_FILE" 2>/dev/null) -gt 0 ];
-    then
-      # Bestehende Konfig-Zeile ändern
-      sed -i -E "s/$QUEST_ID:.*/$NEW_CONFIG_LINE/gi" "$AUTO_ANSWER_FILE" 2>/dev/null
-    else
-      # Nicht vorhandene Konfig-Zeile hinzufügen
-      echo -e "$NEW_CONFIG_LINE" >> "$AUTO_ANSWER_FILE" 2>/dev/null
-    fi
-  fi
-  # ---------------------------------------------------------------------------
-  return $IYN_RESULT
-}
-
-###############################################################################
-# Erweiterte Funktion zur Ja/Nein-Abfrage mit Info zu Programmpaketen
-# Kann mit der Option force übersprungen werden, sofern nicht "trotzdem"
-# angegeben ist, sprich bereits ein alternatives Paket dazu installiert ist!
-# Rückgaben: 0 = false (Nein)
-#            1 = true (Ja)
-###############################################################################
-function ask_yes_no_info () {
-  PACKAGE_NAME="$1"
-  # ------------------------------------------------------
-  # Hinweis auf bereits installierte Alternative anzeigen
-  # ------------------------------------------------------
-  TROTZDEM=""
-  SIM_PACK_INSTALLED=0
-  CHECK_SIM_PACK="${SIMILAR_PACK[$PACKAGE_NAME]}"
-  while [ "$CHECK_SIM_PACK" != "" ];
-  do
-    get_install_status "$CHECK_SIM_PACK"
-    if [ $? -ne 0 ];
-    then
-      if [ $SIM_PACK_INSTALLED -gt 0 ]; then e_and_l -n "$PRE_SPACE"; fi
-      e_and_l -n " $ACHTUNG_TAG: Alternative ${light_yellow}$CHECK_SIM_PACK${colors_off}"
-      if [ "$PKG_VERSION" != "" ] &&
-         [ "$PKG_VERSION" != "0" ];
-      then
-        e_and_l -n " ${light_purple}$PKG_VERSION${colors_off}"
-      fi
-      e_and_l " ist bereits installiert!"
-      copy_starter_to_desktop $CHECK_SIM_PACK
-      ((SIM_PACK_INSTALLED+=1))
-    fi
-    CHECK_SIM_PACK="${SIMILAR_PACK[$CHECK_SIM_PACK]}"
-  done
-  if [ $SIM_PACK_INSTALLED -ne 0 ];
-  then
-    e_and_l -n "$PRE_SPACE"
-    TROTZDEM=" trotzdem"
-  fi
-  # ---------------------------------------------------------------------------
-  # Prüfen, ob eine Auto-Antwort zur Installation genutzt werden soll
-  # ---------------------------------------------------------------------------
-  CHECK_AUTO_ANSWER=""
-  if [ ${OPTION_FLAG[autoyorn]} -eq 1 ] &&
-     [ "$PACKAGE_NAME" != "" ];
-  then
-    CHECK_AUTO_ANSWER=$(echo ${AUTO_ANSWERS["pkg_$PACKAGE_NAME"]} | xargs)
-  fi
-  # ---------------------------------------------------------------------------
-  # Wenn es so gewollt ist (Option force) und nicht bereits ein alternatives
-  # Programmpaket installiert ist (welches eventuell in Konflikt steht), und
-  # auch keine Auto-Antwort zur Installation des Paketes vorhanden ist, dann
-  # automatisch ein "Ja" (Installation ohne weitere Rückfrage) zurückgeben
-  # ---------------------------------------------------------------------------
-  INPUT_OK=0
-  if [ ${OPTION_FLAG[force]} -eq 1 ] &&
-     [ "$TROTZDEM" = "" ] &&
-     [ "$CHECK_AUTO_ANSWER" = "" ];
-  then
-    IYN_RESULT=1
-  else
-    IYN_RESULT=0
-    QUESTION_1="Programmpaket ${light_yellow}$PACKAGE_NAME${colors_off}"
-    case $INSTALL_MODE in
-      1) TMP_PKG_TYPE="STD"
-         TMP_PKG_VERSION=$(get_pkg_apt_version "$PACKAGE_NAME" 0)
-         ;;
-      2) TMP_PKG_TYPE="SNAP"
-         TMP_PKG_VERSION=$(get_pkg_snap_version "$PACKAGE_NAME" 0)
-         ;;
-      3) TMP_PKG_TYPE="DEB"
-         TMP_PKG_VERSION=$(get_pkg_deb_version "$PACKAGE_NAME")
-         ;;
-      4) TMP_PKG_TYPE="WEB"
-         TMP_PKG_VERSION=$(get_pkg_web_version "$PACKAGE_NAME")
-         ;;
-      6) TMP_PKG_TYPE="FLAT"
-         TMP_PKG_VERSION=$(get_pkg_flatpak_version "$PACKAGE_NAME" 0)
-         ;;
-    esac
-    if [ "$TMP_PKG_VERSION" != "" ];
-    then
-      QUESTION_1+=" ${light_yellow}$TMP_PKG_VERSION${colors_off}"
-    fi
-    QUESTION_1+=" (${light_purple}$TMP_PKG_TYPE${colors_off})"
-    QUESTION_1+="$TROTZDEM installieren?"
-    QUESTION_2="[${bold_yellow}j${colors_off}]a [${bold_yellow}n${colors_off}]ein"
     # -------------------------------------------------------------------------
     # Parameter der Eingabe-Möglichkeiten definieren
     # -------------------------------------------------------------------------
-    if [ $INSTALL_MODE -eq 1 ] || # apt
-       [ $INSTALL_MODE -eq 2 ] || # snap
-       [ $INSTALL_MODE -eq 6 ];   # flatpak
+    if [ "$FILE_TO_SHOW" != "" ];
     then
-      REG_CHARS="[^JjNnIi]*"
-      QUESTION_2+=" [${bold_yellow}i${colors_off}]nfo"
+      REG_CHARS="[^JjNnAa]*"
+      e_and_l -n "$QUESTION"
     else
       REG_CHARS="[^JjNn]*"
+      e_and_l -n "$2? [${bold_yellow}j${colors_off}]a oder [${bold_yellow}n${colors_off}]ein: "
     fi
+    IYN_RESULT=0
+    INPUT_OK=0
     # -------------------------------------------------------------------------
-    QUESTION_2+=":"
-    e_and_l " $QUESTION_1"
-    e_and_l -n "$PRE_SPACE $QUESTION_2 "
-    # ---------------------------------------------------------------------------
     # Optional Antwort des vorherigen Durchlaufs verwenden
-    # ---------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     if [ ${OPTION_FLAG[autoyorn]} -eq 1 ] &&
-       [ "$PACKAGE_NAME" != "" ];
+       [ "$QUEST_ID" != "" ];
     then
-      ANSWER=$(echo ${AUTO_ANSWERS["pkg_$PACKAGE_NAME"]} | xargs)
+      ANSWER=$(echo ${AUTO_ANSWERS["$QUEST_ID"]} | xargs)
       if [ "$ANSWER" = "j" ];
       then
         e_and_l ${dark_grey}$ANSWER${colors_off}
@@ -2654,10 +2471,10 @@ function ask_yes_no_info () {
         INPUT_OK=1
       fi
     fi
-    # ---------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Wenn es keine Antwort aus dem vorherigen Durchlauf gibt, oder dies
     # nicht gewollt ist, dann erweiterte Ja/Nein-Abfrage durchführen
-    # ---------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     while [ $INPUT_OK -eq 0 ]
     do
       # Eingabe-Schleife ------------------------------------------------------
@@ -2668,53 +2485,258 @@ function ask_yes_no_info () {
         ANSWER=$(echo $ANSWER | sed "s/$REG_CHARS//g")
       done
       e_and_l "$ANSWER"
-      # Info anzeigen ---------------------------------------------------------
-      if [ "$ANSWER" = "I" ] ||
-         [ "$ANSWER" = "i" ];
+      # Ja --------------------------------------------------------------------
+      if [ "$ANSWER" = "J" ] ||
+         [ "$ANSWER" = "j" ];
       then
-        echo -e "${light_yellow}"
-        if [ $INSTALL_MODE -eq 1 ]; then apt show "$PACKAGE_NAME"; fi
-        if [ $INSTALL_MODE -eq 2 ]; then snap info "$PACKAGE_NAME"; fi
-        if [ $INSTALL_MODE -eq 3 ] ||
-           [ $INSTALL_MODE -eq 4 ];
-        then
-          echo -e "$PRE_SPACE Zu diesem Paket sind leider keine Informationen verfügbar."
-        fi
-        if [ $INSTALL_MODE -eq 6 ]; then flatpak remote-info flathub $(get_pkg_flatpak_reference ${PACKAGE_NAME} 0); fi
-        echo -e "${colors_off}"
-        e_and_l "$PRE_SPACE $QUESTION_1"
-        e_and_l -n "$PRE_SPACE $QUESTION_2 "
-      # Ja oder Nein ----------------------------------------------------------
-      else
-        if [ "$ANSWER" != "N" ] &&
-           [ "$ANSWER" != "n" ];
-        then
-          e_and_l -n "$PRE_SPACE"
-          IYN_RESULT=1
-        fi
+        IYN_RESULT=1
         INPUT_OK=1
       fi
+      # Nein ------------------------------------------------------------------
+      if [ "$ANSWER" = "N" ] ||
+         [ "$ANSWER" = "n" ];
+      then
+        INPUT_OK=1
+      fi
+      # Datei anzeigen --------------------------------------------------------
+      if [ "$FILE_TO_SHOW" != "" ];
+      then
+        if [ "$ANSWER" = "A" ] ||
+           [ "$ANSWER" = "a" ];
+        then
+          echo -e "${light_yellow}"
+          more "$FILE_TO_SHOW"
+          echo -e "${colors_off}"
+        fi
+      fi
+      # Wenn eine Datei angezeigt wurde erneut abfragen -----------------------
+      if [ $INPUT_OK -eq 0 ];
+      then
+        if [ "$FILE_TO_SHOW" != "" ];
+        then
+          e_and_l -n "$QUESTION"
+        fi
+      fi
     done
-  fi
-  # ---------------------------------------------------------------------------
-  # Antwort speichern
-  # ---------------------------------------------------------------------------
-  if [ $INPUT_OK -eq 1 ] &&
-     [ "$PACKAGE_NAME" != "" ] &&
-     [ "$ANSWER" != "" ];
-  then
-    ANSWER="$(echo -n "${ANSWER}" | tr '[:upper:]' '[:lower:]')"
-    NEW_CONFIG_LINE="pkg_$PACKAGE_NAME:$ANSWER"
-    if [ $(grep -c -E "pkg_$PACKAGE_NAME:" "$AUTO_ANSWER_FILE" 2>/dev/null) -gt 0 ];
+    # -------------------------------------------------------------------------
+    # Antwort speichern
+    # -------------------------------------------------------------------------
+    if [ $INPUT_OK -eq 1 ] &&
+       [ "$QUEST_ID" != "" ] &&
+       [ "$ANSWER" != "" ];
     then
-      # Bestehende Konfig-Zeile ändern
-      sed -i -E "s/pkg_$PACKAGE_NAME:.*/$NEW_CONFIG_LINE/gi" "$AUTO_ANSWER_FILE" 2>/dev/null
-    else
-      # Nicht vorhandene Konfig-Zeile hinzufügen
-      echo -e "$NEW_CONFIG_LINE" >> "$AUTO_ANSWER_FILE" 2>/dev/null
+      ANSWER="$(echo -n "${ANSWER}" | tr '[:upper:]' '[:lower:]')"
+      NEW_CONFIG_LINE="$QUEST_ID:$ANSWER"
+      if [ $(grep -c -E "$QUEST_ID:" "$AUTO_ANSWER_FILE" 2>/dev/null) -gt 0 ];
+      then
+        # Bestehende Konfig-Zeile ändern
+        sed -i -E "s/$QUEST_ID:.*/$NEW_CONFIG_LINE/gi" "$AUTO_ANSWER_FILE" 2>/dev/null
+      else
+        # Nicht vorhandene Konfig-Zeile hinzufügen
+        echo -e "$NEW_CONFIG_LINE" >> "$AUTO_ANSWER_FILE" 2>/dev/null
+      fi
     fi
+  else
+    e_and_l "$2? [${bold_yellow}j${colors_off}]a oder [${bold_yellow}n${colors_off}]ein: ${light_purple}n${colors_off}"
+    IYN_RESULT=0
   fi
+  return $IYN_RESULT
+}
+
+###############################################################################
+# Erweiterte Funktion zur Ja/Nein-Abfrage mit Info zu Programmpaketen
+# Kann mit der Option force übersprungen werden, sofern nicht "trotzdem"
+# angegeben ist, sprich bereits ein alternatives Paket dazu installiert ist!
+# Diese Funktion wird nur zur Installation von Programmpaketen verwendet und
+# durch die Option "notoall" automatisch übersprungen
+# Rückgaben: 0 = false (Nein)
+#            1 = true (Ja)
+###############################################################################
+function ask_yes_no_info () {
+  PACKAGE_NAME="$1"
   # ---------------------------------------------------------------------------
+  # Überspringen wenn Abfragen automatisch mit Nein beantwortet werden sollen
+  # ---------------------------------------------------------------------------
+  if [ ${OPTION_FLAG[notoall]} -ne 1 ];
+  then
+    # ------------------------------------------------------
+    # Hinweis auf bereits installierte Alternative anzeigen
+    # ------------------------------------------------------
+    TROTZDEM=""
+    SIM_PACK_INSTALLED=0
+    CHECK_SIM_PACK="${SIMILAR_PACK[$PACKAGE_NAME]}"
+    while [ "$CHECK_SIM_PACK" != "" ];
+    do
+      get_install_status "$CHECK_SIM_PACK"
+      if [ $? -ne 0 ];
+      then
+        if [ $SIM_PACK_INSTALLED -gt 0 ]; then e_and_l -n "$PRE_SPACE"; fi
+        e_and_l -n " $ACHTUNG_TAG: Alternative ${light_yellow}$CHECK_SIM_PACK${colors_off}"
+        if [ "$PKG_VERSION" != "" ] &&
+          [ "$PKG_VERSION" != "0" ];
+        then
+          e_and_l -n " ${light_purple}$PKG_VERSION${colors_off}"
+        fi
+        e_and_l " ist bereits installiert!"
+        copy_starter_to_desktop $CHECK_SIM_PACK
+        ((SIM_PACK_INSTALLED+=1))
+      fi
+      CHECK_SIM_PACK="${SIMILAR_PACK[$CHECK_SIM_PACK]}"
+    done
+    if [ $SIM_PACK_INSTALLED -ne 0 ];
+    then
+      e_and_l -n "$PRE_SPACE"
+      TROTZDEM=" trotzdem"
+    fi
+    # -------------------------------------------------------------------------
+    # Prüfen, ob eine Auto-Antwort zur Installation genutzt werden soll
+    # -------------------------------------------------------------------------
+    CHECK_AUTO_ANSWER=""
+    if [ ${OPTION_FLAG[autoyorn]} -eq 1 ] &&
+       [ "$PACKAGE_NAME" != "" ];
+    then
+      CHECK_AUTO_ANSWER=$(echo ${AUTO_ANSWERS["pkg_$PACKAGE_NAME"]} | xargs)
+    fi
+    # -------------------------------------------------------------------------
+    # Wenn es so gewollt ist (Option force) und nicht bereits ein alternatives
+    # Programmpaket installiert ist (welches eventuell in Konflikt steht), und
+    # auch keine Auto-Antwort zur Installation des Paketes vorhanden ist, dann
+    # automatisch ein "Ja" (Installation ohne weitere Rückfrage) zurückgeben
+    # -------------------------------------------------------------------------
+    INPUT_OK=0
+    if [ ${OPTION_FLAG[force]} -eq 1 ] &&
+       [ "$TROTZDEM" = "" ] &&
+       [ "$CHECK_AUTO_ANSWER" = "" ];
+    then
+      IYN_RESULT=1
+    else
+      IYN_RESULT=0
+      QUESTION_1="Programmpaket ${light_yellow}$PACKAGE_NAME${colors_off}"
+      case $INSTALL_MODE in
+        1) TMP_PKG_TYPE="STD"
+          TMP_PKG_VERSION=$(get_pkg_apt_version "$PACKAGE_NAME" 0)
+          ;;
+        2) TMP_PKG_TYPE="SNAP"
+          TMP_PKG_VERSION=$(get_pkg_snap_version "$PACKAGE_NAME" 0)
+          ;;
+        3) TMP_PKG_TYPE="DEB"
+          TMP_PKG_VERSION=$(get_pkg_deb_version "$PACKAGE_NAME")
+          ;;
+        4) TMP_PKG_TYPE="WEB"
+          TMP_PKG_VERSION=$(get_pkg_web_version "$PACKAGE_NAME")
+          ;;
+        6) TMP_PKG_TYPE="FLAT"
+          TMP_PKG_VERSION=$(get_pkg_flatpak_version "$PACKAGE_NAME" 0)
+          ;;
+      esac
+      if [ "$TMP_PKG_VERSION" != "" ];
+      then
+        QUESTION_1+=" ${light_yellow}$TMP_PKG_VERSION${colors_off}"
+      fi
+      QUESTION_1+=" (${light_purple}$TMP_PKG_TYPE${colors_off})"
+      QUESTION_1+="$TROTZDEM installieren?"
+      QUESTION_2="[${bold_yellow}j${colors_off}]a [${bold_yellow}n${colors_off}]ein"
+      # -----------------------------------------------------------------------
+      # Parameter der Eingabe-Möglichkeiten definieren
+      # -----------------------------------------------------------------------
+      if [ $INSTALL_MODE -eq 1 ] || # apt
+        [ $INSTALL_MODE -eq 2 ] || # snap
+        [ $INSTALL_MODE -eq 6 ];   # flatpak
+      then
+        REG_CHARS="[^JjNnIi]*"
+        QUESTION_2+=" [${bold_yellow}i${colors_off}]nfo"
+      else
+        REG_CHARS="[^JjNn]*"
+      fi
+      # -----------------------------------------------------------------------
+      QUESTION_2+=":"
+      e_and_l " $QUESTION_1"
+      e_and_l -n "$PRE_SPACE $QUESTION_2 "
+      # -----------------------------------------------------------------------
+      # Optional Antwort des vorherigen Durchlaufs verwenden
+      # -----------------------------------------------------------------------
+      if [ ${OPTION_FLAG[autoyorn]} -eq 1 ] &&
+         [ "$PACKAGE_NAME" != "" ];
+      then
+        ANSWER=$(echo ${AUTO_ANSWERS["pkg_$PACKAGE_NAME"]} | xargs)
+        if [ "$ANSWER" = "j" ];
+        then
+          e_and_l ${dark_grey}$ANSWER${colors_off}
+          IYN_RESULT=1
+          INPUT_OK=1
+        fi
+        if [ "$ANSWER" = "n" ];
+        then
+          e_and_l ${dark_grey}$ANSWER${colors_off}
+          IYN_RESULT=0
+          INPUT_OK=1
+        fi
+      fi
+      # -----------------------------------------------------------------------
+      # Wenn es keine Antwort aus dem vorherigen Durchlauf gibt, oder dies
+      # nicht gewollt ist, dann erweiterte Ja/Nein-Abfrage durchführen
+      # -----------------------------------------------------------------------
+      while [ $INPUT_OK -eq 0 ]
+      do
+        # Eingabe-Schleife ----------------------------------------------------
+        ANSWER=""
+        while [ "$ANSWER" = "" ];
+        do
+          read -N 1 -r -s ANSWER
+          ANSWER=$(echo $ANSWER | sed "s/$REG_CHARS//g")
+        done
+        e_and_l "$ANSWER"
+        # Info anzeigen -------------------------------------------------------
+        if [ "$ANSWER" = "I" ] ||
+           [ "$ANSWER" = "i" ];
+        then
+          echo -e "${light_yellow}"
+          if [ $INSTALL_MODE -eq 1 ]; then apt show "$PACKAGE_NAME"; fi
+          if [ $INSTALL_MODE -eq 2 ]; then snap info "$PACKAGE_NAME"; fi
+          if [ $INSTALL_MODE -eq 3 ] ||
+             [ $INSTALL_MODE -eq 4 ];
+          then
+            echo -e "$PRE_SPACE Zu diesem Paket sind leider keine Informationen verfügbar."
+          fi
+          if [ $INSTALL_MODE -eq 6 ]; then flatpak remote-info flathub $(get_pkg_flatpak_reference ${PACKAGE_NAME} 0); fi
+          echo -e "${colors_off}"
+          e_and_l "$PRE_SPACE $QUESTION_1"
+          e_and_l -n "$PRE_SPACE $QUESTION_2 "
+        # Ja oder Nein --------------------------------------------------------
+        else
+          if [ "$ANSWER" != "N" ] &&
+             [ "$ANSWER" != "n" ];
+          then
+            e_and_l -n "$PRE_SPACE"
+            IYN_RESULT=1
+          fi
+          INPUT_OK=1
+        fi
+      done
+    fi
+    # -------------------------------------------------------------------------
+    # Antwort speichern
+    # -------------------------------------------------------------------------
+    if [ $INPUT_OK -eq 1 ] &&
+       [ "$PACKAGE_NAME" != "" ] &&
+       [ "$ANSWER" != "" ];
+    then
+      ANSWER="$(echo -n "${ANSWER}" | tr '[:upper:]' '[:lower:]')"
+      NEW_CONFIG_LINE="pkg_$PACKAGE_NAME:$ANSWER"
+      if [ $(grep -c -E "pkg_$PACKAGE_NAME:" "$AUTO_ANSWER_FILE" 2>/dev/null) -gt 0 ];
+      then
+        # Bestehende Konfig-Zeile ändern
+        sed -i -E "s/pkg_$PACKAGE_NAME:.*/$NEW_CONFIG_LINE/gi" "$AUTO_ANSWER_FILE" 2>/dev/null
+      else
+        # Nicht vorhandene Konfig-Zeile hinzufügen
+        echo -e "$NEW_CONFIG_LINE" >> "$AUTO_ANSWER_FILE" 2>/dev/null
+      fi
+    fi
+    # -------------------------------------------------------------------------
+  else
+    e_and_l " Programmpaket ${light_yellow}$PACKAGE_NAME${colors_off} installieren? [${bold_yellow}j${colors_off}]a oder [${bold_yellow}n${colors_off}]ein: ${light_purple}n${colors_off}"
+    IYN_RESULT=0
+  fi
   return $IYN_RESULT
 }
 
@@ -4735,7 +4757,10 @@ function install_pkg () {
                   add_full_log
                 else
                   INSTALL_RESULT=1
-                  e_and_l "$PRE_SPACE ${light_cyan}$PAKET${colors_off} wurde ${light_red}nicht${colors_off} installiert"
+                  if [ ${OPTION_FLAG[notoall]} -ne 1 ];
+                  then
+                    e_and_l "$PRE_SPACE ${light_cyan}$PAKET${colors_off} wurde ${light_red}nicht${colors_off} installiert"
+                  fi
                   ((PAKETS_SKIP+=1))
                   ((PAKETS_NOAVAIL-=1))
                 fi
@@ -5218,7 +5243,10 @@ function install_pkg () {
           else # wenn Ja-Nein-Abfrage negativ ausgefallen
 
             # do_log "$PRE_SPACE $PAKET wurde nicht installiert"
-            e_and_l "$PRE_SPACE ${light_cyan}$PAKET${colors_off} wurde ${light_red}nicht${colors_off} installiert"
+            if [ ${OPTION_FLAG[notoall]} -ne 1 ];
+            then
+              e_and_l "$PRE_SPACE ${light_cyan}$PAKET${colors_off} wurde ${light_red}nicht${colors_off} installiert"
+            fi
             ((PAKETS_SKIP+=1))
 
           fi
@@ -7131,6 +7159,7 @@ then
   e_and_l "            ausgewählt wurden."
   e_and_l "            Hinweis: Bei Verwendung dieser Option überlagern ggf. die"
   e_and_l "            Antworten zur Installation von Paketen die Option force."
+  e_and_l "            Diese Option selbst wird durch Option notoall überlagert."
   e_and_l ""
   e_and_l "  cleansys  Bereinigt nicht benötigte Daten des Benutzers und"
   e_and_l "            repariert diverse Einstellungen des Systems."
@@ -7164,6 +7193,7 @@ then
   e_and_l "            mit einem bereits installierten Paket steht, oder bei der"
   e_and_l "            zusätzlichen Verwendung der Option autoyorn deren eventuell"
   e_and_l "            gespeicherte Antwort zur Paket-Installation anders lautet."
+  e_and_l "            Hinweis: Wird durch die Option notoall überlagert."
   # e_and_l "            (Diese Option ist nicht identisch mit apt-get --force)"
   e_and_l ""
   e_and_l "   foreign  Erlaubt auch die Installation von Programmpaketen für"
@@ -7203,6 +7233,9 @@ then
   e_and_l "    norepo  Fügt dem Repository keine Einträge für externe Quellen"
   e_and_l "            hinzu und überspringt die Aktualisierung des Repository"
   e_and_l "            beim Start dieses Scriptes."
+  e_and_l ""
+  e_and_l "   notoall  Alle Abfragen werden automatisch mit Nein beantwortet."
+  e_and_l "            Diese Option überlagert die Optionen force und autoyorn."
   e_and_l ""
   e_and_l "  noupdate  Prüft nicht auf eine neuere Version dieses Scripts."
   e_and_l ""
@@ -12031,13 +12064,22 @@ EOF
       # ---------------------------------------
       # Laufzeit
       # ---------------------------------------
+      # 1. Aus der Angabe des Zeitstempels berechnen
       DISK_TIMESTAMP=$(smartctl -x ${DEVICE_NAME} 2>/dev/null | grep -i timestamp | awk '{print $4}' | xargs)
       if [ "$DISK_TIMESTAMP" != "" ];
       then
         e_and_l -n " - Angabe der ${light_cyan}Summe der Laufzeit${colors_off}     ... "
         DISK_TIMESTAMP=$((DISK_TIMESTAMP / 1000))
         DISK_UPTIME=$(time_to_string $DISK_TIMESTAMP true)
-        echo -e "${light_yellow}$DISK_UPTIME${colors_off}"
+        echo -e -n "${light_yellow}$DISK_UPTIME${colors_off}"
+        # 2. Zusätzlich die Angabe der Stunden auslesen
+        # DISK_POWER_ON=$(smartctl -x ${DEVICE_NAME} 2>/dev/null | grep -E "0x01\s*0x010\s*4" | awk '{print $4}' | xargs)
+        DISK_POWER_ON=$(smartctl -x ${DEVICE_NAME} 2>/dev/null | grep -i 'power-on hours' | awk '{print $4}' | xargs)
+        if [ "$DISK_POWER_ON" != "" ];
+        then
+          e_and_l -n " ${light_grey}[~${DISK_POWER_ON}h]${colors_off}"
+        fi
+        e_and_l ""
       fi
       # ---------------------------------------
       # Anzahl geschriebene Bytes
