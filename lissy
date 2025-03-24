@@ -36,8 +36,8 @@
 #                                                                             #
 ###############################################################################
 # Versionsnummer (maximal sechs Zeichen lang ;)
-# Letzte Änderung: 07.03.2025
-VERSION="4.3.7"
+# Letzte Änderung: 15.03.2025
+VERSION="4.3.15"
 ###############################################################################
 HEADLINE_TITLE="Linux Software Installer and System Configurator"
 ###############################################################################
@@ -163,7 +163,7 @@ USER_UID=$(id -u $USER_USERNAME)
 # Ordner des Benutzers
 SCRIPT_PATH="$(pwd)"
 SCRIPT_NAME="${0##*/}"
-if [ "$USER_USERNAME" = "root" ];
+if [ "$USER_USERNAME" == "root" ];
 then
   USER_HOME_DIR="/root"
   DOWNLOAD_DIR="/tmp/$SCRIPT_NAME"
@@ -388,6 +388,259 @@ function gsettings_set() {
 }
 
 ###############################################################################
+# Funktion zur Bereinigung einer Paketversion auf ihre ersten drei Teile
+###############################################################################
+function clean_pkg_version () {
+  echo -e $(echo "$1" | \
+  awk '{print $1}' | \
+  sed -E "s/^(.*:)*(.*)/\2/" | \
+  sed -E "s/[^0-9\.]/./g" | \
+  sed -E "s/\.\.*/./g" | \
+  sed -E "s/^\.//" | \
+  sed -E "s/\.$//" | \
+  sed -E "s/([0-9]*\.*[0-9]*\.*[0-9]*).*/\1/" | \
+  xargs)
+}
+
+###############################################################################
+# Funktion zur Ermittlung einer Paket-Version aus dem Standard-Repository (APT)
+###############################################################################
+function get_pkg_apt_version () {
+  INFO_TYPE=$2 # 0 = verfügbare Version, 1 = installierte Version ermitteln
+  if [ $INFO_TYPE -eq 0 ];
+  then
+    PKG_APT_VERSION=$(LANG=en apt show "$1" 2>/dev/null | \
+      grep -i -E "^\s*Version" | \
+      sed -E "s/^\s*version\s*:\s*//i")
+  else
+    PKG_APT_VERSION=$(LANG=en dpkg-query -W -f='${Version}' "$1" 2>/dev/null)
+  fi
+  echo -e $(clean_pkg_version "$PKG_APT_VERSION")
+}
+
+###############################################################################
+# Funktion zur Prüfung ob ein Paket mindestens in einer Versionsnummer (nur
+# die ersten zwei Zahlen) installiert oder im Repository (APT) verfügbar ist
+###############################################################################
+function chk_min_apt_pkg_version {
+  THE_TEST_MAIN_VERSION=$(echo ${2} | cut -d '.' -f 1 | xargs)
+  THE_TEST_SUB_VERSION=$(echo ${2} | cut -d '.' -f 2 | xargs)
+  THE_TEST_VALUE=$(((${THE_TEST_MAIN_VERSION:0:2}*100)+${THE_TEST_SUB_VERSION:0:2}))
+  # Erst installierte Version prüfen
+  THE_PKG_VERSION=$(get_pkg_apt_version "$1" 1)
+  # Dann verfügbare Version prüfen
+  if [ "$THE_PKG_VERSION" == "" ];
+  then
+    THE_PKG_VERSION=$(get_pkg_apt_version "$1" 0)
+  fi
+  if [ "$THE_PKG_VERSION" != "" ];
+  then
+    THE_PKG_MAIN_VERSION=$(echo $THE_PKG_VERSION | cut -d '.' -f 1 | xargs)
+    THE_PKG_SUB_VERSION=$(echo $THE_PKG_VERSION | cut -d '.' -f 2 | xargs)
+    THE_VERSION_VALUE=$(((${THE_PKG_MAIN_VERSION:0:2}*100)+${THE_PKG_SUB_VERSION:0:2}))
+    if [ $THE_VERSION_VALUE -lt $THE_TEST_VALUE ];
+    then
+      # Die installierte oder verfügbare Version ist
+      # kleiner als die gefragte Version (Warnung)
+      CHK_MIN_RESULT=1
+    else
+      # Die installierte oder verfügbare Version ist
+      # größer oder gleich der gefragten Version (Ok)
+      CHK_MIN_RESULT=0
+    fi
+  else
+    # Die installierte oder verfügbare Version ist
+    # nicht ermittelbar (Fehler)
+    CHK_MIN_RESULT=-1
+  fi
+  return $CHK_MIN_RESULT
+}
+
+###############################################################################
+# Funktion zur Ermittlung einer Paket-Version eines externen Pakets (DEB)
+###############################################################################
+function get_pkg_deb_version () {
+  THE_PKG_TEST_NAME="${DEB_PKG_NAME[$1]}"
+  if [ "$THE_PKG_TEST_NAME" == "" ];
+  then
+    THE_PKG_TEST_NAME="${WEB_PKG_NAME[$1]}"
+    if [ "$THE_PKG_TEST_NAME" == "" ];
+    then
+      THE_PKG_TEST_NAME="$1"
+    fi
+  fi
+  PKG_VERS_FILE="/opt/$THE_PKG_TEST_NAME/.$1"
+  PKG_VERS_FILE+="_version"
+  if [ -s "$PKG_VERS_FILE" ];
+  then
+    PKG_VERSION=$(cat "$PKG_VERS_FILE" | xargs)
+  else
+    PKG_VERSION=${DEB_PKG_VERS["$1"]}
+  fi
+  echo -e $PKG_VERSION
+}
+
+###############################################################################
+# Funktion zur Ermittlung einer Paket-Version als Snap (SNAP)
+###############################################################################
+function get_pkg_snap_version () {
+  INFO_TYPE=$2 # 0 = verfügbare Version, 1 = installierte Version ermitteln
+  PKG_SNAP_CHANNEL="" # Leer = Standard (stable)
+  if [ $INFO_TYPE -eq 0 ];
+  then
+    FULL_PKG_SNAP_INFO=$(LANG=en snap info "$1" 2>/dev/null | sed -E "s/^\s*(latest)\s*\/\s*//g")
+    # Zuerst auf stable-Version prüfen
+    PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | \
+      grep -i -E "^\s*stable" | \
+      sed -E "s/^\s*stable\s*\:*\s*//")
+    # Wenn keine stable-Version gefunden, dann auf candidate prüfen
+    if [ $(echo "$PKG_SNAP_VERSION" | grep -c -E "[0-9]") -eq 0 ];
+    then
+      PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | \
+        grep -i -E "^\s*candidate" | \
+        sed -E "s/^\s*candidate\s*\:*\s*//")
+      # Wenn keine candidate-Version gefunden, dann auf beta prüfen
+      if [ $(echo "$PKG_SNAP_VERSION" | grep -c -E "[0-9]") -gt 0 ];
+      then
+        PKG_SNAP_CHANNEL="candidate"
+      else
+        PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | \
+          grep -i -E "^\s*beta" | \
+          sed -E "s/^\s*beta\s*\:*\s*//")
+        # Wenn keine beta-Version gefunden, dann auf edge prüfen
+        if [ $(echo "$PKG_SNAP_VERSION" | grep -c -E "[0-9]") -gt 0 ];
+        then
+          PKG_SNAP_CHANNEL="beta"
+        else
+          PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | \
+            grep -i -E "^\s*edge" | \
+            sed -E "s/^\s*edge\s*\:*\s*//")
+          if [ $(echo "$PKG_SNAP_VERSION" | grep -c -E "[0-9]") -gt 0 ];
+          then
+            PKG_SNAP_CHANNEL="edge"
+          fi
+        fi
+      fi
+    fi
+  else
+    FULL_PKG_SNAP_INFO=$(LANG=en snap list "$1" 2>/dev/null | awk 'NR>1' | head -n 1)
+    PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $2}' | sed -E "s/\-//g" | xargs)
+    # PKG_SNAP_REVISION=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $3}' | sed -E "s/\-//g" | xargs)
+    PKG_SNAP_TRACKING=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $4}' | sed -E "s/\-//g" | xargs)
+    if [ $(echo "$PKG_SNAP_TRACKING" | grep -i -c -E "candidate") -gt 0 ];
+    then
+      PKG_SNAP_CHANNEL="candidate"
+    else
+      if [ $(echo "$PKG_SNAP_TRACKING" | grep -i -c -E "beta") -gt 0 ];
+      then
+        PKG_SNAP_CHANNEL="beta"
+      else
+        if [ $(echo "$PKG_SNAP_TRACKING" | grep -i -c -E "edge") -gt 0 ];
+        then
+          PKG_SNAP_CHANNEL="edge"
+        fi
+      fi
+    fi
+    PKG_SNAP_NOTES=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $6}' | sed -E "s/\-//g" | xargs)
+  fi
+  # Versionsnummer bereinigen
+  THE_SNAP_PKG_VERSION=$(clean_pkg_version "$PKG_SNAP_VERSION")
+  # Ggf. Zusatzinfos anhängen
+  if [ "$PKG_SNAP_CHANNEL" != "" ];
+  then
+    THE_SNAP_PKG_VERSION+=" "
+    if [ $INFO_TYPE -eq 0 ];
+    then
+      THE_SNAP_PKG_VERSION+="${light_red}"
+    else
+      THE_SNAP_PKG_VERSION+="${light_purple}"
+    fi
+    THE_SNAP_PKG_VERSION+="$PKG_SNAP_CHANNEL${colors_off}"
+  fi
+  # Ggf. Hinweis auf Classic-Mode anhängen
+  if [ $(echo "$PKG_SNAP_VERSION" | grep -i -c -E " classic") -gt 0 ] || # aus snap info
+     [ $(echo "$PKG_SNAP_NOTES" | grep -i -c -E "classic") -gt 0 ];      # aus snap list
+  then
+    THE_SNAP_PKG_VERSION+=" ${light_red}classic${colors_off}"
+  fi
+  echo -e "$THE_SNAP_PKG_VERSION"
+}
+
+###############################################################################
+# Funktion zur Ermittlung einer Paket-Version als Flatpak (FLAT)
+###############################################################################
+function get_pkg_flatpak_version () {
+  FLATPAK_NAME=$(echo "$1" | sed 's/[ -_]//g' | xargs)
+  INFO_TYPE=$2
+  TMP_FLATPAK_VERSION=""
+  # Verfügbare Version ermitteln
+  if [ $INFO_TYPE -eq 0 ];
+  then
+    if [ -s "$THE_FLATPAK_REMOTE_LIST" ];
+    then
+      TMP_FLATPAK_VERSION=$(grep -i -E "\.$FLATPAK_NAME\/" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 2)
+    fi
+  fi
+  # Installierte Version ermitteln
+  if [ $INFO_TYPE -eq 1 ];
+  then
+    if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
+    then
+      TMP_FLATPAK_VERSION=$(grep -i -E "\.$FLATPAK_NAME\/" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 2)
+    fi
+  fi
+  THE_FLAT_PKG_VERSION=$(clean_pkg_version "$TMP_FLATPAK_VERSION")
+  if [ "$THE_FLAT_PKG_VERSION" != "" ];
+  then
+    echo -e "$THE_FLAT_PKG_VERSION"
+  fi
+}
+
+###############################################################################
+# Funktion zur Ermittlung des Referenz-Strings eines Flatpaks
+###############################################################################
+function get_pkg_flatpak_reference () {
+  FLATPAK_NAME=$(echo "$1" | sed 's/[ -_]//g' | xargs)
+  INFO_TYPE=$2
+  TMP_FLATPAK_REFERENCE=""
+  # Verfügbare Version mit Architektur
+  if [ $INFO_TYPE -eq 0 ];
+  then
+    if [ -s "$THE_FLATPAK_REMOTE_LIST" ];
+    then
+      TMP_FLATPAK_REFERENCE=$(grep -i -E "\.$FLATPAK_NAME\/" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 3 | xargs)
+    fi
+  fi
+  # Installierte Version ohne Architektur
+  if [ $INFO_TYPE -eq 1 ];
+  then
+    if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
+    then
+      TMP_FLATPAK_REFERENCE=$(grep -i -E "\.$FLATPAK_NAME\/" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 3 | cut -d'/' -f 1 | xargs)
+    fi
+  fi
+  if [ "$TMP_FLATPAK_REFERENCE" != "" ];
+  then
+    echo -e "$TMP_FLATPAK_REFERENCE"
+  fi
+}
+
+###############################################################################
+# Funktion zur Ermittlung einer Paket-Version einer ausführbaren Datei (WEB)
+###############################################################################
+function get_pkg_web_version () {
+  PKG_VERS_FILE="$WEB_PKG_DIR/${WEB_PKG_NAME[$1]}/.$1"
+  PKG_VERS_FILE+="_version"
+  if [ -s "$PKG_VERS_FILE" ];
+  then
+    PKG_VERSION=$(cat "$PKG_VERS_FILE" | xargs)
+  else
+    PKG_VERSION=${WEB_PKG_VERS["$1"]}
+  fi
+  echo -e $PKG_VERSION
+}
+
+###############################################################################
 # Systemarchitektur ermitteln
 ###############################################################################
 if [ $SHOW_HELP -eq 0 ];
@@ -461,7 +714,7 @@ then
   # ----------
   # Bezeichnung
   CPU_MODEL=$(grep -i -E "^model\s*name*\s*\:" "/proc/cpuinfo" 2>/dev/null)
-  if [ "$CPU_MODEL" = "" ];
+  if [ "$CPU_MODEL" == "" ];
   then
     CPU_MODEL=$(grep -i -E "^model\s*\:" "/proc/cpuinfo" 2>/dev/null)
   fi
@@ -625,7 +878,7 @@ then
     DEBIAN_CODE="$(cat /etc/debian_version)"
     DEBIAN_CODE="${DEBIAN_CODE%%/*}"
     TEST_CODE=$(echo "$DEBIAN_CODE" | sed 's/[^a-z]*//g' | xargs)
-    if [ "$TEST_CODE" = "" ];
+    if [ "$TEST_CODE" == "" ];
     then
       DEBIAN_CODE="$OS_V_CODENAME"
     fi
@@ -652,7 +905,7 @@ then
     if [ $(echo "$OS_U_CODENAME" | grep -i -c -E "mantic") -gt 0 ];   then UBUNTU_VERSION="23.10"; fi
   fi
   if [ $(uname -a 2>/dev/null | grep -i -c -E "debian") -gt 0 ] &&
-     [ "$DEBIAN_VERSION" = "" ];
+     [ "$DEBIAN_VERSION" == "" ];
   then
     # Von LMDE eigene Namen anpassen an die zugrunde liegende Debian-Version
     if [ $(echo "$OS_V_CODENAME" | grep -i -c -E "faye") -gt 0 ]; then OS_V_CODENAME="bookworm"; fi
@@ -678,7 +931,7 @@ then
   # Systemsprache ermitteln
   # ------------------------
   CUR_SYS_LANG=$(echo -n "${LANGUAGE:0:2}" | xargs)
-  if [ "$CUR_SYS_LANG" = "" ];
+  if [ "$CUR_SYS_LANG" == "" ];
   then
     CUR_SYS_LANG=$(echo -n "${LANG:0:2}" | xargs)
   fi
@@ -717,7 +970,7 @@ then
   DESKTOP_ENVIRONMENT="$(echo -n "$DESKTOP_ENVIRONMENT" | xargs)"
   GNOME_VERSION=""
   GNOME_PLATFORM=0
-  if [ "$DESKTOP_ENVIRONMENT" = "GNOME" ] &&
+  if [ "$DESKTOP_ENVIRONMENT" == "GNOME" ] &&
     [ -s "/usr/share/gnome/gnome-version.xml" ];
   then
     GNOME_PLATFORM=$(grep -i -E "platform" "/usr/share/gnome/gnome-version.xml" | cut -d">" -f 2 | cut -d"<" -f 1 )
@@ -744,17 +997,17 @@ then
   # Window-Thema
   # -------------
   WINDOW_THEME="$(gsettings_get org.mate.interface gtk-theme)"
-  if [ "$WINDOW_THEME" = "" ];
+  if [ "$WINDOW_THEME" == "" ];
   then
     WINDOW_THEME="$(gsettings_get org.gnome.desktop.interface gtk-theme)"
   fi
-  if [ "$WINDOW_THEME" = "" ];
+  if [ "$WINDOW_THEME" == "" ];
   then
     if [ -s "$USER_HOME_DIR/.gtkrc-2.0" ];
     then
       WINDOW_THEME=$(grep -i -E "gtk-theme-name" "$USER_HOME_DIR/.gtkrc-2.0")
     fi
-    if [ "$WINDOW_THEME" = "" ];
+    if [ "$WINDOW_THEME" == "" ];
     then
       if [ -s "$USER_CONFIG_DIR/gtk-3.0/settings.ini" ];
       then
@@ -770,7 +1023,7 @@ then
   # Symbol-Thema
   # -------------
   SYMBOL_THEME="$(gsettings_get org.mate.interface icon-theme)"
-  if [ "$SYMBOL_THEME" = "" ];
+  if [ "$SYMBOL_THEME" == "" ];
   then
     SYMBOL_THEME="$(gsettings_get org.gnome.desktop.interface icon-theme)"
   fi
@@ -778,7 +1031,7 @@ then
   then
     SYMBOL_THEME=$(grep -i -E "gtk-icon-theme-name" "$USER_HOME_DIR/.gtkrc-2.0")
   fi
-  if [ "$SYMBOL_THEME" = "" ];
+  if [ "$SYMBOL_THEME" == "" ];
   then
     if [ -s "$USER_CONFIG_DIR/gtk-3.0/settings.ini" ];
     then
@@ -921,7 +1174,7 @@ OPTION_MENU[quiet]=0 # Wird im Menü nicht angezeigt
 
 OPTION_MENU[instonly]=1 # Wird nicht tatsächlich verwendet, Prüfung erfolgt auf INST_ONLY_PKG
 
-if [ "$DESKTOP_ENVIRONMENT" = "GNOME" ];
+if [ "$DESKTOP_ENVIRONMENT" == "GNOME" ];
 then
   OPTION_MENU[addicons]=0
   OPTION_MENU[csubdirs]=0
@@ -1008,7 +1261,7 @@ fi
 KATEGORIE_PKGS[b]="bookletimposer calibre evolution libreoffice okular pdfarranger pdfchain pdfmod qpdfview scribus"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[b]+=" thingy xreader"; fi
 # Cloud-Clients"Online-Datenspeicher"
-KATEGORIE_PKGS[c]="owncloud-client nextcloud-desktop"
+KATEGORIE_PKGS[c]="owncloud-client nextcloud-desktop onedrive"
 # Programmierung
 KATEGORIE_PKGS[p]="bless closure-compiler codium geany ghex idle kate kdiff3 kompare meld mu-editor python3 scratch thonny"
 # Emulation und Virtualisierung
@@ -1062,7 +1315,7 @@ KATEGORIE_PKGS[w]+=" winetricks zenity playonlinux"
 # WireGuard
 KATEGORIE_PKGS[wg]="wireguard wireguard-tools"
 # Mint Tools
-KATEGORIE_PKGS[mt]="mintbackup mintdesktop mintdrivers mintinstall mintlocale mintreport mintsources mintstick mintupdate mintwelcome"
+KATEGORIE_PKGS[mt]="mintbackup mintchat mintdesktop mintdrivers mintinstall mintlocale mintreport mintsources mintstick mintupdate mintwelcome"
 # GNOME Tools
 KATEGORIE_PKGS[gx]="gnome-control-center gnome-disk-utility gnome-firmware gnome-software gnome-system-tools gnome-terminal gnome-tweaks"
 # LXDE Tools
@@ -1102,6 +1355,7 @@ AUTO_ADD_PKGS[libreoffice-common]="libreoffice-gnome libreoffice-l10n-de"
 AUTO_ADD_PKGS[mediainfo]="mediainfo-gui"
 AUTO_ADD_PKGS[mkvtoolnix]="mkvtoolnix-gui"
 AUTO_ADD_PKGS[mp3splt]="mp3splt-gtk"
+AUTO_ADD_PKGS[onedrive]="onedrivegui"
 AUTO_ADD_PKGS[openvpn]="network-manager-openvpn network-manager-openvpn-gnome"
 AUTO_ADD_PKGS[redshift]="redshift-gtk"
 AUTO_ADD_PKGS[scribus]="scribus-template"
@@ -1279,13 +1533,13 @@ declare -A DEB_PKG_OLDF # Download-URL der Vorgänger-Version (nur amd64)
 # Download von https://github.com/balena-io/etcher/releases/latest (https://www.balena.io/etcher/)
 # ACHTUNG: Auch als WEB-Version eingetragen (s.u.)!
 DEB_PKG_NAME[balena-etcher]="balenaEtcher"
-DEB_PKG_OLDV[balena-etcher]="1.18.11"
-DEB_PKG_OLDF[balena-etcher]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.18.11_amd64.deb"
-DEB_PKG_VERS[balena-etcher]="1.19.25"
+DEB_PKG_OLDV[balena-etcher]="1.19.25"
+DEB_PKG_OLDF[balena-etcher]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.19.25_amd64.deb"
+DEB_PKG_VERS[balena-etcher]="2.1.0"
 DEB_PKG_MESG[balena-etcher]=""
 DEB_PKG_EVAL[balena-etcher]=""
-DEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.19.25_amd64.deb"
-DEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_1.19.25_amd64.deb.sha"
+DEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_2.1.0_amd64.deb"
+DEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_2.1.0_amd64.sha"
  DEB_PKG_FILE[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
  DEB_PKG_CSUM[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
 DEB_PKG_FILE[balena-etcher_arm64]="" # NICHT für ARM verfügbar
@@ -1295,17 +1549,17 @@ DEB_PKG_CSUM[balena-etcher_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://github.com/VSCodium/vscodium
 DEB_PKG_NAME[codium]="VSCodium"
-DEB_PKG_OLDV[codium]="1.85.2"
-DEB_PKG_OLDF[codium]="$RESSOURCE_SERVER_DIR/deb/codium_1.85.2.24019_amd64.deb"
-DEB_PKG_VERS[codium]="1.96.2"
+DEB_PKG_OLDV[codium]="1.96.2"
+DEB_PKG_OLDF[codium]="$RESSOURCE_SERVER_DIR/deb/codium_1.96.2.24355_amd64.deb"
+DEB_PKG_VERS[codium]="1.98.0"
 DEB_PKG_MESG[codium]=""
 DEB_PKG_EVAL[codium]=""
-DEB_PKG_FILE[codium_amd64]="$RESSOURCE_SERVER_DIR/deb/codium_1.96.2.24355_amd64.deb"
-DEB_PKG_CSUM[codium_amd64]="$RESSOURCE_SERVER_DIR/deb/codium_1.96.2.24355_amd64.deb.sha"
+DEB_PKG_FILE[codium_amd64]="$RESSOURCE_SERVER_DIR/deb/codium_1.98.0.25067_amd64.deb"
+DEB_PKG_CSUM[codium_amd64]="$RESSOURCE_SERVER_DIR/deb/codium_1.98.0.25067_amd64.deb.sha"
  DEB_PKG_FILE[codium_i386]="" # NUR für 64-bit verfügbar
  DEB_PKG_CSUM[codium_i386]="" # NUR für 64-bit verfügbar
-DEB_PKG_FILE[codium_arm64]="$RESSOURCE_SERVER_DIR/deb/codium_1.96.2.24355_arm64.deb"
-DEB_PKG_CSUM[codium_arm64]="$RESSOURCE_SERVER_DIR/deb/codium_1.96.2.24355_arm64.deb.sha"
+DEB_PKG_FILE[codium_arm64]="$RESSOURCE_SERVER_DIR/deb/codium_1.98.0.25067_arm64.deb"
+DEB_PKG_CSUM[codium_arm64]="$RESSOURCE_SERVER_DIR/deb/codium_1.98.0.25067_arm64.deb.sha"
 DEB_PKG_FILE[codium_armhf]="" # NUR für 64-bit verfügbar
 DEB_PKG_CSUM[codium_armhf]="" # NUR für 64-bit verfügbar
 
@@ -1317,15 +1571,15 @@ then
   DEB_PKG_NAME[hypnotix]="Hypnotix"
   DEB_PKG_OLDV[hypnotix]="2.6"
   DEB_PKG_OLDF[hypnotix]="$RESSOURCE_SERVER_DIR/deb/hypnotix_2.6_LAST_20.04_all.deb"
-  DEB_PKG_VERS[hypnotix]="4.8"
+  DEB_PKG_VERS[hypnotix]="4.9"
   DEB_PKG_MESG[hypnotix]="Benötigt mindestens gtk-4.0!"
   DEB_PKG_EVAL[hypnotix]="[ -d /usr/share/gtk-4.0 ]"
-  DEB_PKG_FILE[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.8_all.deb"
-  DEB_PKG_CSUM[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.8_all.deb.sha"
+  DEB_PKG_FILE[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.9_all.deb"
+  DEB_PKG_CSUM[hypnotix_amd64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.9_all.deb.sha"
   DEB_PKG_FILE[hypnotix_i386]="" # NUR für 64-bit verfügbar
   DEB_PKG_CSUM[hypnotix_i386]="" # NUR für 64-bit verfügbar
-  DEB_PKG_FILE[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.8_all.deb"
-  DEB_PKG_CSUM[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.8_all.deb.sha"
+  DEB_PKG_FILE[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.9_all.deb"
+  DEB_PKG_CSUM[hypnotix_arm64]="$RESSOURCE_SERVER_DIR/deb/hypnotix_4.9_all.deb.sha"
   DEB_PKG_FILE[hypnotix_armhf]="" # NUR für 64-bit verfügbar
   DEB_PKG_CSUM[hypnotix_armhf]="" # NUR für 64-bit verfügbar
 fi
@@ -1390,13 +1644,13 @@ DEB_PKG_CSUM[iptvnator_armhf]="" # NUR für 64-bit verfügbar
 
 # Download von https://www.opera.com/de/download
 DEB_PKG_NAME[opera-stable]="Opera"
-DEB_PKG_OLDV[opera-stable]="106.0.4998.70"
-DEB_PKG_OLDF[opera-stable]="$RESSOURCE_SERVER_DIR/deb/opera-stable_106.0.4998.70_amd64.deb"
-DEB_PKG_VERS[opera-stable]="115.0.5322.70"
+DEB_PKG_OLDV[opera-stable]="115.0.5322.70"
+DEB_PKG_OLDF[opera-stable]="$RESSOURCE_SERVER_DIR/deb/opera-stable_115.0.5322.70_amd64.deb"
+DEB_PKG_VERS[opera-stable]="117.0.5408.53"
 DEB_PKG_MESG[opera-stable]=""
 DEB_PKG_EVAL[opera-stable]=""
-DEB_PKG_FILE[opera-stable_amd64]="$RESSOURCE_SERVER_DIR/deb/opera-stable_115.0.5322.109_amd64.deb"
-DEB_PKG_CSUM[opera-stable_amd64]="$RESSOURCE_SERVER_DIR/deb/opera-stable_115.0.5322.109_amd64.deb.sha"
+DEB_PKG_FILE[opera-stable_amd64]="$RESSOURCE_SERVER_DIR/deb/opera-stable_117.0.5408.53_amd64.deb"
+DEB_PKG_CSUM[opera-stable_amd64]="$RESSOURCE_SERVER_DIR/deb/opera-stable_117.0.5408.53_amd64.deb.sha"
  DEB_PKG_FILE[opera-stable_i386]="" # NUR für 64-bit verfügbar
  DEB_PKG_CSUM[opera-stable_i386]="" # NUR für 64-bit verfügbar
 DEB_PKG_FILE[opera-stable_arm64]="" # NICHT für ARM verfügbar
@@ -1437,6 +1691,7 @@ DEB_PKG_FILE[realvnc-vnc-viewer_armhf]="" # Ab Version 7 nicht mehr verfügbar f
 DEB_PKG_CSUM[realvnc-vnc-viewer_armhf]="" # Ab Version 7 nicht mehr verfügbar für 32bit
 
 # Download von https://github.com/raspberrypi/rpi-imager
+# ACHTUNG: Ab Version 1.9.0 wohl nur noch als Appimage verfügbar (s.u.)
 DEB_PKG_NAME[rpi-imager]="RPi-Imager"
 DEB_PKG_OLDV[rpi-imager]="1.7.5"
 DEB_PKG_OLDF[rpi-imager]="$RESSOURCE_SERVER_DIR/deb/rpi-imager_1.7.5_amd64.deb"
@@ -1542,29 +1797,29 @@ then
   DEB_PKG_NAME[veracrypt]="VeraCrypt"
   DEB_PKG_OLDV[veracrypt]=""
   DEB_PKG_OLDF[veracrypt]=""
-  DEB_PKG_VERS[veracrypt]="1.26.14"
+  DEB_PKG_VERS[veracrypt]="1.26.20"
   DEB_PKG_MESG[veracrypt]=""
   DEB_PKG_EVAL[veracrypt]=""
-  DEB_PKG_FILE[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.14-$OPSYS_PART-amd64.deb"
-  DEB_PKG_CSUM[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.14-sha256sum.sha"
+  DEB_PKG_FILE[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.20-$OPSYS_PART-amd64.deb"
+  DEB_PKG_CSUM[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.20-sha256sum.sha"
    DEB_PKG_FILE[veracrypt_i386]="" # Nur als generischer Installer verfügbar (nicht aufgenommen)
    DEB_PKG_CSUM[veracrypt_i386]="" # Nur als generischer Installer verfügbar (nicht aufgenommen)
-  DEB_PKG_FILE[veracrypt_arm64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.14-$OPSYS_PART-arm64.deb"
-  DEB_PKG_CSUM[veracrypt_arm64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.14-sha256sum.sha"
-  DEB_PKG_FILE[veracrypt_armhf]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.14-$OPSYS_PART-armhf.deb"
-  DEB_PKG_CSUM[veracrypt_armhf]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.14-sha256sum.sha"
+  DEB_PKG_FILE[veracrypt_arm64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.20-$OPSYS_PART-arm64.deb"
+  DEB_PKG_CSUM[veracrypt_arm64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.20-sha256sum.sha"
+  DEB_PKG_FILE[veracrypt_armhf]="" # Nur als generischer Installer verfügbar (nicht aufgenommen)
+  DEB_PKG_CSUM[veracrypt_armhf]="" # Nur als generischer Installer verfügbar (nicht aufgenommen)
 fi
 # -----------------------------------------------------------------------------
 
 # Download von https://www.xnview.com/de/xnviewmp/#downloads
 DEB_PKG_NAME[xnview]="XnView MP"
-DEB_PKG_OLDV[xnview]="1.6.4"
-DEB_PKG_OLDF[xnview]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.6.4-linux-x64.deb"
-DEB_PKG_VERS[xnview]="1.8.3"
+DEB_PKG_OLDV[xnview]="1.8.3"
+DEB_PKG_OLDF[xnview]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.8.3-linux-x64.deb"
+DEB_PKG_VERS[xnview]="1.8.6"
 DEB_PKG_MESG[xnview]=""
 DEB_PKG_EVAL[xnview]=""
-DEB_PKG_FILE[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.8.3-linux-x64.deb"
-DEB_PKG_CSUM[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.8.3-linux-x64.deb.sha"
+DEB_PKG_FILE[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP-1.8.6-linux-x64.deb"
+DEB_PKG_CSUM[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_1.8.6-linux-x64.deb.sha"
  DEB_PKG_FILE[xnview_i386]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_0.89-linux-x32.deb"
  DEB_PKG_CSUM[xnview_i386]="$RESSOURCE_SERVER_DIR/deb/XnViewMP_0.89-linux-x32.deb.sha"
 DEB_PKG_FILE[xnview_arm64]="" # NICHT für ARM verfügbar
@@ -1764,7 +2019,7 @@ fi
 # Unterordner mit dem in WEB_PKG_NAME definierten Namen erstellt.
 # ACHTUNG: Angaben OHNE Slash (/) am Ende!
 ###############################################################################
-if [ "$USER_USERNAME" = "root" ];
+if [ "$USER_USERNAME" == "root" ];
 then
   WEB_PKG_DIR="/opt"
 else
@@ -1807,13 +2062,13 @@ declare -A WEB_PKG_OLDF # Download-URL der Vorgänger-Version (nur amd64)
 # ACHTUNG: Auch als DEB eingetragen (s.o.)!
 WEB_PKG_NAME[balena-etcher]="balenaEtcher"
 WEB_PKG_CATY[balena-etcher]="System;Utility"
-WEB_PKG_OLDV[balena-etcher]="1.18.11"
-WEB_PKG_OLDF[balena-etcher]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.18.11-x64.AppImage"
-WEB_PKG_VERS[balena-etcher]="1.19.25"
+WEB_PKG_OLDV[balena-etcher]="1.19.25"
+WEB_PKG_OLDF[balena-etcher]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.19.25-x64.AppImage"
+WEB_PKG_VERS[balena-etcher]="2.1.0"
 WEB_PKG_MESG[balena-etcher]=""
 WEB_PKG_EVAL[balena-etcher]=""
-WEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.19.25-x64.AppImage"
-WEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-1.19.25-x64.AppImage.sha"
+WEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-2.1.0-x64.AppImage"
+WEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-2.1.0-x64.AppImage.sha"
  WEB_PKG_FILE[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
  WEB_PKG_CSUM[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
 WEB_PKG_FILE[balena-etcher_arm64]="" # NICHT für ARM verfügbar
@@ -1858,13 +2113,13 @@ WEB_PKG_CSUM[czkawka_armhf]="" # NICHT verfügbar
 # Download von https://freefilesync.org/download.php
 WEB_PKG_NAME[freefilesync]="FreeFileSync"
 WEB_PKG_CATY[freefilesync]="System;Utility"
-WEB_PKG_OLDV[freefilesync]="13.3"
-WEB_PKG_OLDF[freefilesync]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_13.3_Linux.tar.gz"
-WEB_PKG_VERS[freefilesync]="13.9"
+WEB_PKG_OLDV[freefilesync]="13.9"
+WEB_PKG_OLDF[freefilesync]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_13.9_Linux.tar.gz"
+WEB_PKG_VERS[freefilesync]="14.2"
 WEB_PKG_MESG[freefilesync]=""
 WEB_PKG_EVAL[freefilesync]=""
-WEB_PKG_FILE[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_13.9_Linux.tar.gz"
-WEB_PKG_CSUM[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_13.9_Linux.tar.gz.sha"
+WEB_PKG_FILE[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_14.2_Linux.tar.gz"
+WEB_PKG_CSUM[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_14.2_Linux.tar.gz.sha"
  WEB_PKG_FILE[freefilesync_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
  WEB_PKG_CSUM[freefilesync_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
 WEB_PKG_FILE[freefilesync_arm64]="" # NICHT für ARM verfügbar
@@ -1909,6 +2164,31 @@ WEB_PKG_CSUM[fs-uae-launcher_arm64]="" # NICHT für ARM verfügbar
 WEB_PKG_FILE[fs-uae-launcher_armhf]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[fs-uae-launcher_armhf]="" # NICHT für ARM verfügbar
 
+# Download von https://github.com/bpozdena/OneDriveGUI (https://github.com/abraunegg/onedrive)
+chk_min_apt_pkg_version "onedrive" "2.5"
+CHK_VERSION=$?
+if [ $CHK_VERSION -eq 1 ]; then ONEDRIVE_GUI_VER="1.0.3"; fi # Bis OneDrive 2.4.x
+if [ $CHK_VERSION -eq 0 ]; then ONEDRIVE_GUI_VER="1.1.1"; fi # Ab OneDrive 2.5.0
+if [ $CHK_VERSION -eq 1 ] ||
+   [ $CHK_VERSION -eq 0 ];
+then
+  WEB_PKG_NAME[onedrivegui]="OneDriveGUI"
+  WEB_PKG_CATY[onedrivegui]="Utility"
+  WEB_PKG_OLDV[onedrivegui]=""
+  WEB_PKG_OLDF[onedrivegui]=""
+  WEB_PKG_VERS[onedrivegui]="$ONEDRIVE_GUI_VER"
+  WEB_PKG_MESG[onedrivegui]=""
+  WEB_PKG_EVAL[onedrivegui]=""
+  WEB_PKG_FILE[onedrivegui_amd64]="$RESSOURCE_SERVER_DIR/web/OneDriveGUI-$ONEDRIVE_GUI_VER-x86_64.AppImage"
+  WEB_PKG_CSUM[onedrivegui_amd64]="$RESSOURCE_SERVER_DIR/web/OneDriveGUI-$ONEDRIVE_GUI_VER-x86_64.AppImage.sha"
+  WEB_PKG_FILE[onedrivegui_i386]="" # Nur für 64-bit verfügbar
+  WEB_PKG_CSUM[onedrivegui_i386]="" # Nur für 64-bit verfügbar
+  WEB_PKG_FILE[onedrivegui_arm64]="" # NICHT für ARM verfügbar
+  WEB_PKG_CSUM[onedrivegui_arm64]="" # NICHT für ARM verfügbar
+  WEB_PKG_FILE[onedrivegui_armhf]="" # NICHT für ARM verfügbar
+  WEB_PKG_CSUM[onedrivegui_armhf]="" # NICHT für ARM verfügbar
+fi
+
 # Download von http://oolite.space oder https://github.com/OoliteProject
 WEB_PKG_NAME[oolite]="Oolite"
 WEB_PKG_CATY[oolite]="Games"
@@ -1943,6 +2223,22 @@ WEB_PKG_CSUM[openshot-qt_arm64]="" # NICHT für ARM verfügbar
 WEB_PKG_FILE[openshot-qt_armhf]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[openshot-qt_armhf]="" # NICHT für ARM verfügbar
 
+# Download von https://github.com/raspberrypi/rpi-imager
+WEB_PKG_NAME[rpi-imager]="RPi-Imager"
+WEB_PKG_OLDV[rpi-imager]=""
+WEB_PKG_OLDF[rpi-imager]=""
+WEB_PKG_VERS[rpi-imager]="1.9.0"
+WEB_PKG_MESG[rpi-imager]=""
+WEB_PKG_EVAL[rpi-imager]=""
+WEB_PKG_FILE[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/web/Raspberry_Pi_Imager-1.9.0-x86_64.AppImage"
+WEB_PKG_CSUM[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/web/Raspberry_Pi_Imager-1.9.0-x86_64.AppImage.sha"
+ WEB_PKG_FILE[rpi-imager_i386]="" # NUR für 64-bit verfügbar
+ WEB_PKG_CSUM[rpi-imager_i386]="" # NUR für 64-bit verfügbar
+WEB_PKG_FILE[rpi-imager_arm64]="$RESSOURCE_SERVER_DIR/web/Raspberry_Pi_Imager-1.9.0-aarch64.AppImage"
+WEB_PKG_CSUM[rpi-imager_arm64]="$RESSOURCE_SERVER_DIR/web/Raspberry_Pi_Imager-1.9.0-aarch64.AppImage"
+WEB_PKG_FILE[rpi-imager_armhf]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[rpi-imager_armhf]="" # NICHT für ARM verfügbar
+
 # Download von https://www.sarducd.it/downloads
 WEB_PKG_NAME[sardu]="Sardu"
 WEB_PKG_CATY[sardu]="System;Utility"
@@ -1963,13 +2259,13 @@ WEB_PKG_CSUM[sardu_armhf]="" # NICHT für ARM verfügbar
 # Download von https://www.shotcut.org/download/
 WEB_PKG_NAME[shotcut]="Shotcut"
 WEB_PKG_CATY[shotcut]="AudioVideo;Video"
-WEB_PKG_OLDV[shotcut]=""
-WEB_PKG_OLDF[shotcut]=""
-WEB_PKG_VERS[shotcut]="24.11.17"
+WEB_PKG_OLDV[shotcut]="24.11.17"
+WEB_PKG_OLDF[shotcut]="$RESSOURCE_SERVER_DIR/web/shotcut-linux-x86_64-241117.AppImage"
+WEB_PKG_VERS[shotcut]="25.01.25"
 WEB_PKG_MESG[shotcut]="Mindestens 4GB RAM erforderlich!"
 WEB_PKG_EVAL[shotcut]="[ $MEMORY_TOTAL -gt 4000000000 ]"
-WEB_PKG_FILE[shotcut_amd64]="$RESSOURCE_SERVER_DIR/web/shotcut-linux-x86_64-241117.AppImage"
-WEB_PKG_CSUM[shotcut_amd64]="$RESSOURCE_SERVER_DIR/web/shotcut-linux-x86_64-241117.AppImage.sha"
+WEB_PKG_FILE[shotcut_amd64]="$RESSOURCE_SERVER_DIR/web/shotcut-linux-x86_64-250125.AppImage"
+WEB_PKG_CSUM[shotcut_amd64]="$RESSOURCE_SERVER_DIR/web/shotcut-linux-x86_64-250125.AppImage.sha"
  WEB_PKG_FILE[shotcut_i386]="" # Für Linux nur als 64-bit verfügbar
  WEB_PKG_CSUM[shotcut_i386]="" # Für Linux nur als 64-bit verfügbar
 WEB_PKG_FILE[shotcut_arm64]="" # NICHT für ARM verfügbar
@@ -1980,13 +2276,13 @@ WEB_PKG_CSUM[shotcut_armhf]="" # NICHT für ARM verfügbar
 # Download von https://www.torproject.org/de/download/
 WEB_PKG_NAME[tor-browser]="Tor Browser"
 WEB_PKG_CATY[tor-browser]="Network;WebBrowser"
-WEB_PKG_OLDV[tor-browser]="13.0.9"
-WEB_PKG_OLDF[tor-browser]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux-x86_64-13.0.9.tar.xz"
-WEB_PKG_VERS[tor-browser]="14.0.3"
+WEB_PKG_OLDV[tor-browser]="14.0.3"
+WEB_PKG_OLDF[tor-browser]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux-x86_64-14.0.3.tar.xz"
+WEB_PKG_VERS[tor-browser]="14.0.7"
 WEB_PKG_MESG[tor-browser]=""
 WEB_PKG_EVAL[tor-browser]=""
-WEB_PKG_FILE[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux-x86_64-14.0.3.tar.xz"
-WEB_PKG_CSUM[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux-x86_64-14.0.3.tar.xz.sha"
+WEB_PKG_FILE[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux-x86_64-14.0.7.tar.xz"
+WEB_PKG_CSUM[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux-x86_64-14.0.7.tar.xz.sha"
  WEB_PKG_FILE[tor-browser_i386]="" # Für Linux nur als 64-bit verfügbar
  WEB_PKG_CSUM[tor-browser_i386]="" # Für Linux nur als 64-bit verfügbar
 WEB_PKG_FILE[tor-browser_arm64]="" # Auf ARM nur für Android verfügbar (Raspberry hat kein SSE2)
@@ -2413,7 +2709,7 @@ function ask_for_install_mode () {
   e_and_l "$PRE_SPACE Bitte auswählen, welche Version installiert werden soll,"
   e_and_l -n "$PRE_SPACE oder ${bold_yellow}0${colors_off} eingeben um die Installation zu überspringen: "
   NEW_INST_MODE=""
-  while [ "$NEW_INST_MODE" = "" ] ||
+  while [ "$NEW_INST_MODE" == "" ] ||
         [ $(echo "$INST_MODES" | grep -c -E "$NEW_INST_MODE") -eq 0 ];
   do
     read -N 1 -r -s NEW_INST_MODE
@@ -2460,13 +2756,13 @@ function ask_yes_or_no () {
        [ "$QUEST_ID" != "" ];
     then
       ANSWER=$(echo ${AUTO_ANSWERS["$QUEST_ID"]} | xargs)
-      if [ "$ANSWER" = "j" ];
+      if [ "$ANSWER" == "j" ];
       then
         e_and_l ${dark_grey}$ANSWER${colors_off}
         IYN_RESULT=1
         INPUT_OK=1
       fi
-      if [ "$ANSWER" = "n" ];
+      if [ "$ANSWER" == "n" ];
       then
         e_and_l ${dark_grey}$ANSWER${colors_off}
         IYN_RESULT=0
@@ -2481,30 +2777,30 @@ function ask_yes_or_no () {
     do
       # Eingabe-Schleife ------------------------------------------------------
       ANSWER=""
-      while [ "$ANSWER" = "" ];
+      while [ "$ANSWER" == "" ];
       do
         read -N 1 -r -s ANSWER
         ANSWER=$(echo $ANSWER | sed "s/$REG_CHARS//g")
       done
       e_and_l "$ANSWER"
       # Ja --------------------------------------------------------------------
-      if [ "$ANSWER" = "J" ] ||
-         [ "$ANSWER" = "j" ];
+      if [ "$ANSWER" == "J" ] ||
+         [ "$ANSWER" == "j" ];
       then
         IYN_RESULT=1
         INPUT_OK=1
       fi
       # Nein ------------------------------------------------------------------
-      if [ "$ANSWER" = "N" ] ||
-         [ "$ANSWER" = "n" ];
+      if [ "$ANSWER" == "N" ] ||
+         [ "$ANSWER" == "n" ];
       then
         INPUT_OK=1
       fi
       # Datei anzeigen --------------------------------------------------------
       if [ "$FILE_TO_SHOW" != "" ];
       then
-        if [ "$ANSWER" = "A" ] ||
-           [ "$ANSWER" = "a" ];
+        if [ "$ANSWER" == "A" ] ||
+           [ "$ANSWER" == "a" ];
         then
           echo -e "${light_yellow}"
           more "$FILE_TO_SHOW"
@@ -2607,8 +2903,8 @@ function ask_yes_no_info () {
     # -------------------------------------------------------------------------
     INPUT_OK=0
     if [ ${OPTION_FLAG[force]} -eq 1 ] &&
-       [ "$TROTZDEM" = "" ] &&
-       [ "$CHECK_AUTO_ANSWER" = "" ];
+       [ "$TROTZDEM" == "" ] &&
+       [ "$CHECK_AUTO_ANSWER" == "" ];
     then
       IYN_RESULT=1
     else
@@ -2661,13 +2957,13 @@ function ask_yes_no_info () {
          [ "$PACKAGE_NAME" != "" ];
       then
         ANSWER=$(echo ${AUTO_ANSWERS["pkg_$PACKAGE_NAME"]} | xargs)
-        if [ "$ANSWER" = "j" ];
+        if [ "$ANSWER" == "j" ];
         then
           e_and_l ${dark_grey}$ANSWER${colors_off}
           IYN_RESULT=1
           INPUT_OK=1
         fi
-        if [ "$ANSWER" = "n" ];
+        if [ "$ANSWER" == "n" ];
         then
           e_and_l ${dark_grey}$ANSWER${colors_off}
           IYN_RESULT=0
@@ -2682,15 +2978,15 @@ function ask_yes_no_info () {
       do
         # Eingabe-Schleife ----------------------------------------------------
         ANSWER=""
-        while [ "$ANSWER" = "" ];
+        while [ "$ANSWER" == "" ];
         do
           read -N 1 -r -s ANSWER
           ANSWER=$(echo $ANSWER | sed "s/$REG_CHARS//g")
         done
         e_and_l "$ANSWER"
         # Info anzeigen -------------------------------------------------------
-        if [ "$ANSWER" = "I" ] ||
-           [ "$ANSWER" = "i" ];
+        if [ "$ANSWER" == "I" ] ||
+           [ "$ANSWER" == "i" ];
         then
           echo -e "${light_yellow}"
           if [ $INSTALL_MODE -eq 1 ]; then apt show "$PACKAGE_NAME"; fi
@@ -2757,7 +3053,7 @@ function check_skip_raspi () {
   then
     for not_on_pi in ${NOT_ON_RASPBERRY[@]};
     do
-      if [ "$1" = "$not_on_pi" ];
+      if [ "$1" == "$not_on_pi" ];
       then
         SKIP_RASPI=1
         break
@@ -2772,7 +3068,7 @@ function check_skip_raspi () {
   then
     for not_on_pi in ${NOT_ON_RASPBIAN[@]};
     do
-      if [ "$1" = "$not_on_pi" ];
+      if [ "$1" == "$not_on_pi" ];
       then
         SKIP_RASPI=1
         break
@@ -2856,7 +3152,7 @@ function copy_icon_list () {
       # Grundsätzlich auszulassende Icons prüfen
       for reject_file in ${REJECT_ICONS[@]};
       do
-        if [ "$reject_file" = "$DESKTOP_ICON_NAME" ];
+        if [ "$reject_file" == "$DESKTOP_ICON_NAME" ];
         then
           REJECT_THIS=1
           break
@@ -2867,7 +3163,7 @@ function copy_icon_list () {
       then
         for reject_file in ${EXCLUDE_ICON_LIST[@]};
         do
-          if [ "$reject_file" = "$DESKTOP_ICON_NAME" ];
+          if [ "$reject_file" == "$DESKTOP_ICON_NAME" ];
           then
             REJECT_THIS=1
             break
@@ -2917,7 +3213,7 @@ function create_autostart_file () {
 #            1 = Fehler, Desktop-Symbol NICHT erstellt
 ###############################################################################
 function copy_starter_to_desktop () {
-  if [ "$DESKTOP_ENVIRONMENT" = "GNOME" ] ||
+  if [ "$DESKTOP_ENVIRONMENT" == "GNOME" ] ||
      [ ${OPTION_FLAG[addicons]} -ne 1 ];
   then
     return 1
@@ -3156,7 +3452,7 @@ function copy_starter_to_desktop () {
             for desktop_file in ${ICON_LIST_ARRAY[@]};
             do
               # Nur .desktop-Dateien kopieren
-              if [ "${desktop_file:(-8):8}" = ".desktop" ];
+              if [ "${desktop_file:(-8):8}" == ".desktop" ];
               then
                 FILE_BASE_NAME="${desktop_file##*/}"
                 if [ "$FILE_BASE_NAME" != "$LAST_BASE_NAME" ];
@@ -3166,7 +3462,7 @@ function copy_starter_to_desktop () {
                   REJECT_THIS=0
                   for reject_file in ${REJECT_ICONS[@]};
                   do
-                    # if [ "$reject_file.desktop" = "$FILE_BASE_NAME" ];
+                    # if [ "$reject_file.desktop" == "$FILE_BASE_NAME" ];
                     if [ $(echo -n "$FILE_BASE_NAME" | grep -i -c -E "$reject_file") -gt 0 ];
                     then
                       REJECT_THIS=1
@@ -3187,7 +3483,7 @@ function copy_starter_to_desktop () {
                     FORCE_THIS=0
                     for force_pkg_file in ${FORCE_ICONS[@]};
                     do
-                      if [ "$force_pkg_file" = "$1" ];
+                      if [ "$force_pkg_file" == "$1" ];
                       then
                         FORCE_THIS=1
                         break
@@ -3231,7 +3527,7 @@ function copy_starter_to_desktop () {
                       # LOAD_THIS_ICON=0
                       # for load_pix_pkg in ${LOAD_PIXMAP_ICONS[@]};
                       # do
-                      #   if [ "$load_pix_pkg" = "$1" ];
+                      #   if [ "$load_pix_pkg" == "$1" ];
                       #   then
                       #     LOAD_THIS_ICON=1
                       #     break
@@ -3298,7 +3594,7 @@ function clear_text () {
 function do_log () {
   if [ ${OPTION_FLAG[log]} -eq 1 ];
   then
-    if [ "$1" = "-n" ];
+    if [ "$1" == "-n" ];
     then
       TEXT_TO_LOG="$2"
       NEWLINE=''
@@ -3315,7 +3611,7 @@ function do_log () {
 # Gibt einen Text aus und schreibt diesen in die Log-Datei
 ###############################################################################
 function e_and_l () {
-  if [ "$1" = "-n" ];
+  if [ "$1" == "-n" ];
   then
     TEXT_TO_WRITE="$2"
     NEWLINE=''
@@ -3487,10 +3783,10 @@ function get_install_status () {
   if [ $PKG_INSTALL_STATUS -eq 0 ];
   then
     THE_PKG_TEST_NAME="${DEB_PKG_NAME[$1]}"
-    if [ "$THE_PKG_TEST_NAME" = "" ];
+    if [ "$THE_PKG_TEST_NAME" == "" ];
     then
       THE_PKG_TEST_NAME="${WEB_PKG_NAME[$1]}"
-      if [ "$THE_PKG_TEST_NAME" = "" ];
+      if [ "$THE_PKG_TEST_NAME" == "" ];
       then
         THE_PKG_TEST_NAME="$1"
       fi
@@ -3601,11 +3897,11 @@ function get_install_status () {
 #            "NONE" = unvollständige Angaben in den alternativen Quell-Listen
 ###############################################################################
 function get_package_type () {
-  if [ "$PACKAGE_TYPE" = "" ]; then PACKAGE_TYPE="STD"; fi
+  if [ "$PACKAGE_TYPE" == "" ]; then PACKAGE_TYPE="STD"; fi
   # ------------------------------------------------------------------
   # 1. Paket-Typ ERW
   # ------------------------------------------------------------------
-  if [ "$PACKAGE_TYPE" = "STD" ];
+  if [ "$PACKAGE_TYPE" == "STD" ];
   then
     if [ "${ERW_AUTH_KEY[$1]}" != "" ] ||
        [ "${ERW_REPO_TXT[$1]}" != "" ];
@@ -3622,8 +3918,8 @@ function get_package_type () {
   # --------------------------------------------------------------
   # 2. Paket-Typ PPA
   # --------------------------------------------------------------
-  if [ "$PACKAGE_TYPE" = "STD" ] ||
-     [ "$PACKAGE_TYPE" = "NONE" ];
+  if [ "$PACKAGE_TYPE" == "STD" ] ||
+     [ "$PACKAGE_TYPE" == "NONE" ];
   then
     if [ "${PPA_REPO_TXT[$1]}" != "" ];
     then
@@ -3633,8 +3929,8 @@ function get_package_type () {
   # --------------------------------------------------------------
   # 3. Paket-Typ DEB
   # --------------------------------------------------------------
-  if [ "$PACKAGE_TYPE" = "STD" ] ||
-     [ "$PACKAGE_TYPE" = "NONE" ];
+  if [ "$PACKAGE_TYPE" == "STD" ] ||
+     [ "$PACKAGE_TYPE" == "NONE" ];
   then
     FOUND_PKG=0
     for arch_name in ${ARCH_NAME_LIST[@]};
@@ -3656,8 +3952,8 @@ function get_package_type () {
   # -----------------------------------------------------
   # 4. Paket-Typ WEB
   # -----------------------------------------------------
-  if [ "$PACKAGE_TYPE" = "STD" ] ||
-     [ "$PACKAGE_TYPE" = "NONE" ];
+  if [ "$PACKAGE_TYPE" == "STD" ] ||
+     [ "$PACKAGE_TYPE" == "NONE" ];
   then
     if [ "${WEB_PKG_NAME[$1]}" != "" ];
     then
@@ -3681,221 +3977,6 @@ function get_package_type () {
       fi
     fi
   fi
-}
-
-###############################################################################
-# Funktion zur Ermittlung einer Paket-Version aus dem Standard-Repository (APT)
-###############################################################################
-function get_pkg_apt_version () {
-  INFO_TYPE=$2 # 0 = verfügbare Version, 1 = installierte Version ermitteln
-  if [ $INFO_TYPE -eq 0 ];
-  then
-    PKG_APT_VERSION=$(LANG=en apt show "$1" 2>/dev/null | \
-      grep -i -E "^\s*Version" | \
-      sed -E "s/^\s*version\s*:\s*//i")
-  else
-    PKG_APT_VERSION=$(LANG=en dpkg-query -W -f='${Version}' "$1" 2>/dev/null)
-  fi
-  echo -e $(clean_pkg_version "$PKG_APT_VERSION")
-}
-
-###############################################################################
-# Funktion zur Ermittlung einer Paket-Version eines externen Pakets (DEB)
-###############################################################################
-function get_pkg_deb_version () {
-  THE_PKG_TEST_NAME="${DEB_PKG_NAME[$1]}"
-  if [ "$THE_PKG_TEST_NAME" = "" ];
-  then
-    THE_PKG_TEST_NAME="${WEB_PKG_NAME[$1]}"
-    if [ "$THE_PKG_TEST_NAME" = "" ];
-    then
-      THE_PKG_TEST_NAME="$1"
-    fi
-  fi
-  PKG_VERS_FILE="/opt/$THE_PKG_TEST_NAME/.$1"
-  PKG_VERS_FILE+="_version"
-  if [ -s "$PKG_VERS_FILE" ];
-  then
-    PKG_VERSION=$(cat "$PKG_VERS_FILE" | xargs)
-  else
-    PKG_VERSION=${DEB_PKG_VERS["$1"]}
-  fi
-  echo -e $PKG_VERSION
-}
-
-###############################################################################
-# Funktion zur Ermittlung einer Paket-Version als Snap (SNAP)
-###############################################################################
-function get_pkg_snap_version () {
-  INFO_TYPE=$2 # 0 = verfügbare Version, 1 = installierte Version ermitteln
-  PKG_SNAP_CHANNEL="" # Leer = Standard (stable)
-  if [ $INFO_TYPE -eq 0 ];
-  then
-    FULL_PKG_SNAP_INFO=$(LANG=en snap info "$1" 2>/dev/null | sed -E "s/^\s*(latest)\s*\/\s*//g")
-    # Zuerst auf stable-Version prüfen
-    PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | \
-      grep -i -E "^\s*stable" | \
-      sed -E "s/^\s*stable\s*\:*\s*//")
-    # Wenn keine stable-Version gefunden, dann auf candidate prüfen
-    if [ $(echo "$PKG_SNAP_VERSION" | grep -c -E "[0-9]") -eq 0 ];
-    then
-      PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | \
-        grep -i -E "^\s*candidate" | \
-        sed -E "s/^\s*candidate\s*\:*\s*//")
-      # Wenn keine candidate-Version gefunden, dann auf beta prüfen
-      if [ $(echo "$PKG_SNAP_VERSION" | grep -c -E "[0-9]") -gt 0 ];
-      then
-        PKG_SNAP_CHANNEL="candidate"
-      else
-        PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | \
-          grep -i -E "^\s*beta" | \
-          sed -E "s/^\s*beta\s*\:*\s*//")
-        # Wenn keine beta-Version gefunden, dann auf edge prüfen
-        if [ $(echo "$PKG_SNAP_VERSION" | grep -c -E "[0-9]") -gt 0 ];
-        then
-          PKG_SNAP_CHANNEL="beta"
-        else
-          PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | \
-            grep -i -E "^\s*edge" | \
-            sed -E "s/^\s*edge\s*\:*\s*//")
-          if [ $(echo "$PKG_SNAP_VERSION" | grep -c -E "[0-9]") -gt 0 ];
-          then
-            PKG_SNAP_CHANNEL="edge"
-          fi
-        fi
-      fi
-    fi
-  else
-    FULL_PKG_SNAP_INFO=$(LANG=en snap list "$1" 2>/dev/null | awk 'NR>1' | head -n 1)
-    PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $2}' | sed -E "s/\-//g" | xargs)
-    # PKG_SNAP_REVISION=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $3}' | sed -E "s/\-//g" | xargs)
-    PKG_SNAP_TRACKING=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $4}' | sed -E "s/\-//g" | xargs)
-    if [ $(echo "$PKG_SNAP_TRACKING" | grep -i -c -E "candidate") -gt 0 ];
-    then
-      PKG_SNAP_CHANNEL="candidate"
-    else
-      if [ $(echo "$PKG_SNAP_TRACKING" | grep -i -c -E "beta") -gt 0 ];
-      then
-        PKG_SNAP_CHANNEL="beta"
-      else
-        if [ $(echo "$PKG_SNAP_TRACKING" | grep -i -c -E "edge") -gt 0 ];
-        then
-          PKG_SNAP_CHANNEL="edge"
-        fi
-      fi
-    fi
-    PKG_SNAP_NOTES=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $6}' | sed -E "s/\-//g" | xargs)
-  fi
-  # Versionsnummer bereinigen
-  THE_SNAP_PKG_VERSION=$(clean_pkg_version "$PKG_SNAP_VERSION")
-  # Ggf. Zusatzinfos anhängen
-  if [ "$PKG_SNAP_CHANNEL" != "" ];
-  then
-    THE_SNAP_PKG_VERSION+=" "
-    if [ $INFO_TYPE -eq 0 ];
-    then
-      THE_SNAP_PKG_VERSION+="${light_red}"
-    else
-      THE_SNAP_PKG_VERSION+="${light_purple}"
-    fi
-    THE_SNAP_PKG_VERSION+="$PKG_SNAP_CHANNEL${colors_off}"
-  fi
-  # Ggf. Hinweis auf Classic-Mode anhängen
-  if [ $(echo "$PKG_SNAP_VERSION" | grep -i -c -E " classic") -gt 0 ] || # aus snap info
-     [ $(echo "$PKG_SNAP_NOTES" | grep -i -c -E "classic") -gt 0 ];      # aus snap list
-  then
-    THE_SNAP_PKG_VERSION+=" ${light_red}classic${colors_off}"
-  fi
-  echo -e "$THE_SNAP_PKG_VERSION"
-}
-
-###############################################################################
-# Funktion zur Ermittlung einer Paket-Version als Flatpak (FLAT)
-###############################################################################
-function get_pkg_flatpak_version () {
-  FLATPAK_NAME=$(echo "$1" | sed 's/[ -_]//g' | xargs)
-  INFO_TYPE=$2
-  TMP_FLATPAK_VERSION=""
-  # Verfügbare Version ermitteln
-  if [ $INFO_TYPE -eq 0 ];
-  then
-    if [ -s "$THE_FLATPAK_REMOTE_LIST" ];
-    then
-      TMP_FLATPAK_VERSION=$(grep -i -E "\.$FLATPAK_NAME\/" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 2)
-    fi
-  fi
-  # Installierte Version ermitteln
-  if [ $INFO_TYPE -eq 1 ];
-  then
-    if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
-    then
-      TMP_FLATPAK_VERSION=$(grep -i -E "\.$FLATPAK_NAME\/" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 2)
-    fi
-  fi
-  THE_FLAT_PKG_VERSION=$(clean_pkg_version "$TMP_FLATPAK_VERSION")
-  if [ "$THE_FLAT_PKG_VERSION" != "" ];
-  then
-    echo -e "$THE_FLAT_PKG_VERSION"
-  fi
-}
-
-###############################################################################
-# Funktion zur Ermittlung des Referenz-Strings eines Flatpaks
-###############################################################################
-function get_pkg_flatpak_reference () {
-  FLATPAK_NAME=$(echo "$1" | sed 's/[ -_]//g' | xargs)
-  INFO_TYPE=$2
-  TMP_FLATPAK_REFERENCE=""
-  # Verfügbare Version mit Architektur
-  if [ $INFO_TYPE -eq 0 ];
-  then
-    if [ -s "$THE_FLATPAK_REMOTE_LIST" ];
-    then
-      TMP_FLATPAK_REFERENCE=$(grep -i -E "\.$FLATPAK_NAME\/" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 3 | xargs)
-    fi
-  fi
-  # Installierte Version ohne Architektur
-  if [ $INFO_TYPE -eq 1 ];
-  then
-    if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
-    then
-      TMP_FLATPAK_REFERENCE=$(grep -i -E "\.$FLATPAK_NAME\/" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 3 | cut -d'/' -f 1 | xargs)
-    fi
-  fi
-  if [ "$TMP_FLATPAK_REFERENCE" != "" ];
-  then
-    echo -e "$TMP_FLATPAK_REFERENCE"
-  fi
-}
-
-###############################################################################
-# Funktion zur Ermittlung einer Paket-Version einer ausführbaren Datei (WEB)
-###############################################################################
-function get_pkg_web_version () {
-  PKG_VERS_FILE="$WEB_PKG_DIR/${WEB_PKG_NAME[$1]}/.$1"
-  PKG_VERS_FILE+="_version"
-  if [ -s "$PKG_VERS_FILE" ];
-  then
-    PKG_VERSION=$(cat "$PKG_VERS_FILE" | xargs)
-  else
-    PKG_VERSION=${WEB_PKG_VERS["$1"]}
-  fi
-  echo -e $PKG_VERSION
-}
-
-###############################################################################
-# Funktion zur Bereinigung einer Paketversion auf ihre ersten drei Teile
-###############################################################################
-function clean_pkg_version () {
-  echo -e $(echo "$1" | \
-  awk '{print $1}' | \
-  sed -E "s/^(.*:)*(.*)/\2/" | \
-  sed -E "s/[^0-9\.]/./g" | \
-  sed -E "s/\.\.*/./g" | \
-  sed -E "s/^\.//" | \
-  sed -E "s/\.$//" | \
-  sed -E "s/([0-9]*\.*[0-9]*\.*[0-9]*).*/\1/" | \
-  xargs)
 }
 
 ###############################################################################
@@ -4033,7 +4114,7 @@ function install_pkg () {
     then
       for skip_this_pkg in ${SKIP_LIST[@]};
       do
-        if [ "$PAKET" = "$skip_this_pkg" ];
+        if [ "$PAKET" == "$skip_this_pkg" ];
         then
           SKIP_THIS=1
           SKIP_REASON=" (mit skip ausgeschlossen)"
@@ -4168,7 +4249,7 @@ function install_pkg () {
       then
         for snap_this_pkg in ${FORCE_SNAPPY_LIST[@]};
         do
-          if [ "$PAKET" = "$snap_this_pkg" ];
+          if [ "$PAKET" == "$snap_this_pkg" ];
           then
             FORCE_THIS_SNAPPY=1
             break
@@ -4187,7 +4268,7 @@ function install_pkg () {
       then
         for flatpak_this_pkg in ${FORCE_FLATPAK_LIST[@]};
         do
-          if [ "$PAKET" = "$flatpak_this_pkg" ];
+          if [ "$PAKET" == "$flatpak_this_pkg" ];
           then
             FORCE_THIS_FLATPAK=1
             break
@@ -4204,7 +4285,7 @@ function install_pkg () {
       then
         for extern_this_pkg in ${FORCE_EXTERN_LIST[@]};
         do
-          if [ "$PAKET" = "$extern_this_pkg" ];
+          if [ "$PAKET" == "$extern_this_pkg" ];
           then
             FORCE_THIS_EXTERN=1
             break
@@ -4234,8 +4315,8 @@ function install_pkg () {
       # -----------------------------------------------------------------------
       if [ ${OPTION_FLAG[addsnap]} -eq 1 ] &&
          [ $SNAP_INSTALLED -ne 0 ] &&
-         [ "$LAST_ERW_PACK" = "" ] &&
-         [ "$LAST_PPA_PACK" = "" ];
+         [ "$LAST_ERW_PACK" == "" ] &&
+         [ "$LAST_PPA_PACK" == "" ];
       then
         snap info "$PAKET" &>/dev/null
         if [ $? -eq 0 ];
@@ -4251,8 +4332,8 @@ function install_pkg () {
       # -----------------------------------------------------------------------
       if [ ${OPTION_FLAG[addflat]} -eq 1 ] &&
          [ $FLATPAK_INSTALLED -ne 0 ] &&
-         [ "$LAST_ERW_PACK" = "" ] &&
-         [ "$LAST_PPA_PACK" = "" ];
+         [ "$LAST_ERW_PACK" == "" ] &&
+         [ "$LAST_PPA_PACK" == "" ];
       then
         FLATPAK_NAME=$(echo "$PAKET" | sed 's/[ -_]//g' | xargs)
         if [ $(grep -c -i -E "\.$FLATPAK_NAME\/" ${THE_FLATPAK_REMOTE_LIST}) -gt 0 ];
@@ -4342,7 +4423,7 @@ function install_pkg () {
             if [ "$PACKAGE_FILE_DEB_URL" != "" ];
             then
               if [ ${OPTION_FLAG[foreign]} -ne 0 ] &&
-                 [ "$other_arch" = "$ARCHITECTURE_OTHER" ];
+                 [ "$other_arch" == "$ARCHITECTURE_OTHER" ];
               then
                 check_url_file "$PACKAGE_FILE_DEB_URL"
                 if [ $? -eq 0 ];
@@ -4354,7 +4435,7 @@ function install_pkg () {
                   break
                 fi
               else
-                if [ ! "$OTHER_ARCH_TEXT" = "" ]; then OTHER_ARCH_TEXT+=", "; fi
+                if [ ! "$OTHER_ARCH_TEXT" == "" ]; then OTHER_ARCH_TEXT+=", "; fi
                 OTHER_ARCH_TEXT+="$other_arch"
               fi
             fi
@@ -4395,7 +4476,7 @@ function install_pkg () {
             if [ "$PACKAGE_FILE_WEB_URL" != "" ];
             then
               if [ ${OPTION_FLAG[foreign]} -ne 0 ] &&
-                 [ "$other_arch" = "$ARCHITECTURE_OTHER" ];
+                 [ "$other_arch" == "$ARCHITECTURE_OTHER" ];
               then
                 check_url_file "$PACKAGE_FILE_WEB_URL"
                 if [ $? -eq 0 ];
@@ -4408,7 +4489,7 @@ function install_pkg () {
                   break
                 fi
               else
-                if [ ! "$OTHER_ARCH_TEXT" = "" ]; then OTHER_ARCH_TEXT+=", "; fi
+                if [ ! "$OTHER_ARCH_TEXT" == "" ]; then OTHER_ARCH_TEXT+=", "; fi
                 OTHER_ARCH_TEXT+="$other_arch"
               fi
             fi
@@ -4452,7 +4533,7 @@ function install_pkg () {
         # Wenn es vor der erfolglosen Suche des Pakets eine Erweiterung
         # des Repository gegeben hat, diese wieder bereinigen
         if [ "$LAST_ERW_PACK" != "" ] &&
-           [ "$OTHER_ARCH_TEXT" = "" ];
+           [ "$OTHER_ARCH_TEXT" == "" ];
         then
           clear_repo "$PAKET"
         fi
@@ -4523,13 +4604,13 @@ function install_pkg () {
               FILL_WORD="wirklich"
               SHOW_PKG_MSG=""
               TMP_PACK_MSG="${WEB_PKG_MESG[$PAKET]}"
-              if [ "$TMP_PACK_MSG" = "" ]; then TMP_PACK_MSG="${DEB_PKG_MESG[$PAKET]}"; fi
+              if [ "$TMP_PACK_MSG" == "" ]; then TMP_PACK_MSG="${DEB_PKG_MESG[$PAKET]}"; fi
               if [ "$TMP_PACK_MSG" != "" ];
               then
                 SHOW_PKG_MSG="${bold_red}Achtung:${colors_off} ${light_yellow}$TMP_PACK_MSG${colors_off}"
               fi
               EVAL_TEST="${WEB_PKG_EVAL["$PAKET"]}"
-              if [ "$EVAL_TEST" = "" ]; then EVAL_TEST="${DEB_PKG_EVAL["$PAKET"]}"; fi
+              if [ "$EVAL_TEST" == "" ]; then EVAL_TEST="${DEB_PKG_EVAL["$PAKET"]}"; fi
               if [ "$EVAL_TEST" != "" ];
               then
                 eval "$EVAL_TEST" &>/dev/null
@@ -4879,7 +4960,7 @@ function install_pkg () {
                         CHECKSUM_OK="yes"
                       fi
                     fi
-                    if [ "$CHECKSUM_OK" = "yes" ];
+                    if [ "$CHECKSUM_OK" == "yes" ];
                     then
                       e_and_l "$OK_TAG"
                     else
@@ -5058,12 +5139,12 @@ function install_pkg () {
 
                   # Je nach Datei-Format entpacken oder kopieren
                   e_and_l -n "$PRE_SPACE $AFTER_ACTION ${light_yellow}$LOCAL_DOWNLOAD_FILE${colors_off}\n$PRE_SPACE nach ${light_yellow}$PACKAGE_INST_DIR${colors_off} ... "
-                  if [ "$DOWNLOAD_FORMAT" = "ZIP" ];
+                  if [ "$DOWNLOAD_FORMAT" == "ZIP" ];
                   then
                     7z x "$LOCAL_DOWNLOAD_FILE" -o"$PACKAGE_INST_DIR" -y &>"$LOG_TEMP"
                     INSTALL_RESULT=$?
                   else
-                    if [ "$DOWNLOAD_FORMAT" = "TAR" ];
+                    if [ "$DOWNLOAD_FORMAT" == "TAR" ];
                     then
                       tar -axf "$LOCAL_DOWNLOAD_FILE" -C "$PACKAGE_INST_DIR" &>"$LOG_TEMP"
                       INSTALL_RESULT=$?
@@ -5290,7 +5371,7 @@ function install_pkg () {
             case "$INSTALL_MODE" in
               1) IMODE_MSG+="" ;;
               2) IMODE_MSG+=" als ${light_purple}Snap${colors_off}" ;;
-            3|4) if [ "$PKG_FOREIGN_ARCH" = "" ];
+            3|4) if [ "$PKG_FOREIGN_ARCH" == "" ];
                 then
                   # IMODE_MSG+=" als ${light_purple}Download ("
                   # if [ $INSTALL_MODE -eq 3 ]; then IMODE_MSG+="DEB"; else IMODE_MSG+="WEB"; fi
@@ -5507,8 +5588,8 @@ function remove_dat () {
 # -----------------------------------------------------------------------------
   find / -iname "*$THE_SEARCH_STRING*" -type d,f 1>>"$REMOVE_ITEM_LIST" 2>/dev/null
 # -----------------------------------------------------------------------------
-#   if [ "$SEARCH_METHOD" = "i" ] ||
-#      [ "$SEARCH_METHOD" = "I" ];
+#   if [ "$SEARCH_METHOD" == "i" ] ||
+#      [ "$SEARCH_METHOD" == "I" ];
 #   then
 #     grep -i -l "$REMOVE_PKG_NAME" ... ... ... 1>>"$REMOVE_ITEM_LIST" 2>/dev/null
 #   fi
@@ -5569,7 +5650,7 @@ function do_remove_items () {
       do
         read -N 1 -r -s REMOVE_ITEMS_ACTION
         REMOVE_ITEMS_ACTION=$(echo $REMOVE_ITEMS_ACTION | sed 's/[^0-9]*//g')
-        if [ "$REMOVE_ITEMS_ACTION" = "" ]; then REMOVE_ITEMS_ACTION=-1; fi
+        if [ "$REMOVE_ITEMS_ACTION" == "" ]; then REMOVE_ITEMS_ACTION=-1; fi
       done
       e_and_l "$REMOVE_ITEMS_ACTION"
       # Wenn alle, dann VORHER noch eine Sicherheitsabfrage
@@ -5676,7 +5757,7 @@ function do_revive_items () {
       do
         read -N 1 -r -s REVIVE_ITEMS_ACTION
         REVIVE_ITEMS_ACTION=$(echo $REVIVE_ITEMS_ACTION | sed 's/[^0-9]*//g')
-        if [ "$REVIVE_ITEMS_ACTION" = "" ]; then REVIVE_ITEMS_ACTION=-1; fi
+        if [ "$REVIVE_ITEMS_ACTION" == "" ]; then REVIVE_ITEMS_ACTION=-1; fi
       done
       e_and_l "$REVIVE_ITEMS_ACTION"
       # Wenn alle, dann VORHER noch eine Sicherheitsabfrage
@@ -5897,10 +5978,10 @@ function remove_pkg () {
     if [ $INST_STATUS -eq 3 ];
     then
       TMP_PKG_INST_NAME="${DEB_PKG_NAME[$THE_PKG_REAL_NAME]}"
-      if [ "$TMP_PKG_INST_NAME" = "" ];
+      if [ "$TMP_PKG_INST_NAME" == "" ];
       then
         TMP_PKG_INST_NAME="${WEB_PKG_NAME[$THE_PKG_REAL_NAME]}"
-        if [ "$TMP_PKG_INST_NAME" = "" ];
+        if [ "$TMP_PKG_INST_NAME" == "" ];
         then
           TMP_PKG_INST_NAME="$THE_PKG_REAL_NAME"
         fi
@@ -5917,7 +5998,7 @@ function remove_pkg () {
     if [ $INST_STATUS -eq 4 ];
     then
       TMP_PKG_INST_NAME="${WEB_PKG_NAME[$THE_PKG_REAL_NAME]}"
-      if [ "$TMP_PKG_INST_NAME" = "" ];
+      if [ "$TMP_PKG_INST_NAME" == "" ];
       then
         TMP_PKG_INST_NAME="$THE_PKG_REAL_NAME"
       fi
@@ -6373,7 +6454,7 @@ for arg in ${ARGUMENT_LIST[@]};
 do
   # Erstes Argument hinter "instonly" als zu installierendes Paket ermitteln
   ((ARG_POS+=1))
-  if [ "$arg" = "instonly" ];
+  if [ "$arg" == "instonly" ];
   then
     INST_ONLY_PKG=$(echo "${!ARG_POS}" | tr A-Z a-z | sed -E 's/[^a-z0-9\.\_\-]//g' | xargs)
   fi
@@ -6388,7 +6469,7 @@ for arg in ${ARGUMENT_LIST[@]};
 do
   # Erstes Argument hinter "remove" als zu entfernendes Paket ermitteln
   ((ARG_POS+=1))
-  if [ "$arg" = "remove" ];
+  if [ "$arg" == "remove" ];
   then
     REMOVE_PKG_NAME=$(echo "${!ARG_POS}" | tr A-Z a-z | sed -E 's/[^a-z0-9\.\_\-]//g' | xargs)
     if [ "$REMOVE_PKG_NAME" != "" ];
@@ -6400,13 +6481,13 @@ done
 # -----------------------------------------------------------------------------------
 # 2.3 Auswahl (+) der Kategorien (nur wenn kein individuelles Paket angegeben wurde)
 # -----------------------------------------------------------------------------------
-if [ "$INST_ONLY_PKG" = "" ];
+if [ "$INST_ONLY_PKG" == "" ];
 then
   # Zunächst auf die Option "all" prüfen
   for arg in ${ARGUMENT_LIST[@]};
   do
-    if [ "$arg" = "all" ] ||
-       [ "$arg" = "+all" ];
+    if [ "$arg" == "all" ] ||
+       [ "$arg" == "+all" ];
     then
       for k in ${KAT_KEY_LIST[@]};
       do
@@ -6425,7 +6506,7 @@ then
   do
     for k in ${KAT_KEY_LIST[@]};
     do
-      if [ "$arg" = "+$k" ];
+      if [ "$arg" == "+$k" ];
       then
         KATEGORIE_FLAG["$k"]=1
         break
@@ -6456,7 +6537,7 @@ for arg in ${ARGUMENT_LIST[@]};
 do
   # Alle Argumente hinter "skip" bis zu einem anderen gültigen Argument (siehe
   # SKIP_BREAK_ARGS) als auszulassendes Paket in die Skip-Liste übernehmen
-  if [ "$arg" = "skip" ];
+  if [ "$arg" == "skip" ];
   then
     BREAK_FOUND=0
     s=$((ARG_POS+1))
@@ -6465,7 +6546,7 @@ do
       ARG_TXT=$(printf %b "${!s}" | tr A-Z a-z)
       for exclude_arg in ${SKIP_BREAK_ARGS[@]};
       do
-        if [ "$ARG_TXT" = "$exclude_arg" ];
+        if [ "$ARG_TXT" == "$exclude_arg" ];
         then
           BREAK_FOUND=1
           break
@@ -6477,7 +6558,7 @@ do
         IS_ALREADY_SKIPPED=0
         for skipped_pkg in ${SKIP_LIST[@]};
         do
-          if [ "$skipped_pkg" = "$ARG_TXT" ];
+          if [ "$skipped_pkg" == "$ARG_TXT" ];
           then
             IS_ALREADY_SKIPPED=1
             break
@@ -6493,7 +6574,7 @@ do
   else # ... sonst - sofern das Argument eine Kategorie ist - diese abwählen
     for k in ${KAT_KEY_LIST[@]};
     do
-      if [ "$arg" = "-$k" ];
+      if [ "$arg" == "-$k" ];
       then
         KATEGORIE_FLAG["$k"]=0
         break
@@ -6510,16 +6591,16 @@ for arg in ${ARGUMENT_LIST[@]};
 do
   for opt in ${OPTION_LIST[@]};
   do
-    if [ "$arg" = "$opt" ];
+    if [ "$arg" == "$opt" ];
     then
       OPTION_FLAG["$opt"]=1
       break
     fi
   done
   # Sonderfälle
-  if [ "$arg" = "nomenu" ]; then NO_MENU=1; fi # "nomenu" ist natürlich nicht im Menü enthalten
-  if [ "$arg" = "kuplock" ] && [ $KERNEL_IS_LOCKED -gt 0 ]; then OPTION_FLAG[kuplock]=0; fi
-  if [ "$arg" = "kunlock" ] && [ $KERNEL_IS_LOCKED -eq 0 ]; then OPTION_FLAG[kunlock]=0; fi
+  if [ "$arg" == "nomenu" ]; then NO_MENU=1; fi # "nomenu" ist natürlich nicht im Menü enthalten
+  if [ "$arg" == "kuplock" ] && [ $KERNEL_IS_LOCKED -gt 0 ]; then OPTION_FLAG[kuplock]=0; fi
+  if [ "$arg" == "kunlock" ] && [ $KERNEL_IS_LOCKED -eq 0 ]; then OPTION_FLAG[kunlock]=0; fi
 done
 
 # Sonderfall Quiet-Modus, der aus Sicherheitsgründen aktuell immer deaktiviert ist!
@@ -6708,7 +6789,7 @@ EOF
     while [ $MENU_OK -ne 0 ];
     do
       MENU_AUSWAHL=-1
-      if [ "$INST_ONLY_PKG" = "" ];
+      if [ "$INST_ONLY_PKG" == "" ];
       then
         LAST_MENU_AUSWAHL=6
       else
@@ -6767,7 +6848,7 @@ EOF
         # ---------------------------------------------------------------------
         if [ $MENU_AUSWAHL -eq 1 ];
         then
-          if [ "$INST_ONLY_PKG" = "" ];
+          if [ "$INST_ONLY_PKG" == "" ];
           then
             ANZ_KATEGORIES=0
             KAT_MENU_LIST=()
@@ -7319,7 +7400,7 @@ do
       TEST_SIM_PACK="${SIMILAR_PACK[$TEST_SIM_PACK]}"
       for alt_pkg in ${ALT_LIST[@]};
       do
-        if [ "$TEST_SIM_PACK" = "$alt_pkg" ];
+        if [ "$TEST_SIM_PACK" == "$alt_pkg" ];
         then
           e_and_l " $ERROR_TAG: Für das Programmpaket ${light_yellow}$pkg${colors_off} ist zwischen den Alternativen"
           e_and_l " ${light_purple}$LAST_SIM_PACK${colors_off} und ${light_purple}$TEST_SIM_PACK${colors_off} ein ungültiger Zirkelbezug eingetragen!"
@@ -7515,35 +7596,53 @@ then
   # Zum Downloaden und Entpacken von Dateien benötigte Komponenten
   # ===========================================================================
   ALL_COMPONENTS_AVAIL=1
-  COMPONENTS_REQUIRED=('coreutils' 'diffutils' 'lshw' 'lsof' 'p7zip-full' 'sed' 'tar' 'util-linux' 'wget')
+  COMPONENTS_REQUIRED=('coreutils' 'diffutils' 'lshw' 'p7zip-full' 'sed' 'tar' 'util-linux' 'wget')
   if [ $DCONF_NEEDED -eq 1 ];
   then
     COMPONENTS_REQUIRED+=('dconf-cli')
   fi
+  # Schnell-Test
+  ALL_COMPONENTS_INSTALLED=1
   for required_pkg in ${COMPONENTS_REQUIRED[@]};
   do
     ((ANZ_SPACES=12-${#required_pkg}))
     if [ $(LANG=en dpkg-query -W -f='${Status}' "$required_pkg" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
     then
-      e_and_l -n " Modul ${bold_yellow}$required_pkg${colors_off}"
-      insert_spaces $ANZ_SPACES
-      e_and_l -n " wird installiert  ... "
-      apt install "$required_pkg" -y &>"$LOG_TEMP"
-      if [ $? -eq 0 ];
-      then
-        e_and_l "$OK_TAG"
-      else
-        e_and_l "$ERROR_TAG"
-        ALL_COMPONENTS_AVAIL=0
-      fi
-      add_full_log
-    else
-      e_and_l -n " Modul ${light_cyan}$required_pkg${colors_off}"
-      insert_spaces $ANZ_SPACES
-      e_and_l -n " ... "
-      e_and_l "$OK_TAG"
+      ALL_COMPONENTS_INSTALLED=0
+      break
     fi
   done
+  # Wenn alle benötigten Komponenten installiert sind, nur eine kurze Meldung anzeigen ...
+  if [ $ALL_COMPONENTS_INSTALLED -eq 1 ];
+  then
+    e_and_l " Alle benötigten Komponenten sind installiert ... $OK_TAG"
+  # ... sonst alle Komponenten anzeigen und fehlende installieren ...
+  else
+    for required_pkg in ${COMPONENTS_REQUIRED[@]};
+    do
+      ((ANZ_SPACES=12-${#required_pkg}))
+      if [ $(LANG=en dpkg-query -W -f='${Status}' "$required_pkg" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+      then
+        e_and_l -n " Modul ${bold_yellow}$required_pkg${colors_off}"
+        insert_spaces $ANZ_SPACES
+        e_and_l -n " wird installiert  ... "
+        apt install "$required_pkg" -y &>"$LOG_TEMP"
+        if [ $? -eq 0 ];
+        then
+          e_and_l "$OK_TAG"
+        else
+          e_and_l "$ERROR_TAG"
+          ALL_COMPONENTS_AVAIL=0
+        fi
+        add_full_log
+      else
+        e_and_l -n " Modul ${light_cyan}$required_pkg${colors_off}"
+        insert_spaces $ANZ_SPACES
+        e_and_l -n " ... "
+        e_and_l "$OK_TAG"
+      fi
+    done
+  fi
   # ===========================================================================
   # Cross-Build Pakete zur Ausführung von armhf-Programmen auf arm64
   # ===========================================================================
@@ -7664,7 +7763,7 @@ then
     if [ $? -eq 1 ];
     then
       NEW_USERNAME=""
-      while [ "$NEW_USERNAME" = "" ];
+      while [ "$NEW_USERNAME" == "" ];
       do
         e_and_l -n " Bitte neuen Benutzernamen eingeben: "
         read NEW_USERNAME
@@ -7792,12 +7891,45 @@ if [ $TOTAL_PACKS -gt 0 ] ||
    [ ${OPTION_FLAG[remove]} -eq 1 ] ||
    [ ${OPTION_FLAG[udrivers]} -eq 1 ];
 then
-  if [ $(lsof /var/lib/dpkg/lock 2>/dev/null | wc -l) -gt 0 ];
+  # ---------------------------------------------------------------------------
+  # apt-Sperre prüfen
+  # ---------------------------------------------------------------------------
+  APT_IS_BLOCKED=0
+  if [ -s "/var/lib/dpkg/lock" ] ||
+     [ -s "/var/lib/dpkg/lock-frontend" ];
   then
-    e_and_l " $ERROR_TAG: APT ist gerade durch einen anderen Prozess geblockt (Update?)."
-    e_and_l " Das Skript wird daher jetzt beendet - bitte später nochmals versuchen."
+    APT_IS_BLOCKED=1
+    e_and_l " $ACHTUNG_TAG: ${bold_white}apt${colors_off} ist gerade durch einen anderen Prozess geblockt (Updates?)."
+    e_and_l " Die Sperre kann eventuell aufgehoben werden, dies wird jedoch nicht empfohlen!"
+    ask_yes_or_no "" " Soll ich trotzdem versuchen die Sperre aufzuheben"
+    if [ $? -eq 1 ];
+    then
+      e_and_l -n " Versuche ${bold_yellow}apt${colors_off} zu entsperren ... "
+      if [ -f "/var/lib/dpkg/lock" ]; then echo -n "" > "/var/lib/dpkg/lock" &>/dev/null; fi
+      if [ -f "/var/lib/dpkg/lock-frontend" ]; then echo -n "" > "/var/lib/dpkg/lock-frontend" &>/dev/null; fi
+      if [ ! -s "/var/lib/dpkg/lock" ] &&
+         [ ! -s "/var/lib/dpkg/lock-frontend" ];
+      then
+        e_and_l "$OK_TAG"
+        APT_IS_BLOCKED=0
+      else
+        e_and_l "$ERROR_TAG, Sperre konnte ${bold_white}nicht${colors_off} aufgehoben werden."
+      fi
+    else
+      e_and_l -n " OK."
+    fi
+  fi
+  # ---------------------------------------------------------------------------
+  # Wenn apt gesperrt ist Skript beenden
+  # ---------------------------------------------------------------------------
+  if [ $APT_IS_BLOCKED -ne 0 ];
+  then
+    e_and_l " Das Skript wird jetzt beendet - bitte später nochmals versuchen."
     exit 1
   fi
+  # ---------------------------------------------------------------------------
+  # Repo aktualisieren
+  # ---------------------------------------------------------------------------
   if [ ${OPTION_FLAG[norepo]} -eq 0 ] &&
      [ ${OPTION_FLAG[listonly]} -eq 0 ];
   then
@@ -7919,29 +8051,39 @@ then
   PRESERVED_STATUS_FLAG=${OPTION_FLAG[status]}
   OPTION_FLAG[status]=0
   # ---------------------------------------------------------------------------
-
   e_and_l " ${bold_blue}Updates von externen Programmen${colors_off}"
   for pkg_name in ${EXUPDATE_PKG_LIST[@]};
   do
     e_and_l "$HALF_LINE"
     # Freundlichen Namen und verfügbare Version des Pakets ermitteln ----------
+    NEW_PKG_SRC=""
     IDX_NAME="$pkg_name"
     IDX_NAME+="_"
     IDX_NAME+="$ARCHITECTURE_MAIN"
-    THE_PKG_INST_NAME="${WEB_PKG_NAME[$pkg_name]}"
-    NEW_PKG_INST_VERS="${WEB_PKG_VERS[$pkg_name]}"
-    NEW_PKG_INST_FILE="${WEB_PKG_FILE[$IDX_NAME]}"
-    if [ "$NEW_PKG_INST_FILE" == "" ];
+    THE_PKG_INST_NAME="${DEB_PKG_NAME[$pkg_name]}"
+    NEW_PKG_INST_VERS="${DEB_PKG_VERS[$pkg_name]}"
+    NEW_PKG_INST_FILE="${DEB_PKG_FILE[$IDX_NAME]}"
+    if [ "$NEW_PKG_INST_FILE" != "" ];
     then
-      THE_PKG_INST_NAME="${DEB_PKG_NAME[$pkg_name]}"
-      NEW_PKG_INST_VERS="${DEB_PKG_VERS[$pkg_name]}"
-      NEW_PKG_INST_FILE="${DEB_PKG_FILE[$IDX_NAME]}"
+      NEW_PKG_SRC="DEB"
+    else
+      THE_PKG_INST_NAME="${WEB_PKG_NAME[$pkg_name]}"
+      NEW_PKG_INST_VERS="${WEB_PKG_VERS[$pkg_name]}"
+      NEW_PKG_INST_FILE="${WEB_PKG_FILE[$IDX_NAME]}"
+      if [ "$NEW_PKG_INST_FILE" != "" ];
+      then
+        NEW_PKG_SRC="WEB"
+      fi
     fi
     # Status und Versionsnummer des installierten Pakets ermitteln ------------
     get_install_status "$pkg_name"
     INST_STATUS=$?
-    # e_and_l -n " ${light_green}$THE_PKG_INST_NAME ($pkg_name)${colors_off}"
-    e_and_l -n " ${light_green}$pkg_name${colors_off}${light_purple}"
+    if [ "$THE_PKG_INST_NAME" != "" ];
+    then
+      e_and_l -n " ${light_green}$THE_PKG_INST_NAME${colors_off}"
+    else
+      e_and_l -n " ${light_green}${pkg_name^}${colors_off}${light_purple}"
+    fi
     if [ "$PKG_VERSION" != "" ] &&
        [ "$PKG_VERSION" != "0" ];
     then
@@ -7949,12 +8091,23 @@ then
     else
       if [ $INST_STATUS -gt 0 ]; then e_and_l -n " (Version unbekannt)"; fi
     fi
-    e_and_l -n "${colors_off} ist"
+    e_and_l -n "${colors_off}"
     if [ $INST_STATUS -gt 0 ];
     then
-      if [ $INST_STATUS -eq 2 ]; then e_and_l -n " als ${light_purple}SNAP${colors_off}"; fi
-      if [ $INST_STATUS -eq 6 ]; then e_and_l -n " als ${light_purple}FLAT${colors_off}"; fi
-      e_and_l " installiert."
+      OLD_PKG_SRC=""
+      case $INST_STATUS in
+        1) OLD_PKG_SRC="STD"  ;;
+        2) OLD_PKG_SRC="SNAP" ;;
+        3) OLD_PKG_SRC="DEB"  ;;
+        4) OLD_PKG_SRC="WEB"  ;;
+        5) OLD_PKG_SRC="SHAR" ;;
+        6) OLD_PKG_SRC="FLAT" ;;
+      esac
+      if [ "$OLD_PKG_SRC" != "" ];
+      then
+        e_and_l -n " ${dark_grey}($OLD_PKG_SRC)${colors_off}"
+      fi
+      e_and_l " ist installiert."
       # Prüfen ob überhaupt eine Datei zur Installation vorhanden ist
       UPDATE_AVAILABLE=0
       if [ "$NEW_PKG_INST_FILE" != "" ];
@@ -7967,7 +8120,7 @@ then
         NEW_PKG_VER_2=$(echo $NEW_PKG_INST_VERS | cut -d"." -f 2)
         NEW_PKG_VER_3=$(echo $NEW_PKG_INST_VERS | cut -d"." -f 3)
         if [ "$CUR_PKG_VER_1" != "" ] &&
-          [ "$NEW_PKG_VER_1" != "" ];
+           [ "$NEW_PKG_VER_1" != "" ];
         then
           if [ $CUR_PKG_VER_1 -lt $NEW_PKG_VER_1 ];
           then
@@ -7977,7 +8130,7 @@ then
         if [ $UPDATE_AVAILABLE -eq 0 ];
         then
           if [ "$CUR_PKG_VER_2" != "" ] &&
-            [ "$NEW_PKG_VER_2" != "" ];
+             [ "$NEW_PKG_VER_2" != "" ];
           then
             if [ $CUR_PKG_VER_2 -lt $NEW_PKG_VER_2 ];
             then
@@ -7988,7 +8141,7 @@ then
         if [ $UPDATE_AVAILABLE -eq 0 ];
         then
           if [ "$CUR_PKG_VER_3" != "" ] &&
-            [ "$NEW_PKG_VER_3" != "" ];
+             [ "$NEW_PKG_VER_3" != "" ];
           then
             if [ $CUR_PKG_VER_3 -lt $NEW_PKG_VER_3 ];
             then
@@ -7999,14 +8152,28 @@ then
       fi
       if [ $UPDATE_AVAILABLE -eq 1 ];
       then
-        e_and_l " Die Version ${light_yellow}$NEW_PKG_INST_VERS${colors_off} steht zur Verfügung. Zum Update muss die alte Version"
-        e_and_l " erst vollständig entfernt und danach die neue Version installiert werden."
-        e_and_l " Eventuell bestehende Konfigurationsdaten werden zuvor natürlich gesichert."
+        e_and_l -n " Die Version ${light_yellow}$NEW_PKG_INST_VERS${colors_off} steht"
+        # Bei unterschiedlichen Quellen Hinweis anzeigen
+        if [ "$NEW_PKG_SRC" != "" ] &&
+           [ "$NEW_PKG_SRC" != "$OLD_PKG_SRC" ];
+        then
+          # Mit Dateien des Typs .deb installierte Programme werden von
+          # apt als aus dem Standard installiert ausgegeben, daher in
+          # dieser Kombination keinen Hinweis ausgeben
+          if [ "$OLD_PKG_SRC" != "STD" ] || [ "$NEW_PKG_SRC" != "DEB" ];
+          then
+            e_and_l -n " aus ${bold_white}anderer Quelle${colors_off} ${dark_grey}($NEW_PKG_SRC)${colors_off}"
+          fi
+        fi
+        e_and_l " zur Verfügung."
+        e_and_l " Zum Update muss die alte Version erst vollständig entfernt und danach die"
+        e_and_l " neue Version installiert werden. Eventuell bestehende Konfigurationsdaten"
+        e_and_l " werden zuvor natürlich gesichert."
         # Falls vorhanden Voraussetzungen anzeigen und evaluieren
         FILL_WORD="jetzt"
         SHOW_PKG_MSG=""
         TMP_PACK_MSG="${WEB_PKG_MESG[$pkg_name]}"
-        if [ "$TMP_PACK_MSG" = "" ]; then TMP_PACK_MSG="${DEB_PKG_MESG[$pkg_name]}"; fi
+        if [ "$TMP_PACK_MSG" == "" ]; then TMP_PACK_MSG="${DEB_PKG_MESG[$pkg_name]}"; fi
         if [ "$TMP_PACK_MSG" != "" ];
         then
           SHOW_PKG_MSG="${bold_red}Achtung:${colors_off} ${light_yellow}$TMP_PACK_MSG${colors_off}"
@@ -8014,7 +8181,7 @@ then
         if [ "$SHOW_PKG_MSG" != "" ];
         then
           EVAL_TEST="${WEB_PKG_EVAL["$pkg_name"]}"
-          if [ "$EVAL_TEST" = "" ]; then EVAL_TEST="${DEB_PKG_EVAL["$pkg_name"]}"; fi
+          if [ "$EVAL_TEST" == "" ]; then EVAL_TEST="${DEB_PKG_EVAL["$pkg_name"]}"; fi
           if [ "$EVAL_TEST" != "" ];
           then
             eval "$EVAL_TEST" &>/dev/null
@@ -8128,7 +8295,7 @@ then
         e_and_l " Es steht keine neuere Version zur Verfügung ... $OK_TAG"
       fi
     else
-      e_and_l " ${bold_red}nicht${colors_off} installiert."
+      e_and_l " ist ${bold_red}nicht${colors_off} installiert."
     fi
   done
   e_and_l "$FULL_LINE"
@@ -8271,7 +8438,7 @@ then
             get_package_type $pkg
             if [ "$PACKAGE_TYPE" != "STD" ];
             then
-              if [ "$PACKAGE_TYPE" = "NONE" ];
+              if [ "$PACKAGE_TYPE" == "NONE" ];
               then
                 LIST_TXT+=" ${light_red}(Quellangaben unvollständig)${colors_off}"
             else
@@ -8414,7 +8581,7 @@ then
   # ---------------------------------------------------------------------------
   # Cinnamon Tools Icons
   # ---------------------------------------------------------------------------
-  if [ "$DESKTOP_ENVIRONMENT" = "Cinnamon" ];
+  if [ "$DESKTOP_ENVIRONMENT" == "Cinnamon" ];
   then
     NEW_ICON_COUNTER=0
     e_and_l " ${bold_blue}Cinnamon Tools${colors_off}"
@@ -8846,7 +9013,7 @@ then
       # ========================================================================
       ACTION_MESSAGE=" Extra-Mauszeiger ${light_cyan}CursorPack${colors_off} installieren"
       USER_ICON_DIR="$USER_HOME_DIR/.icons"
-      if [ "$DESKTOP_ENVIRONMENT" = "MATE" ];
+      if [ "$DESKTOP_ENVIRONMENT" == "MATE" ];
       then
         if [ ! -f "$USER_ICON_DIR/.CursorPack_ok" ];
         then
@@ -8902,7 +9069,7 @@ then
       # Themen Ambiant und Radiant installieren
       # ===========================================================================
       ACTION_MESSAGE=" Themen ${light_cyan}Ambiant und Radiant${colors_off} installieren"
-      if [ "$DESKTOP_ENVIRONMENT" = "MATE" ];
+      if [ "$DESKTOP_ENVIRONMENT" == "MATE" ];
       then
         THEME_TARGET_HOME="/usr/share"
         declare -A THEME_DIR
@@ -9234,7 +9401,7 @@ then
         ((ANZ_SPACES-=${#AUTOSTART_ACTIVATE_DESC[$a]}))
         ((ANZ_SPACES-=${#PACKET_NAME_TO_SHOW}))
         i=1; while [ $i -lt $ANZ_SPACES ]; do ACTION_MESSAGE+=" "; ((i+=1)); done
-        if [ "${AUTOSTART_ACTIVATE_ONLY[$a]}" = "all" ] ||
+        if [ "${AUTOSTART_ACTIVATE_ONLY[$a]}" == "all" ] ||
            [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "${AUTOSTART_ACTIVATE_ONLY[$a]}") -gt 0 ];
         then
           # 1. Installation des Moduls
@@ -9272,8 +9439,8 @@ then
           if [ $INSTALL_STATUS -eq 1 ];
           then
             # Auf MATE- und Cinnamon-Desktop zusätzlich Autostart einrichten
-            if [ "$DESKTOP_ENVIRONMENT" = "MATE" ] ||
-               [ "$DESKTOP_ENVIRONMENT" = "Cinnamon" ];
+            if [ "$DESKTOP_ENVIRONMENT" == "MATE" ] ||
+               [ "$DESKTOP_ENVIRONMENT" == "Cinnamon" ];
             then
               e_and_l -n " Autostart für ${bold_white}$PACKET_NAME_TO_SHOW${colors_off} einrichten"
               ANZ_SPACES=18
@@ -9931,7 +10098,7 @@ then
         e_and_l -n " Bitte neuen Wert eingeben von ${bold_yellow}$MIN_SWAPPING${colors_off} bis ${bold_yellow}$MAX_SWAPPING${colors_off}"
         read -p ": " NEW_SWAPPING
         NEW_SWAPPING=$(echo $NEW_SWAPPING | sed 's/[^0-9]*//g')
-        if [ "$NEW_SWAPPING" = "" ]; then NEW_SWAPPING=0; fi
+        if [ "$NEW_SWAPPING" == "" ]; then NEW_SWAPPING=0; fi
       done
       e_and_l -n "$ACTION_MESSAGE"
       # Sofort ------------------------------------------------------------------
@@ -10111,7 +10278,7 @@ then
             e_and_l -n " Bitte maximale Größe angeben von ${bold_yellow}$RAMDISK_MIN_SIZE${colors_off} bis ${bold_yellow}$FREE_FOR_RAMDISK${colors_off} (MB)"
             read -p ": " RAMDISK_SIZE
             RAMDISK_SIZE=$(echo $RAMDISK_SIZE | sed 's/[^0-9]*//g')
-            if [ "$RAMDISK_SIZE" = "" ]; then RAMDISK_SIZE=0; fi
+            if [ "$RAMDISK_SIZE" == "" ]; then RAMDISK_SIZE=0; fi
           done
           ask_yes_or_no "" " Jetzt dynamische ${light_yellow}RAM Disk${colors_off} von ${light_yellow}max. $RAMDISK_SIZE MB${colors_off} anlegen"
           if [ $? -eq 1 ];
@@ -10552,7 +10719,7 @@ then
         do
           read -N 1 -r -s NEW_PERF_MODE
           NEW_PERF_MODE=$(echo $NEW_PERF_MODE | sed 's/[^0-9]*//g')
-          if [ "$NEW_PERF_MODE" = "" ]; then NEW_PERF_MODE=-1; fi
+          if [ "$NEW_PERF_MODE" == "" ]; then NEW_PERF_MODE=-1; fi
         done
         setterm -cursor on 2>/dev/null
         ask_yes_or_no "" " Taktfrequenzen auf das Profil ${light_yellow}${pi_perfname[$NEW_PERF_MODE]}${colors_off} umstellen"
@@ -10779,7 +10946,7 @@ then
         if [ $(grep -i -c -E "^\s*disable_overscan\s*\=" "$PI_CONF_FILE" 2>/dev/null) -gt 0 ];
         then
           CURRENT_OVERSCAN="$(grep -i -E "^\s*disable_overscan\s*\=" "$PI_CONF_FILE" | cut -d"=" -f 2 | xargs)"
-          if [ "$CURRENT_OVERSCAN" = "1" ];
+          if [ "$CURRENT_OVERSCAN" == "1" ];
           then
             NEW_OVERSCAN="0"
           else
@@ -11172,7 +11339,7 @@ EOF
         TEMP_MSG+="$NC_TAG"
       fi
     else # .... sonst unter lightdm eine neue Datei anlegen
-      if [ "$DISPLAY_MANAGER" = "lightdm" ];
+      if [ "$DISPLAY_MANAGER" == "lightdm" ];
       then
         echo -e "[greeter]" > "$NUMLOCK_FILE" 2>/dev/null
         echo -e "activate-numlock=true"$'\n' >> "$NUMLOCK_FILE" 2>/dev/null
@@ -11189,7 +11356,7 @@ EOF
     fi
     # Sicherheitshalber zusätzlich die DCONF-Settings erweitern
     # (dabei keine weitere Ausgabe erzeugen)
-    if [ "$DESKTOP_ENVIRONMENT" = "MATE" ];
+    if [ "$DESKTOP_ENVIRONMENT" == "MATE" ];
     then
       CURRENT_MATE_NUMLOCK_SETTING="$(gsettings_get org.mate.peripherals-keyboard numlock-state)"
       # echo -e "$CURRENT_MATE_NUMLOCK_SETTING" # NUR ZUM TESTEN
@@ -11290,7 +11457,7 @@ EOF
   # Anzeige der Tastatur-LEDs einschalten
   # ===========================================================================
   ACTION_MESSAGE=" Anzeige der ${light_cyan}Tastatur-LEDs${colors_off} einschalten"
-  if [ "$DESKTOP_ENVIRONMENT" = "MATE" ];
+  if [ "$DESKTOP_ENVIRONMENT" == "MATE" ];
   then
     LED_STATUS="$(gsettings_get org.mate.peripherals-keyboard-xkb.general duplicate-leds)"
     if [ "$LED_STATUS" != "true" ];
@@ -11932,25 +12099,34 @@ EOF
       disk_name="$(echo ${disk_data} | awk '{print $1}' | xargs)"
       disk_rota=$(echo ${disk_data} | awk '{print $2}' | xargs)
       DEVICE_NAME="/dev/${disk_name}"
+      MAX_INFO_LENGTH=64
       # Hersteller (Family)
       DISK_FAMILY=$(smartctl -x ${DEVICE_NAME} 2>/dev/null | grep -i -E "Model\s*Family" | sed -E "s/Model\s*Family\s*:*//i" | xargs)
-      DISK_FAMILY=${DISK_FAMILY:0:40}
+      if [ ${#DISK_FAMILY} -gt $MAX_INFO_LENGTH ]; then DISK_FAMILY=${DISK_FAMILY:0:$MAX_INFO_LENGTH}; fi
       # Bezeichnung (Model)
       DISK_MODEL=$(LANG=en smartctl -i -d sat ${DEVICE_NAME} 2>/dev/null | grep -i -E "device\s*model" | cut -d":" -f 2 | xargs)
-      if [ "$DISK_MODEL" = "" ];
+      if [ "$DISK_MODEL" == "" ];
       then
-        DISK_MODEL=$(LANG=en lsblk -S -o model ${DEVICE_NAME} 2>/dev/null | awk 'NR>1')
+        DISK_MODEL=$(LANG=en lsblk -S -o model ${DEVICE_NAME} 2>/dev/null | awk 'NR>1' | xargs)
       fi
-      if [ "$DISK_MODEL" = "" ];
+      if [ "$DISK_MODEL" == "" ];
       then
-        DISK_MODEL=$(LANG=en parted ${DEVICE_NAME} print 2>/dev/null | grep -i -E "^model" | cut -d":" -f 2)
+        DISK_MODEL=$(LANG=en parted -s ${DEVICE_NAME} print 2>/dev/null | grep -i -E "^model" | cut -d":" -f 2 | xargs)
       fi
-      DISK_MODEL=${DISK_MODEL:0:40}
       DISK_MODEL=$(echo ${DISK_MODEL//_/ } | xargs)
-      # Seriennummer
+      if [ ${#DISK_MODEL} -gt $MAX_INFO_LENGTH ]; then DISK_MODEL=${DISK_MODEL:0:$MAX_INFO_LENGTH}; fi
+      # Seriennummer (Serial)
       DISK_SERIAL=$(LANG=en smartctl -i -d sat ${DEVICE_NAME} 2>/dev/null | grep -i -E "serial\s*number" | cut -d":" -f 2 | xargs)
+      if [ "$DISK_SERIAL" == "" ];
+      then
+        if udevadm --version &>/dev/null;
+        then
+          DISK_SERIAL=$(LANG=en udevadm info --name=${DEVICE_NAME} | grep -i -E "\s*E:\s*ID_SERIAL_SHORT\s*=" | head -n 1 | sed -E "s/\s*E:\s*ID_SERIAL_SHORT\s*=//i" | xargs)
+        fi
+      fi
+      if [ ${#DISK_SERIAL} -gt $MAX_INFO_LENGTH ]; then DISK_SERIAL=${DISK_SERIAL:(-$MAX_INFO_LENGTH):$MAX_INFO_LENGTH}; fi
       # Start der Ausgabe
-      disk_name=$(echo ${disk_name:0:8} | xargs)
+      # disk_name=$(echo ${disk_name:0:8} | xargs)
       e_and_l "$HALF_LINE"
       e_and_l " Prüfe ${bold_white}$DEVICE_NAME${colors_off}"
       if [ "$DISK_FAMILY" != "" ]; then e_and_l " Hersteller:   ${light_cyan}$DISK_FAMILY${colors_off}"; fi
@@ -11983,7 +12159,7 @@ EOF
         # --------------------------
         e_and_l -n " - Status des ${light_cyan}SMART-Fehlerprotokolls${colors_off} ... Fehlerliste "
         ERROR_LIST=$(smartctl -d sat --quietmode=errorsonly --all ${DEVICE_NAME} 2>"$LOG_TEMP")
-        if [ "$ERROR_LIST" = "" ];
+        if [ "$ERROR_LIST" == "" ];
         then
           e_and_l "${bold_green}leer${colors_off}"
         else
@@ -12019,12 +12195,12 @@ EOF
         e_and_l -n "${light_cyan}$PARTITION_NR${colors_off}: "
         PARTITION_TYPE=$(echo $partition | cut -d":" -f 5 | xargs)
         PARTITION_TYPE=${PARTITION_TYPE:0:6}
-        if [ "$PARTITION_TYPE" = "" ];
+        if [ "$PARTITION_TYPE" == "" ];
         then
           PARTITION_TYPE=$(LANG=en parted ${DEVICE_NAME} print 2>/dev/null | grep -i -E "^\s*${PARTITION_NR}\s" | awk '{print $5}' | xargs)
           PARTITION_TYPE=${PARTITION_TYPE:0:8}
-          if [ "$PARTITION_TYPE" = "" ] ||
-             [ "$PARTITION_TYPE" = "primary" ];
+          if [ "$PARTITION_TYPE" == "" ] ||
+             [ "$PARTITION_TYPE" == "primary" ];
           then
             PARTITION_TYPE="unknown"
           fi
@@ -12578,9 +12754,9 @@ then
             e_and_l -n "   $source_file" # Voller Pfad
             # -----------------------------------------------------
             # FILE_EXTENSION=${source_file##*\.}
-            # if [ "$FILE_EXTENSION" = "dpkg-old" ] ||
-            #    [ "$FILE_EXTENSION" = "save" ] ||
-            #    [ "$FILE_EXTENSION" = "bak" ];
+            # if [ "$FILE_EXTENSION" == "dpkg-old" ] ||
+            #    [ "$FILE_EXTENSION" == "save" ] ||
+            #    [ "$FILE_EXTENSION" == "bak" ];
             # then
             #   e_and_l " ($OK_TAG)"
             # else
@@ -12919,44 +13095,42 @@ then
   # ===========================================================================
   # Löschen veralteter APT-Paket-Listen und APT-Cache-Dateien
   # ===========================================================================
-  if lsof -v &>/dev/null;
+  ask_yes_or_no "apt_clear_all" " Den ${light_cyan}APT-Zwischenspeicher${colors_off} und ${light_cyan}Paket-Listen${colors_off} bereinigen"
+  if [ $? -eq 1 ];
   then
-    ask_yes_or_no "apt_clear_all" " Den ${light_cyan}APT-Zwischenspeicher${colors_off} und ${light_cyan}Paket-Listen${colors_off} bereinigen"
-    if [ $? -eq 1 ];
+    # Nur weitermachen, wenn nicht gerade eine andere dpkg-Aktion läuft
+    if [ ! -s "/var/lib/dpkg/lock" ] &&
+       [ ! -s "/var/lib/dpkg/lock-frontend" ];
     then
-      # Nur weitermachen, wenn nicht gerade eine andere dpkg-Aktion läuft
-      if [ $(lsof /var/lib/dpkg/lock 2>/dev/null | wc -l) -eq 0 ];
+      # Löschen der APT-Paket-Listen ----------------------------------------------
+      if [ -d "/var/lib/apt/lists" ];
       then
-        # Löschen der APT-Paket-Listen ----------------------------------------------
-        if [ -d "/var/lib/apt/lists" ];
-        then
-          e_and_l -n " - Löschen der veralteten ${light_yellow}APT-Paket-Listen${colors_off}  ... "
-          rm -f /var/lib/apt/lists/* &>"$LOG_TEMP"
-          e_and_l "$OK_TAG"
-          add_full_log
-        fi
-        # Löschen veralteter APT-Cache-Dateien --------------------------------------
-        e_and_l -n " - Löschen der veralteten ${light_yellow}APT-Cache-Dateien${colors_off} ... "
-        apt-get clean &>"$LOG_TEMP"
+        e_and_l -n " - Löschen der veralteten ${light_yellow}APT-Paket-Listen${colors_off}  ... "
+        rm -f /var/lib/apt/lists/* &>"$LOG_TEMP"
+        e_and_l "$OK_TAG"
+        add_full_log
+      fi
+      # Löschen veralteter APT-Cache-Dateien --------------------------------------
+      e_and_l -n " - Löschen der veralteten ${light_yellow}APT-Cache-Dateien${colors_off} ... "
+      apt-get clean &>"$LOG_TEMP"
+      if [ $? -eq 0 ];
+      then
+        apt-get autoclean &>>"$LOG_TEMP"
         if [ $? -eq 0 ];
         then
-          apt-get autoclean &>>"$LOG_TEMP"
-          if [ $? -eq 0 ];
-          then
-            e_and_l "$OK_TAG"
-          else
-            e_and_l "$ERROR_TAG $LINENO"
-          fi
+          e_and_l "$OK_TAG"
         else
           e_and_l "$ERROR_TAG $LINENO"
         fi
-        add_full_log
-        # Repository aktualisieren und Paketlisten neu erstellen --------------
-        repo_update " - Erneuerung des ${light_yellow}Repository${colors_off}, bitte warten  ... "
       else
-        e_and_l " $ERROR_TAG: APT ist gerade durch einen anderen Prozess geblockt (Update?), eine"
-        e_and_l " Bereinigung daher derzeit ${bold_red}nicht${colors_off} möglich - bitte später nochmals versuchen."
+        e_and_l "$ERROR_TAG $LINENO"
       fi
+      add_full_log
+      # Repository aktualisieren und Paketlisten neu erstellen --------------
+      repo_update " - Erneuerung des ${light_yellow}Repository${colors_off}, bitte warten  ... "
+    else
+      e_and_l " $ERROR_TAG: ${bold_white}apt${colors_off} ist gerade durch einen anderen Prozess geblockt (Update?), eine"
+      e_and_l " Bereinigung daher derzeit ${bold_red}nicht${colors_off} möglich - bitte später nochmals versuchen."
     fi
   fi
 
@@ -13170,7 +13344,7 @@ then
     THE_TEMP_FILE="$DOWNLOAD_DIR/individual"
     DECODED_PASS=$(echo -n ${USER_PASSWORD} | md5sum | awk '{print $1}')
     CHECK_PASS=$(wget -nv --post-data="&c=1&u=$TMP_USER_NAME&p=$DECODED_PASS" -O "$THE_TEMP_FILE" "$DOWNLOAD_FILE_URL" &>/dev/null && cat "$THE_TEMP_FILE" 2>/dev/null)
-    if [ "$CHECK_PASS" = "SUCCESS" ];
+    if [ "$CHECK_PASS" == "SUCCESS" ];
     then
       # ---------------------------------------------------------------------
       # Liste der Einstellungen und Aktionen definieren
@@ -13235,12 +13409,12 @@ then
       USER_CONF_MSG[doublcmd]=""
       # Kate
 #       THE_KATE_VERSION=$(get_pkg_apt_version "kate" 1)
-#       if [ "$THE_KATE_VERSION" = "" ];
+#       if [ "$THE_KATE_VERSION" == "" ];
 #       then
 #         THE_KATE_VERSION=$(get_pkg_snap_version "kate" 1)
 #       fi
 #       THE_KATE_VERSION=$(echo -n "${THE_KATE_VERSION:0:2}" | xargs)
-#       if [ "$THE_KATE_VERSION" = "" ]; then THE_KATE_VERSION=0; fi
+#       if [ "$THE_KATE_VERSION" == "" ]; then THE_KATE_VERSION=0; fi
 #       USER_CONF_NAM[kateconf]="Konfiguration des Programms [cs]Kate$THE_KATE_VERSION (Editor)[ce]"
 #       if [ $THE_KATE_VERSION -lt 20 ];
 #       then
@@ -13305,7 +13479,7 @@ then
         ACTION_MESSAGE=" $SHOW_NAME"
         i=1; while [ $i -lt $ANZ_SPACES ]; do ACTION_MESSAGE+=" "; ((i+=1)); done
         ACTION_MESSAGE+="... "
-        if [ "$DESKTOP_ENVIRONMENT" = "MATE" ] ||
+        if [ "$DESKTOP_ENVIRONMENT" == "MATE" ] ||
            [ "${USER_CONF_MAO[$IDX_NAME]}" != "true" ];
         then
           ask_yes_or_no "" " $SHOW_NAME"
@@ -13316,7 +13490,7 @@ then
             # --------------------------------------------------------------
             # Bei dconf-Änderung ("desktopu") zusätzliches Backup erstellen
             # --------------------------------------------------------------
-            # if [ "$IDX_NAME" = "desktopu" ];
+            # if [ "$IDX_NAME" == "desktopu" ];
             # then
             #   sudo -u ${USER_USERNAME} DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${USER_UID}/bus" dconf dump / 1>${DCONF_USER_BACKUP} 2>/dev/null
             #   chown -R "$USER_USERNAME:$USER_USERNAME" "${DCONF_USER_BACKUP}" &>/dev/null
@@ -13325,8 +13499,8 @@ then
             # ----------------------------------------------------------
             # Wenn keine Datei im Spiel ist, nur Kommando ausführen ...
             # ----------------------------------------------------------
-            if [ "${USER_CONF_SRC[$IDX_NAME]}" = "" ] &&
-               [ "${USER_CONF_DST[$IDX_NAME]}" = "" ];
+            if [ "${USER_CONF_SRC[$IDX_NAME]}" == "" ] &&
+               [ "${USER_CONF_DST[$IDX_NAME]}" == "" ];
             then
               { eval "${USER_CONF_COM[$IDX_NAME]}" 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; } | tee "$LOG_TEMP"
               if [ $(cat "$LAST_EXIT_CODE") -eq 0 ];
@@ -13557,10 +13731,10 @@ then
     fi
 
     OPT_PKG_INST_NAME="${DEB_PKG_NAME[$REMOVE_PKG_NAME]}"
-    if [ "$OPT_PKG_INST_NAME" = "" ];
+    if [ "$OPT_PKG_INST_NAME" == "" ];
     then
       OPT_PKG_INST_NAME="${WEB_PKG_NAME[$REMOVE_PKG_NAME]}"
-      if [ "$OPT_PKG_INST_NAME" = "" ];
+      if [ "$OPT_PKG_INST_NAME" == "" ];
       then
         OPT_PKG_INST_NAME="$REMOVE_PKG_NAME"
       fi
@@ -13571,7 +13745,7 @@ then
     fi
 
     WEB_PKG_INST_NAME="${WEB_PKG_NAME[$REMOVE_PKG_NAME]}"
-    if [ "$WEB_PKG_INST_NAME" = "" ];
+    if [ "$WEB_PKG_INST_NAME" == "" ];
     then
       WEB_PKG_INST_NAME="$REMOVE_PKG_NAME"
     fi
@@ -13654,6 +13828,7 @@ then
       2) TMP_PKG_TYPE="SNAP" ;;
       3) TMP_PKG_TYPE="DEB"  ;;
       4) TMP_PKG_TYPE="WEB"  ;;
+      # 5) TMP_PKG_TYPE="SHAR" ;;
       6) TMP_PKG_TYPE="FLAT" ;;
     esac
     # echo -e ""
@@ -13672,7 +13847,7 @@ then
       do
         read -N 1 -r -s REMOVE_ACTION
         REMOVE_ACTION=$(echo $REMOVE_ACTION | sed 's/[^0-9]*//g')
-        if [ "$REMOVE_ACTION" = "" ]; then REMOVE_ACTION=-1; fi
+        if [ "$REMOVE_ACTION" == "" ]; then REMOVE_ACTION=-1; fi
       done
       if [ $REMOVE_ACTION -eq 0 ];
       then
