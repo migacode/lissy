@@ -39,7 +39,7 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 06.06.2025
+# Letzte Änderung: 08.06.2025
 # Versionsnummer (maximal sechs Zeichen lang ;)
 VERSION="5.0.0"
 
@@ -4760,6 +4760,7 @@ function show_base_pkg {
   else
     SHOW_WARN_TYPE="$ACHTUNG_TAG"
   fi
+  SHOW_SKIP_MESSAGE=0
 
   # ----------------------------------------------------------------
   # Wenn ein zugehöriges vorher zu installierendes Paket nicht oder
@@ -4775,16 +4776,29 @@ function show_base_pkg {
       OTHER_SRC="$(inst_status_to_name $PRE_INST_PKG_INST_STATUS)"
       SHOW_I_STATUS="aus anderer Quelle (${light_purple}$OTHER_SRC${colors_off})"
     fi
-    e_and_l " $SHOW_WARN_TYPE:"
-    e_and_l "$PRE_SPACE Das zugehörige Paket ${light_cyan}$PRE_INST_PKG_NAME${colors_off} ist $SHOW_I_STATUS installiert."
+    if [ $ASK_TO_CONTINUE -eq 0 ] ||
+       [ ${OPTION_FLAG[esamesrc]} -eq 0 ];
+    then
+      e_and_l " $SHOW_WARN_TYPE:"
+      e_and_l -n "$PRE_SPACE"
+    fi
+    e_and_l " Das zugehörige Paket ${light_cyan}$PRE_INST_PKG_NAME${colors_off} ist $SHOW_I_STATUS installiert."
     e_and_l -n "$PRE_SPACE"
     if [ $ASK_TO_CONTINUE -eq 1 ];
     then
-      ask_yes_no_info "$INFO_PAKET" 1
-      CONTINUE_INSTALL=$?
+      if [ $PRE_INST_PKG_INST_STATUS -eq 0 ] ||
+         [ ${OPTION_FLAG[esamesrc]} -eq 0 ];
+      then
+        ask_yes_no_info "$INFO_PAKET" 1
+        CONTINUE_INSTALL=$?
+      else
+        CONTINUE_INSTALL=0
+        SHOW_SKIP_MESSAGE=1
+      fi
       ASKED_ALREADY_TO_CONTINUE=1
     fi
   fi
+
   # --------------------------------------------------------
   # Wenn ein erforderliches Basispaket nicht oder aus einer
   # anderen Quelle installiert ist, dann Warnung ausgeben
@@ -4801,15 +4815,32 @@ function show_base_pkg {
       OTHER_SRC="$(inst_status_to_name $BASE_PKG_INST_STATUS)"
       SHOW_I_STATUS="aus anderer Quelle (${light_purple}$OTHER_SRC${colors_off})"
     fi
-    e_and_l " $SHOW_WARN_TYPE:"
-    e_and_l "$PRE_SPACE Das Basispaket ${light_cyan}$BASE_PKG_NAME${colors_off} ist $SHOW_I_STATUS installiert."
+    if [ $ASK_TO_CONTINUE -eq 0 ] ||
+       [ ${OPTION_FLAG[esamesrc]} -eq 0 ];
+    then
+      e_and_l " $SHOW_WARN_TYPE:"
+      e_and_l -n "$PRE_SPACE"
+    fi
+    e_and_l " Das Basispaket ${light_cyan}$BASE_PKG_NAME${colors_off} ist $SHOW_I_STATUS installiert."
     e_and_l -n "$PRE_SPACE"
     if [ $ASK_TO_CONTINUE -eq 1 ];
     then
-      ask_yes_no_info "$INFO_PAKET" 1
-      CONTINUE_INSTALL=$?
+      if [ $BASE_PKG_INST_STATUS -eq 0 ] ||
+         [ ${OPTION_FLAG[esamesrc]} -eq 0 ];
+      then
+        ask_yes_no_info "$INFO_PAKET" 1
+        CONTINUE_INSTALL=$?
+      else
+        CONTINUE_INSTALL=0
+        SHOW_SKIP_MESSAGE=1
+      fi
       ASKED_ALREADY_TO_CONTINUE=1
     fi
+  fi
+
+  if [ $SHOW_SKIP_MESSAGE -eq 1 ];
+  then
+    e_and_l " Das Paket ${light_yellow}$INFO_PAKET${colors_off} (${light_purple}$(inst_status_to_name $INSTALL_MODE)${colors_off}) wird daher ${bold_white}nicht${colors_off} installiert."
   fi
 }
 
@@ -5907,7 +5938,7 @@ declare -A OPTION_TEXT # Angezeigte Bezeichnung der Option
 declare -A OPTION_MENU # Index des Menüpunktes, in dem die Option erscheint
 
 OPTION_LIST=()
-OPTION_LIST+=(extends addflat addsnap external prioflat priosnap skipsims foreign force quiet status listonly addstart csubdirs) # Menu 2
+OPTION_LIST+=(extends addflat addsnap external prioflat priosnap skipsims esamesrc foreign force quiet status listonly addstart csubdirs) # Menu 2
 OPTION_LIST+=(extras exupdate optimize repair cleansys adcstart setutc kuplock kunlock revive personal dsave dload) # Menu 4
 OPTION_LIST+=(noupdate norepo autoyorn notoall skipmesg exupdall infoonly noinfo log logfull nocolor saveconf reset cleantmp) # Menu 5
 
@@ -5921,6 +5952,7 @@ OPTION_TEXT[cleantmp]="Alle temporären Dateien bei Programmende löschen"
 OPTION_TEXT[csubdirs]="Starter für Spiele in Unterordnern kategorisieren"
 OPTION_TEXT[dload]="Gespeicherte Desktop-Einstellungen laden (dconf)"
 OPTION_TEXT[dsave]="Aktuelle Desktop-Einstellungen speichern (dconf)"
+OPTION_TEXT[esamesrc]="Erweiterungs-Pakete nur aus gleicher Quelle installieren"
 OPTION_TEXT[extends]="Repository um individuelle Pakete und PPAs erweitern"
 OPTION_TEXT[external]="Programme zum Download aus externen Quellen hinzufügen"
 OPTION_TEXT[extras]="Extras (Treiber und zus. Systemkomponenten) installieren"
@@ -5969,6 +6001,7 @@ else
 fi
 OPTION_MENU[addflat]=2
 OPTION_MENU[addsnap]=2
+OPTION_MENU[esamesrc]=2
 OPTION_MENU[extends]=2
 OPTION_MENU[external]=2
 OPTION_MENU[force]=2
@@ -7463,6 +7496,7 @@ PRE_INST_CONF[wine]="$RESSOURCE_SERVER_DIR/scripts/wine_pre_inst"
 declare -A POST_INST_CONF
 
 POST_INST_CONF[anydesk]="$RESSOURCE_SERVER_DIR/scripts/anydesk_post_inst"
+POST_INST_CONF[apache2]="$RESSOURCE_SERVER_DIR/scripts/apache2_post_inst"
 POST_INST_CONF[code-the-classics]="$RESSOURCE_SERVER_DIR/scripts/code-the-classics_post_inst"
 POST_INST_CONF[czkawka]="$RESSOURCE_SERVER_DIR/scripts/czkawka_post_inst"
 POST_INST_CONF[freefilesync]="$RESSOURCE_SERVER_DIR/scripts/freefilesync_post_inst"
@@ -8714,6 +8748,10 @@ then
   # e_and_l "     dsave  Erstellt eine Sicherung der Einstellungen des Benutzers"
   # e_and_l "            von Desktop und verschiedenen Anwendungen (dconf)."
   # e_and_l ""
+  e_and_l "  esamesrc  Erweiterungen von Paketen werden nur aus der gleichen"
+  e_and_l "            Quelle wie der des Basis-Paketes installiert, und wenn"
+  e_and_l "            nicht aus gleicher Quelle verfügbar übersprungen."
+  e_and_l ""
   e_and_l "   extends  Erweitert das Repository um Einträge von individuellen"
   e_and_l "            Anbietern sowie PPAs."
   e_and_l ""
@@ -9919,6 +9957,7 @@ then
 
   ANZ_PACKS_TO_SHOW=$((TOTAL_PACKS+LIST_PACKS))
   START_MSG="$FULL_LINE"
+  START_MSG+=$'\n'
   START_MSG+=" ${bold_blue}$ACTION_TXT von ${bold_white}$ANZ_PACKS_TO_SHOW${colors_off}${bold_blue} ausgewählten Programmpaketen${colors_off}"
   START_MSG+=$'\n'
   if [ ${OPTION_FLAG[listonly]} -eq 1 ];
@@ -9926,6 +9965,7 @@ then
     START_MSG+=" ${bold_blue}Hinweise:${colors_off}  ${light_purple}(Externe Paketquelle)${colors_off}  ${light_yellow}[Alternative Programmpakete]${colors_off}"$'\n'
   fi
   START_MSG+="$FULL_LINE"
+  # START_MSG+=$'\n'
   e_and_l "$START_MSG"
 
   # ============================================================================
@@ -10393,6 +10433,7 @@ then
   then
 
     SUMMARY_TEXT="$FULL_LINE"
+    SUMMARY_TEXT+=$'\n'
     SUMMARY_TEXT+=" ${bold_blue}Zusammenfassung der Paket-Verarbeitung${colors_off}"
     SUMMARY_TEXT+=$'\n'
     SUMMARY_TEXT+="$FULL_LINE"
