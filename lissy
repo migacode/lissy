@@ -39,7 +39,7 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 08.06.2025
+# Letzte Änderung: 10.06.2025
 VERSION="5.0.0"
 
 ################################################################################
@@ -93,15 +93,14 @@ function add_similar_starter {
           if [ "$PKG_VERSION" != "" ] &&
              [ "$PKG_VERSION" != "0" ];
           then
-            e_and_l -n " ${light_purple}$PKG_VERSION${colors_off}"
+            e_and_l -n " ${light_yellow}$PKG_VERSION${colors_off}"
           fi
-          e_and_l -n " ist"
           case "$SIM_PACK_INST_MODE" in
               # 1|3|4|5) e_and_l -n " bereits" ;;
-                    2) e_and_l -n " als ${light_purple}Snap${colors_off}" ;;
-                    6) e_and_l -n " als ${light_purple}Flatpak${colors_off}" ;;
+                    2) e_and_l -n " (${light_purple}Snap${colors_off})" ;;
+                    6) e_and_l -n " (${light_purple}Flatpak${colors_off})" ;;
           esac
-          e_and_l " installiert"
+          e_and_l " ist installiert"
           ((PAKETS_EXIST+=1))
           ((PAKETS_SIMILAR_EXIST+=1))
           ((SIMILAR_WARNING_SHOWN+=1))
@@ -179,7 +178,8 @@ function ask_for_install_mode {
         get_install_status "$CHECK_SIM_PACK"
         if [ $? -ne 0 ];
         then
-          e_and_l -n "$PRE_SPACE $ACHTUNG_TAG: Alternative ${light_yellow}$CHECK_SIM_PACK${colors_off}"
+          e_and_l "$PRE_SPACE $ACHTUNG_TAG:"
+          e_and_l -n "$PRE_SPACE Alternative ${light_yellow}$CHECK_SIM_PACK${colors_off}"
           if [ "$PKG_VERSION" != "" ] &&
              [ "$PKG_VERSION" != "0" ];
           then
@@ -274,7 +274,8 @@ function ask_yes_no_info {
             if [ $? -ne 0 ];
             then
               if [ $SIM_PACK_INSTALLED -gt 0 ]; then e_and_l -n "$PRE_SPACE"; fi
-              e_and_l -n " $ACHTUNG_TAG: Alternative ${light_yellow}$CHECK_SIM_PACK${colors_off}"
+              e_and_l " $ACHTUNG_TAG:"
+              e_and_l -n "$PRE_SPACE Alternative ${light_yellow}$CHECK_SIM_PACK${colors_off}"
               if [ "$PKG_VERSION" != "" ] &&
                  [ "$PKG_VERSION" != "0" ];
               then
@@ -2844,7 +2845,7 @@ function install_pkg {
 
       # -----------------------------------------------------------------------
       # 1.2. Prüfen ob das Programmpaket als Snap-Paket verfügbar ist (SNAP)
-      #      (Bei Aufruf von install_pkg nach Erweiterung der Repos auslassen)
+      #      Bei Aufruf von install_pkg nach Erweiterung der Repos auslassen
       # -----------------------------------------------------------------------
       if [ ${OPTION_FLAG[addsnap]} -eq 1 ] &&
          [ $FORCE_THIS_FLATPAK -eq 0 ] &&
@@ -2863,7 +2864,7 @@ function install_pkg {
 
       # -----------------------------------------------------------------------
       # 1.3. Prüfen ob das Programmpaket als Flatpak-Paket verfügbar ist (FLAT)
-      #      (Bei Aufruf von install_pkg nach Erweiterung der Repos auslassen)
+      #      Bei Aufruf von install_pkg nach Erweiterung der Repos auslassen
       # -----------------------------------------------------------------------
       if [ ${OPTION_FLAG[addflat]} -eq 1 ] &&
          [ $FORCE_THIS_SNAPPY -eq 0 ] &&
@@ -2896,15 +2897,16 @@ function install_pkg {
         # -----------
         if [ "$LAST_ERW_PACK" != "$PAKET" ];
         then
-          LAST_ERW_PACK="$PAKET"
+          # LAST_ERW_PACK="$PAKET"
           if [ "${ERW_AUTH_KEY[$PAKET]}" != "" ] &&
              [ "${ERW_REPO_TXT[$PAKET]}" != "" ];
           then
-            if [ $INSTALL_TRY -eq 0 ];
-            then
+            # if [ $INSTALL_TRY -eq 0 ];
+            # then
+              LAST_ERW_PACK="$PAKET"
               extend_repo_erw "$PAKET"
               e_and_l -n "$PRE_SPACE"
-            fi
+            # fi
             ((INSTALL_TRY+=1))
             install_pkg $PAKET $INSTALL_TRY 0 0
             return 0
@@ -2915,13 +2917,14 @@ function install_pkg {
         # -----------
         if [ "$LAST_PPA_PACK" != "$PAKET" ];
         then
-          LAST_PPA_PACK="$PAKET"
+          # LAST_PPA_PACK="$PAKET"
           if [ "${PPA_REPO_TXT[$PAKET]}" != "" ];
           then
             # if [ $INSTALL_TRY -eq 0 ];
             # then
-            extend_repo_ppa "$PAKET"
-            e_and_l -n "$PRE_SPACE"
+              LAST_PPA_PACK="$PAKET"
+              extend_repo_ppa "$PAKET"
+              e_and_l -n "$PRE_SPACE"
             # fi
             ((INSTALL_TRY+=1))
             install_pkg $PAKET $INSTALL_TRY 0 0
@@ -3104,6 +3107,10 @@ function install_pkg {
         if [ ${OPTION_FLAG[skipsims]} -eq 0 ] &&
            [ "${SIMILAR_PACK[$PAKET]}" != "" ];
         then
+          # ------------------------------------------------------
+          # Zur Vermeidung von Endlos-Schleifen nur weitermachen
+          # wenn das Paket vorher nicht bereits verarbeitet wurde
+          # ------------------------------------------------------
           PACK_ALREADY_SEEN=0
           for seen in ${PACKS_SEEN_LIST[@]};
           do
@@ -3114,6 +3121,7 @@ function install_pkg {
               break
             fi
           done
+          # ------------------------------------------------------
           if [ $PACK_ALREADY_SEEN -eq 0 ];
           then
             PACKS_SEEN_LIST+=("${SIMILAR_PACK[$PAKET]}")
@@ -3164,12 +3172,54 @@ function install_pkg {
               then
                 INSTALL_MODE=2
               else
-                # ----------------------------------------
-                # ... sonst den Benutzer auswählen lassen
-                # ----------------------------------------
-                show_base_pkg $PAKET 0
-                ask_for_install_mode "$PAKET" "$INST_MODE_LIST"
-                INSTALL_MODE=$?
+                # --------------------------------------------
+                # ... sonst weitere Prüfungen durchführen und
+                #     ggf. den Benutzer auswählen lassen
+                # --------------------------------------------
+                DO_ASK_FOR_INSTALL_MODE=1
+                # -------------------------------------------------------
+                # Wenn das Paket aus gleicher Quelle wie das Basis-Paket
+                # sein muss weitere Prüfungen durchführen
+                # -------------------------------------------------------
+                if [ ${OPTION_FLAG[esamesrc]} -eq 1 ];
+                then
+                  # ------------------------------------------------
+                  # Wenn es das Paket nicht aus der gleichen Quelle
+                  # gibt, dann die Installation abbrechen
+                  # ------------------------------------------------
+                  if [[ "$PRE_INST_PKG_NAME" != "" && $(echo ${INST_MODE_LIST} | grep -c -i -E "\,$PRE_INST_PKG_INST_STATUS") -eq 0 ]] ||
+                     [[ "$BASE_PKG_NAME" != "" && $(echo ${INST_MODE_LIST} | grep -c -i -E "\,$BASE_PKG_INST_STATUS") -eq 0 ]];
+                  then
+                    show_base_pkg $PAKET 0
+                    e_and_l " Das Paket ${light_yellow}$PAKET${colors_off} (${light_purple}$(inst_status_to_name $INSTALL_MODE)${colors_off}) wird daher ${bold_white}nicht${colors_off} installiert."
+                    INSTALL_MODE=0
+                    DO_ASK_FOR_INSTALL_MODE=0
+                  fi
+                  # ---------------------------------------------------------
+                  # Wenn es das Paket aus der gleichen Quelle gibt, dann
+                  # automatisch die Installation aus dieser Quelle auswählen
+                  # ---------------------------------------------------------
+                  if [[ "$PRE_INST_PKG_NAME" != "" && $(echo ${INST_MODE_LIST} | grep -c -i -E "\,$PRE_INST_PKG_INST_STATUS") -gt 0 ]];
+                  then
+                    INSTALL_MODE=$PRE_INST_PKG_INST_STATUS
+                    DO_ASK_FOR_INSTALL_MODE=0
+                  fi
+                  if [[ "$BASE_PKG_NAME" != "" && $(echo ${INST_MODE_LIST} | grep -c -i -E "\,$BASE_PKG_INST_STATUS") -gt 0 ]];
+                  then
+                    INSTALL_MODE=$BASE_PKG_INST_STATUS
+                    DO_ASK_FOR_INSTALL_MODE=0
+                  fi
+                fi
+                # --------------------------------------------
+                # Wenn zuletzt immer weiterhin eine Auswahl
+                # besteht, dann den Benutzer auswählen lassen
+                # --------------------------------------------
+                if [ $DO_ASK_FOR_INSTALL_MODE -eq 1 ];
+                then
+                  show_base_pkg $PAKET 0
+                  ask_for_install_mode "$PAKET" "$INST_MODE_LIST"
+                  INSTALL_MODE=$?
+                fi
                 if [ $INSTALL_MODE -eq 0 ];
                 then
                   CONTINUE_INSTALL=0
@@ -3178,9 +3228,9 @@ function install_pkg {
             fi
           else
           # --------------------------------------------------------------------
-          # Zusätzliche Abfrage, wenn ein erforderliches Basispaket oder ein
-          # zugehöriges vorher zu installierendes Paket nicht oder aus einer
-          # anderen Quelle installiert ist
+          # Zusätzliche Abfrage, wenn es keine Mehrfachauswahl zur Quelle gibt
+          # und ein erforderliches Basispaket oder ein zugehöriges vorher zu
+          # installierendes Paket nicht oder aus anderer Quelle installiert ist
           # --------------------------------------------------------------------
             show_base_pkg $PAKET 1
           fi
@@ -3348,7 +3398,7 @@ function install_pkg {
             if [ $PRE_CONF_RESULT -eq 0 ];
             then
 
-              e_and_l -n " Installiere ${light_yellow}$PAKET${colors_off} ... "
+              e_and_l -n " Installiere ${light_yellow}$PAKET${colors_off} (${light_purple}$(inst_status_to_name $INSTALL_MODE)${colors_off}) ... "
               if [ ${OPTION_FLAG[quiet]} -eq 0 ]; then echo -e ""; fi
 
               # ----------------------------------------------------------------
@@ -4075,7 +4125,6 @@ function install_pkg {
       IMODE_MSG+=" ${light_purple}$PKG_VERSION${colors_off}"
     fi
     IMODE_MSG+=" ist"
-
     case "$INST_RES" in
         1) if [ $IS_SIMILAR_PKG -eq 0 ]; then IMODE_MSG+=" bereits"; fi ;;
         2) IMODE_MSG+=" als ${light_purple}Snap${colors_off}" ;;
@@ -4156,6 +4205,7 @@ function probe_starter_name {
   # -------------------------------------------------------------
   # Bekannte Unterschiede zwischen Paket- und Starter-Dateinamen
   # -------------------------------------------------------------
+  THE_STARTER_NAME="${THE_STARTER_NAME/gnome-weather/weather}"
   THE_STARTER_NAME="${THE_STARTER_NAME/obs-studio/com.obsproject.studio}"
   THE_STARTER_NAME="${THE_STARTER_NAME/realvnc-vnc-server/realvnc-vncserver-service}"
   THE_STARTER_NAME="${THE_STARTER_NAME/realvnc-vnc-viewer/realvnc-vncviewer}"
@@ -4753,12 +4803,6 @@ function show_base_pkg {
   INFO_PAKET=$1
   ASK_TO_CONTINUE=$2
 
-  if [ $ASK_TO_CONTINUE -eq 0 ];
-  then
-    SHOW_WARN_TYPE="$HINWEIS_TAG"
-  else
-    SHOW_WARN_TYPE="$ACHTUNG_TAG"
-  fi
   SHOW_SKIP_MESSAGE=0
 
   # ----------------------------------------------------------------
@@ -4775,12 +4819,12 @@ function show_base_pkg {
       OTHER_SRC="$(inst_status_to_name $PRE_INST_PKG_INST_STATUS)"
       SHOW_I_STATUS="aus anderer Quelle (${light_purple}$OTHER_SRC${colors_off})"
     fi
-    if [ $ASK_TO_CONTINUE -eq 0 ] ||
-       [ ${OPTION_FLAG[esamesrc]} -eq 0 ];
-    then
-      e_and_l " $SHOW_WARN_TYPE:"
+    # if [ $ASK_TO_CONTINUE -eq 0 ] ||
+    #    [ ${OPTION_FLAG[esamesrc]} -eq 0 ];
+    # then
+      e_and_l " $ACHTUNG_TAG:"
       e_and_l -n "$PRE_SPACE"
-    fi
+    # fi
     e_and_l " Das zugehörige Paket ${light_cyan}$PRE_INST_PKG_NAME${colors_off} ist $SHOW_I_STATUS installiert."
     e_and_l -n "$PRE_SPACE"
     if [ $ASK_TO_CONTINUE -eq 1 ];
@@ -4814,12 +4858,12 @@ function show_base_pkg {
       OTHER_SRC="$(inst_status_to_name $BASE_PKG_INST_STATUS)"
       SHOW_I_STATUS="aus anderer Quelle (${light_purple}$OTHER_SRC${colors_off})"
     fi
-    if [ $ASK_TO_CONTINUE -eq 0 ] ||
-       [ ${OPTION_FLAG[esamesrc]} -eq 0 ];
-    then
-      e_and_l " $SHOW_WARN_TYPE:"
+    # if [ $ASK_TO_CONTINUE -eq 0 ] ||
+    #    [ ${OPTION_FLAG[esamesrc]} -eq 0 ];
+    # then
+      e_and_l " $ACHTUNG_TAG:"
       e_and_l -n "$PRE_SPACE"
-    fi
+    # fi
     e_and_l " Das Basispaket ${light_cyan}$BASE_PKG_NAME${colors_off} ist $SHOW_I_STATUS installiert."
     e_and_l -n "$PRE_SPACE"
     if [ $ASK_TO_CONTINUE -eq 1 ];
@@ -6123,12 +6167,12 @@ if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORI
 # ---------
 # Internet
 # ---------
-KATEGORIE_PKGS[i]="anydesk chromium element filezilla firefox hexchat microsoft-edge-stable opera rdesktop realvnc-vnc-server realvnc-vnc-viewer remmina teamviewer telegram thunderbird tor-browser transmission virt-viewer x11vnc"
+KATEGORIE_PKGS[i]="anydesk chromium element filezilla firefox hexchat microsoft-edge-stable opera rdesktop realvnc-vnc-server realvnc-vnc-viewer remmina rustdesk teamviewer telegram thunderbird tor-browser transmission virt-viewer x11vnc"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[i]+=" warpinator webapp-manager"; fi
 # -----------
 # Multimedia
 # -----------
-KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv gnome-sound-recorder gthumb gtkpod handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv mp3splt obs-studio openshot parole rhythmbox shotcut smplayer vlc webcamoid yt-dlp youtube-dl youtubedl-gui youplay"
+KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv gnome-sound-recorder gthumb gtkpod handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv mp3splt obs-studio openshot parole peek rhythmbox shotcut smplayer vlc webcamoid yt-dlp youtube-dl youtubedl-gui youplay"
 # -------------------
 # Netzwerkmanagement
 # -------------------
@@ -6223,7 +6267,7 @@ KATEGORIE_PKGS[xx]="alien apt-file apt-rdepends apt-show-versions arping arp-sca
 # --------
 # Zubehör
 # --------
-KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk doublecmd electrum engrampa file-roller freefilesync galculator gedit gnome-weather gucharmap kdeconnect keepass2 kfind klavaro ktouch magnus mousepad onboard plank pluma redshift rpi-imager sardu unetbootin usb-creator-common veracrypt xournal"
+KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk doublecmd electrum engrampa file-roller freefilesync galculator gedit gnome-weather gucharmap kdeconnect keepass2 kfind klavaro ksnip ktouch magnus mousepad onboard plank pluma redshift rpi-imager sardu unetbootin usb-creator-common veracrypt xournal"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[z]+=" sticky xed"; fi
 if [ "$DESKTOP_ENVIRONMENT" == "Cinnamon" ]; then KATEGORIE_PKGS[z]+=" cinnamon-desktop-environment"; fi
 
@@ -8527,10 +8571,10 @@ EOF
             then
               MENU_INFO_TEXT="\Z1\ZbWarnung\Zn\nEs wurden Tool-Pakete ausgewählt, die nicht für diesen Desktop vorgesehen sind."
             fi
-            # -------------------------------------------------
-            # Konflikte bei Angabe sich überlagernder Optionen
+            # -------------------------------
+            # Sich überlagernde Optionen
             # (notoall -> autoyorn -> force)
-            # -------------------------------------------------
+            # -------------------------------
             if [ ${OPTION_FLAG[notoall]} -eq 1 ];
             then
               if [ ${OPTION_FLAG[autoyorn]} -eq 1 ];
@@ -8547,6 +8591,9 @@ EOF
             then
               MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nOption \Z4autoyorn\Z0 überlagert Option \Z4force\Z0,\nso dass eventuell nicht alle Pakete installiert werden."
             fi
+            # ----------------------------------------------------
+            # Ausgewählte aber nicht installierte Paketverwaltung
+            # ----------------------------------------------------
             if [ ${OPTION_FLAG[priosnap]} -eq 1 ] &&
                [ ${OPTION_FLAG[addsnap]} -eq 0 ];
             then
@@ -8556,6 +8603,15 @@ EOF
                [ ${OPTION_FLAG[addflat]} -eq 0 ];
             then
               MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nFlatpaks sollen bevorzugt werden, aber die Option \Z4addflat\Z0 ist nicht ausgewählt.\nSo werden \Zbkeine\Z0 Flatpak-Pakete installiert!"
+            fi
+            # ------------------------------------------------------
+            # Forcierte Installation von Paketen mit gleichzeitigem
+            # Ignorieren der ähnlichen und gleichen Pakete
+            # ------------------------------------------------------
+            if [ ${OPTION_FLAG[force]} -eq 1 ] &&
+               [ ${OPTION_FLAG[skipsims]} -eq 1 ];
+            then
+              MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nDurch die Kombination \Z4force\Z0 und \Z4skipsims\Z0 werden Pakete nicht auf ähnliche Pakete geprüft, was zu merhfacher Installation gleicher Pakete führen kann."
             fi
           fi
         fi # Ende listonly
@@ -11105,7 +11161,7 @@ then
           if [ $screen_saver -eq 1 ];
           then
             if [ -e "/usr/bin/mate-screensaver" ] ||
-                [ -e "/usr/bin/mate-screensaver.deactivated" ];
+               [ -e "/usr/bin/mate-screensaver.deactivated" ];
             then
               ORG_FILES_NAME="MATE"
               declare -A ORG_SCRSAVER_FILES
@@ -11125,7 +11181,7 @@ then
           if [ $screen_saver -eq 2 ];
           then
             if [ -e "/usr/bin/cinnamon-screensaver" ] ||
-                [ -e "/usr/bin/cinnamon-screensaver.deactivated" ];
+               [ -e "/usr/bin/cinnamon-screensaver.deactivated" ];
             then
               ORG_FILES_NAME="Cinnamon"
               declare -A ORG_SCRSAVER_FILES
@@ -11137,7 +11193,6 @@ then
               ORG_SCRSAVER_FILES[3]="$USER_CONFIG_DIR/autostart/cinnamon-settings-daemon-screensaver-proxy.desktop"
               # Menü-Einträge
               ORG_SCRSAVER_FILES[4]="/usr/share/applications/cinnamon-settings-screensaver.desktop"
-              ORG_SCRSAVER_FILES[5]="/usr/share/applications/org.cinnamon.ScreenSaver.desktop"
             fi
           fi
           # ---------------------------------------------------------
