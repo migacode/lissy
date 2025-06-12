@@ -39,7 +39,7 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 11.06.2025
+# Letzte Änderung: 12.06.2025
 VERSION="5.0.0"
 
 ################################################################################
@@ -3216,6 +3216,7 @@ function install_pkg {
               if [ "$SHOW_PKG_MSG" == "" ]; then SHOW_PKG_MSG="${DEB_PKG_MESG["$PAKET"]}"; fi
               if [ "$SHOW_PKG_MSG" != "" ];
               then
+                if [ ${OPTION_FLAG[force]} -ne 0 ]; then e_and_l -n "$PRE_SPACE"; fi
                 e_and_l " $ACHTUNG_TAG: ${light_yellow}$SHOW_PKG_MSG${colors_off}"
               fi
               # --------------------------------------------------------
@@ -3226,15 +3227,15 @@ function install_pkg {
               if [ "$EVAL_TEST" == "" ]; then EVAL_TEST="${DEB_PKG_EVAL["$PAKET"]}"; fi
               if [ "$EVAL_TEST" != "" ];
               then
-                e_and_l -n "$PRE_SPACE Diese Voraussetzung scheint"
                 eval "$EVAL_TEST" &>/dev/null
                 EVAL_RESULT=$?
+                e_and_l -n "$PRE_SPACE Diese Voraussetzung ${bold_white}scheint${colors_off}"
                 if [ $EVAL_RESULT -ne 0 ];
                 then
                   e_and_l -n " ${bold_red}nicht${colors_off}"
                   FILL_WORD="trotzdem"
                 fi
-                e_and_l " erfüllt zu sein!"
+                e_and_l " erfüllt zu sein."
               else
                 if [ "$SHOW_PKG_MSG" != "" ];
                 then
@@ -3249,6 +3250,15 @@ function install_pkg {
               if [ "$EVAL_TEST" != "" ] &&
                  [ $EVAL_RESULT -eq 0 ];
               then
+                # -------------------------------------------------------------
+                # Wenn trotz bestandener Prüfung eine weitere Abfrage erfolgen
+                # soll, dann auch einen weiteren Hinweis dazu anzeigen
+                # -------------------------------------------------------------
+                if [ ${OPTION_FLAG[force]} -eq 0 ];
+                then
+                  e_and_l " Bitte prüfe zur Sicherheit nochmals selbst, ob dies wirklich so ist."
+                  e_and_l -n "$PRE_SPACE"
+                fi
                 ask_yes_no_info "$PAKET" 0
                 CONTINUE_INSTALL=$?
               else
@@ -6776,6 +6786,23 @@ DEB_PKG_CSUM[rpi-imager_arm64]="" # NICHT für ARM verfügbar
 DEB_PKG_FILE[rpi-imager_armhf]="" # NICHT für ARM verfügbar
 DEB_PKG_CSUM[rpi-imager_armhf]="" # NICHT für ARM verfügbar
 
+# Download von https://github.com/rustdesk/rustdesk/releases
+# Hinweis: Auch als AppImage verfügbar (s.u.)
+DEB_PKG_NAME[rustdesk]="RustDesk"
+DEB_PKG_OLDV[rustdesk]=""
+DEB_PKG_OLDF[rustdesk]=""
+DEB_PKG_VERS[rustdesk]="1.4.0"
+DEB_PKG_MESG[rustdesk]=""
+DEB_PKG_EVAL[rustdesk]=""
+DEB_PKG_FILE[rustdesk_amd64]="$RESSOURCE_SERVER_DIR/deb/rustdesk-1.4.0-x86_64.deb"
+DEB_PKG_CSUM[rustdesk_amd64]="$RESSOURCE_SERVER_DIR/deb/rustdesk-1.4.0-x86_64.deb.sha"
+ DEB_PKG_FILE[rustdesk_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
+ DEB_PKG_CSUM[rustdesk_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
+DEB_PKG_FILE[rustdesk_arm64]="$RESSOURCE_SERVER_DIR/deb/rustdesk-1.4.0-aarch64.deb"
+DEB_PKG_CSUM[rustdesk_arm64]="$RESSOURCE_SERVER_DIR/deb/rustdesk-1.4.0-aarch64.deb.sha"
+DEB_PKG_FILE[rustdesk_armhf]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
+DEB_PKG_CSUM[rustdesk_armhf]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
+
 # Downloads automatisch von der Herstellerseite
 # (manuell: https://store.steampowered.com/about)
 DEB_PKG_NAME[steam-launcher]="Steam Launcher"
@@ -7343,6 +7370,24 @@ WEB_PKG_FILE[rpi-imager_arm64]="$RESSOURCE_SERVER_DIR/web/Raspberry_Pi_Imager-1.
 WEB_PKG_CSUM[rpi-imager_arm64]="$RESSOURCE_SERVER_DIR/web/Raspberry_Pi_Imager-1.9.0-aarch64.AppImage.sha"
 WEB_PKG_FILE[rpi-imager_armhf]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[rpi-imager_armhf]="" # NICHT für ARM verfügbar
+
+# Download von https://github.com/rustdesk/rustdesk/releases
+# Hinweis: Auch als .deb verfügbar (s.o.)
+WEB_PKG_NAME[rustdesk]="RustDesk"
+WEB_PKG_CATY[rustdesk]="Network;"
+WEB_PKG_OLDV[rustdesk]=""
+WEB_PKG_OLDF[rustdesk]=""
+WEB_PKG_VERS[rustdesk]="1.4.0"
+WEB_PKG_MESG[rustdesk]=""
+WEB_PKG_EVAL[rustdesk]=""
+WEB_PKG_FILE[rustdesk_amd64]="$RESSOURCE_SERVER_DIR/web/rustdesk-1.4.0-x86_64.AppImage"
+WEB_PKG_CSUM[rustdesk_amd64]="$RESSOURCE_SERVER_DIR/web/rustdesk-1.4.0-x86_64.AppImage.sha"
+ WEB_PKG_FILE[rustdesk_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
+ WEB_PKG_CSUM[rustdesk_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
+WEB_PKG_FILE[rustdesk_arm64]="$RESSOURCE_SERVER_DIR/web/rustdesk-1.4.0-aarch64.AppImage"
+WEB_PKG_CSUM[rustdesk_arm64]="$RESSOURCE_SERVER_DIR/web/rustdesk-1.4.0-aarch64.AppImage.sha"
+WEB_PKG_FILE[rustdesk_armhf]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
+WEB_PKG_CSUM[rustdesk_armhf]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
 
 # Download von https://www.sarducd.it/downloads
 WEB_PKG_NAME[sardu]="Sardu"
@@ -10260,15 +10305,15 @@ if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
    [[ ${OPTION_FLAG[adcstart]} -eq 1 || ${OPTION_FLAG[addstart]} -eq 1 ]];
 then
 
-  # ----------------------------------------------------------
-  # Zusätzliche Starter erstellen (wenn Kategorie ausgewählt)
-  # ----------------------------------------------------------
   if [ $TOTAL_PACKS -eq 0 ] &&
      [ $USE_ILIST_FILE -eq 0 ];
   then
     e_and_l "$FULL_LINE"
   fi
 
+  # ----------------------------------------------------------
+  # Zusätzliche Starter erstellen (wenn Kategorie ausgewählt)
+  # ----------------------------------------------------------
   e_and_l " ${bold_blue}Erstellung zusätzlicher Starter (Programm-Symbole)${colors_off}"
   e_and_l "$FULL_LINE"
   e_and_l " ${bold_blue}Kategorien${colors_off}"
@@ -16663,8 +16708,10 @@ then
   REMOVE_TEXT[2]="Programm und dessen Konfiguration entfernen"
   REMOVE_TEXT[3]="Programm und alle zugehörigen Daten enfernen"
   REMOVE_ACTION=-1
+
+  e_and_l "$FULL_LINE"
   e_and_l " ${bold_blue}Entfernen eines Programmpakets mit zugehörigen Daten${colors_off}"
-  e_and_l "$HALF_LINE"
+  e_and_l "$FULL_LINE"
   get_install_status "$REMOVE_PKG_NAME"
   INST_STATUS=$?
   if [ $INST_STATUS -ne 0 ];
