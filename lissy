@@ -39,7 +39,7 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 12.06.2025
+# Letzte Änderung: 13.06.2025
 VERSION="5.0.0"
 
 ################################################################################
@@ -1393,6 +1393,39 @@ function create_backup_file {
       cp -f "$FILE_TO_BACKUP" "$FILE_TO_BACKUP.bak" &>/dev/null
     fi
   fi
+}
+
+#===============================================================================
+# Liste der Pakete einer Kategorie erstellen und dabei automatisch
+# zu ergänzende Pakete hinzufügen
+#===============================================================================
+function create_cat_pkg_list {
+  TMP_LIST="${KATEGORIE_PKGS[$k]}"
+  for p in ${TMP_LIST[@]};
+  do
+    ADDITIONAL_PACKS="${AUTO_ADD_PKGS[$p]}"
+    if [ "$ADDITIONAL_PACKS" != "" ];
+    then
+      if [ "${AUTO_ADD_PPOS[$p]}" != "true" ];
+      then
+        # --------------------------------------------
+        # Zusätzliche Pakete NACH Basispaket einfügen
+        # --------------------------------------------
+        TMP_LIST=$(echo " $TMP_LIST " | sed -E "s/ $p / $p $ADDITIONAL_PACKS /")
+      else
+        # -------------------------------------------
+        # Zusätzliche Pakete VOR Basispaket einfügen
+        # -------------------------------------------
+        TMP_LIST=$(echo " $TMP_LIST " | sed -E "s/ $p / $ADDITIONAL_PACKS $p /")
+      fi
+    fi
+  done
+  # -------------------------------------------
+  # Tabelle aus der Liste der Pakete erstellen
+  # -------------------------------------------
+  CAT_PKG_LIST=(${TMP_LIST})
+  CURRENT_CATEGORY="$k"
+  KAT_SHORT_NAME="${KATEGORIE_TEXT[$CURRENT_CATEGORY]}"
 }
 
 #===============================================================================
@@ -3356,7 +3389,7 @@ function install_pkg {
             if [ $PRE_CONF_RESULT -eq 0 ];
             then
 
-              e_and_l -n " Installiere ${light_yellow}$PAKET${colors_off} (${light_purple}$(inst_status_to_name $INSTALL_MODE)${colors_off}) ... "
+              e_and_l -n " Installation von ${light_yellow}$PAKET${colors_off} (${light_purple}$(inst_status_to_name $INSTALL_MODE)${colors_off}) ... "
               if [ ${OPTION_FLAG[quiet]} -eq 0 ]; then echo -e ""; fi
 
               # ----------------------------------------------------------------
@@ -3840,7 +3873,7 @@ function install_pkg {
                             echo -e "Type=Application" >> "$DESKTOP_FILE" 2>/dev/null
                             echo -e "Name=${WEB_PKG_NAME[$PAKET]}" >> "$DESKTOP_FILE" 2>/dev/null
                             echo -e "Comment=${WEB_PKG_NAME[$PAKET]} starten" >> "$DESKTOP_FILE" 2>/dev/null
-                            echo -e "Exec=$PACKAGE_INST_DIR/$APPIMG_FILE_NAME" >> "$DESKTOP_FILE" 2>/dev/null
+                            echo -e "Exec=\"$PACKAGE_INST_DIR/$APPIMG_FILE_NAME\"" >> "$DESKTOP_FILE" 2>/dev/null
                             echo -e "Icon=$ICON_TARGET_FILE" >> "$DESKTOP_FILE" 2>/dev/null
                             echo -e "Categories=${WEB_PKG_CATY[$PAKET]};" >> "$DESKTOP_FILE" 2>/dev/null
                             echo -e "Terminal=false" >> "$DESKTOP_FILE" 2>/dev/null
@@ -4080,7 +4113,7 @@ function install_pkg {
     if [ "$PKG_VERSION" != "" ] &&
        [ "$PKG_VERSION" != "0" ];
     then
-      IMODE_MSG+=" ${light_purple}$PKG_VERSION${colors_off}"
+      IMODE_MSG+=" ${light_yellow}$PKG_VERSION${colors_off}"
     fi
     IMODE_MSG+=" ist"
     case "$INST_RES" in
@@ -5030,12 +5063,13 @@ function show_similar_pkg {
           then
             e_and_l -n " ${light_yellow}$PKG_VERSION${colors_off}"
           fi
+          e_and_l -n " ist"
           case "$SIM_PACK_INST_MODE" in
-              # 1|3|4|5) e_and_l -n " bereits" ;;
-                    2) e_and_l -n " (${light_purple}Snap${colors_off})" ;;
-                    6) e_and_l -n " (${light_purple}Flatpak${colors_off})" ;;
+              1|3|4|5) e_and_l -n " bereits" ;;
+                    2) e_and_l -n " als ${light_purple}Snap${colors_off}" ;;
+                    6) e_and_l -n " als ${light_purple}Flatpak${colors_off}" ;;
           esac
-          e_and_l " ist installiert"
+          e_and_l " installiert"
           ((PAKETS_EXIST+=1))
           ((PAKETS_SIMILAR_EXIST+=1))
           ((SIMILAR_WARNING_SHOWN+=1))
@@ -6257,7 +6291,7 @@ then
 else
   KATEGORIE_PKGS[w]+=" wine wine64 wine32"
 fi
-KATEGORIE_PKGS[w]+=" winetricks zenity playonlinux"
+KATEGORIE_PKGS[w]+=" winetricks playonlinux"
 # ----------
 # WireGuard
 # ----------
@@ -6268,7 +6302,7 @@ KATEGORIE_PKGS[wg]="wireguard wireguard-tools"
 # Standard Debian
 KATEGORIE_PKGS[x]="bc btrfs-progs busybox bzip2 console-setup curl dconf-cli diffutils dirmngr dosfstools e2fsprogs eject exfatprogs fdisk ffmpegthumbnailer file gdisk gpg gvfs-backends gzip keyboard-configuration less libaacs0 libbluray2 libfuse2 libnss-myhostname libpam-systemd locales lshw lsof manpages nano network-manager ntfs-3g p7zip-full pciutils sane-utils sed tar unzip util-linux wpasupplicant xfsprogs xz-utils zip zstd"
 # Ergänzungen für alle
-KATEGORIE_PKGS[x]+=" apturl arj calc ccd2iso cifs-utils cryptsetup debsums ethtool exfat-fuse fail2ban firejail ftp gddrescue git hashdeep heif-gdk-pixbuf heif-thumbnailer htop hwinfo iat iftop img2pdf info inxi iotop jfsutils lftp lhasa libbluray-bdj libbluray-bin libdvd-pkg lrzip lz4 lzip lzop mtools ncompress neofetch net-tools numlockx openssh-client openssh-server plocate qpdf resolvconf rsync rzip screen sharutils smartmontools smbclient sqlite3 sshguard traceroute tree udftools ufw units usbutils wget whois"
+KATEGORIE_PKGS[x]+=" apturl arj calc ccd2iso cifs-utils cryptsetup debsums ethtool exfat-fuse fail2ban firejail ftp gddrescue git hashdeep heif-gdk-pixbuf heif-thumbnailer htop hwinfo iat iftop img2pdf info inxi iotop jfsutils lftp lhasa libbluray-bdj libbluray-bin libdvd-pkg lrzip lz4 lzip lzop mtools ncompress neofetch net-tools numlockx openssh-client openssh-server plocate qpdf resolvconf rsync rzip screen sharutils smartmontools smbclient sqlite3 sshguard traceroute tree udftools ufw units usbutils wget whois zenity"
 # Ergänzungen für MINT
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[x]+=" lsb mint-meta-codecs"; fi
 # --------------------------------------------------------
@@ -8223,7 +8257,6 @@ then
       else
         remove_file "$LOCAL_DOWNLOAD_FILE"
       fi
-      e_and_l "$FULL_LINE"
     else
       remove_file "$LOCAL_DOWNLOAD_FILE"
     fi
@@ -8243,8 +8276,6 @@ then
   then
     if [ $(apt list "dialog" 2>/dev/null | grep -i -c -E "dialog") -gt 0 ];
     then
-      # e_and_l ""
-      # e_and_l -n " Installiere \"dialog\", bitte warten ... "
       do_log -n " Installiere dialog ... "
       apt install "dialog" -y &>/dev/null
       if [ $? -eq 0 ];
@@ -9160,14 +9191,13 @@ then
   exit 0
 fi
 
-if [ ${OPTION_FLAG[noinfo]} -eq 0 ]; then e_and_l "$FULL_LINE"; fi
-
 #===============================================================================
 # Überprüfung auf passendes Betriebssystem
 #===============================================================================
 if [ $NO_MENU -eq 1 ] &&
    [ $IS_DEBIAN -eq 0 ];
 then
+  e_and_l "$FULL_LINE"
   e_and_l " $ACHTUNG_TAG: Dieses Tool ist nicht für dieses Betriebssystem entwickelt worden!"
   e_and_l " Auf Debian-basierten Systemen werden die meisten Punkte zwar funktionieren,"
   e_and_l " auf anderen Systemen werden die Funktionen jedoch eher eingeschränkt sein!"
@@ -9176,7 +9206,6 @@ then
   then
     exit 0
   fi
-  e_and_l "$FULL_LINE"
 fi
 
 #===============================================================================
@@ -9185,6 +9214,7 @@ fi
 #===============================================================================
 if [ ${OPTION_FLAG[listonly]} -eq 0 ];
 then
+  e_and_l "$FULL_LINE"
   e_and_l " ${bold_blue}Überprüfung benötigter Systemkomponenten${colors_off}"
   e_and_l "$FULL_LINE"
   # ----------------------------------------------------------------------------
@@ -9251,7 +9281,9 @@ then
      [ $(echo "$ARCHITECTURE_OTHER" | grep -i -c -E "armhf") -gt 0 ];
   then
     ACTION_MESSAGE=" ${light_cyan}Cross-Build-Pakete${colors_off}"
+    e_and_l "$HALF_LINE"
     e_and_l " ${bold_blue}Erweiterungen für die Architektur armhf auf arm64${colors_off}"
+    e_and_l "$HALF_LINE"
     if [ $(LANG=en dpkg-query -W -f='${Status}' "crossbuild-essential-armhf" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
     then
       if [ $(apt list "crossbuild-essential-armhf" 2>/dev/null | grep -i -c -E "crossbuild-essential-armhf") -gt 0 ];
@@ -9285,7 +9317,6 @@ then
     e_and_l " Das Skript wird daher jetzt beendet!"
     exit 1
   fi
-  e_and_l "$HALF_LINE"
 fi
 
 #===============================================================================
@@ -9294,7 +9325,7 @@ fi
 #===============================================================================
 if [ $USER_USERNAME = "root" ];
 then
-  e_and_l ""
+  e_and_l "$FULL_LINE"
   e_and_l " $ACHTUNG_TAG: Du bist als ${bold_yellow}root${colors_off} angemeldet. Einige zu installierende Komponenten"
   e_and_l " und automatisch durchgeführte Einstellungen sind jedoch benutzerspezifisch,"
   e_and_l " so dass diese für andere Benutzer nicht verfügbar wären bzw. von diesen bei"
@@ -9349,7 +9380,6 @@ then
     fi
   fi
   e_and_l ""
-  e_and_l "$FULL_LINE"
 fi # Ende username root
 
 #===============================================================================
@@ -9359,7 +9389,7 @@ fi # Ende username root
 if [ $RASPBIAN -ne 0 ] &&
    [ $USER_USERNAME = "pi" ];
 then
-  e_and_l ""
+  e_and_l "$FULL_LINE"
   e_and_l " $ACHTUNG_TAG: Du bist als Raspberry Pi OS Standardbenutzer ${bold_yellow}pi${colors_off} angemeldet."
   e_and_l " Aus Sicherheitsgründen sollte man als ein anderer Benutzer arbeiten!"
   get_user_list
@@ -9437,18 +9467,16 @@ then
       done
     fi
   fi
-  e_and_l ""
-  e_and_l "$FULL_LINE"
 fi # Ende username pi
 
 #===============================================================================
 # Sicherheitssabfrage für quiet, sofern relevante Aktionen durchgeführt werden
 #===============================================================================
-if [ ${OPTION_FLAG[quiet]} -eq 1 ] &&
-   [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
+if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
+   [ ${OPTION_FLAG[quiet]} -eq 1 ] &&
    [ ${OPTION_FLAG[status]} -eq 0 ];
 then
-  e_and_l ""
+  e_and_l "$FULL_LINE"
   e_and_l " $ACHTUNG_TAG: Die Option ${bold_yellow}quiet${colors_off} ist aktiviert!"
   e_and_l " Dadurch werden alle Ausgaben der Installationsroutinen unterdrückt und"
   e_and_l " Programmpakete OHNE Rückfrage nach deren Standard-Vorgabe installiert!"
@@ -9456,8 +9484,6 @@ then
   e_and_l " wird bei Eingabe von [${bold_yellow}N${colors_off}]ein ohne Quiet-Modus weitergemacht (empfohlen)."
   ask_yes_or_no_plus "use_quiet" " Wirklich im Quiet-Modus weitermachen" "" "n"
   if [ $? -eq 0 ]; then OPTION_FLAG[quiet]=0; fi
-  e_and_l ""
-  e_and_l "$FULL_LINE"
 fi
 
 #===============================================================================
@@ -9469,6 +9495,7 @@ then
   if [ -s "$USER_SCRIPT_CONFIG" ] ||
      [ -s "$USER_PAKET_LIST" ];
   then
+    e_and_l "$FULL_LINE"
     if [ -s "$USER_PAKET_LIST" ];
     then
       e_and_l -n " $ACHTUNG_TAG:"
@@ -9485,7 +9512,6 @@ then
     fi
     e_and_l "."
     e_and_l " ${light_cyan}Tipp${colors_off}: Mit Option ${light_cyan}noconfig${colors_off} werden keine individuellen Einstellungen geladen."
-    e_and_l "$FULL_LINE"
   fi
 fi
 
@@ -9531,7 +9557,7 @@ then
   echo -e "# Skip-Liste" >> "$USER_PAKET_LIST" 2>/dev/null
   echo -e "SKIP_LIST=\"${SKIP_LIST[@]}\"" >> "$USER_PAKET_LIST" 2>/dev/null
   chown -R "$USER_USERNAME:$USER_USERNAME" "$USER_PAKET_LIST" &>/dev/null
-fi
+fi # Ende Neue Einstellungen speichern
 
 #===============================================================================
 # Hinweis auf mehrere Software-Architekturen
@@ -9541,11 +9567,11 @@ if [ $TOTAL_PACKS -gt 0 ] &&
    [ ${OPTION_FLAG[foreign]} -eq 0 ] &&
    [ "$ARCHITECTURE_OTHER" != "" ];
 then
+  e_and_l "$FULL_LINE"
   e_and_l " $HINWEIS_TAG: Auf diesem System sind mehrere Software-Architekturen eingerichtet."
   e_and_l " Um die Stabilität des Systems nicht zu gefährden, werden alle Programmpakete"
   e_and_l " nur für die Haupt-Architektur ${bold_yellow}$ARCHITECTURE_MAIN${colors_off} installiert, sofern mit Angabe der Option"
   e_and_l " \"foreign\" nicht auch Pakete für die Sekundär-Architekturen erlaubt werden."
-  e_and_l "$FULL_LINE"
 fi
 
 #===============================================================================
@@ -9565,6 +9591,7 @@ then
      [ -s "/var/lib/dpkg/lock-frontend" ];
   then
     APT_IS_BLOCKED=1
+    e_and_l "$FULL_LINE"
     e_and_l " $ACHTUNG_TAG: ${bold_white}apt${colors_off} ist gerade durch einen anderen Prozess geblockt (Updates?)."
     e_and_l " Die Sperre kann eventuell aufgehoben werden, dies wird jedoch nicht empfohlen!"
     ask_yes_or_no_plus "" " Soll ich trotzdem versuchen die Sperre aufzuheben" "" "n"
@@ -9601,82 +9628,84 @@ then
   if [ ${OPTION_FLAG[norepo]} -eq 0 ] &&
      [ ${OPTION_FLAG[listonly]} -eq 0 ];
   then
+    e_and_l "$FULL_LINE"
     e_and_l " ${bold_blue}Aktualisierung der Paketlisten${colors_off}"
+    e_and_l "$FULL_LINE"
     repo_update " Aktualisierung des Standard-Repository, bitte warten ... "
   fi
-fi
+fi # Ende Prüfen der Paketverwaltung und Repo-Aktualisierung
 
 #===============================================================================
 # Die Flatpak- und Snap-Verwaltung installieren, wenn noch nicht installiert
 #===============================================================================
-if [ $TOTAL_PACKS -gt 0 ] ||
-   [ $USE_ILIST_FILE -eq 1 ];
+if [ ${OPTION_FLAG[listonly]} -eq 0 ];
 then
-  # ----------------------------------------------------------------------------
-  # FLATPAK
-  # ----------------------------------------------------------------------------
-  if [ ${OPTION_FLAG[addflat]} -eq 1 ] &&
-     [ $FLATPAK_INSTALLED -eq 0 ] &&
-     [ $(apt list "flatpak" 2>/dev/null | grep -i -c "flatpak") -gt 0 ];
+  if [ $TOTAL_PACKS -gt 0 ] ||
+    [ $USE_ILIST_FILE -eq 1 ];
   then
-    e_and_l ""
-    e_and_l " $ACHTUNG_TAG: Die Flatpak-Paketverwaltung ist nicht installiert."
-    ask_yes_or_no_plus "install_flatpak" " Die Flatpak-Paketverwaltung jetzt installieren" "" "j"
-    if [ $? -eq 1 ];
+    # ----------------------------------------------------------------------------
+    # FLATPAK
+    # ----------------------------------------------------------------------------
+    if [ ${OPTION_FLAG[addflat]} -eq 1 ] &&
+       [ $FLATPAK_INSTALLED -eq 0 ] &&
+       [ $(apt list "flatpak" 2>/dev/null | grep -i -c "flatpak") -gt 0 ];
     then
-      e_and_l -n " Installiere die ${light_yellow}Flatpak-Paketverwaltung${colors_off}, bitte warten ... "
-      apt install flatpak -y &>"$LOG_TEMP"
-      if [ $? -eq 0 ];
+      e_and_l "$FULL_LINE"
+      e_and_l " $ACHTUNG_TAG: Die Flatpak-Paketverwaltung ist nicht installiert."
+      ask_yes_or_no_plus "install_flatpak" " Die Flatpak-Paketverwaltung jetzt installieren" "" "j"
+      if [ $? -eq 1 ];
       then
-        FLATPAK_INSTALLED=1
-        e_and_l "$OK_TAG"
-      else
-        e_and_l "$ERROR_TAG"
+        e_and_l -n " Installiere die ${light_yellow}Flatpak-Paketverwaltung${colors_off}, bitte warten ... "
+        apt install flatpak -y &>"$LOG_TEMP"
+        if [ $? -eq 0 ];
+        then
+          FLATPAK_INSTALLED=1
+          e_and_l "$OK_TAG"
+        else
+          e_and_l "$ERROR_TAG"
+        fi
+        add_full_log
       fi
-      add_full_log
     fi
-    e_and_l ""
-    e_and_l "$FULL_LINE"
-  fi
-  # ----------------------------------------------------------------------------
-  # SNAP
-  # ----------------------------------------------------------------------------
-  if [ ${OPTION_FLAG[addsnap]} -eq 1 ] &&
-     [ $SNAP_INSTALLED -eq 0 ] &&
-     [ $(apt list "snapd" 2>/dev/null | grep -i -c "snapd") -gt 0 ];
-  then
-    e_and_l ""
-    e_and_l " $ACHTUNG_TAG: Die Snap-Paketverwaltung ist nicht installiert."
-    ask_yes_or_no_plus "install_snap" " Die Snap-Paketverwaltung jetzt installieren" "" "n"
-    if [ $? -eq 1 ];
+    # ----------------------------------------------------------------------------
+    # SNAP
+    # ----------------------------------------------------------------------------
+    if [ ${OPTION_FLAG[addsnap]} -eq 1 ] &&
+       [ $SNAP_INSTALLED -eq 0 ] &&
+       [ $(apt list "snapd" 2>/dev/null | grep -i -c "snapd") -gt 0 ];
     then
-      e_and_l -n " Installiere die ${light_yellow}Snap-Paketverwaltung${colors_off}, bitte warten ... "
-      # Installations-Blockade für Snap von Linux Mint aufheben
-      SNAP_BLOCKING_FILE="/etc/apt/preferences.d/nosnap.pref"
-      if [ -s "$SNAP_BLOCKING_FILE" ];
+      e_and_l "$FULL_LINE"
+      e_and_l " $ACHTUNG_TAG: Die Snap-Paketverwaltung ist nicht installiert."
+      ask_yes_or_no_plus "install_snap" " Die Snap-Paketverwaltung jetzt installieren" "" "n"
+      if [ $? -eq 1 ];
       then
-        mv -f "$SNAP_BLOCKING_FILE" "$SNAP_BLOCKING_FILE.bak" &>/dev/null
+        e_and_l -n " Installiere die ${light_yellow}Snap-Paketverwaltung${colors_off}, bitte warten ... "
+        # Installations-Blockade für Snap von Linux Mint aufheben
+        SNAP_BLOCKING_FILE="/etc/apt/preferences.d/nosnap.pref"
+        if [ -s "$SNAP_BLOCKING_FILE" ];
+        then
+          mv -f "$SNAP_BLOCKING_FILE" "$SNAP_BLOCKING_FILE.bak" &>/dev/null
+        fi
+        # Snap installieren
+        apt install snapd -y &>"$LOG_TEMP"
+        if [ $? -eq 0 ];
+        then
+          SNAP_INSTALLED=1
+          e_and_l "$OK_TAG"
+        else
+          e_and_l "$ERROR_TAG"
+        fi
+        add_full_log
       fi
-      # Snap installieren
-      apt install snapd -y &>"$LOG_TEMP"
-      if [ $? -eq 0 ];
-      then
-        SNAP_INSTALLED=1
-        e_and_l "$OK_TAG"
-      else
-        e_and_l "$ERROR_TAG"
-      fi
-      add_full_log
     fi
-    e_and_l ""
-    e_and_l "$FULL_LINE"
   fi
-fi
+fi # Ende Flatpak- und Snap-Verwaltung installieren
 
 #===============================================================================
 # Das Flatpak-Repo und die Flatpak-Listen aktualisieren
 #===============================================================================
-if [ $FLATPAK_INSTALLED -ne 0 ];
+if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
+   [ $FLATPAK_INSTALLED -ne 0 ];
 then
   # ----------------------------------------------------------------------------
   # Standard-Flatpak-Repo (Flathub) hinzufügen
@@ -9705,13 +9734,13 @@ then
   e_and_l -n " Aktualisierung der Flatpak-Statusinfos, bitte warten ... "
   update_flatpak_list
   e_and_l "$OK_TAG"
-fi
+fi # Ende Flatpak-Repo und die Flatpak-Listen aktualisieren
 
 #===============================================================================
 # Update von Programmen, die keinen eigenen Eintrag im Repository besitzen
 #===============================================================================
-if [ ${OPTION_FLAG[exupdate]} -eq 1 ] &&
-   [ ${OPTION_FLAG[listonly]} -eq 0 ];
+if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
+   [ ${OPTION_FLAG[exupdate]} -eq 1 ];
 then
   # ----------------------------------------------------------------------------
   # Relevante Einstellungen des Benutzers zum Skript-Ablauf sichern und für
@@ -9815,14 +9844,14 @@ then
     # ----------------------------------
     if [ $INST_STATUS -eq 2 ];
     then
-      e_and_l " $HINWEIS_TAG: Dieses Programm wird über die ${bold_white}SNAP${colors_off}-Paketverwaltung aktualisiert."
+      e_and_l " $HINWEIS_TAG${dark_grey}: Dieses Programm wird über die${colors_off} ${light_purple}SNAP${colors_off}${dark_grey}-Paketverwaltung aktualisiert.${colors_off}"
     fi
     # -------------------------------------
     # Hinweis wenn als Flatpak installiert
     # -------------------------------------
     if [ $INST_STATUS -eq 6 ];
     then
-      e_and_l " $HINWEIS_TAG: Dieses Programm wird über die ${bold_white}Flatpak${colors_off}-Paketverwaltung aktualisiert."
+      e_and_l " $HINWEIS_TAG${dark_grey}: Dieses Programm wird über die${colors_off} ${light_purple}Flatpak${colors_off}${dark_grey}-Paketverwaltung aktualisiert.${colors_off}"
     fi
 
     # -------------------------------------------------------------------
@@ -10020,81 +10049,23 @@ then
   OPTION_FLAG[quiet]=$PRESERVED_QUIET_FLAG
   OPTION_FLAG[status]=$PRESERVED_STATUS_FLAG
   # ----------------------------------------------------------------------------
-fi # Ende [exupdate]
+fi # Ende Update von externen Programmen [exupdate]
 
 #===============================================================================
-# Hauptschleife zur Installation nur ausführen, wenn Pakete ausgewählt wurden
+# Hauptschleife zur Installation oder Anzeige (wenn Pakete ausgewählt wurden)
 #===============================================================================
 if [ $TOTAL_PACKS -gt 0 ] ||
    [ $USE_ILIST_FILE -eq 1 ];
 then
 
-  # ============================================================================
-  # Start-Hinweis ausgeben
-  # ============================================================================
-  if [ ${OPTION_FLAG[status]} -eq 0 ] &&
-     [ ${OPTION_FLAG[listonly]} -eq 0 ];
-  then
-    ACTION_TXT="Starte Installation"
-  else
-    if [ ${OPTION_FLAG[listonly]} -eq 1 ];
-    then
-      ACTION_TXT="Liste der Paketnamen"
-    else
-      ACTION_TXT="Anzeige des Status"
-    fi
-  fi
-
-  LIST_PACKS=0
-  if [ $USE_ILIST_FILE -eq 1 ];
-  then
-    while read the_pkg_name;
-    do
-      # Hinweis: Leerzeichen in regulärem Ausdruck für sed nicht
-      # ans Ende setzen, da sed dieses sonst übersieht!
-      the_pkg_name=$(echo "${the_pkg_name}" | tr A-Z a-z | sed -E "s/[^a-z0-9 \.\_\-]//gi" | sed -E "s/ /\_/g" | xargs)
-      if [ "$the_pkg_name" != "" ]; then ((LIST_PACKS+=1)); fi
-    done < "$INST_LIST_FILE"
-  fi
-
-  ANZ_PACKS_TO_SHOW=$((TOTAL_PACKS+LIST_PACKS))
-  START_MSG="$FULL_LINE"
-  START_MSG+=$'\n'
-  START_MSG+=" ${bold_blue}$ACTION_TXT von ${bold_white}$ANZ_PACKS_TO_SHOW${colors_off}${bold_blue} ausgewählten Programmpaketen${colors_off}"
-  START_MSG+=$'\n'
-  if [ ${OPTION_FLAG[listonly]} -eq 1 ];
-  then
-    START_MSG+=" ${bold_blue}Hinweise:${colors_off}  ${light_purple}(Externe Paketquelle)${colors_off}  ${light_yellow}[Alternative Programmpakete]${colors_off}"$'\n'
-  fi
-  START_MSG+="$FULL_LINE"
-  # START_MSG+=$'\n'
-  e_and_l "$START_MSG"
-
-  # ============================================================================
-  # Abfrage vor der Erstellung sehr vieler Starter auf GNOME-Desktops
-  # ============================================================================
-  if [ ${OPTION_FLAG[addstart]} -ne 0 ] &&
-     [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
-     [ $ANZ_PACKS_TO_SHOW -gt 5 ] &&
-     [ "$DESKTOP_ENVIRONMENT" == "GNOME" ];
-  then
-    e_and_l " $WARN_TAG: Für alle ausgewählten u. installierte Pakete werden Starter erstellt."
-    ask_yes_or_no_plus "many_starter" " Wirklich so viele Starter direkt auf dem Desktop erstellen" "" ""
-    OPTION_FLAG[addstart]=$?
-    e_and_l ""
-  fi
-
-  # ============================================================================
-  # Installations-Listen erstellen
-  # ============================================================================
-
-  #-----------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   # Bei Auswahl eines einzelnen individuellen Pakets nur dieses verarbeiten
-  #-----------------------------------------------------------------------------
-  # Passende Kategorie suchen
-  #-----------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   if [ "$INST_ONLY_PKG" != "" ];
   then
+    #---------------------------
+    # Passende Kategorie suchen
+    #---------------------------
     pkg_found=0
     for k in ${KAT_ORD_LIST[@]};
     do
@@ -10127,11 +10098,11 @@ then
     KATEGORIE_FLAG[individual]=1
     KATEGORIE_PKGS[individual]="$INST_ONLY_PKG"
   fi
-  #-----------------------------------------------------------------------------
 
   #-----------------------------------------------------------------------------
   # Bei Angabe einer Datei als individuelle Paket-Liste diese einlesen
   #-----------------------------------------------------------------------------
+  LIST_PACKS=0
   if [ "$INST_ONLY_PKG" == "" ] &&
      [ $USE_ILIST_FILE -eq 1 ];
   then
@@ -10144,6 +10115,7 @@ then
       if [ "$the_pkg_name" != "" ];
       then
         KATEGORIE_PKGS[individual]+=" $the_pkg_name"
+        ((LIST_PACKS+=1));
       fi
     done < "$INST_LIST_FILE"
     KAT_ORD_LIST="individual"
@@ -10151,91 +10123,68 @@ then
     KATEGORIE_TEXT[individual]="Individuelle Installation"
   fi
 
-  # ============================================================================
-  # Installations-Listen durchlaufen
-  # ============================================================================
-  ALL_STARTER_COUNTER=0
-  NEW_STARTER_COUNTER=0
-  for k in ${KAT_ORD_LIST[@]};
-  do
-
-    if [ "$k" != "xlinex" ] &&
-       [ ${KATEGORIE_FLAG[$k]} -eq 1 ];
+  # ----------------------------------------------------------------------------
+  # Start-Hinweise ausgeben
+  # ----------------------------------------------------------------------------
+  if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
+     [ ${OPTION_FLAG[status]} -eq 0 ];
+  then
+    ACTION_TXT="Starte Installation"
+  else
+    if [ ${OPTION_FLAG[listonly]} -eq 1 ];
     then
+      ACTION_TXT="Liste der Paketnamen"
+    else
+      ACTION_TXT="Anzeige des Status"
+    fi
+  fi
 
-      # --------------------------------------------------
-      # Liste der Pakete einer Kategorie erstellen und
-      # dabei automatisch zu ergänzende Pakete hinzufügen
-      # --------------------------------------------------
-      TMP_LIST="${KATEGORIE_PKGS[$k]}"
-      for p in ${TMP_LIST[@]};
-      do
-        ADDITIONAL_PACKS="${AUTO_ADD_PKGS[$p]}"
-        if [ "$ADDITIONAL_PACKS" != "" ];
-        then
-          if [ "${AUTO_ADD_PPOS[$p]}" != "true" ];
-          then
-            # Zusätzliche Pakete NACH Basispaket einfügen
-            TMP_LIST=$(echo " $TMP_LIST " | sed -E "s/ $p / $p $ADDITIONAL_PACKS /")
-          else
-            # Zusätzliche Pakete VOR Basispaket einfügen
-            TMP_LIST=$(echo " $TMP_LIST " | sed -E "s/ $p / $ADDITIONAL_PACKS $p /")
-          fi
-        fi
-      done
-      # -------------------------------------------
-      # Tabelle aus der Liste der Pakete erstellen
-      # -------------------------------------------
-      CAT_PKG_LIST=(${TMP_LIST})
-      CURRENT_CATEGORY="$k"
-      KAT_SHORT_NAME="${KATEGORIE_TEXT[$CURRENT_CATEGORY]}" # Name der aktuellen Kategorie
-      e_and_l " ${bold_blue}$KAT_SHORT_NAME${colors_off} ${dark_grey}[+$k]${colors_off}"
+  ANZ_PACKS_TO_SHOW=$((TOTAL_PACKS+LIST_PACKS))
+  START_MSG="$FULL_LINE"
+  START_MSG+=$'\n'
+  START_MSG+=" ${bold_blue}$ACTION_TXT von ${bold_white}$ANZ_PACKS_TO_SHOW${colors_off}${bold_blue} ausgewählten Programmpaketen${colors_off}"
+  # START_MSG+=$'\n'
+  if [ ${OPTION_FLAG[listonly]} -eq 1 ];
+  then
+    START_MSG+=$'\n'" ${bold_blue}Hinweise:${colors_off}  ${light_purple}(Externe Paketquelle)${colors_off}  ${light_yellow}[Alternative Programmpakete]${colors_off}" # $'\n'
+  fi
+  # START_MSG+="$FULL_LINE"
+  # START_MSG+=$'\n'
+  e_and_l "$START_MSG"
 
-      # Trennlinie unter dem Kategorienamen
-      if [ ${OPTION_FLAG[listonly]} -eq 1 ];
+  # ----------------------------------------------------------------------------
+  # Ausgewählte Pakete anzeigen (nicht installieren)
+  # ----------------------------------------------------------------------------
+  if [ ${OPTION_FLAG[listonly]} -eq 1 ];
+  then
+    for k in ${KAT_ORD_LIST[@]};
+    do
+      if [ "$k" != "xlinex" ] &&
+         [ ${KATEGORIE_FLAG[$k]} -eq 1 ];
       then
-        e_and_l -n " ${dark_grey}"
-        for ((i=0; i<${#KAT_SHORT_NAME}; i++)); do e_and_l -n "─"; done;
-        e_and_l "${colors_off}"
-      fi
-
-      # ------------------------------------------------
-      # Alle Pakete innerhalb der Kategorie durchlaufen
-      # ------------------------------------------------
-      pkg_in_category=0
-      for pkg in ${CAT_PKG_LIST[@]};
-      do
-
-        # ----------------------------------------------------------------------
-        # Installation des Programmpakets ...
-        # ----------------------------------------------------------------------
-        if [ ${OPTION_FLAG[listonly]} -eq 0 ];
-        then
-
-          LAST_ERW_PACK=""
-          LAST_PPA_PACK=""
-          PACKS_SEEN_LIST=("$pkg")
-
-          install_pkg $pkg 0 0 0
-
-        # ----------------------------------------------------------------------
-        # ... oder nur Anzeige des Paketnamens mit Zusatzinformationen
-        # ----------------------------------------------------------------------
-        else
-
+        e_and_l "$FULL_LINE"
+        # ------------------------------------
+        # Paket-Liste der Kategorie erstellen
+        # ------------------------------------
+        CAT_PKG_LIST=()
+        CURRENT_CATEGORY=""
+        KAT_SHORT_NAME=""
+        create_cat_pkg_list
+        e_and_l " ${bold_blue}$KAT_SHORT_NAME${colors_off} ${dark_grey}[+$k]${colors_off}"
+        e_and_l "$FULL_LINE"
+        # --------------------------------------------
+        # Alle Pakete innerhalb der Liste durchlaufen
+        # --------------------------------------------
+        for pkg in ${CAT_PKG_LIST[@]};
+        do
           check_skip_raspi $pkg
           SKIP_RAPSI=$?
           if [ $SKIP_RAPSI -eq 1 ]; then e_and_l -n "${bold_black}"; fi
-
           LIST_TXT=" $pkg"
-
           if [ $SKIP_RAPSI -eq 1 ];
           then
-
             LIST_TXT+=" ($NA_TXT)${colors_off}"
-
           else
-
             # ------------------------------------
             # Hinweis auf alternative Paketquelle
             # ------------------------------------
@@ -10250,7 +10199,6 @@ then
                 LIST_TXT+=" ${light_purple}($PACKAGE_TYPE)${colors_off}"
               fi
             fi
-
             # ---------------------------------------
             # Hinweis auf alternative Programmpakete
             # ---------------------------------------
@@ -10265,7 +10213,7 @@ then
                 for seen in ${SIMILAR_SEEN_LIST[@]};
                 do
                   if [ "$seen" != "" ] &&
-                    [ "$CHECK_SIM_PACK" == "$seen" ];
+                     [ "$CHECK_SIM_PACK" == "$seen" ];
                   then
                     SIMILAR_ALREADY_SEEN=1
                     break
@@ -10279,27 +10227,72 @@ then
                 CHECK_SIM_PACK="${SIMILAR_PACK[$CHECK_SIM_PACK]}"
               done
             fi
-
           fi
-
           e_and_l "$LIST_TXT"
+        done # Ende der Pakete in einer Kategorie
+      fi # Ende != "xlinex"
+    done # Ende der Kategorien
+  fi # Ende ausgewählte Pakete anzeigen
 
-        fi
+  # ----------------------------------------------------------------------------
+  # Ausgewählte Pakete installieren
+  # ----------------------------------------------------------------------------
+  if [ ${OPTION_FLAG[listonly]} -eq 0 ];
+  then
 
-        ((pkg_in_category+=1))
+    e_and_l "$FULL_LINE"
 
-      done # Ende der Pakete in einer Kategorie
-      e_and_l "$FULL_LINE"
+    # ------------------------------------------------------------------
+    # Abfrage vor der Erstellung sehr vieler Starter auf GNOME-Desktops
+    # ------------------------------------------------------------------
+    if [ ${OPTION_FLAG[addstart]} -ne 0 ] &&
+       [ $ANZ_PACKS_TO_SHOW -gt 5 ] &&
+       [ "$DESKTOP_ENVIRONMENT" == "GNOME" ];
+    then
+      e_and_l " $WARN_TAG: Für alle ausgewählten u. installierte Pakete werden Starter erstellt."
+      ask_yes_or_no_plus "many_starter" " Wirklich so viele Starter direkt auf dem Desktop erstellen" "" ""
+      OPTION_FLAG[addstart]=$?
+      e_and_l ""
+    fi
+    # ------------------------------------------------------------------
 
-    fi # Ende != "xlinex"
+    ALL_STARTER_COUNTER=0
+    NEW_STARTER_COUNTER=0
+    for k in ${KAT_ORD_LIST[@]};
+    do
+      if [ "$k" != "xlinex" ] &&
+         [ ${KATEGORIE_FLAG[$k]} -eq 1 ];
+      then
+        # ------------------------------------
+        # Paket-Liste der Kategorie erstellen
+        # ------------------------------------
+        CAT_PKG_LIST=()
+        CURRENT_CATEGORY=""
+        KAT_SHORT_NAME=""
+        create_cat_pkg_list
+        e_and_l " ${bold_blue}$KAT_SHORT_NAME${colors_off} ${dark_grey}[+$k]${colors_off}"
+        # --------------------------------------------
+        # Alle Pakete innerhalb der Liste durchlaufen
+        # --------------------------------------------
+        pkg_in_category=0
+        for pkg in ${CAT_PKG_LIST[@]};
+        do
+          LAST_ERW_PACK=""
+          LAST_PPA_PACK=""
+          PACKS_SEEN_LIST=("$pkg")
+          install_pkg $pkg 0 0 0
+          ((pkg_in_category+=1))
+        done
+        e_and_l "$FULL_LINE"
+      fi # Ende != "xlinex"
+    done # Ende der Kategorien
+    ((ALL_STARTER_COUNTER+=NEW_STARTER_COUNTER))
+  fi # Ausgewählte Pakete installieren
 
-  done # Ende der Kategorien
-  ((ALL_STARTER_COUNTER+=NEW_STARTER_COUNTER))
-
-fi # Ende Hauptschleife zur Installation
+fi # Ende Hauptschleife zur Installation/Anzeige (wenn Pakete ausgewählt wurden)
 
 #===============================================================================
-# Zusätzliche Starter erstellen (nicht bei Anzeige nur der Paket-Listen)
+# Zusätzliche Starter erstellen
 #===============================================================================
 if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
    [[ ${OPTION_FLAG[adcstart]} -eq 1 || ${OPTION_FLAG[addstart]} -eq 1 ]];
@@ -10539,7 +10532,7 @@ then
   then
     e_and_l " Es wurden ${bold_yellow}$STARTER_REMOVED${colors_off} ungültige Starter wieder entfernt."
   fi
-fi
+fi # Ende Zusätzliche Starter erstellen
 
 #===============================================================================
 # Zusammenfassung anzeigen
@@ -10551,12 +10544,10 @@ then
      [ $USE_ILIST_FILE -eq 1 ];
   then
 
-    SUMMARY_TEXT="$FULL_LINE"
-    SUMMARY_TEXT+=$'\n'
-    SUMMARY_TEXT+=" ${bold_blue}Zusammenfassung der Paket-Verarbeitung${colors_off}"
-    SUMMARY_TEXT+=$'\n'
-    SUMMARY_TEXT+="$FULL_LINE"
-    SUMMARY_TEXT+=$'\n'
+    SUMMARY_TEXT=""
+    SUMMARY_TEXT+="$FULL_LINE"$'\n'
+    SUMMARY_TEXT+=" ${bold_blue}Zusammenfassung der Paket-Verarbeitung${colors_off}"$'\n'
+    SUMMARY_TEXT+="$FULL_LINE"$'\n'
 
     # -------
     # Zähler
@@ -11602,13 +11593,13 @@ then
 
   fi # Ende [extras]
 
-fi
+fi # Ende weiterer System-Komponenten (Treiber und Extras) [extras]
 
 #===============================================================================
 # Blockieren oder freigeben der Kernel-Updates
 #===============================================================================
-if [ ${OPTION_FLAG[kuplock]} -eq 1 ] ||
-   [ ${OPTION_FLAG[kunlock]} -eq 1 ];
+if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
+   [[ ${OPTION_FLAG[kuplock]} -eq 1 || ${OPTION_FLAG[kunlock]} -eq 1 ]];
 then
   e_and_l "$FULL_LINE"
   e_and_l " ${bold_blue}Kernel-Update-Locking${colors_off}"
@@ -11661,46 +11652,52 @@ fi # Ende [kuplock] [kunlock]
 #===============================================================================
 # Einrichtung und Optimierung von System-Einstellungen
 #===============================================================================
-if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
-   [[ ${OPTION_FLAG[setutc]} -eq 1 || ${OPTION_FLAG[optimize]} -eq 1 ]];
+if [ ${OPTION_FLAG[listonly]} -eq 0 ];
 then
-  e_and_l "$FULL_LINE"
-  e_and_l -n " ${bold_blue}Einrichtung und Optimierung von System-Einstellungen${colors_off}"
-  if [ ${OPTION_FLAG[setutc]} -eq 1 ]; then e_and_l -n " ${dark_grey}[setutc]${colors_off}"; fi
-  if [ ${OPTION_FLAG[optimize]} -eq 1 ]; then e_and_l -n " ${dark_grey}[optimize]${colors_off}"; fi
-  e_and_l ""
-  e_and_l "$FULL_LINE"
-fi
 
-# ==============================================================================
-# Umstellung der Systemzeit auf Universal Time Coordinated (UTC) separat!
-# ==============================================================================
-if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
-   [ ${OPTION_FLAG[setutc]} -eq 1 ];
-then
-  e_and_l " ${bold_blue}Systemzeit${colors_off}"
-  e_and_l "$HALF_LINE"
-  ACTION_MESSAGE=" Umstellung der ${light_cyan}Systemzeit auf UTC${colors_off}         "
-  if timedatectl &>/dev/null;
+  if [[ ${OPTION_FLAG[setutc]} -eq 1 || ${OPTION_FLAG[optimize]} -eq 1 ]];
   then
-    if [ $(timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -gt 0 ];
+    e_and_l "$FULL_LINE"
+    e_and_l -n " ${bold_blue}Einrichtung und Optimierung von System-Einstellungen${colors_off}"
+    if [ ${OPTION_FLAG[setutc]} -eq 1 ]; then e_and_l -n " ${dark_grey}[setutc]${colors_off}"; fi
+    if [ ${OPTION_FLAG[optimize]} -eq 1 ]; then e_and_l -n " ${dark_grey}[optimize]${colors_off}"; fi
+    e_and_l ""
+    e_and_l "$FULL_LINE"
+  fi
+
+  # ============================================================================
+  # Umstellung der Systemzeit auf Universal Time Coordinated (UTC)
+  # ---------------------------------------------------------------
+  # Derzeit noch als separate Option - die Umstellung der Systemzeit auf RTC
+  # erfolgt im Rahmen der weiteren System-Einstellungen [optimize] - s.u.
+  # ============================================================================
+  if [ ${OPTION_FLAG[setutc]} -eq 1 ];
+  then
+    e_and_l " ${bold_blue}Systemzeit${colors_off}"
+    e_and_l "$HALF_LINE"
+    ACTION_MESSAGE=" Umstellung der ${light_cyan}Systemzeit auf UTC${colors_off}         "
+    if timedatectl &>/dev/null;
     then
-      e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
-      timedatectl set-local-rtc 0 --adjust-system-clock 2>/dev/null
-      if [ $? -eq 0 ];
+      if [ $(timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -gt 0 ];
       then
-        e_and_l "$OK_TAG"
-        e_and_l "$REBOOT_MSG"
+        e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
+        timedatectl set-local-rtc 0 --adjust-system-clock 2>/dev/null
+        if [ $? -eq 0 ];
+        then
+          e_and_l "$OK_TAG"
+          e_and_l "$REBOOT_MSG"
+        else
+          e_and_l "$ERROR_TAG"
+        fi
       else
-        e_and_l "$ERROR_TAG"
+        e_and_l "$ACTION_MESSAGE ... $NC_TAG"
       fi
     else
-      e_and_l "$ACTION_MESSAGE ... $NC_TAG"
+      e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
     fi
-  else
-    e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
+    e_and_l "$HALF_LINE"
   fi
-  e_and_l "$HALF_LINE"
+
 fi
 
 if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
@@ -15599,7 +15596,6 @@ then
     # --------------------------------------------------------------------------
     # Äußere Schleife durch alle Quell-Angaben
     # --------------------------------------------------------------------------
-    e_and_l "$HALF_LINE"
     e_and_l -n "$ACTION_MESSAGE"
     REDUNDANT_FOUND=0
     while read source_entry;
@@ -15631,9 +15627,7 @@ then
           REDUNDANT_FOUND=1
         fi
         e_and_l " Eintrag ${bold_yellow}$source_entry${colors_off}"
-        e_and_l -n " ist enthalten in den Dateien"
-        # if [ $ENTRIES_FOUND -gt 1 ]; then e_and_l -n "en"; fi
-        e_and_l ":"
+        e_and_l " ist enthalten in den Dateien:"
         while read source_file;
         do
           if [ $(grep -i -c -E "$REG_EXP" "$source_file" 2>/dev/null) -gt 0 ];
@@ -15641,6 +15635,7 @@ then
             e_and_l " - $source_file"
           fi
         done < "$ALL_SOURCE_FILES"
+        e_and_l "$HALF_LINE"
       fi
       # ------------------------------------------------------------------------
     done < "$ALL_SOURCES_LIST" # Ende äußere Schleife durch alle Quell-Angaben
@@ -15955,7 +15950,6 @@ then
           fi
         fi
       fi
-      e_and_l "$HALF_LINE"
     fi
   else
     e_and_l " Löschen nicht verwendeter ${light_cyan}Kernel-Versionen${colors_off} ... $NF_TAG"
@@ -16620,7 +16614,9 @@ then
     if [ ${OPTION_FLAG[dload]} -eq 1 ] &&
        [ ${OPTION_FLAG[dsave]} -eq 1 ];
     then
+      e_and_l "$FULL_LINE"
       e_and_l " ${bold_blue}Desktop- und Anwendungs-Einstellungen${colors_off}"
+      e_and_l "$FULL_LINE"
       e_and_l " $ERROR_TAG: Die Aktionen ${bold_white}dload${colors_off} und ${bold_white}dsave${colors_off} können nicht zusammen ausgeführt werden!"
     else
       # ------------------------------------------------------------------------
@@ -16628,7 +16624,9 @@ then
       # ------------------------------------------------------------------------
       if [ ${OPTION_FLAG[dsave]} -eq 1 ];
       then
+        e_and_l "$FULL_LINE"
         e_and_l " ${bold_blue}Desktop- und Anwendungs-Einstellungen speichern${colors_off}"
+        e_and_l "$FULL_LINE"
         DO_SAVE_FILE=1
         if [ -s "$DCONF_USER_FILE" ];
         then
@@ -16657,7 +16655,9 @@ then
       # ------------------------------------------------------------------------
       if [ ${OPTION_FLAG[dload]} -eq 1 ];
       then
+        e_and_l "$FULL_LINE"
         e_and_l " ${bold_blue}Desktop- und Anwendungs-Einstellungen wiederherstellen${colors_off}"
+        e_and_l "$FULL_LINE"
         if [ -s "$DCONF_USER_FILE" ];
         then
           FILE_DATE=$(date -r ${DCONF_USER_FILE} "+%d.%m.%Y %H:%M:%S")
@@ -16689,7 +16689,6 @@ then
         fi
       fi
     fi
-    e_and_l "$FULL_LINE"
   fi
 fi
 
@@ -17206,7 +17205,7 @@ then
     echo -e ""
   fi
   # ----------------------------------------------------------------------------
-  e_and_l "$FULL_LINE"
+  # e_and_l "$FULL_LINE"
 fi # Ende [remove]
 
 #===============================================================================
