@@ -39,7 +39,7 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 13.06.2025
+# Letzte Änderung: 16.06.2025
 VERSION="5.0.0"
 
 ################################################################################
@@ -230,7 +230,7 @@ function ask_yes_no_info {
                 e_and_l -n " ${light_purple}$PKG_VERSION${colors_off}"
               fi
               e_and_l " ist bereits installiert!"
-              copy_starter_to_desktop $CHECK_SIM_PACK 0
+              copy_starter_to_desktop "$CHECK_SIM_PACK" "" 0
               ((SIM_PACK_INSTALLED+=1))
               ((SIMILAR_WARNING_SHOWN+=1))
             fi
@@ -844,12 +844,12 @@ function copy_starter_list {
       # -------------------------------------
       if [ $REJECT_THIS -eq 0 ];
       then
-        copy_starter_to_desktop "$desktop_starter" 1
+        copy_starter_to_desktop "$desktop_starter" "" 0
       fi
     done
   fi
   e_and_l "$OK_TAG"
-  e_and_l " Es wurden ${bold_green}$NEW_STARTER_COUNTER${colors_off} neue Starter erstellt"
+  e_and_l " - Es wurden ${bold_green}$NEW_STARTER_COUNTER${colors_off} neue Starter erstellt"
   ((ALL_STARTER_COUNTER+=NEW_STARTER_COUNTER))
 }
 
@@ -860,6 +860,11 @@ function copy_starter_list {
 #               (erstes Zeichen ein /), dann wird diese Datei als Quelle
 #               verwendet und kopiert, ansonsten ist $1 der Paketname,
 #               zu welchem zuvor erst noch passende Starter gesucht werden
+# Parameter $2: Zielordner - wenn nicht angegeben, wird dieser anhand der
+#               aktuellen Kategorie ermittelt und ggf. angelegt
+# Parameter $3: Nur nach exakt dem in $1 angegebenen Dateinamen suchen (1)
+#               oder auch nach ähnlichen Namen und zudem auch nach Vorkommen
+#               des Strings in $1 in allen .desktop-Dateien (0)
 # ------------------------------------------------------------------------------
 # Rückgaben: 0 = OK, Starter erstellt
 #            1 = KEIN Starter erstellt
@@ -874,7 +879,20 @@ function copy_starter_to_desktop {
     return 1
   fi
 
-  CREATE_DESKTOP_RESULT=1
+  # ----------------------------------------------
+  # Zielordner verwenden wenn angegeben, ansonsten
+  # den Zielordner anhand der Kategorie ermitteln
+  # ----------------------------------------------
+  if [ "$2" != "" ];
+  then
+    STARTER_TARGET_DIR="$2"
+  else
+    STARTER_TARGET_DIR="$DESKTOP_STARTER_DIR/${KAT_SHORT_NAME%% (*}"
+  fi
+
+  SEARCH_EXACT_NAME=$3
+
+  COPY_DESKTOP_STARTER_RESULT=1
 
   if [ "$DESKTOP_DIR" != "" ];
   then
@@ -918,7 +936,9 @@ function copy_starter_to_desktop {
         # ---------------------------------------------------------------
         if [ "$DESKTOP_ENVIRONMENT" != "GNOME" ];
         then
-          STARTER_TARGET_DIR="$DESKTOP_STARTER_DIR/${KAT_SHORT_NAME%% (*}"
+          # ---------------------------------------------------------
+          # Wenn es den Zielordner noch nicht gibt, diesen erstellen
+          # ---------------------------------------------------------
           if [ ! -d "$STARTER_TARGET_DIR" ];
           then
             mkdir -p "$STARTER_TARGET_DIR" &>/dev/null
@@ -930,6 +950,7 @@ function copy_starter_to_desktop {
               STARTER_TARGET_DIR="$DESKTOP_STARTER_DIR"
             fi
           fi
+
         else
           STARTER_TARGET_DIR="$DESKTOP_STARTER_DIR"
         fi
@@ -947,7 +968,12 @@ function copy_starter_to_desktop {
           if [ "${1:0:1}" != "/" ];
           then
 
-            SEARCH_NAME=$(probe_starter_name "$1")
+            if [ $SEARCH_EXACT_NAME -eq 1 ];
+            then
+              SEARCH_NAME="$1"
+            else
+              SEARCH_NAME=$(probe_starter_name "$1")
+            fi
             SEARCH_RESULT_ALL=()
 
             # ---------------------------------------
@@ -975,49 +1001,54 @@ function copy_starter_to_desktop {
               if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
             fi
 
-            # --------------------------------
-            # 2. Paketname kommt in Datei vor
-            # --------------------------------
-            # 2.1. Auftreten des Paketnamens innerhalb der Dateien im Benutzer-Ordner suchen
-            SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" "$STARTMENU_DIR/"* 2>/dev/null)
-            if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
-
-            # 2.2. Auftreten des Paketnamens innerhalb der Dateien im System-Ordner suchen
-            SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" /usr/share/applications/* 2>/dev/null)
-            if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
-
-            # 2.3. Auftreten des Paketnamens innerhalb der Dateien im System-Ordner suchen
-            SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "(X-Ubuntu-Gettext-Domain)=\b$SEARCH_NAME\b" /usr/share/applications/* 2>/dev/null)
-            if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
-
-            # 2.4. Auftreten des Paketnamens innerhalb der Dateien im Snap-Ordner suchen
-            if [ -d "/var/lib/snapd/desktop/applications" ];
+            if [ $SEARCH_EXACT_NAME -ne 1 ];
             then
-              # Bei Snaps liegen die Starter nicht alle in einem separaten Ordner, sondern
-              # zusammen mit diversen Binärdateien unter einem Pfad. Daher wird dem grep hier
-              # ein find vorangestellt, um nur die .desktop-Dateien durchsuchen zu müssen.
-              SEARCH_RESULT_TMP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -exec grep -i -l -o -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" {} \;)
-              if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
-              SEARCH_RESULT_TMP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -exec grep -i -l -o -E "(X-SnapInstanceName)=\b$SEARCH_NAME\b" {} \;)
-              if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
-            fi
 
-            # 2.5. Auftreten des Paketnamens innerhalb der Dateien im Flatpak-Ordner suchen
-            if [ -d "/var/lib/flatpak/app" ];
-            then
-              # Bei Flatpaks heißen die Starter wie der Referenz-Text der Pakete.
-              # Blöderweise gibt es davon gleich mehrere, von denen aber nicht alle
-              # funktionieren, weil diese nur den Paketnamen ohne den erforderlichen
-              # vollständigen Aufruf per flatpak-Kommando beinhalten!
-              THE_FLATPAK_REF_STRING=$(get_pkg_flatpak_reference ${SEARCH_NAME} 1)
-              if [ "$THE_FLATPAK_REF_STRING" != "" ];
+              # --------------------------------
+              # 2. Paketname kommt in Datei vor
+              # --------------------------------
+              # 2.1. Auftreten des Paketnamens innerhalb der Dateien im Benutzer-Ordner suchen
+              SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" "$STARTMENU_DIR/"* 2>/dev/null)
+              if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
+
+              # 2.2. Auftreten des Paketnamens innerhalb der Dateien im System-Ordner suchen
+              SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" /usr/share/applications/* 2>/dev/null)
+              if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
+
+              # 2.3. Auftreten des Paketnamens innerhalb der Dateien im System-Ordner suchen
+              SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "(X-Ubuntu-Gettext-Domain)=\b$SEARCH_NAME\b" /usr/share/applications/* 2>/dev/null)
+              if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
+
+              # 2.4. Auftreten des Paketnamens innerhalb der Dateien im Snap-Ordner suchen
+              if [ -d "/var/lib/snapd/desktop/applications" ];
               then
-                # Bei Flatpaks liegen die Starter nicht alle in einem separaten Ordner, sondern
+                # Bei Snaps liegen die Starter nicht alle in einem separaten Ordner, sondern
                 # zusammen mit diversen Binärdateien unter einem Pfad. Daher wird dem grep hier
                 # ein find vorangestellt, um nur die .desktop-Dateien durchsuchen zu müssen.
-                SEARCH_RESULT_TMP=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -exec grep -i -l -o -E "^\s*exec\s*=\s*(/usr/bin/flatpak)(.)*$THE_FLATPAK_REF_STRING" {} \;)
+                SEARCH_RESULT_TMP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -exec grep -i -l -o -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" {} \;)
+                if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
+                SEARCH_RESULT_TMP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -exec grep -i -l -o -E "(X-SnapInstanceName)=\b$SEARCH_NAME\b" {} \;)
                 if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
               fi
+
+              # 2.5. Auftreten des Paketnamens innerhalb der Dateien im Flatpak-Ordner suchen
+              if [ -d "/var/lib/flatpak/app" ];
+              then
+                # Bei Flatpaks heißen die Starter wie der Referenz-Text der Pakete.
+                # Blöderweise gibt es davon gleich mehrere, von denen aber nicht alle
+                # funktionieren, weil diese nur den Paketnamen ohne den erforderlichen
+                # vollständigen Aufruf per flatpak-Kommando beinhalten!
+                THE_FLATPAK_REF_STRING=$(get_pkg_flatpak_reference ${SEARCH_NAME} 1)
+                if [ "$THE_FLATPAK_REF_STRING" != "" ];
+                then
+                  # Bei Flatpaks liegen die Starter nicht alle in einem separaten Ordner, sondern
+                  # zusammen mit diversen Binärdateien unter einem Pfad. Daher wird dem grep hier
+                  # ein find vorangestellt, um nur die .desktop-Dateien durchsuchen zu müssen.
+                  SEARCH_RESULT_TMP=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -exec grep -i -l -o -E "^\s*exec\s*=\s*(/usr/bin/flatpak)(.)*$THE_FLATPAK_REF_STRING" {} \;)
+                  if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
+                fi
+              fi
+
             fi
 
             # ------------------------------------------------------------------
@@ -1233,7 +1264,7 @@ function copy_starter_to_desktop {
                         # -------------------------------------------------
                         chown -R "$USER_USERNAME:$USER_USERNAME" "$TARGET_FILE_NAME" &>/dev/null
                         chmod -R 0755 "$TARGET_FILE_NAME" &>/dev/null
-                        CREATE_DESKTOP_RESULT=0
+                        COPY_DESKTOP_STARTER_RESULT=0
                       else
                         do_log "$PRE_SPACE $ERROR_TAG beim Kopieren des Starters für $SEARCH_NAME nach $TARGET_FILE_NAME"
                       fi
@@ -1348,7 +1379,7 @@ function copy_starter_to_desktop {
       fi
     fi
   fi
-  return $CREATE_DESKTOP_RESULT
+  return $COPY_DESKTOP_STARTER_RESULT
 }
 
 #===============================================================================
@@ -4014,7 +4045,7 @@ function install_pkg {
             # -----------------------------------------------------
             # Nach erfolgreicher Installation ggf. Starter anlegen
             # -----------------------------------------------------
-            if [ $INSTALL_RESULT -eq 0 ]; then copy_starter_to_desktop $PAKET 0; fi
+            if [ $INSTALL_RESULT -eq 0 ]; then copy_starter_to_desktop "$PAKET" "" 0; fi
 
           else # wenn Ja-Nein-Abfrage negativ ausgefallen
 
@@ -4133,7 +4164,7 @@ function install_pkg {
     # "Auf Wunsch" auch für schon installierte Programme sowie
     #  deren installierte Alternativen einen Starter anlegen
     # ---------------------------------------------------------
-    copy_starter_to_desktop $PAKET 0
+    copy_starter_to_desktop "$PAKET" "" 0
     show_similar_pkg $PAKET
 
   fi
@@ -5074,7 +5105,7 @@ function show_similar_pkg {
           ((PAKETS_SIMILAR_EXIST+=1))
           ((SIMILAR_WARNING_SHOWN+=1))
         fi
-        copy_starter_to_desktop $CHECK_SIM_PACK 0
+        copy_starter_to_desktop "$CHECK_SIM_PACK" "" 0
       fi
     fi
     SIMILAR_SEEN_LIST+=($CHECK_SIM_PACK)
@@ -6260,7 +6291,7 @@ KATEGORIE_PKGS[u]="usbauth"
 # ---------------------------------------------------------
 # Systemverwaltung (Hilfsprogramme mit Benutzeroberfläche)
 # ---------------------------------------------------------
-KATEGORIE_PKGS[v]="baobab bleachbit blueman caja copyq cpu-x czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted gsmartcontrol gtkhash hardinfo isomaster kleopatra kwalletmanager metadata-cleaner mozo nemo plasma-discover qt5ct seahorse stacer synaptic system-config-printer tilda usbview xfce4-taskmanager"
+KATEGORIE_PKGS[v]="baobab bleachbit blueman caja cpu-x czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted gsmartcontrol gtkhash hardinfo isomaster kleopatra kwalletmanager metadata-cleaner mozo nemo plasma-discover qt5ct seahorse stacer synaptic system-config-printer tilda usbview xfce4-taskmanager"
 # Nur mit LDM
 if [ -d "$LDM_CONF_DIR" ];
 then
@@ -6312,33 +6343,36 @@ KATEGORIE_PKGS[xx]="alien apt-file apt-rdepends apt-show-versions arping arp-sca
 # --------
 # Zubehör
 # --------
-KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk doublecmd electrum engrampa file-roller freefilesync galculator gedit gnome-weather gucharmap kdeconnect keepass2 kfind klavaro ksnip ktouch magnus mousepad onboard plank pluma redshift rpi-imager sardu unetbootin usb-creator-common veracrypt xournal"
+KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk copyq doublecmd electrum engrampa file-roller freefilesync galculator gedit gnome-weather gucharmap kdeconnect keepass2 kfind klavaro ksnip ktouch magnus mousepad onboard plank pluma redshift rpi-imager sardu unetbootin usb-creator-common veracrypt xournal"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[z]+=" sticky xed"; fi
 if [ "$DESKTOP_ENVIRONMENT" == "Cinnamon" ]; then KATEGORIE_PKGS[z]+=" cinnamon-desktop-environment"; fi
-
-# -----------
-# Mint Tools
-# -----------
-KATEGORIE_PKGS[mt]="mintbackup mintchat mintdesktop mintdrivers mintinstall mintlocale mintreport mintsources mintstick mintupdate mintwelcome"
-# -----------
+# ------------------------------------------------------------------------------
 # GNOME Apps
 # Ohne die folgenden, welche bereits in anderen Kategorien enthalten sind:
 # gnome-atomix, gnome-disk-utility, gnome-games, gnome-mastermind, gnome-nettool, gnome-software, gnome-software-plugin-flatpak, gnome-sound-recorder, gnome-weather
 # -----------
+# Achtung: Nicht verwechseln mit ADDITIONAL_S_NAMES[vg],
+# welche nur die Starter zur Systemverwaltung enthält!
+# ------------------------------------------------------------------------------
 GNOME_APPS=('boxes' 'calculator' 'calendar' 'characters' 'commander' 'connections' 'contacts' 'firmware' 'keyring' 'maps' 'passwordsafe' 'screenshot' 'snapshot' 'system-monitor' 'system-tools' 'terminal' 'tweaks' 'usage')
 KATEGORIE_PKGS[gx]=""
 for pkg in ${GNOME_APPS[@]};
 do
-  KATEGORIE_PKGS[gx]+="gnome-$pkg "
+  KATEGORIE_PKGS[gx]+=" gnome-$pkg"
 done
-
-# -----------
+# ------------------------------------------------------------------------------
 # LXDE Tools
 # -----------
+# Achtung: Nicht verwechseln mit ADDITIONAL_S_NAMES[vl],
+# welche nur die Starter zur Systemverwaltung enthält!
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[lx]="lxappearance lxhotkey-gtk lxinput lxrandr lxsession-edit lxtask lxterminal"
-# -----------
+# ------------------------------------------------------------------------------
 # MATE Tools
 # -----------
+# Achtung: Nicht verwechseln mit ADDITIONAL_S_NAMES[vm],
+# welche nur die Starter zur Systemverwaltung enthält!
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[mx]="mate-applets mate-control-center mate-indicator-applet mate-media mate-sensors-applet mate-terminal mate-utils"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ];
 then
@@ -6347,6 +6381,10 @@ else
   KATEGORIE_PKGS[mx]+=" mate-desktop-environment-extras"
 fi
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "ubuntu") -gt 0 ]; then KATEGORIE_PKGS[mx]+=" software-boutique ubuntu-mate-welcome"; fi
+# ------------------------------------------------------------------------------
+# Mint Tools
+# ------------------------------------------------------------------------------
+KATEGORIE_PKGS[mt]="mintbackup mintchat mintdesktop mintdrivers mintinstall mintlocale mintreport mintsources mintstick mintupdate mintwelcome"
 
 #===============================================================================
 # Pakete innerhalb der Kategorien alphabetisch sortieren
@@ -7758,13 +7796,65 @@ GAME_DIR_SUB_LIST[strategy]="0ad endless-sky megaglest naev oolite ufoai wesnoth
 # Zusätzliche Starter zur Ergänzung von Kategorien.
 # ------------------------------------------------------------------------------
 # Starter, die nur dann erstellt werden, wenn das entsprechende Programmpaket
-# bereits installiert ist, OHNE dieses Paket selbst neu zu installieren.
-# Das betrifft bspw. Programme aus Systemerweiterungen oder Tools (GUIs)
-# für die Konfiguration von Kernel-Modulen sowie externen Treibern.
+# bereits installiert ist. Das betrifft Programme aus Systemerweiterungen oder
+# Tools für die Konfiguration von Systemeinstellungen, Kernel-Modulen etc.
+# Es werden zudem nur Starter erstellt, die nicht über eine gegebenenfalls
+# vorhandene Steuerzentrale zu erreichen sind.
+# ------------------------------------------------------------------------------
+# Achtung: Die Einträge sind die DATEINAMEN der Starter (ohne Pfadangabe und
+# ohne die Endung .desktop), NICHT die Paketnamen!
 #===============================================================================
-declare -A ADDITIONAL_STARTER
-ADDITIONAL_STARTER[v]="ayatana-settings debian-xterm caja-file-management-properties ccsm htop lightdm-settings nvidia-settings org.gnome.DiskUtility software-properties-gtk software-properties-qt time-admin update-manager users-admin xarchiver xpra xscreensaver-properties xscreensaver-settings xterm"
+declare -A ADDITIONAL_STARTER # Listen der zusätzlichen Starter je Kategorie
+declare -A ADDITIONAL_S_NAMES # Listen der Systemverwaltungs-Starter je Desktop
+declare -A ADDITIONAL_DIRNAME # Namen der Sytemverwaltungs-Unterordner je Desktop
+
+# ------------------------------------------------------------------------------
+# Netzwerkmanagement
+# ------------------------------------------------------------------------------
 ADDITIONAL_STARTER[n]="nm-connection-editor"
+
+# ------------------------------------------------------------------------------
+# Emulation und Virtualisierung
+# ------------------------------------------------------------------------------
+ADDITIONAL_STARTER[q]="org.gnome.Boxes"
+
+# ------------------------------------------------------------------------------
+# Zusätzliche Starter zu Systemverwaltung allgemein
+# --------------------------------------------------
+# Achtung: Nicht verwechseln mit KATEGORIE_PKGS[v],
+# welches alle Pakete der Systemverwaltung enthält
+# ------------------------------------------------------------------------------
+ADDITIONAL_STARTER[v]="ayatana-settings debian-xterm caja-file-management-properties ccsm htop lightdm-settings nvidia-settings software-properties-gtk software-properties-qt time-admin update-manager users-admin xarchiver xpra xscreensaver-properties xscreensaver-settings xterm"
+
+# ----------------------------------------------
+# Starter nur zur Systemverwaltung von Cinnamon
+# ----------------------------------------------
+ADDITIONAL_S_NAMES[vc]="cinnamon-menu-editor cinnamon-settings"
+ADDITIONAL_DIRNAME[vc]="Cinnamon"
+# -------------------------------------------
+# Starter nur zur Systemverwaltung von GNOME
+# -------------------------------------------
+# Achtung: Nicht verwechseln mit KATEGORIE_PKGS[gx],
+# welches alle Pakete der GNOME Apps enthält
+# -------------------------------------------
+ADDITIONAL_S_NAMES[vg]="gnome-system-monitor gnome-system-monitor-kde gparted org.gnome.baobab org.gnome.DejaDup org.gnome.DiskUtility org.gnome.Firmware org.gnome.FontManager org.gnome.seahorse.Application org.gnome.Software org.gnome.Terminal org.gnome.tweaks org.gnome.Usage"
+ADDITIONAL_DIRNAME[vg]="GNOME"
+# ------------------------------------------
+# Starter nur zur Systemverwaltung von LXDE
+# ------------------------------------------
+# Achtung: Nicht verwechseln mit KATEGORIE_PKGS[lx],
+# welches alle Pakete der LXDE Tools enthält
+# ------------------------------------------
+ADDITIONAL_S_NAMES[vl]=""
+ADDITIONAL_DIRNAME[vl]="LXDE"
+# ------------------------------------------
+# Starter nur zur Systemverwaltung von MATE
+# --------------------------------------------
+# Achtung: Nicht verwechseln mit KATEGORIE_PKGS[mx],
+# welches alle Pakete der MATE Tools enthält
+# ------------------------------------------
+ADDITIONAL_S_NAMES[vm]="matecc mate-control-center mate-disk-image-mounter mate-disk-usage-analyzer mate-font-viewer mate-power-statistics mate-search-tool mate-system-log mate-system-monitor mate-terminal"
+ADDITIONAL_DIRNAME[vm]="MATE"
 
 #===============================================================================
 # Raspbian Tools - Namen der Starter (vollständige Dateinamen ohne Pfadangabe
@@ -8643,9 +8733,10 @@ EOF
             # "Fremde" Desktops
             # ------------------
             if [[ ${KATEGORIE_FLAG[gx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "GNOME" ]] ||
-               [[ ${KATEGORIE_FLAG[lx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "LXDE" ]] ||
+               [[ ${KATEGORIE_FLAG[lx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "LXDE" ]]  ||
+               [[ ${KATEGORIE_FLAG[mx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "MATE" ]]  ||
                [[ ${KATEGORIE_FLAG[mt]} -eq 1 && $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -eq 0 ]] ||
-               [[ ${KATEGORIE_FLAG[mx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "MATE" ]];
+               [[ ${OPTION_FLAG[adcstart]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "Cinnamon" ]];
             then
               MENU_INFO_TEXT="\Z1\ZbWarnung\Zn\nEs wurden Tool-Pakete ausgewählt, die nicht für diesen Desktop vorgesehen sind."
             fi
@@ -10304,11 +10395,13 @@ then
     e_and_l "$FULL_LINE"
   fi
 
-  # ----------------------------------------------------------
-  # Zusätzliche Starter erstellen (wenn Kategorie ausgewählt)
-  # ----------------------------------------------------------
+  # ----------------------------------------------------------------------------
+  # Starter der einzelnen Kategorien (wenn ausgewählt)
+  # ----------------------------------------------------------------------------
   e_and_l " ${bold_blue}Erstellung zusätzlicher Starter (Programm-Symbole)${colors_off}"
   e_and_l "$FULL_LINE"
+  e_and_l " Bisher bereits neu erstellte Starter: ${bold_yellow}$ALL_STARTER_COUNTER${colors_off}"
+  e_and_l "$HALF_LINE"
   e_and_l " ${bold_blue}Kategorien${colors_off}"
   e_and_l "$HALF_LINE"
   NEW_STARTER_COUNTER=0
@@ -10321,18 +10414,18 @@ then
       e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}${KAT_SHORT_NAME%% (*}${colors_off}, bitte warten ... "
       for starter_name in "${ADD_STARTER_LIST[@]}";
       do
-        copy_starter_to_desktop "$starter_name" 0
+        copy_starter_to_desktop "$starter_name" "" 1
       done
       e_and_l "$OK_TAG"
       ((ALL_STARTER_COUNTER+=NEW_STARTER_COUNTER))
     fi
   done
-  e_and_l " Es wurden ${bold_green}$NEW_STARTER_COUNTER${colors_off} neue Starter erstellt"
+  e_and_l " - Es wurden ${bold_green}$NEW_STARTER_COUNTER${colors_off} zusätzliche Starter erstellt"
   e_and_l "$HALF_LINE"
 
-  # -------------------------------------
+  # ----------------------------------------------------------------------------
   # GNOME Apps Starter (wenn ausgewählt)
-  # -------------------------------------
+  # ----------------------------------------------------------------------------
   if [ ${KATEGORIE_FLAG[gx]} -eq 1 ];
   then
     NEW_STARTER_COUNTER=0
@@ -10352,15 +10445,18 @@ then
       SEARCH_RESULT_FLATPAK=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -print | grep -i -E "\/export" | grep -i -E "gnome.*\.desktop$")
     fi
     SEARCH_STARTER_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
-    # Spiele (und vielleicht später mal Pakete aus anderen Kategorien) auslassen
+    # -----------------------------------------
+    # Spiele (und vielleicht später mal Pakete
+    # aus anderen Kategorien) auslassen
+    # -----------------------------------------
     EXCLUDE_STARTER_LIST="${PKG_STARTER_LIST[gnome-games]} org.gnome.atomix org.gnome.gbrainy gnome-mastermind"
     copy_starter_list
     e_and_l "$HALF_LINE"
   fi
 
-  # -------------------------------------
+  # ----------------------------------------------------------------------------
   # MATE Tools Starter (wenn ausgewählt)
-  # -------------------------------------
+  # ----------------------------------------------------------------------------
   if [ ${KATEGORIE_FLAG[mx]} -eq 1 ];
   then
     NEW_STARTER_COUNTER=0
@@ -10380,15 +10476,15 @@ then
       SEARCH_RESULT_FLATPAK=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -print | grep -i -E "\/export" | grep -i -E "mate\-.*\.desktop$")
     fi
     SEARCH_STARTER_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
-    copy_starter_to_desktop "matecc" 0 # Control-Center / Steuerzentrale separat ("-" fehlt im Namen)
+    copy_starter_to_desktop "matecc" "" 0 # Control-Center / Steuerzentrale separat ("-" fehlt im Namen)
     EXCLUDE_STARTER_LIST=""
     copy_starter_list
     e_and_l "$HALF_LINE"
   fi
 
-  # -------------------------------------
+  # ----------------------------------------------------------------------------
   # LXDE Tools Starter (wenn ausgewählt)
-  # -------------------------------------
+  # ----------------------------------------------------------------------------
   if [ ${KATEGORIE_FLAG[lx]} -eq 1 ];
   then
     NEW_STARTER_COUNTER=0
@@ -10413,9 +10509,9 @@ then
     e_and_l "$HALF_LINE"
   fi
 
-  # -----------------------------------------
+  # ----------------------------------------------------------------------------
   # Cinnamon Tools Starter (wenn ausgewählt)
-  # -----------------------------------------
+  # ----------------------------------------------------------------------------
   if [ ${OPTION_FLAG[adcstart]} -eq 1 ];
   then
     NEW_STARTER_COUNTER=0
@@ -10440,9 +10536,9 @@ then
     e_and_l "$HALF_LINE"
   fi
 
-  # -------------------------------------
+  # ----------------------------------------------------------------------------
   # Raspbian Tools Starter (automatisch)
-  # -------------------------------------
+  # ----------------------------------------------------------------------------
   if [ $RASPBIAN -ne 0 ];
   then
     NEW_STARTER_COUNTER=0
@@ -10452,23 +10548,115 @@ then
     KAT_SHORT_NAME="Raspbian Tools"
     for desktop_starter in "${RASPBIAN_EXT_STARTER[@]}";
     do
-      copy_starter_to_desktop "$desktop_starter" 0
+      copy_starter_to_desktop "$desktop_starter" "" 0
     done
     e_and_l "$OK_TAG"
-    e_and_l " Es wurden ${bold_green}$NEW_STARTER_COUNTER${colors_off} neue Starter erstellt"
+    e_and_l " - Es wurden ${bold_green}$NEW_STARTER_COUNTER${colors_off} zusätzliche Starter erstellt"
     e_and_l "$HALF_LINE"
     ((ALL_STARTER_COUNTER+=NEW_STARTER_COUNTER))
   fi
 
-  # =============================================================================
+  # ----------------------------------------------------------------------------
   # Starter bereinigen
-  # =============================================================================
-  e_and_l " ${bold_blue}Bereinigung${colors_off}"
+  # ----------------------------------------------------------------------------
+  e_and_l " ${bold_blue}Optimierung${colors_off}"
   e_and_l "$HALF_LINE"
-  e_and_l -n " Bereinige die Starter (Programm-Symbole) auf dem Desktop ... "
-  STARTER_REMOVED=0
+  e_and_l -n " Optimiere die neuen Starter auf dem Desktop, bitte warten ... "
+  NEW_STARTER_COUNTER=0
+  STARTER_DELETED=0
+  STARTER_MOVED=0
   if [ -d "$DESKTOP_STARTER_DIR" ];
   then
+    # ---------------------------------------------------------------------
+    # Spezifische Starter der Desktops für die Systemverwaltung in jeweils
+    # seperate Unterordner verschieben (nicht auf GNOME-Desktop)
+    # ---------------------------------------------------------------------
+    if [ "$DESKTOP_ENVIRONMENT" != "GNOME" ];
+    then
+      if [ ${KATEGORIE_FLAG[v]} -eq 1 ]  ||
+         [ ${KATEGORIE_FLAG[gx]} -eq 1 ] ||
+         [ ${KATEGORIE_FLAG[lx]} -eq 1 ] ||
+         [ ${KATEGORIE_FLAG[mx]} -eq 1 ] ||
+         [ ${KATEGORIE_FLAG[mt]} -eq 1 ] ||
+         [ ${OPTION_FLAG[adcstart]} -eq 1 ];
+      then
+        # ----------------------------------------------------------
+        # Ordner Systemverwaltung anlegen wenn noch nicht vorhanden
+        # ----------------------------------------------------------
+        SYS_V_DIR="$DESKTOP_STARTER_DIR/${KATEGORIE_TEXT[v]%% (*}"
+        if [ ! -d "$SYS_V_DIR" ];
+        then
+          mkdir -p "$SYS_V_DIR" &>/dev/null
+          if [ $? -eq 0 ];
+          then
+            chown -R "$USER_USERNAME:$USER_USERNAME" "$SYS_V_DIR" &>/dev/null
+            chmod -R 0755 "$SYS_V_DIR" &>/dev/null
+          fi
+        fi
+        if [ -d "$SYS_V_DIR" ];
+        then
+          # ------------------------------------------------------
+          # Für jedes Desktop (außer den Startern "für alle") ...
+          # ------------------------------------------------------
+          for asn in "${!ADDITIONAL_S_NAMES[@]}";
+          do
+            # if [ "$asn" != "va" ];
+            # then
+              DESKTOP_STARTER_DIR_NAME="${ADDITIONAL_DIRNAME[$asn]}"
+              DESKTOP_SYS_STARTER_LIST=(${ADDITIONAL_S_NAMES[$asn]})
+              if [ ${#DESKTOP_SYS_STARTER_LIST} -gt 0 ];
+              then
+                V_STARTER_TARGET_DIR="$SYS_V_DIR/$DESKTOP_STARTER_DIR_NAME"
+                # -----------------------------------------
+                # Desktop-spezifischen Unterordner anlegen
+                # -----------------------------------------
+                if [ ! -d "$V_STARTER_TARGET_DIR" ];
+                then
+                  mkdir -p "$V_STARTER_TARGET_DIR" &>/dev/null
+                  if [ $? -eq 0 ];
+                  then
+                    chown -R "$USER_USERNAME:$USER_USERNAME" "$V_STARTER_TARGET_DIR" &>/dev/null
+                    chmod -R 0755 "$V_STARTER_TARGET_DIR" &>/dev/null
+                  fi
+                fi
+                # --------------------------------
+                # Alle Starter der Liste kopieren
+                # --------------------------------
+                if [ -d "$V_STARTER_TARGET_DIR" ];
+                then
+                  for starter_name in ${DESKTOP_SYS_STARTER_LIST[@]};
+                  do
+                    if [ "$starter_name" != "" ];
+                    then
+                      # -----------------------------------------------
+                      # Wenn es den Starter im Ordner Systemverwaltung
+                      # schon gibt, diesen nur noch verschieben ...
+                      # -----------------------------------------------
+                      if [ -s "$SYS_V_DIR/$starter_name.desktop" ];
+                      then
+                        mv -f "$SYS_V_DIR/$starter_name.desktop" "$V_STARTER_TARGET_DIR/$starter_name.desktop" &>/dev/null
+                        if [ $? -eq 0 ];
+                        then
+                          make_starter_trusted "$V_STARTER_TARGET_DIR/$starter_name.desktop"
+                          ((STARTER_MOVED+=1))
+                        fi
+                      # -----------------------------------------------------
+                      # ... sonst Starter suchen und in Unterordner kopieren
+                      # -----------------------------------------------------
+                      else
+                        copy_starter_to_desktop "$starter_name" "$V_STARTER_TARGET_DIR" 1
+                      fi
+                    fi
+                  done
+                fi
+              fi
+            # fi
+          done
+        fi
+      fi
+    fi
+    ((ALL_STARTER_COUNTER+=NEW_STARTER_COUNTER))
+
     # -------------------------------------
     # Falsch zugeordnete Starter entfernen
     # -------------------------------------
@@ -10478,10 +10666,11 @@ then
       if [ -s "$THE_WRONG_FILE" ];
       then
         remove_file "$THE_WRONG_FILE" &>/dev/null
-        ((STARTER_REMOVED+=1))
+        ((STARTER_DELETED+=1))
         ((ALL_STARTER_COUNTER-=1))
       fi
     done
+
     # ----------------------------------------------------------------------
     # Zur Sicherheit auch eventuell früher falsch angelegte Starter löschen
     # ----------------------------------------------------------------------
@@ -10491,10 +10680,11 @@ then
       if [ $REJECTED_STARTER_FOUND -ne 0 ];
       then
         find "$DESKTOP_STARTER_DIR" -type f -iname "$desktop_starter.desktop" -delete &>"$LOG_TEMP"
-        ((STARTER_REMOVED+=1))
+        ((STARTER_DELETED+=1))
         ((ALL_STARTER_COUNTER-=1))
       fi
     done
+
     # ------------------------------------------------
     # Mehrfach gefundene Starter (für KDE) bereinigen
     # ------------------------------------------------
@@ -10512,10 +10702,11 @@ then
         else
           remove_file "$the_std_starter" &>/dev/null
         fi
-        ((STARTER_REMOVED+=1))
+        ((STARTER_DELETED+=1))
         ((ALL_STARTER_COUNTER-=1))
       fi
     done <<< $(find "$DESKTOP_STARTER_DIR" -type f -iname "*-kde".desktop -print)
+
     # -----------------------
     # Leere Ordner entfernen
     # -----------------------
@@ -10526,11 +10717,20 @@ then
         rmdir "$dir_entry" &>/dev/null
       fi
     done <<< $(find "$DESKTOP_STARTER_DIR" -type d -print)
+
   fi
   e_and_l "$OK_TAG"
-  if [ $STARTER_REMOVED -gt 0 ];
+  if [ $NEW_STARTER_COUNTER -gt 0 ];
   then
-    e_and_l " Es wurden ${bold_yellow}$STARTER_REMOVED${colors_off} ungültige Starter wieder entfernt."
+    e_and_l " - Es wurden ${bold_green}$NEW_STARTER_COUNTER${colors_off} weitere Starter erstellt"
+  fi
+  if [ $STARTER_MOVED -gt 0 ];
+  then
+    e_and_l " - Es wurden ${bold_yellow}$STARTER_MOVED${colors_off} bestehende Starter verschoben"
+  fi
+  if [ $STARTER_DELETED -gt 0 ];
+  then
+    e_and_l " - Es wurden ${bold_red}$STARTER_DELETED${colors_off} ungültige Starter entfernt"
   fi
 fi # Ende Zusätzliche Starter erstellen
 
@@ -11167,8 +11367,8 @@ then
               e_and_l "$OK_TAG"
               CURRENT_CATEGORY="v" # Starter für Einstellungen des XScreenSaver der Systemverwaltung zuordnen
               KAT_SHORT_NAME="${KATEGORIE_TEXT[v]}"
-              copy_starter_to_desktop "xscreensaver-properties" 0
-              copy_starter_to_desktop "xscreensaver-settings" 0
+              copy_starter_to_desktop "xscreensaver-properties" "" 0
+              copy_starter_to_desktop "xscreensaver-settings" "" 0
               CHANGES_MADE=1
             else
               e_and_l "$ERROR_TAG"
@@ -11499,7 +11699,7 @@ then
               if [ ${OPTION_FLAG[addstart]} -ne 0 ];
               then
                 KAT_SHORT_NAME="${KATEGORIE_TEXT[w]}"
-                copy_starter_to_desktop "$starter_file" 0
+                copy_starter_to_desktop "$starter_file" "" 1 # TODO TESTEN!
               fi
             else
               ((WINE_STARTER_ERRORS+=1))
