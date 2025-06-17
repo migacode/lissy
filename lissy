@@ -5447,6 +5447,8 @@ REMOVE_CONFIG_LIST="$DOWNLOAD_DIR/remove_config_list"
 REMOVE_DAT_LIST="$DOWNLOAD_DIR/remove_dat_list"
 # Liste vormals deaktivierter Komponenten
 REVIVE_ITEM_LIST="$DOWNLOAD_DIR/revive_item_list"
+# Liste ungültiger Verknüpfungen
+BROKEN_LINKS_FILE="$DOWNLOAD_DIR/broken_links_file.list"
 
 #===============================================================================
 # Daten für automatische Antworten (autoyorn) einlesen
@@ -13853,182 +13855,187 @@ EOF
   # Hintergrundbild des Anmeldebildschirms ändern
   # ============================================================================
   ACTION_MESSAGE=" Hintergrundbild von Anmeldung/Login ändern"
-  # --------------------------------------------------------------------------
-  # Liste der Dateien, in denen das Hintergrundbild festgelegt sein kann
-  # --------------------------------------------------------------------------
-  ARCTICA_FILE="/usr/share/glib-2.0/schemas/30_ubuntu-mate.gschema.override"
-  LDM_CFILE_LIST="lightdm-gtk-greeter.conf.d/99_linuxmint.conf lightdm-gtk-greeter.conf slick-greeter.conf"
-  if [ -s "$ARCTICA_FILE" ] ||
-     [ -s "$GDM_DCONF_FILE" ] ||
-     [ -d "$LDM_CONF_DIR" ];
+  if [ "$DESKTOP_ENVIRONMENT" != "GNOME" ];
   then
-    if [ ! -s "$ARCTICA_FILE" ];
+    # --------------------------------------------------------------------------
+    # Liste der Dateien, in denen das Hintergrundbild festgelegt sein kann
+    # --------------------------------------------------------------------------
+    ARCTICA_FILE="/usr/share/glib-2.0/schemas/30_ubuntu-mate.gschema.override"
+    LDM_CFILE_LIST="lightdm-gtk-greeter.conf.d/99_linuxmint.conf lightdm-gtk-greeter.conf slick-greeter.conf"
+    if [ -s "$ARCTICA_FILE" ] ||
+      [ -s "$GDM_DCONF_FILE" ] ||
+      [ -d "$LDM_CONF_DIR" ];
     then
-      # --------------------------------------------------------------------------
-      # Aktuelles Hintergrundbild ermitteln
-      # --------------------------------------------------------------------------
-      CURRENT_LOGIN_BG=""
-      # --------------------------------
-      # Arctica
-      # --------
-      # Wird derzeit nicht unterstützt
-      # --------------------------------
-      # if [ -s "$ARCTICA_FILE" ];
-      # then
-      #   CURRENT_LOGIN_BG=$(grep -i -E "^\s*background\s*=" "$ARCTICA_FILE" | sed -E "s/^\s*background\s*=//" | sort -u | xargs 2>/dev/null)
-      # else
-        # ------------------------------
-        # GDM
-        # ------------------------------
-        if [ -s "$GDM_DCONF_FILE" ];
-        then
-          CURRENT_LOGIN_BG=$(grep -i -E "^\s*picture-uri\s*=" "$GDM_DCONF_FILE" | sed -E "s/^\s*picture-uri\s*=//" | sed -E "s/file:\/\///gi" | sort -u | xargs 2>/dev/null)
-        else
-          # ----------------------------
-          # LDM
-          # ----------------------------
-          for ldm_cfile in ${LDM_CFILE_LIST[@]};
-          do
-            LDM_GREETER_FILE="$LDM_CONF_DIR/$ldm_cfile"
-            if [ -s "$LDM_GREETER_FILE" ] &&
-              [ "$CURRENT_LOGIN_BG" == "" ];
-            then
-              CURRENT_LOGIN_BG=$(grep -i -E "^\s*background\s*=" ${LDM_GREETER_FILE} | sed -E "s/^\s*background\s*=//" | sort -u | xargs 2>/dev/null)
-            fi
-          done
-        fi
-      # fi
-      if [ "$CURRENT_LOGIN_BG" == "" ]; then CURRENT_LOGIN_BG="Standard"; fi
-      e_and_l " ${light_cyan}Hintergrundbild${colors_off}: ${dark_grey}$CURRENT_LOGIN_BG${colors_off}"
-      # -------------------
-      # Sicherheitsabfrage
-      # -------------------
-      ask_yes_or_no_plus "login_background" "$ACTION_MESSAGE" "" "n"
-      if [ $? -eq 1 ];
+      if [ ! -s "$ARCTICA_FILE" ];
       then
-        # -------------------------------
-        # Neues Hintergrundbild eingeben
-        # -------------------------------
-        THE_NEW_BG_FILE="NONE"
-        while [ "$THE_NEW_BG_FILE" == "NONE" ];
-        do
-          e_and_l -n " Neues Bild: "
-          read THE_NEW_BG_FILE
-          if [ "$THE_NEW_BG_FILE" != "" ] &&
-            [[ ! -s "$THE_NEW_BG_FILE" || -d "$THE_NEW_BG_FILE" ]];
-          then
-            THE_NEW_BG_FILE="NONE"
-          fi
-        done
-        # ------------------------------------------------------------------------
-        # Hintergrundbild ändern (in allen in Frage kommenden Dateien, damit
-        # jede Version - insbesondere Ubuntu und Mint - "seine" Datei findet ...)
-        # ------------------------------------------------------------------------
-        if [ "$THE_NEW_BG_FILE" != "$CURRENT_LOGIN_BG" ];
-        then
-          e_and_l -n " Ändere ${light_yellow}Hintergrundbild von Anmeldung/Login${colors_off} ... "
-          if [ "$THE_NEW_BG_FILE" != "" ];
-          then
-            NEW_CFG_LINE="background=$THE_NEW_BG_FILE"
-            NEW_URI_LINE="picture-uri='file://$THE_NEW_BG_FILE'"
-          else
-            NEW_CFG_LINE="# background="
-            NEW_URI_LINE="# picture-uri="
-          fi
-          FOUND_AND_REPLACED=0
-          # ----------------------------
-          # Arctica
-          # --------
-          # Wird derzeit nicht unterstützt
-          # ----------------------------
-          # if [ -s "$ARCTICA_FILE" ];
-          # then
-          #   create_backup_file "$ARCTICA_FILE"
-          #   # Alle aktuellen Vorkommen auskommentieren (deaktivieren)
-          #   sed -i -E "s/^\s*background\s*=/# background=/gi" "$ARCTICA_FILE" 2>/dev/null
-          #   # SED-Option /a fügt eine Zeile hinter dem Match ein ;)
-          #   sed -i -E "/^\s*\[org.ArcticaProject.arctica-greeter\]/a$NEW_CFG_LINE" "$ARCTICA_FILE" 2>/dev/null
-          #   if [ $? -eq 0 ];
-          #   then
-          #     glib-compile-schemas /usr/share/glib-2.0/schemas/ &>/dev/null
-          #     ((FOUND_AND_REPLACED+=1))
-          #   fi
-          # fi
-          # ----------------------------
+        # ----------------------------------------------------------------------
+        # Aktuelles Hintergrundbild ermitteln
+        # ----------------------------------------------------------------------
+        CURRENT_LOGIN_BG=""
+        # --------------------------------
+        # Arctica
+        # --------
+        # Wird derzeit nicht unterstützt
+        # --------------------------------
+        # if [ -s "$ARCTICA_FILE" ];
+        # then
+        #   CURRENT_LOGIN_BG=$(grep -i -E "^\s*background\s*=" "$ARCTICA_FILE" | sed -E "s/^\s*background\s*=//" | sort -u | xargs 2>/dev/null)
+        # else
+          # ------------------------------
           # GDM
-          # ----------------------------
-          # Alles richtig gemacht, Ubuntu verweigert aber trotzdem komplett!
-          # Selbst Änderungen mit dem dconf-editor werden ignoriert ... :(
-          # Der dconf-Pfad ist /com/ubuntu/login-screen/background-picture-uri
-          # ----------------------------
+          # ------------------------------
           if [ -s "$GDM_DCONF_FILE" ];
           then
-            create_backup_file "$GDM_DCONF_FILE"
-            # --------------------------------------------------------
-            # Alle aktuellen Vorkommen auskommentieren (deaktivieren)
-            # --------------------------------------------------------
-            sed -i -E "s/^\s*picture-uri\s*=/# picture-uri=/gi" "$GDM_DCONF_FILE" 2>/dev/null
-            # --------------------------------------------------------
-            # SED-Option /a fügt eine Zeile hinter dem Match ein ;)
-            # --------------------------------------------------------
-            sed -i -E "/^\s*\[org.gnome.desktop.background\]/a$NEW_URI_LINE" "$GDM_DCONF_FILE" 2>/dev/null
-            if [ $? -eq 0 ];
-            then
-              # -------------------------------------------------
-              # Zusätzlich noch in der dconf-Datenbank eintragen
-              # -------------------------------------------------
-              gsettings_set "com.ubuntu.login-screen" "background-picture-uri" "file://$THE_NEW_BG_FILE" &>/dev/null
-              gsettings_set "com.ubuntu.login-screen" "background-size" "cover" &>/dev/null
-              dconf update &>/dev/null
-              ((FOUND_AND_REPLACED+=1))
-            fi
+            CURRENT_LOGIN_BG=$(grep -i -E "^\s*picture-uri\s*=" "$GDM_DCONF_FILE" | sed -E "s/^\s*picture-uri\s*=//" | sed -E "s/file:\/\///gi" | sort -u | xargs 2>/dev/null)
+          else
+            # ----------------------------
+            # LDM
+            # ----------------------------
+            for ldm_cfile in ${LDM_CFILE_LIST[@]};
+            do
+              LDM_GREETER_FILE="$LDM_CONF_DIR/$ldm_cfile"
+              if [ -s "$LDM_GREETER_FILE" ] &&
+                [ "$CURRENT_LOGIN_BG" == "" ];
+              then
+                CURRENT_LOGIN_BG=$(grep -i -E "^\s*background\s*=" ${LDM_GREETER_FILE} | sed -E "s/^\s*background\s*=//" | sort -u | xargs 2>/dev/null)
+              fi
+            done
           fi
-          # ------------------------------
-          # LDM
-          # ------------------------------
-          for ldm_cfile in ${LDM_CFILE_LIST[@]};
+        # fi
+        if [ "$CURRENT_LOGIN_BG" == "" ]; then CURRENT_LOGIN_BG="Standard"; fi
+        e_and_l " ${light_cyan}Hintergrundbild${colors_off}: ${dark_grey}$CURRENT_LOGIN_BG${colors_off}"
+        # -------------------
+        # Sicherheitsabfrage
+        # -------------------
+        ask_yes_or_no_plus "login_background" "$ACTION_MESSAGE" "" "n"
+        if [ $? -eq 1 ];
+        then
+          # -------------------------------
+          # Neues Hintergrundbild eingeben
+          # -------------------------------
+          THE_NEW_BG_FILE="NONE"
+          while [ "$THE_NEW_BG_FILE" == "NONE" ];
           do
-            LDM_GREETER_FILE="$LDM_CONF_DIR/$ldm_cfile"
-            if [ -s "$LDM_GREETER_FILE" ];
+            e_and_l -n " Neues Bild: "
+            read THE_NEW_BG_FILE
+            if [ "$THE_NEW_BG_FILE" != "" ] &&
+              [[ ! -s "$THE_NEW_BG_FILE" || -d "$THE_NEW_BG_FILE" ]];
             then
-              create_backup_file "$LDM_GREETER_FILE"
+              THE_NEW_BG_FILE="NONE"
+            fi
+          done
+          # --------------------------------------------------------------------
+          # Hintergrundbild ändern (in allen in Frage kommenden Dateien, damit
+          # jede Version (insbesondere Ubuntu und Mint) "seine" Datei findet)
+          # --------------------------------------------------------------------
+          if [ "$THE_NEW_BG_FILE" != "$CURRENT_LOGIN_BG" ];
+          then
+            e_and_l -n " Ändere ${light_yellow}Hintergrundbild von Anmeldung/Login${colors_off} ... "
+            if [ "$THE_NEW_BG_FILE" != "" ];
+            then
+              NEW_CFG_LINE="background=$THE_NEW_BG_FILE"
+              NEW_URI_LINE="picture-uri='file://$THE_NEW_BG_FILE'"
+            else
+              NEW_CFG_LINE="# background="
+              NEW_URI_LINE="# picture-uri="
+            fi
+            FOUND_AND_REPLACED=0
+            # ----------------------------
+            # Arctica
+            # --------
+            # Wird derzeit nicht unterstützt
+            # ----------------------------
+            # if [ -s "$ARCTICA_FILE" ];
+            # then
+            #   create_backup_file "$ARCTICA_FILE"
+            #   # Alle aktuellen Vorkommen auskommentieren (deaktivieren)
+            #   sed -i -E "s/^\s*background\s*=/# background=/gi" "$ARCTICA_FILE" 2>/dev/null
+            #   # SED-Option /a fügt eine Zeile hinter dem Match ein ;)
+            #   sed -i -E "/^\s*\[org.ArcticaProject.arctica-greeter\]/a$NEW_CFG_LINE" "$ARCTICA_FILE" 2>/dev/null
+            #   if [ $? -eq 0 ];
+            #   then
+            #     glib-compile-schemas /usr/share/glib-2.0/schemas/ &>/dev/null
+            #     ((FOUND_AND_REPLACED+=1))
+            #   fi
+            # fi
+            # ----------------------------
+            # GDM
+            # ----------------------------
+            # Alles richtig gemacht, Ubuntu verweigert aber trotzdem komplett!
+            # Selbst Änderungen mit dem dconf-editor werden ignoriert ... :(
+            # Der dconf-Pfad ist /com/ubuntu/login-screen/background-picture-uri
+            # ----------------------------
+            if [ -s "$GDM_DCONF_FILE" ];
+            then
+              create_backup_file "$GDM_DCONF_FILE"
               # --------------------------------------------------------
               # Alle aktuellen Vorkommen auskommentieren (deaktivieren)
               # --------------------------------------------------------
-              sed -i -E "s/^\s*background\s*=/# background=/gi" "$LDM_GREETER_FILE" 2>/dev/null
+              sed -i -E "s/^\s*picture-uri\s*=/# picture-uri=/gi" "$GDM_DCONF_FILE" 2>/dev/null
               # --------------------------------------------------------
               # SED-Option /a fügt eine Zeile hinter dem Match ein ;)
               # --------------------------------------------------------
-              sed -i -E "/^\s*\[(G|g)reeter\]/a$NEW_CFG_LINE" "$LDM_GREETER_FILE" 2>/dev/null
-              # --------------------------------------------------------------
-              # Zudem Benutzer-Hintergrundbild auf gleiche Weise deaktivieren
-              # --------------------------------------------------------------
-              sed -i -E "s/^\s*draw-user-backgrounds\s*=/# draw-user-backgrounds=/gi" "$LDM_GREETER_FILE" 2>/dev/null
-              sed -i -E "s/^\s*user-background\s*=/# user-background=/gi" "$LDM_GREETER_FILE" 2>/dev/null
-              NO_USER_BG="draw-user-backgrounds=false"
-              sed -i -E "/^\s*background\s*=/a$NO_USER_BG" "$LDM_GREETER_FILE" 2>/dev/null
-              NO_USER_BG="user-background=false"
-              sed -i -E "/^\s*background\s*=/a$NO_USER_BG" "$LDM_GREETER_FILE" 2>/dev/null
-              if [ $? -eq 0 ]; then ((FOUND_AND_REPLACED+=1)); fi
+              sed -i -E "/^\s*\[org.gnome.desktop.background\]/a$NEW_URI_LINE" "$GDM_DCONF_FILE" 2>/dev/null
+              if [ $? -eq 0 ];
+              then
+                # -------------------------------------------------
+                # Zusätzlich noch in der dconf-Datenbank eintragen
+                # -------------------------------------------------
+                gsettings_set "com.ubuntu.login-screen" "background-picture-uri" "file://$THE_NEW_BG_FILE" &>/dev/null
+                gsettings_set "com.ubuntu.login-screen" "background-size" "cover" &>/dev/null
+                dconf update &>/dev/null
+                ((FOUND_AND_REPLACED+=1))
+              fi
             fi
-          done
-          # ------------------------------
-          if [ $FOUND_AND_REPLACED -ne 0 ];
-          then
-            e_and_l "$OK_TAG ${dark_grey}($FOUND_AND_REPLACED)$colors_off"
-            CHANGES_MADE=1
+            # ------------------------------
+            # LDM
+            # ------------------------------
+            for ldm_cfile in ${LDM_CFILE_LIST[@]};
+            do
+              LDM_GREETER_FILE="$LDM_CONF_DIR/$ldm_cfile"
+              if [ -s "$LDM_GREETER_FILE" ];
+              then
+                create_backup_file "$LDM_GREETER_FILE"
+                # --------------------------------------------------------
+                # Alle aktuellen Vorkommen auskommentieren (deaktivieren)
+                # --------------------------------------------------------
+                sed -i -E "s/^\s*background\s*=/# background=/gi" "$LDM_GREETER_FILE" 2>/dev/null
+                # --------------------------------------------------------
+                # SED-Option /a fügt eine Zeile hinter dem Match ein ;)
+                # --------------------------------------------------------
+                sed -i -E "/^\s*\[(G|g)reeter\]/a$NEW_CFG_LINE" "$LDM_GREETER_FILE" 2>/dev/null
+                # --------------------------------------------------------------
+                # Zudem Benutzer-Hintergrundbild auf gleiche Weise deaktivieren
+                # --------------------------------------------------------------
+                sed -i -E "s/^\s*draw-user-backgrounds\s*=/# draw-user-backgrounds=/gi" "$LDM_GREETER_FILE" 2>/dev/null
+                sed -i -E "s/^\s*user-background\s*=/# user-background=/gi" "$LDM_GREETER_FILE" 2>/dev/null
+                NO_USER_BG="draw-user-backgrounds=false"
+                sed -i -E "/^\s*background\s*=/a$NO_USER_BG" "$LDM_GREETER_FILE" 2>/dev/null
+                NO_USER_BG="user-background=false"
+                sed -i -E "/^\s*background\s*=/a$NO_USER_BG" "$LDM_GREETER_FILE" 2>/dev/null
+                if [ $? -eq 0 ]; then ((FOUND_AND_REPLACED+=1)); fi
+              fi
+            done
+            # ------------------------------
+            if [ $FOUND_AND_REPLACED -ne 0 ];
+            then
+              e_and_l "$OK_TAG ${dark_grey}($FOUND_AND_REPLACED)$colors_off"
+              CHANGES_MADE=1
+            else
+              e_and_l "$ERROR_TAG"
+            fi
           else
-            e_and_l "$ERROR_TAG"
+            e_and_l " Das ist bereits das Hintergrundbild und wird daher ${bold_white}nicht${colors_off} geändert."
           fi
-        else
-          e_and_l " Das ist bereits das Hintergrundbild und wird daher ${bold_white}nicht${colors_off} geändert."
         fi
+      else
+        e_and_l "$(skip_text "$ACTION_MESSAGE" "nicht in Arctica")"
       fi
     else
-      e_and_l "$(skip_text "$ACTION_MESSAGE" "nicht in Arctica")"
+      e_and_l "$(skip_text "$ACTION_MESSAGE" "nur LDM und GDM")"
     fi
   else
-    e_and_l "$(skip_text "$ACTION_MESSAGE" "nur LDM und GDM")"
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "nicht bei GNOME")"
   fi
   # ============================================================================
 
@@ -15234,7 +15241,6 @@ then
   FOLDERS_LINKED=0
   FOLDERS_BROKEN=0
   anz=${#FOLDER_NAME_DE[@]}
-  BROKEN_LINKS_FILE="$DOWNLOAD_DIR/broken_links_file.list"
   echo -e -n > "$BROKEN_LINKS_FILE"
   i=0
   while [ $i -lt $anz ];
@@ -15439,140 +15445,6 @@ then
   fi
 
   # ============================================================================
-  # Löschen sonstiger ungültiger Verknüpfungen im Benutzer-Ordner
-  # --------------------------------------------------------------
-  # Achtung: HINTER den vorherigen Aktionen zu:
-  # - "Reparatur ungültiger Benutzer-Ordner/Links" und
-  # - "Benutzer-Ordner deutsch<>english verlinken" !!!
-  # ============================================================================
-  BROKEN_LINKS=0
-  BROKEN_LINK_TABLE=()
-  echo -e -n > "$BROKEN_LINKS_FILE"
-  while read the_link;
-  do
-    if [ "$the_link" != "" ];
-    then
-      THE_LINK_TARGET="$(readlink "$the_link")"
-      if [ "$THE_LINK_TARGET" != "" ];
-      then
-        # ---------------------------------
-        # Relative Zielangaben korrigieren
-        # ---------------------------------
-        if [ "${THE_LINK_TARGET:0:1}" != "/" ];
-        then
-          LINK_BASE_PATH="${the_link%/*}"
-          THE_LINK_TARGET="$LINK_BASE_PATH/$THE_LINK_TARGET"
-        fi
-        # -----------------------------------------------
-        # Verknüpfungen zu nicht existierenden Zielen in
-        # Liste (Datei) und interne Tabelle speichern
-        # -----------------------------------------------
-        if [ ! -e "$THE_LINK_TARGET" ];
-        then
-          THE_BROKEN_LINE="$the_link > $THE_LINK_TARGET"
-          echo -e "$THE_BROKEN_LINE" >> "$BROKEN_LINKS_FILE"
-          BROKEN_LINK_TABLE+=("$THE_BROKEN_LINE")
-          ((BROKEN_LINKS+=1))
-        fi
-      fi
-    fi
-  done <<< $(find "$USER_HOME_DIR" -type l -print)
-  if [ $BROKEN_LINKS -gt 0 ];
-  then
-    e_and_l "$HALF_LINE"
-    e_and_l " Es wurden ${bold_yellow}$BROKEN_LINKS${colors_off} ${light_cyan}ungültige Verknüpfungen${colors_off} gefunden."
-    # --------
-    # Abfrage
-    # --------
-    e_and_l " Was soll ich tun?"
-    e_and_l " [${bold_yellow}0${colors_off}] Abbrechen, nichts löschen und die Liste als Datei speichern"
-    e_and_l " [${bold_yellow}1${colors_off}] Alle ungültigen Verknüpfungen einzeln anzeigen und mit Abfrage löschen"
-    e_and_l " [${bold_yellow}2${colors_off}] Nach nur einer Sicherheitsabfrage alle ungültigen Verknüpfungen löschen"
-    if [ ${OPTION_FLAG[notoall]} -eq 0 ];
-    then
-      LINK_ACTION=-1
-      while [ $LINK_ACTION -lt 0 ] ||
-            [ $LINK_ACTION -gt 2 ];
-      do
-        read -N 1 -r -s LINK_ACTION
-        LINK_ACTION=$(echo $LINK_ACTION | sed 's/[^0-9]*//g')
-        if [ "$LINK_ACTION" == "" ]; then LINK_ACTION=-1; fi
-      done
-    else
-      LINK_ACTION=0
-    fi
-    # -------------
-    # Durchführung
-    # -------------
-    if [ $LINK_ACTION -gt 0 ];
-    then
-      # ----------------------------------------------------
-      # Sicherheitsabfrage wenn alle gelöscht werden sollen
-      # ----------------------------------------------------
-      if [ $LINK_ACTION -eq 2 ];
-      then
-        e_and_l " Folgende ungültigen Verknüpfungen wurden gefunden:"
-        i=1
-        for broken_line in "${BROKEN_LINK_TABLE[@]}";
-        do
-          if [ "$broken_line" != "" ];
-          then
-            THE_LINK_PATH="$(echo -e -n "$broken_line" | sed -E "s/'/\\\'/g" | cut -d'>' -f 1 | xargs 2>/dev/null)"
-            THE_TARGET_PATH="$(echo -e -n "$broken_line" | sed -E "s/'/\\\'/g" | cut -d'>' -f 2 | xargs 2>/dev/null)"
-            e_and_l " $i. ${light_red}$THE_LINK_PATH${colors_off} -> ${light_purple}$THE_TARGET_PATH${colors_off}"
-          fi
-          ((i+=1))
-        done
-        ask_yes_or_no_plus "" " Jetzt wirklich ${bold_red}alle${colors_off} vorstehenden Verknüpfungen löschen" "" "n"
-        if [ $? -eq 1 ];
-        then
-          LINK_ACTION=2
-        else
-          LINK_ACTION=0
-        fi
-      fi
-      # ----------------------------------------------------
-      if [ $LINK_ACTION -gt 0 ];
-      then
-        for broken_line in "${BROKEN_LINK_TABLE[@]}";
-        do
-          if [ "$broken_line" != "" ];
-          then
-            DO_REMOVE_LINK=1
-            # --------------
-            # Einzelabfrage
-            # --------------
-            THE_LINK_PATH="$(echo -e -n "$broken_line" | sed -E "s/'/\\\'/g" | cut -d'>' -f 1 | xargs 2>/dev/null)"
-            if [ $LINK_ACTION -eq 1 ];
-            then
-              e_and_l " ${light_cyan}$THE_LINK_PATH${colors_off}"
-              ask_yes_or_no_plus "" " Löschen" "" "n"
-              DO_REMOVE_LINK=$?
-            fi
-            # --------------
-            if [ $DO_REMOVE_LINK -eq 1 ];
-            then
-              e_and_l -n " Lösche ${light_yellow}$THE_LINK_PATH${colors_off} ... "
-              rm -f "$THE_LINK_PATH" &>/dev/null
-              if [ $? -eq 0 ];
-              then
-                e_and_l "$OK_TAG"
-              else
-                e_and_l "$ERROR_TAG"
-              fi
-            fi
-          fi
-        done
-      fi
-      remove_file "$BROKEN_LINKS_FILE"
-    fi
-    e_and_l "$HALF_LINE"
-  else
-    e_and_l " Sonstige ${light_cyan}ungültige Verknüpfungen${colors_off} löschen   ... $NF_TAG"
-    remove_file "$BROKEN_LINKS_FILE"
-  fi
-
-  # ============================================================================
   # Alle eigenen Dateien auch zu eigen machen (all my files belong to me ;)
   # ============================================================================
   ACTION_MESSAGE=" Besitz-Zuordnungen ${light_cyan}eigener Dateien${colors_off} prüfen"
@@ -15596,6 +15468,30 @@ then
   else
     e_and_l "$(skip_text "$ACTION_MESSAGE " "$NR_TXT")"
   fi
+
+  # ============================================================================
+  # Alle Starter auf dem Desktop ausführbar machen
+  # ============================================================================
+  DESKTOP_STARTER_LIST="$DOWNLOAD_DIR/desktop_starter_list.tmp"
+  e_and_l -n " Mache alle ${light_cyan}Starter auf Desktop ausführbar${colors_off}  ... "
+  find "$DESKTOP_DIR" -type f -iregex ".*\.desktop$" > "$DESKTOP_STARTER_LIST"
+  if [ -s "$DESKTOP_STARTER_LIST" ];
+  then
+    i=0
+    while read starter_file;
+    do
+      if [ "$starter_file" != "" ];
+      then
+        chmod -R 0755 "$starter_file" &>/dev/null
+        make_starter_trusted "$starter_file"
+        ((i+=1))
+      fi
+    done < "$DESKTOP_STARTER_LIST"
+    e_and_l "$OK_TAG ${dark_grey}($i)${colors_off}"
+  else
+    e_and_l "$NF_TAG"
+  fi
+  remove_file "$DESKTOP_STARTER_LIST"
 
   # ============================================================================
   # Pakete
@@ -16307,7 +16203,7 @@ then
   remove_file "$OLD_KERNEL_LIST"
 
   e_and_l "$HALF_LINE"
-  e_and_l " ${bold_blue}Veraltete und verwaiste Pakete${colors_off}"
+  e_and_l " ${bold_blue}Veraltete und verwaiste Pakete und Links${colors_off}"
   e_and_l "$HALF_LINE"
 
   # ============================================================================
@@ -16481,7 +16377,7 @@ then
   # ============================================================================
   # Löschen veralteter Snap-Snapschüsse
   # ============================================================================
-  ACTION_MESSAGE=" Löschen von veralteten ${light_cyan}Snap-Snapschüssen${colors_off}   ... "
+  ACTION_MESSAGE=" Löschen von ${light_cyan}veralteten Snap-Snapschüssen${colors_off}   ... "
   if [ $SNAP_INSTALLED -ne 0 ];
   then
     remove_file "$SNAPSHOT_SNAPS_LIST"
@@ -16495,6 +16391,139 @@ then
     fi
   else
     e_and_l "$(skip_text "$ACTION_MESSAGE" "kein SNAP")"
+  fi
+
+  # ============================================================================
+  # Löschen sonstiger ungültiger Verknüpfungen im Benutzer-Ordner
+  # --------------------------------------------------------------
+  # Achtung: HINTER den [repair]-Aktionen zu:
+  # - "Reparatur ungültiger Benutzer-Ordner/Links" und
+  # - "Benutzer-Ordner deutsch<>english verlinken" !!!
+  # ============================================================================
+  BROKEN_LINKS=0
+  BROKEN_LINK_TABLE=()
+  echo -e -n > "$BROKEN_LINKS_FILE"
+  while read the_link;
+  do
+    if [ "$the_link" != "" ];
+    then
+      THE_LINK_TARGET="$(readlink "$the_link")"
+      if [ "$THE_LINK_TARGET" != "" ];
+      then
+        # ---------------------------------
+        # Relative Zielangaben korrigieren
+        # ---------------------------------
+        if [ "${THE_LINK_TARGET:0:1}" != "/" ];
+        then
+          LINK_BASE_PATH="${the_link%/*}"
+          THE_LINK_TARGET="$LINK_BASE_PATH/$THE_LINK_TARGET"
+        fi
+        # -----------------------------------------------
+        # Verknüpfungen zu nicht existierenden Zielen in
+        # Liste (Datei) und interne Tabelle speichern
+        # -----------------------------------------------
+        if [ ! -e "$THE_LINK_TARGET" ];
+        then
+          THE_BROKEN_LINE="$the_link > $THE_LINK_TARGET"
+          echo -e "$THE_BROKEN_LINE" >> "$BROKEN_LINKS_FILE"
+          BROKEN_LINK_TABLE+=("$THE_BROKEN_LINE")
+          ((BROKEN_LINKS+=1))
+        fi
+      fi
+    fi
+  done <<< $(find "$USER_HOME_DIR" -type l -print)
+  if [ $BROKEN_LINKS -gt 0 ];
+  then
+    e_and_l "$HALF_LINE"
+    e_and_l " Es wurden ${bold_yellow}$BROKEN_LINKS${colors_off} ${light_cyan}ungültige Verknüpfungen${colors_off} gefunden."
+    # --------
+    # Abfrage
+    # --------
+    e_and_l " Was soll ich tun?"
+    e_and_l " [${bold_yellow}0${colors_off}] Abbrechen, nichts löschen und die Liste als Datei speichern"
+    e_and_l " [${bold_yellow}1${colors_off}] Alle ungültigen Verknüpfungen einzeln anzeigen und mit Abfrage löschen"
+    e_and_l " [${bold_yellow}2${colors_off}] Nach nur einer Sicherheitsabfrage alle ungültigen Verknüpfungen löschen"
+    if [ ${OPTION_FLAG[notoall]} -eq 0 ];
+    then
+      LINK_ACTION=-1
+      while [ $LINK_ACTION -lt 0 ] ||
+            [ $LINK_ACTION -gt 2 ];
+      do
+        read -N 1 -r -s LINK_ACTION
+        LINK_ACTION=$(echo $LINK_ACTION | sed 's/[^0-9]*//g')
+        if [ "$LINK_ACTION" == "" ]; then LINK_ACTION=-1; fi
+      done
+    else
+      LINK_ACTION=0
+    fi
+    # -------------
+    # Durchführung
+    # -------------
+    if [ $LINK_ACTION -gt 0 ];
+    then
+      # ----------------------------------------------------
+      # Sicherheitsabfrage wenn alle gelöscht werden sollen
+      # ----------------------------------------------------
+      if [ $LINK_ACTION -eq 2 ];
+      then
+        e_and_l " Folgende ungültigen Verknüpfungen wurden gefunden:"
+        i=1
+        for broken_line in "${BROKEN_LINK_TABLE[@]}";
+        do
+          if [ "$broken_line" != "" ];
+          then
+            THE_LINK_PATH="$(echo -e -n "$broken_line" | sed -E "s/'/\\\'/g" | cut -d'>' -f 1 | xargs 2>/dev/null)"
+            THE_TARGET_PATH="$(echo -e -n "$broken_line" | sed -E "s/'/\\\'/g" | cut -d'>' -f 2 | xargs 2>/dev/null)"
+            e_and_l " $i. ${light_red}$THE_LINK_PATH${colors_off} -> ${light_purple}$THE_TARGET_PATH${colors_off}"
+          fi
+          ((i+=1))
+        done
+        ask_yes_or_no_plus "" " Jetzt wirklich ${bold_red}alle${colors_off} vorstehenden Verknüpfungen löschen" "" "n"
+        if [ $? -eq 1 ];
+        then
+          LINK_ACTION=2
+        else
+          LINK_ACTION=0
+        fi
+      fi
+      # ----------------------------------------------------
+      if [ $LINK_ACTION -gt 0 ];
+      then
+        for broken_line in "${BROKEN_LINK_TABLE[@]}";
+        do
+          if [ "$broken_line" != "" ];
+          then
+            DO_REMOVE_LINK=1
+            # --------------
+            # Einzelabfrage
+            # --------------
+            THE_LINK_PATH="$(echo -e -n "$broken_line" | sed -E "s/'/\\\'/g" | cut -d'>' -f 1 | xargs 2>/dev/null)"
+            if [ $LINK_ACTION -eq 1 ];
+            then
+              e_and_l " ${light_cyan}$THE_LINK_PATH${colors_off}"
+              ask_yes_or_no_plus "" " Löschen" "" "n"
+              DO_REMOVE_LINK=$?
+            fi
+            # --------------
+            if [ $DO_REMOVE_LINK -eq 1 ];
+            then
+              e_and_l -n " Lösche ${light_yellow}$THE_LINK_PATH${colors_off} ... "
+              rm -f "$THE_LINK_PATH" &>/dev/null
+              if [ $? -eq 0 ];
+              then
+                e_and_l "$OK_TAG"
+              else
+                e_and_l "$ERROR_TAG"
+              fi
+            fi
+          fi
+        done
+      fi
+      remove_file "$BROKEN_LINKS_FILE"
+    fi
+  else
+    e_and_l " Löschen ${light_cyan}ungültiger Verknüpfungen${colors_off} (Symlink) ... $NF_TAG"
+    remove_file "$BROKEN_LINKS_FILE"
   fi
 
   e_and_l "$HALF_LINE"
