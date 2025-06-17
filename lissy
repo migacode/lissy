@@ -39,7 +39,7 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 16.06.2025
+# Letzte Änderung: 17.06.2025
 VERSION="5.0.0"
 
 ################################################################################
@@ -7496,7 +7496,7 @@ WEB_PKG_FILE[shotcut_armhf]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[shotcut_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://www.torproject.org/de/download/
-WEB_PKG_NAME[tor-browser]="Tor-Browser"
+WEB_PKG_NAME[tor-browser]="Tor Browser"
 WEB_PKG_CATY[tor-browser]="Network;WebBrowser"
 WEB_PKG_OLDV[tor-browser]="14.0.7"
 WEB_PKG_OLDF[tor-browser]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux-x86_64-14.0.7.tar.xz"
@@ -10420,7 +10420,7 @@ then
       ((ALL_STARTER_COUNTER+=NEW_STARTER_COUNTER))
     fi
   done
-  e_and_l " - Es wurden ${bold_green}$NEW_STARTER_COUNTER${colors_off} zusätzliche Starter erstellt"
+  e_and_l " - Es wurden ${bold_green}$NEW_STARTER_COUNTER${colors_off} neue Starter erstellt"
   e_and_l "$HALF_LINE"
 
   # ----------------------------------------------------------------------------
@@ -10551,7 +10551,7 @@ then
       copy_starter_to_desktop "$desktop_starter" "" 0
     done
     e_and_l "$OK_TAG"
-    e_and_l " - Es wurden ${bold_green}$NEW_STARTER_COUNTER${colors_off} zusätzliche Starter erstellt"
+    e_and_l " - Es wurden ${bold_green}$NEW_STARTER_COUNTER${colors_off} neue Starter erstellt"
     e_and_l "$HALF_LINE"
     ((ALL_STARTER_COUNTER+=NEW_STARTER_COUNTER))
   fi
@@ -10561,7 +10561,7 @@ then
   # ----------------------------------------------------------------------------
   e_and_l " ${bold_blue}Optimierung${colors_off}"
   e_and_l "$HALF_LINE"
-  e_and_l -n " Optimiere die neuen Starter auf dem Desktop, bitte warten ... "
+  e_and_l -n " Optimiere die Starter auf dem Desktop, bitte warten ... "
   NEW_STARTER_COUNTER=0
   STARTER_DELETED=0
   STARTER_MOVED=0
@@ -10628,21 +10628,37 @@ then
                   do
                     if [ "$starter_name" != "" ];
                     then
-                      # -----------------------------------------------
-                      # Wenn es den Starter im Ordner Systemverwaltung
-                      # schon gibt, diesen nur noch verschieben ...
-                      # -----------------------------------------------
+                      # ------------------------------------------
+                      # Wenn es den Starter schon im Haupt-Ordner
+                      # der Systemverwaltung gibt ...
+                      # ------------------------------------------
                       if [ -s "$SYS_V_DIR/$starter_name.desktop" ];
                       then
-                        mv -f "$SYS_V_DIR/$starter_name.desktop" "$V_STARTER_TARGET_DIR/$starter_name.desktop" &>/dev/null
-                        if [ $? -eq 0 ];
+                        # ---------------------------------------------------
+                        # ... und es diesen auch schon im Ziel-Ordner gibt,
+                        # dann den doppelten im Haupt-Ordner wieder löschen
+                        # ---------------------------------------------------
+                        if [ -s "$V_STARTER_TARGET_DIR/$starter_name.desktop" ];
                         then
-                          make_starter_trusted "$V_STARTER_TARGET_DIR/$starter_name.desktop"
-                          ((STARTER_MOVED+=1))
+                          remove_file "$SYS_V_DIR/$starter_name.desktop"
+                          ((STARTER_DELETED+=1))
+                          ((ALL_STARTER_COUNTER-=1))
+                        # -------------------------------------------------
+                        # ... sonst, wenn es den Starter im Ziel-Ordner
+                        # noch nicht gibt, den Starter dorthin verschieben
+                        # -------------------------------------------------
+                        else
+                          mv -f "$SYS_V_DIR/$starter_name.desktop" "$V_STARTER_TARGET_DIR/$starter_name.desktop" &>/dev/null
+                          if [ $? -eq 0 ];
+                          then
+                            make_starter_trusted "$V_STARTER_TARGET_DIR/$starter_name.desktop"
+                            ((STARTER_MOVED+=1))
+                          fi
                         fi
-                      # -----------------------------------------------------
-                      # ... sonst Starter suchen und in Unterordner kopieren
-                      # -----------------------------------------------------
+                      # ----------------------------------------
+                      # ... sonst Starter suchen und direkt in
+                      # den entsprechenden Unterordner kopieren
+                      # ----------------------------------------
                       else
                         copy_starter_to_desktop "$starter_name" "$V_STARTER_TARGET_DIR" 1
                       fi
@@ -10730,7 +10746,7 @@ then
   fi
   if [ $STARTER_DELETED -gt 0 ];
   then
-    e_and_l " - Es wurden ${bold_red}$STARTER_DELETED${colors_off} ungültige Starter entfernt"
+    e_and_l " - Es wurden ${bold_red}$STARTER_DELETED${colors_off} unpassende Starter entfernt"
   fi
 fi # Ende Zusätzliche Starter erstellen
 
@@ -15212,7 +15228,7 @@ then
   fi
 
   # ============================================================================
-  # Zustand der Benutzer-Ordner ermitteln
+  # Zustand der Benutzer-Ordner und deren Verknüpfungen (de <-> en) ermitteln
   # ============================================================================
   FOLDERS_EXISTS=0
   FOLDERS_LINKED=0
@@ -15420,6 +15436,140 @@ then
     e_and_l "$HALF_LINE"
   else
     e_and_l "$ACTION_MESSAGE ... $NC_TAG"
+  fi
+
+  # ============================================================================
+  # Löschen sonstiger ungültiger Verknüpfungen im Benutzer-Ordner
+  # --------------------------------------------------------------
+  # Achtung: HINTER den vorherigen Aktionen zu:
+  # - "Reparatur ungültiger Benutzer-Ordner/Links" und
+  # - "Benutzer-Ordner deutsch<>english verlinken" !!!
+  # ============================================================================
+  BROKEN_LINKS=0
+  BROKEN_LINK_TABLE=()
+  echo -e -n > "$BROKEN_LINKS_FILE"
+  while read the_link;
+  do
+    if [ "$the_link" != "" ];
+    then
+      THE_LINK_TARGET="$(readlink "$the_link")"
+      if [ "$THE_LINK_TARGET" != "" ];
+      then
+        # ---------------------------------
+        # Relative Zielangaben korrigieren
+        # ---------------------------------
+        if [ "${THE_LINK_TARGET:0:1}" != "/" ];
+        then
+          LINK_BASE_PATH="${the_link%/*}"
+          THE_LINK_TARGET="$LINK_BASE_PATH/$THE_LINK_TARGET"
+        fi
+        # -----------------------------------------------
+        # Verknüpfungen zu nicht existierenden Zielen in
+        # Liste (Datei) und interne Tabelle speichern
+        # -----------------------------------------------
+        if [ ! -e "$THE_LINK_TARGET" ];
+        then
+          THE_BROKEN_LINE="$the_link > $THE_LINK_TARGET"
+          echo -e "$THE_BROKEN_LINE" >> "$BROKEN_LINKS_FILE"
+          BROKEN_LINK_TABLE+=("$THE_BROKEN_LINE")
+          ((BROKEN_LINKS+=1))
+        fi
+      fi
+    fi
+  done <<< $(find "$USER_HOME_DIR" -type l -print)
+  if [ $BROKEN_LINKS -gt 0 ];
+  then
+    e_and_l "$HALF_LINE"
+    e_and_l " Es wurden ${bold_yellow}$BROKEN_LINKS${colors_off} ${light_cyan}ungültige Verknüpfungen${colors_off} gefunden."
+    # --------
+    # Abfrage
+    # --------
+    e_and_l " Was soll ich tun?"
+    e_and_l " [${bold_yellow}0${colors_off}] Abbrechen, nichts löschen und die Liste als Datei speichern"
+    e_and_l " [${bold_yellow}1${colors_off}] Alle ungültigen Verknüpfungen einzeln anzeigen und mit Abfrage löschen"
+    e_and_l " [${bold_yellow}2${colors_off}] Nach nur einer Sicherheitsabfrage alle ungültigen Verknüpfungen löschen"
+    if [ ${OPTION_FLAG[notoall]} -eq 0 ];
+    then
+      LINK_ACTION=-1
+      while [ $LINK_ACTION -lt 0 ] ||
+            [ $LINK_ACTION -gt 2 ];
+      do
+        read -N 1 -r -s LINK_ACTION
+        LINK_ACTION=$(echo $LINK_ACTION | sed 's/[^0-9]*//g')
+        if [ "$LINK_ACTION" == "" ]; then LINK_ACTION=-1; fi
+      done
+    else
+      LINK_ACTION=0
+    fi
+    # -------------
+    # Durchführung
+    # -------------
+    if [ $LINK_ACTION -gt 0 ];
+    then
+      # ----------------------------------------------------
+      # Sicherheitsabfrage wenn alle gelöscht werden sollen
+      # ----------------------------------------------------
+      if [ $LINK_ACTION -eq 2 ];
+      then
+        e_and_l " Folgende ungültigen Verknüpfungen wurden gefunden:"
+        i=1
+        for broken_line in "${BROKEN_LINK_TABLE[@]}";
+        do
+          if [ "$broken_line" != "" ];
+          then
+            THE_LINK_PATH="$(echo -e -n "$broken_line" | sed -E "s/'/\\\'/g" | cut -d'>' -f 1 | xargs 2>/dev/null)"
+            THE_TARGET_PATH="$(echo -e -n "$broken_line" | sed -E "s/'/\\\'/g" | cut -d'>' -f 2 | xargs 2>/dev/null)"
+            e_and_l " $i. ${light_red}$THE_LINK_PATH${colors_off} -> ${light_purple}$THE_TARGET_PATH${colors_off}"
+          fi
+          ((i+=1))
+        done
+        ask_yes_or_no_plus "" " Jetzt wirklich ${bold_red}alle${colors_off} vorstehenden Verknüpfungen löschen" "" "n"
+        if [ $? -eq 1 ];
+        then
+          LINK_ACTION=2
+        else
+          LINK_ACTION=0
+        fi
+      fi
+      # ----------------------------------------------------
+      if [ $LINK_ACTION -gt 0 ];
+      then
+        for broken_line in "${BROKEN_LINK_TABLE[@]}";
+        do
+          if [ "$broken_line" != "" ];
+          then
+            DO_REMOVE_LINK=1
+            # --------------
+            # Einzelabfrage
+            # --------------
+            THE_LINK_PATH="$(echo -e -n "$broken_line" | sed -E "s/'/\\\'/g" | cut -d'>' -f 1 | xargs 2>/dev/null)"
+            if [ $LINK_ACTION -eq 1 ];
+            then
+              e_and_l " ${light_cyan}$THE_LINK_PATH${colors_off}"
+              ask_yes_or_no_plus "" " Löschen" "" "n"
+              DO_REMOVE_LINK=$?
+            fi
+            # --------------
+            if [ $DO_REMOVE_LINK -eq 1 ];
+            then
+              e_and_l -n " Lösche ${light_yellow}$THE_LINK_PATH${colors_off} ... "
+              rm -f "$THE_LINK_PATH" &>/dev/null
+              if [ $? -eq 0 ];
+              then
+                e_and_l "$OK_TAG"
+              else
+                e_and_l "$ERROR_TAG"
+              fi
+            fi
+          fi
+        done
+      fi
+      remove_file "$BROKEN_LINKS_FILE"
+    fi
+    e_and_l "$HALF_LINE"
+  else
+    e_and_l " Sonstige ${light_cyan}ungültige Verknüpfungen${colors_off} löschen   ... $NF_TAG"
+    remove_file "$BROKEN_LINKS_FILE"
   fi
 
   # ============================================================================
