@@ -39,7 +39,7 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 17.06.2025
+# Letzte Änderung: 19.06.2025
 VERSION="5.0.0"
 
 ################################################################################
@@ -713,15 +713,11 @@ function clean_on_exit {
   then
     # --------------------------------------------------------
     # Wenn gewünscht alle Dateien im Download-Ordner löschen
-    # (dabei eigene Logs und zu erhaltende Dateien auslassen)
+    # (dabei eigene Logs und zu erhaltende Listen auslassen)
     # --------------------------------------------------------
     if [ ${OPTION_FLAG[cleantmp]} -eq 1 ];
     then
-      find "$DOWNLOAD_DIR" -type f -not -name "${LOG_FILE##*/}" \
-      -and -not -name "${REMOVE_CONFIG_LIST##*/}" \
-      -and -not -name "${REMOVE_DAT_LIST##*/}" \
-      -and -not -name "${REVIVE_ITEM_LIST##*/}" \
-      -delete 2>/dev/null
+      find "$DOWNLOAD_DIR" -type f -not -name "${LOG_FILE##*/}" -and -not -iregex ".*\.list$" -delete 2>/dev/null
     fi
     # -------------------------------------------------------
     # Alle verbliebenen Dateien dem Benutzer zu eigen machen
@@ -762,7 +758,7 @@ function clear_repo {
   # --------------------------
   # Durch uns angelegte Datei
   # --------------------------
-  LOCAL_REPO_FILE="/etc/apt/sources.list.d/$REPO_FILE.list"
+  LOCAL_REPO_FILE="$SOURCES_LIST_DIR/$REPO_FILE.list"
   remove_file "$LOCAL_REPO_FILE"
   # ------------------------------------------------------------
   # Soweit bekannt durch das Paket/PPA selbst angelegte Dateien
@@ -774,7 +770,7 @@ function clear_repo {
     # ACHTUNG: NICHT mit remove_file und OHNE Anführungszeichen,
     # damit mit * gelöscht werden kann
     # -----------------------------------------------------------
-    rm -f /etc/apt/sources.list.d/$LOCAL_REPO_FILE &>/dev/null
+    rm -f $SOURCES_LIST_DIR/$LOCAL_REPO_FILE &>/dev/null
   fi
 }
 
@@ -1588,13 +1584,13 @@ function do_remove_items {
     chmod -R 0664 "$REMOVE_ITEM_LIST" &>/dev/null
     declare -A REMOVE_ITEM_TABLE
     REMOVE_TABLE_IDX=0
-    while read config_path;
+    while read item_path;
     do
-      if [ "$config_path" != "" ] &&
-         [ "$config_path" != "$USER_HOME_DIR" ];
+      if [ "$item_path" != "" ] &&
+         [ "$item_path" != "$USER_HOME_DIR" ];
       then
-        e_and_l " - ${light_cyan}$config_path${colors_off}"
-        REMOVE_ITEM_TABLE[$REMOVE_TABLE_IDX]="$config_path"
+        e_and_l " - ${light_cyan}$item_path${colors_off}"
+        REMOVE_ITEM_TABLE[$REMOVE_TABLE_IDX]="$item_path"
         ((REMOVE_TABLE_IDX+=1))
       fi
     done < "$REMOVE_ITEM_LIST"
@@ -1612,25 +1608,14 @@ function do_remove_items {
         e_and_l " ------------------------------------------------------------------------------"
       fi
       e_and_l " Zum Löschen dieser Ordner und Dateien stehen folgende Optionen zur Verfügung:"
-      e_and_l " [${bold_white}0${colors_off}] Abbrechen, nichts löschen und die Liste als Datei speichern"
-      e_and_l " [${bold_white}1${colors_off}] Löschen mit Abfrage vor jedem/r einzelnen Ordner/Datei"
-      e_and_l " [${bold_white}2${colors_off}] Alle Ordner und Dateien ohne einzelne Abfragen löschen"
-      e_and_l -n " Bitte eine Option auswählen: "
-      if [ ${OPTION_FLAG[notoall]} -eq 0 ];
-      then
-        REMOVE_ITEMS_ACTION=-1
-        while [ $REMOVE_ITEMS_ACTION -lt 0 ] ||
-              [ $REMOVE_ITEMS_ACTION -gt 2 ];
-        do
-          read -N 1 -r -s REMOVE_ITEMS_ACTION
-          REMOVE_ITEMS_ACTION=$(echo $REMOVE_ITEMS_ACTION | sed 's/[^0-9]*//g')
-          if [ "$REMOVE_ITEMS_ACTION" == "" ]; then REMOVE_ITEMS_ACTION=-1; fi
-        done
-      else
-        REMOVE_ITEMS_ACTION=0
-      fi
-      e_and_l "$REMOVE_ITEMS_ACTION"
-      # Wenn alle, dann VORHER noch eine Sicherheitsabfrage
+      e_and_l " [${bold_yellow}0${colors_off}] Schritt überspringen, nichts löschen und Liste als Datei speichern"
+      e_and_l " [${bold_yellow}1${colors_off}] Jede/n Datei/Ordner einzeln jeweils mit Abfrage Löschen"
+      e_and_l " [${bold_yellow}2${colors_off}] Alle Ordner und Dateien ohne einzelne Abfragen löschen"
+      user_choice_012
+      REMOVE_ITEMS_ACTION=$?
+      # ----------------------------------------------
+      # Sicherheitsabfrage zur Auswahl aller Elemente
+      # ----------------------------------------------
       if [ $REMOVE_ITEMS_ACTION -eq 2 ];
       then
         e_and_l " Hast Du die Liste ganz genau geprüft, so dass nichts ungewollt gelöscht wird?"
@@ -1645,36 +1630,41 @@ function do_remove_items {
       else
         echo -e ""
       fi
-      if [ $REMOVE_ITEMS_ACTION -ne 0 ];
+      # ----------------------------------------------
+      if [ $REMOVE_ITEMS_ACTION -gt 0 ];
       then
         echo -e -n "" > "$LOG_TEMP"
         i=0
         while [ $i -lt $REMOVE_TABLE_IDX ];
         do
-          config_path="${REMOVE_ITEM_TABLE[$i]}"
-          if [ "$config_path" != "" ] &&
-             [ "$config_path" != "$USER_HOME_DIR" ];
+          item_path="${REMOVE_ITEM_TABLE[$i]}"
+          if [ "$item_path" != "" ] &&
+             [ "$item_path" != "$USER_HOME_DIR" ];
           then
             DO_REMOVE_ITEM=1
-            # Wenn mit einzelner Bestätigung, dann noch die Sicherheitsabfrage
+            # ------------------
+            # Einzelbestätigung
+            # ------------------
             if [ $REMOVE_ITEMS_ACTION -eq 1 ];
             then
               if [ $i -gt 0 ];
               then
                 echo -e "$HALF_MINUS_LINE"
               fi
-              e_and_l " ${light_cyan}$config_path${colors_off}"
+              e_and_l " ${light_cyan}$item_path${colors_off}"
               ask_yes_or_no_plus "" " Löschen" "" "n"
               if [ $? -eq 0 ];
               then
                 DO_REMOVE_ITEM=0
               fi
             fi
-            # Löschen ...
+            # ----------------
+            # Element Löschen
+            # ----------------
             if [ $DO_REMOVE_ITEM -eq 1 ];
             then
-              e_and_l -n " Lösche ${light_yellow}$config_path${colors_off} ... "
-              rm -f -r "$config_path" &>>"$LOG_TEMP"
+              e_and_l -n " Lösche ${light_yellow}$item_path${colors_off} ... "
+              rm -f -r "$item_path" &>>"$LOG_TEMP"
               if [ $? -eq 0 ];
               then
                 e_and_l "$OK_TAG"
@@ -1711,38 +1701,27 @@ function do_revive_items {
     chmod -R 0664 "$REVIVE_ITEM_LIST" &>/dev/null
     declare -A REVIVE_ITEM_TABLE
     REVIVE_TABLE_IDX=0
-    while read config_path;
+    while read item_path;
     do
-      if [ "$config_path" != "" ] &&
-         [ "$config_path" != "$USER_HOME_DIR" ];
+      if [ "$item_path" != "" ] &&
+         [ "$item_path" != "$USER_HOME_DIR" ];
       then
-        e_and_l " - ${light_cyan}${config_path/.deactivated/}${colors_off}"
-        REVIVE_ITEM_TABLE[$REVIVE_TABLE_IDX]="$config_path"
+        e_and_l " - ${light_cyan}${item_path/.deactivated/}${colors_off}"
+        REVIVE_ITEM_TABLE[$REVIVE_TABLE_IDX]="$item_path"
         ((REVIVE_TABLE_IDX+=1))
       fi
     done < "$REVIVE_ITEM_LIST"
     if [ $REVIVE_TABLE_IDX -gt 0 ];
     then
       e_and_l " Zur Reaktivierung dieser Komponenten stehen folgende Optionen zur Verfügung:"
-      e_and_l " [${bold_white}0${colors_off}] Abbrechen, nichts reaktivieren und die Liste als Datei speichern"
-      e_and_l " [${bold_white}1${colors_off}] Reaktivieren mit Abfrage vor jeder einzelnen Komponente"
-      e_and_l " [${bold_white}2${colors_off}] Alle Komponente ohne einzelne Abfragen reaktivieren"
-      e_and_l -n " Bitte eine Option auswählen: "
-      if [ ${OPTION_FLAG[notoall]} -eq 0 ];
-      then
-        REVIVE_ITEMS_ACTION=-1
-        while [ $REVIVE_ITEMS_ACTION -lt 0 ] ||
-              [ $REVIVE_ITEMS_ACTION -gt 2 ];
-        do
-          read -N 1 -r -s REVIVE_ITEMS_ACTION
-          REVIVE_ITEMS_ACTION=$(echo $REVIVE_ITEMS_ACTION | sed 's/[^0-9]*//g')
-          if [ "$REVIVE_ITEMS_ACTION" == "" ]; then REVIVE_ITEMS_ACTION=-1; fi
-        done
-      else
-        REVIVE_ITEMS_ACTION=0
-      fi
-      e_and_l "$REVIVE_ITEMS_ACTION"
-      # Wenn alle, dann VORHER noch eine Sicherheitsabfrage
+      e_and_l " [${bold_yellow}0${colors_off}] Schritt überspringen, nichts reaktivieren und Liste als Datei speichern"
+      e_and_l " [${bold_yellow}1${colors_off}] Jede Komponente einzeln jeweils mit Abfrage reaktivieren"
+      e_and_l " [${bold_yellow}2${colors_off}] Alle Komponenten ohne einzelne Abfragen reaktivieren"
+      user_choice_012
+      REVIVE_ITEMS_ACTION=$?
+      # ----------------------------------------------
+      # Sicherheitsabfrage zur Auswahl aller Elemente
+      # ----------------------------------------------
       if [ $REVIVE_ITEMS_ACTION -eq 2 ];
       then
         e_and_l " Hast Du die Liste genau geprüft, so dass nichts ungewollt reaktiviert wird?"
@@ -1755,16 +1734,17 @@ function do_revive_items {
           e_and_l " $USER_CHOICE_YES"
         fi
       fi
-      if [ $REVIVE_ITEMS_ACTION -ne 0 ];
+      # ----------------------------------------------
+      if [ $REVIVE_ITEMS_ACTION -gt 0 ];
       then
         echo -e -n "" > "$LOG_TEMP"
         i=0
         while [ $i -lt $REVIVE_TABLE_IDX ];
         do
-          config_path="${REVIVE_ITEM_TABLE[$i]}"
-          config_file_old_name=${config_path/.deactivated/}
-          if [ "$config_path" != "" ] &&
-             [ "$config_path" != "$USER_HOME_DIR" ];
+          item_path="${REVIVE_ITEM_TABLE[$i]}"
+          config_file_old_name=${item_path/.deactivated/}
+          if [ "$item_path" != "" ] &&
+             [ "$item_path" != "$USER_HOME_DIR" ];
           then
             DO_REVIVE_ITEM=1
             # Wenn mit einzelner Bestätigung, dann noch die Sicherheitsabfrage
@@ -1781,11 +1761,13 @@ function do_revive_items {
                 DO_REVIVE_ITEM=0
               fi
             fi
-            # Reaktivieren ...
+            # ---------------------
+            # Element reaktivieren
+            # ---------------------
             if [ $DO_REVIVE_ITEM -eq 1 ];
             then
-              e_and_l -n " Reaktiviere ${light_yellow}${config_path:0:8}../${config_file_old_name##*/}${colors_off} ... "
-              mv -f "$config_path" "$config_file_old_name" &>/dev/null
+              e_and_l -n " Reaktiviere ${light_yellow}${item_path:0:8}../${config_file_old_name##*/}${colors_off} ... "
+              mv -f "$item_path" "$config_file_old_name" &>/dev/null
               if [ $? -eq 0 ];
               then
                 e_and_l "$OK_TAG"
@@ -1888,7 +1870,7 @@ function extend_repo_erw {
   # ---------------------------------
   REPO_KEY_URL="${ERW_AUTH_KEY[$ERW_PAKET_NAME]}" # URL zum Download der Schlüssel-Datei
   LOCAL_KEY_FILE="/etc/apt/trusted.gpg.d/$ERW_PAKET_NAME" # Ziel-Datei mit Schlüssel für Quellangaben
-  LOCAL_REPO_FILE="/etc/apt/sources.list.d/$ERW_PAKET_NAME.list" # Ziel-Datei für die Quellangaben
+  LOCAL_REPO_FILE="$SOURCES_LIST_DIR/$ERW_PAKET_NAME.list" # Ziel-Datei für die Quellangaben
   REPO_SRC_TXT="${ERW_REPO_TXT[$ERW_PAKET_NAME]}" # Text zum Eintrag in die Datei mit den Quellangaben
   REPO_CMD="echo -e \"$REPO_SRC_TXT\" | tee \"$LOCAL_REPO_FILE\""
   # -----------------------------------------------------------------
@@ -4314,17 +4296,28 @@ function remove_cfg {
   e_and_l " ${light_blue}Schritt 2/$REMOVE_ACTION:${colors_off} Löschen der Konfiguration"
   echo -e -n " Starte Suche, bitte warten ... "
   NOTHING_FOUND_TEXT="Es wurde keine individuelle Konfiguration gefunden"
-  # Betroffene Ordner und Dateien ermitteln und daraus eine Liste erstellen ---
+  # ------------------------------------------------------------------------
+  # Betroffene Ordner und Dateien ermitteln und daraus eine Liste erstellen
+  # ------------------------------------------------------------------------
+  REMOVE_CONFIG_LIST="$DOWNLOAD_DIR/remove_config.tmp"
   echo -e -n "" > "$REMOVE_CONFIG_LIST"
+  # --------------------
   # Alles außer Flatpak
+  # --------------------
   if [ $INST_STATUS -ne 6 ];
   then
+    # ---------
+    # Nur SNAP
+    # ---------
     if [ $INST_STATUS -eq 2 ] ||
        [ $2 -eq 1 ];
     then
       find ${USER_HOME_DIR} -iname "$1" -type d,f 2>/dev/null | grep -i -E "snap\/" >> "$REMOVE_CONFIG_LIST"
       find ${USER_HOME_DIR} -iname ".$1" -type d,f 2>/dev/null | grep -i -E "snap\/" >> "$REMOVE_CONFIG_LIST"
     fi
+    # -----------------
+    # Alles außer SNAP
+    # -----------------
     if [ $INST_STATUS -ne 2 ] ||
        [ $2 -eq 1 ];
     then
@@ -4332,13 +4325,16 @@ function remove_cfg {
       find ${USER_HOME_DIR} -iname ".$1" -type d,f 2>/dev/null | grep -v -i -E "snap\/" >> "$REMOVE_CONFIG_LIST"
     fi
   fi
+  # --------
   # Flatpak
+  # --------
   if [ $INST_STATUS -eq 6 ];
   then
     THE_FLATPAK_REF_STRING=$(get_pkg_flatpak_reference $1 1)
     find ${USER_HOME_DIR} -iname "$THE_FLATPAK_REF_STRING" -type d,f 1>>"$REMOVE_CONFIG_LIST" 2>/dev/null
     find ${USER_HOME_DIR} -iname ".$THE_FLATPAK_REF_STRING" -type d,f 1>>"$REMOVE_CONFIG_LIST" 2>/dev/null
   fi
+  # ----------------
   echo -e "$FERTIG_TAG" # Achtung: OHNE -n
   do_remove_items $REMOVE_CONFIG_LIST 0
 }
@@ -4352,13 +4348,14 @@ function remove_dat {
   echo -e -n " Starte Suche, bitte warten ... "
   NOTHING_FOUND_TEXT="Es wurden keine weiteren Daten gefunden"
   # Betroffene Ordner und Dateien ermitteln und daraus eine Liste erstellen ---
+  REMOVE_DAT_LIST="$DOWNLOAD_DIR/remove_dat.tmp"
   echo -e -n "" > "$REMOVE_DAT_LIST"
 # -----------------------------------------------------------------------------
 # DIE INTENSIVE SUCHE WIRD DERZEIT MICHT DURCHGEFÜHRT / ANGEBOTEN
 # -----------------------------------------------------------------------------
 #   e_and_l " Wie soll die Suche nach weiteren zugehörigen Daten erfolgen?"
-#   e_and_l " [${bold_white}e${colors_off}] Erweiterte Vorkommen in den Namen von Ordnern und Dateien"
-#   e_and_l " [${bold_white}i${colors_off}] Zusätzlich intensive Suche nach Vorkommen ${bold_white}in${colors_off} allen Dateien (langsam!)"
+#   e_and_l " [${bold_yellow}e${colors_off}] Erweiterte Vorkommen in den Namen von Ordnern und Dateien"
+#   e_and_l " [${bold_yellow}i${colors_off}] Zusätzlich intensive Suche nach Vorkommen ${bold_white}in${colors_off} allen Dateien (langsam!)"
 #   e_and_l -n " Bitte eine Option auswählen: "
 #   SEARCH_METHOD=""
 #   while [ "$SEARCH_METHOD" != "e" ] &&
@@ -5191,6 +5188,29 @@ function update_flatpak_list {
 }
 
 #===============================================================================
+# Benutzer zwischen 0, 1 und 2 auswählen lassen
+#===============================================================================
+function user_choice_012 {
+  e_and_l -n " Bitte gewünschte Auswahl treffen: "
+  if [ ${OPTION_FLAG[notoall]} -eq 0 ];
+  then
+    THE_USERS_CHOICE=-1
+    while [ $THE_USERS_CHOICE -lt 0 ] ||
+          [ $THE_USERS_CHOICE -gt 2 ];
+    do
+      read -N 1 -r -s THE_USERS_CHOICE
+      THE_USERS_CHOICE=$(echo $THE_USERS_CHOICE | sed 's/[^0-9]*//g')
+      if [ "$THE_USERS_CHOICE" == "" ]; then THE_USERS_CHOICE=-1; fi
+    done
+    e_and_l "$THE_USERS_CHOICE"
+  else
+    THE_USERS_CHOICE=0
+    e_and_l "${light_purple}0${colors_off}"
+  fi
+  return $THE_USERS_CHOICE
+}
+
+#===============================================================================
 # Download mehrer "einfacher" Dateien (ohne die Erweiterungen für
 # HTML-Webseiten einschließlich deren Verknüpfungen und Medien) von einem
 # Server-Verzeichnis in einen lokalen Ordner.
@@ -5419,6 +5439,14 @@ fi
 STARTMENU_DIR="$USER_HOME_DIR/.local/share/applications"
 
 #===============================================================================
+# Quell-Angaben der Paketverwaltung (OHNE / am Ende!)
+#===============================================================================
+# Datei mit Quell-Angaben
+SOURCES_LIST_FILE="/etc/apt/sources.list"
+# Ordner mit Dateien, die weitere Quell-Angaben beinhalten
+SOURCES_LIST_DIR="/etc/apt/sources.list.d"
+
+#===============================================================================
 # Dateien zur Speicherung von temporären Daten
 #===============================================================================
 # Log-Dateien
@@ -5441,14 +5469,16 @@ USER_SCRIPT_CONFIG="$SCRIPT_CONFIG_DIR/$SCRIPT_NAME.conf"
 #===============================================================================
 # Sonstige Dateien zur Speicherung von Ergebnislisten
 #===============================================================================
-# Liste verbliebener Konfigurationsdateien von Paketen
-REMOVE_CONFIG_LIST="$DOWNLOAD_DIR/remove_config_list"
-# Liste verbliebener allgemeiner Dateien von Paketen
-REMOVE_DAT_LIST="$DOWNLOAD_DIR/remove_dat_list"
-# Liste vormals deaktivierter Komponenten
-REVIVE_ITEM_LIST="$DOWNLOAD_DIR/revive_item_list"
 # Liste ungültiger Verknüpfungen
-BROKEN_LINKS_FILE="$DOWNLOAD_DIR/broken_links_file.list"
+BROKEN_LINKS_LIST="$DOWNLOAD_DIR/broken_links.list"
+# Liste verwaister Paket-Konfigurationen
+CONFIG_REST_LIST="$DOWNLOAD_DIR/config_rest.list"
+# Liste fehlerhafter Paket-Abhängigkeiten
+PKG_BROKEN_LIST="$DOWNLOAD_DIR/pkg_broken.list"
+# Liste nicht mehr benötigter Pakete und Komponenten
+PKG_GARBAGE_LIST="$DOWNLOAD_DIR/pkg_garbage.list"
+# Liste vormals deaktivierter Komponenten
+REVIVE_ITEM_LIST="$DOWNLOAD_DIR/revive_item.list"
 
 #===============================================================================
 # Daten für automatische Antworten (autoyorn) einlesen
@@ -5567,8 +5597,7 @@ if [ $SHOW_HELP -eq 0 ];
 then
   echo -e ""
   echo -e -n " Initialisierung, bitte warten ... "
-  SOURCES_LIST_FILE="/etc/apt/sources.list"
-  SOURCES_LIST_DIR="/etc/apt/sources.list.d"
+
   ANZ_SOURCE_ENTRIES=0
   if [ -s "$SOURCES_LIST_FILE" ];
   then
@@ -6356,7 +6385,7 @@ if [ "$DESKTOP_ENVIRONMENT" == "Cinnamon" ]; then KATEGORIE_PKGS[z]+=" cinnamon-
 # Achtung: Nicht verwechseln mit ADDITIONAL_S_NAMES[vg],
 # welche nur die Starter zur Systemverwaltung enthält!
 # ------------------------------------------------------------------------------
-GNOME_APPS=('boxes' 'calculator' 'calendar' 'characters' 'commander' 'connections' 'contacts' 'firmware' 'keyring' 'maps' 'passwordsafe' 'screenshot' 'snapshot' 'system-monitor' 'system-tools' 'terminal' 'tweaks' 'usage')
+GNOME_APPS=('boxes' 'calculator' 'calendar' 'characters' 'clocks' 'commander' 'connections' 'contacts' 'firmware' 'font-viewer' 'keyring' 'logs' 'maps' 'passwordsafe' 'screenshot' 'snapshot' 'system-monitor' 'system-tools' 'terminal' 'text-editor' 'tweaks' 'usage')
 KATEGORIE_PKGS[gx]=""
 for pkg in ${GNOME_APPS[@]};
 do
@@ -7671,8 +7700,8 @@ POST_INST_CONF[iptvnator]="$RESSOURCE_SERVER_DIR/scripts/iptvnator_post_inst"
 POST_INST_CONF[keepass2]="$RESSOURCE_SERVER_DIR/scripts/keepass2_post_inst"
 POST_INST_CONF[libdvd-pkg]="dpkg-reconfigure libdvd-pkg"
 POST_INST_CONF[makemkv-bin]="$RESSOURCE_SERVER_DIR/scripts/makemkv-bin_post_inst"
-POST_INST_CONF[microsoft-edge-stable]="rm -f /etc/apt/sources.list.d/microsoft-edge-stable.list"
-POST_INST_CONF[microsoft-edge-dev]="rm -f /etc/apt/sources.list.d/microsoft-edge-dev.list"
+POST_INST_CONF[microsoft-edge-stable]="rm -f $SOURCES_LIST_DIR/microsoft-edge-stable.list"
+POST_INST_CONF[microsoft-edge-dev]="rm -f $SOURCES_LIST_DIR/microsoft-edge-dev.list"
 POST_INST_CONF[nextcloud-desktop]="$RESSOURCE_SERVER_DIR/scripts/nextcloud_post_inst"
 POST_INST_CONF[oolite]="$RESSOURCE_SERVER_DIR/scripts/oolite_post_inst"
 POST_INST_CONF[openssh-server]="echo -n Starte SSH-Dienste ... && service ssh restart &>/dev/null && systemctl enable ssh &>/dev/null && echo ok"
@@ -7839,7 +7868,17 @@ ADDITIONAL_DIRNAME[vc]="Cinnamon"
 # Achtung: Nicht verwechseln mit KATEGORIE_PKGS[gx],
 # welches alle Pakete der GNOME Apps enthält
 # -------------------------------------------
-ADDITIONAL_S_NAMES[vg]="gnome-system-monitor gnome-system-monitor-kde gparted org.gnome.baobab org.gnome.DejaDup org.gnome.DiskUtility org.gnome.Firmware org.gnome.FontManager org.gnome.seahorse.Application org.gnome.Software org.gnome.Terminal org.gnome.tweaks org.gnome.Usage"
+ADDITIONAL_S_NAMES[vg]="gparted"
+ADDITIONAL_PKG_LIST="disk-image-mounter disk-image-writer language-selector system-monitor system-monitor-kde"
+for add_pkg in ${ADDITIONAL_PKG_LIST[@]};
+do
+  ADDITIONAL_S_NAMES[vg]+=" gnome-$add_pkg"
+done
+ADDITIONAL_PKG_LIST="baobab DejaDup DiskUtility Firmware FontManager font-viewer Logs PowerStats seahorse.Application Shell Settings Software SystemMonitor Terminal tweaks Usage"
+for add_pkg in ${ADDITIONAL_PKG_LIST[@]};
+do
+  ADDITIONAL_S_NAMES[vg]+=" org.gnome.$add_pkg"
+done
 ADDITIONAL_DIRNAME[vg]="GNOME"
 # ------------------------------------------
 # Starter nur zur Systemverwaltung von LXDE
@@ -7855,7 +7894,12 @@ ADDITIONAL_DIRNAME[vl]="LXDE"
 # Achtung: Nicht verwechseln mit KATEGORIE_PKGS[mx],
 # welches alle Pakete der MATE Tools enthält
 # ------------------------------------------
-ADDITIONAL_S_NAMES[vm]="matecc mate-control-center mate-disk-image-mounter mate-disk-usage-analyzer mate-font-viewer mate-power-statistics mate-search-tool mate-system-log mate-system-monitor mate-terminal"
+ADDITIONAL_S_NAMES[vm]="matecc"
+ADDITIONAL_PKG_LIST="control-center disk-image-mounter disk-usage-analyzer font-viewer power-statistics search-tool system-log system-monitor terminal"
+for add_pkg in ${ADDITIONAL_PKG_LIST[@]};
+do
+  ADDITIONAL_S_NAMES[vm]+=" mate-$add_pkg"
+done
 ADDITIONAL_DIRNAME[vm]="MATE"
 
 #===============================================================================
@@ -10147,6 +10191,7 @@ fi # Ende Update von externen Programmen [exupdate]
 #===============================================================================
 # Hauptschleife zur Installation oder Anzeige (wenn Pakete ausgewählt wurden)
 #===============================================================================
+ALL_STARTER_COUNTER=0
 if [ $TOTAL_PACKS -gt 0 ] ||
    [ $USE_ILIST_FILE -eq 1 ];
 then
@@ -10349,7 +10394,6 @@ then
     fi
     # ------------------------------------------------------------------
 
-    ALL_STARTER_COUNTER=0
     NEW_STARTER_COUNTER=0
     for k in ${KAT_ORD_LIST[@]};
     do
@@ -10402,8 +10446,11 @@ then
   # ----------------------------------------------------------------------------
   e_and_l " ${bold_blue}Erstellung zusätzlicher Starter (Programm-Symbole)${colors_off}"
   e_and_l "$FULL_LINE"
-  e_and_l " Bisher bereits neu erstellte Starter: ${bold_yellow}$ALL_STARTER_COUNTER${colors_off}"
-  e_and_l "$HALF_LINE"
+  if [ $ALL_STARTER_COUNTER -gt 0 ];
+  then
+    e_and_l " Bisher bereits neu erstellte Starter: ${bold_yellow}$ALL_STARTER_COUNTER${colors_off}"
+    e_and_l "$HALF_LINE"
+  fi
   e_and_l " ${bold_blue}Kategorien${colors_off}"
   e_and_l "$HALF_LINE"
   NEW_STARTER_COUNTER=0
@@ -13243,7 +13290,7 @@ then
   ACTION_MESSAGE=" Test-Kanal von ${light_cyan}Pi OS Upgrades${colors_off} ausschließen"
   if [ $RASPBIAN -ne 0 ];
   then
-    RASPI_DEB_FILE="/etc/apt/sources.list.d/raspi.list"
+    RASPI_DEB_FILE="$SOURCES_LIST_DIR/raspi.list"
     # Nur weitermachen, wenn es die Datei gibt
     if [ -s "$RASPI_DEB_FILE" ];
     then
@@ -15051,7 +15098,6 @@ then
   fi
   echo -e "$FERTIG_TAG"
   do_revive_items
-
 fi
 
 #===============================================================================
@@ -15241,7 +15287,7 @@ then
   FOLDERS_LINKED=0
   FOLDERS_BROKEN=0
   anz=${#FOLDER_NAME_DE[@]}
-  echo -e -n > "$BROKEN_LINKS_FILE"
+  echo -e -n > "$BROKEN_LINKS_LIST"
   i=0
   while [ $i -lt $anz ];
   do
@@ -15257,7 +15303,7 @@ then
          [ ! -f $THE_TARGET_PATH ] &&
          [ ! -L $THE_TARGET_PATH ];
       then
-        echo -e "$FULL_PATH_DE > $THE_TARGET_PATH" >> "$BROKEN_LINKS_FILE" 2>/dev/null
+        echo -e "$FULL_PATH_DE > $THE_TARGET_PATH" >> "$BROKEN_LINKS_LIST" 2>/dev/null
         ((FOLDERS_BROKEN+=1))
       fi
     fi
@@ -15268,7 +15314,7 @@ then
          [ ! -f $THE_TARGET_PATH ] &&
          [ ! -L $THE_TARGET_PATH ];
       then
-        echo -e "$FULL_PATH_EN > $THE_TARGET_PATH" >> "$BROKEN_LINKS_FILE" 2>/dev/null
+        echo -e "$FULL_PATH_EN > $THE_TARGET_PATH" >> "$BROKEN_LINKS_LIST" 2>/dev/null
         ((FOLDERS_BROKEN+=1))
       fi
     fi
@@ -15289,13 +15335,14 @@ then
   done
 
   # ============================================================================
-  # Ungültige Links zu Benutzer-Ordnern löschen oder Ordner dazu erstellen
+  # Ungültige Links zwischen Benutzer-Ordnern (deutsch <-> english) löschen
+  # oder entsprechende Ordner dazu erstellen
   # -----------------------------------------------------------------------
   # Je nach Sprachumgebung bzw. nach Wechsel dieser werden (bspw. bei Ubuntu)
   # auch die Ordnernamen des Benutzers geändert. Dadurch können dann je nach
   # Zustand ungültige Verknüpfungen oder fehlende Ordner zu diesen entstehen.
   # ============================================================================
-  if [ -s "$BROKEN_LINKS_FILE" ];
+  if [ -s "$BROKEN_LINKS_LIST" ];
   then
     # -------------------------------
     # Fehlerhafte Einträge auflisten
@@ -15308,7 +15355,7 @@ then
       then
         e_and_l " - ${broken_line/ > / -> }"
       fi
-    done < "$BROKEN_LINKS_FILE"
+    done < "$BROKEN_LINKS_LIST"
     # --------
     # Abfrage
     # --------
@@ -15316,19 +15363,8 @@ then
     e_and_l " [${bold_yellow}0${colors_off}] Nichts, alles so lassen wie es ist"
     e_and_l " [${bold_yellow}1${colors_off}] Die ungültigen Verknüpfungen löschen"
     e_and_l " [${bold_yellow}2${colors_off}] Fehlende Ordner zu den Verknüpfungen anlegen (${bold_white}empfohlen${colors_off})"
-    if [ ${OPTION_FLAG[notoall]} -eq 0 ];
-    then
-      LINK_ACTION=-1
-      while [ $LINK_ACTION -lt 0 ] ||
-            [ $LINK_ACTION -gt 2 ];
-      do
-        read -N 1 -r -s LINK_ACTION
-        LINK_ACTION=$(echo $LINK_ACTION | sed 's/[^0-9]*//g')
-        if [ "$LINK_ACTION" == "" ]; then LINK_ACTION=-1; fi
-      done
-    else
-      LINK_ACTION=0
-    fi
+    user_choice_012
+    LINK_ACTION=$?
     # -------------
     # Durchführung
     # -------------
@@ -15375,13 +15411,13 @@ then
             fi
           fi
         fi
-      done < "$BROKEN_LINKS_FILE"
+      done < "$BROKEN_LINKS_LIST"
     fi
     e_and_l "$HALF_LINE"
   else
     e_and_l " Reparatur ${light_cyan}ungültiger Benutzer-Ordner/Links${colors_off} ... $NF_TAG"
   fi
-  remove_file "$BROKEN_LINKS_FILE"
+  remove_file "$BROKEN_LINKS_LIST"
 
   # ============================================================================
   # Existierende Benutzer-Ordner zwischen deren "deutschen" und "englischen"
@@ -15473,23 +15509,27 @@ then
   # Alle Starter auf dem Desktop ausführbar machen
   # ============================================================================
   DESKTOP_STARTER_LIST="$DOWNLOAD_DIR/desktop_starter_list.tmp"
-  e_and_l -n " Mache alle ${light_cyan}Starter auf Desktop ausführbar${colors_off}  ... "
   find "$DESKTOP_DIR" -type f -iregex ".*\.desktop$" > "$DESKTOP_STARTER_LIST"
   if [ -s "$DESKTOP_STARTER_LIST" ];
   then
-    i=0
-    while read starter_file;
-    do
-      if [ "$starter_file" != "" ];
-      then
-        chmod -R 0755 "$starter_file" &>/dev/null
-        make_starter_trusted "$starter_file"
-        ((i+=1))
-      fi
-    done < "$DESKTOP_STARTER_LIST"
-    e_and_l "$OK_TAG ${dark_grey}($i)${colors_off}"
+    ANZAHL_STARTER=$(cat "$DESKTOP_STARTER_LIST" | wc -l)
+    e_and_l " Es wurden ${bold_yellow}$ANZAHL_STARTER${colors_off} ${light_cyan}Starter${colors_off} auf dem Desktop des Benutzers gefunden."
+    ask_yes_or_no_plus "all_starter_trusted" " Sollen alle Starter ausführbar gemacht werden" "" "n"
+    if [ $? -eq 1 ];
+    then
+      e_and_l -n " Mache ${light_yellow}Starter ausführbar${colors_off}, bitte warten   ... "
+      while read starter_file;
+      do
+        if [ "$starter_file" != "" ];
+        then
+          chmod -R 0755 "$starter_file" &>/dev/null
+          make_starter_trusted "$starter_file"
+        fi
+      done < "$DESKTOP_STARTER_LIST"
+      e_and_l "$OK_TAG"
+    fi
   else
-    e_and_l "$NF_TAG"
+    e_and_l " Alle ${light_cyan}Starter auf Desktop ausführbar${colors_off} machen ... $NF_TAG"
   fi
   remove_file "$DESKTOP_STARTER_LIST"
 
@@ -15504,55 +15544,64 @@ then
   # Pakete mit fehlerhaften Abhängigkeiten
   # ============================================================================
   ACTION_MESSAGE=" Reparatur von ${light_cyan}fehlerhaften Abhängigkeiten${colors_off}  ... "
-  PKG_BROKEN_FILE="$DOWNLOAD_DIR/pkg_broken_list"
-  apt list ?broken 2>/dev/null | grep -oP '^(.*)(?=/)' > "$PKG_BROKEN_FILE"
-  if [ -s "$PKG_BROKEN_FILE" ];
+  apt list ?broken 2>/dev/null | grep -oP '^(.*)(?=/)' > "$PKG_BROKEN_LIST"
+  if [ -s "$PKG_BROKEN_LIST" ];
   then
-    THE_PKG_BROKEN_LIST=()
+    PKG_BROKEN_ARRAY=()
     while read pkg;
     do
       if [ "$pkg" != "" ];
       then
-        THE_PKG_BROKEN_LIST+=("$pkg")
+        PKG_BROKEN_ARRAY+=("$pkg")
       fi
-    done < "$PKG_BROKEN_FILE"
-    e_and_l " Es wurden ${bold_yellow}${#THE_PKG_BROKEN_LIST[@]}${colors_off} Pakete mit ${light_cyan}fehlerhaften Abhängigkeiten${colors_off} gefunden."
-    ask_yes_or_no_plus "remove_config_rest" " Sollen diese Paket-Abhängigkeiten repariert werden" "" "n"
-    if [ $? -eq 1 ];
+    done < "$PKG_BROKEN_LIST"
+    e_and_l " Es wurden ${bold_yellow}${#PKG_BROKEN_ARRAY[@]}${colors_off} Pakete mit ${light_cyan}fehlerhaften Abhängigkeiten${colors_off} gefunden."
+    e_and_l " Was soll ich tun?"
+    e_and_l " [${bold_yellow}0${colors_off}] Schritt überspringen, nichts reparieren und Liste als Datei speichern"
+    e_and_l " [${bold_yellow}1${colors_off}] Jedes Paket einzeln jeweils mit Abfrage reparieren"
+    e_and_l " [${bold_yellow}2${colors_off}] Alle Pakete ohne einzelne Abfragen reparieren"
+    user_choice_012
+    REPAIR_MODE=$?
+    if [ $REPAIR_MODE -gt 0 ];
     then
-      e_and_l " Folgende Pakete mit fehlerhaften Abhängigkeiten wurden gefunden:"
-      for pkg in "${THE_PKG_BROKEN_LIST[@]}";
-      do
-        e_and_l " - $pkg"
-      done
-      e_and_l " Bitte auswählen, wie diese repariert werden sollen:"
-      e_and_l " [${bold_white}0${colors_off}] Abbrechen, nichts reparieren"
-      e_and_l " [${bold_white}1${colors_off}] Jedes einzelne Paket mit Abfrage reparieren"
-      e_and_l " [${bold_white}2${colors_off}] Alle Pakete ohne weitere Abfrage reparieren"
-      REPAIR_MODE=""
-      while [ "$REPAIR_MODE" == "" ];
-      do
-        read -N 1 -r -s REPAIR_MODE
-        REPAIR_MODE=$(echo $REPAIR_MODE | sed 's/[^0-2]*//g')
-      done
-      if [ "$REPAIR_MODE" == "1" ] ||
-         [ "$REPAIR_MODE" == "2" ];
+      # ----------------------------------------------------
+      # Sicherheitsabfrage wenn alle gelöscht werden sollen
+      # ----------------------------------------------------
+      if [ $REPAIR_MODE -eq 2 ];
+      then
+        e_and_l " Folgende Pakete mit fehlerhaften Abhängigkeiten wurden gefunden:"
+        for pkg in "${PKG_BROKEN_ARRAY[@]}";
+        do
+          e_and_l " - ${light_cyan}$pkg${colors_off}"
+        done
+        ask_yes_or_no_plus "" " Jetzt wirklich ${bold_cyan}alle${colors_off} vorstehenden Abhängigkeiten reparieren" "" "n"
+        if [ $? -eq 0 ];
+        then
+          e_and_l " $USER_CHOICE_NO"
+          REPAIR_MODE=0
+        else
+          e_and_l " $USER_CHOICE_YES"
+        fi
+      fi
+      # ----------------------------------------------------
+      if [ $REPAIR_MODE -gt 0 ];
       then
         e_and_l -n " Vorbereitung des Reparatur-Vorgangs, bitte warten ... "
         apt clean &>/dev/null
         apt autoclean &>/dev/null
         e_and_l "$OK_TAG"
-        for pkg in "${THE_PKG_BROKEN_LIST[@]}";
+        for pkg in "${PKG_BROKEN_ARRAY[@]}";
         do
           DO_REPAIR_THIS=1
-          if [ "$REPAIR_MODE" == "1" ];
+          if [ $REPAIR_MODE -eq 1 ];
           then
-            ask_yes_or_no_pure " ${bold_white}$pkg${colors_off} reparieren"
+            e_and_l " Paket ${light_cyan}$pkg${colors_off}"
+            ask_yes_or_no_plus "" " Reparieren" "" "n"
             DO_REPAIR_THIS=$?
           fi
           if [ $DO_REPAIR_THIS -eq 1 ];
           then
-            e_and_l -n " Repariere ${bold_yellow}$pkg${colors_off} ... "
+            e_and_l -n " Repariere ${light_yellow}$pkg${colors_off} ... "
             apt --fix-broken install "$pkg" -y &>/dev/null
             if [ $? -eq 0 ];
             then
@@ -15563,11 +15612,15 @@ then
           fi
         done
       fi
+      remove_file "$PKG_BROKEN_LIST"
+    else
+      e_and_l " $HINWEIS_TAG: Die Liste der fehlerhaften Abhängigkeiten ist gespeichert in:"
+      e_and_l " ${light_yellow}$PKG_BROKEN_LIST${colors_off}"
     fi
   else
+    remove_file "$PKG_BROKEN_LIST"
     e_and_l "$ACTION_MESSAGE$NF_TAG"
   fi
-  remove_file "$PKG_BROKEN_FILE"
 
   # ============================================================================
   # Paketquellen
@@ -15576,10 +15629,6 @@ then
   e_and_l " ${bold_blue}Paketquellen${colors_off}"
   e_and_l "$HALF_LINE"
 
-  # Datei mit Quell-Angaben des Systems (Ubuntu und Partner)
-  SOURCES_LIST_FILE="/etc/apt/sources.list"
-  # Ordner mit Dateien, die weitere Quell-Angaben beinhalten
-  SOURCES_LIST_DIR="/etc/apt/sources.list.d"
   # Temporäre Dateien zum Bearbeiten der Quell-Listen
   ALL_SOURCE_FILES="$DOWNLOAD_DIR/all_source_files.tmp" # Liste aller Dateien mit Quellen
   ALL_SOURCES_LIST="$DOWNLOAD_DIR/all_sources_list.tmp" # Liste aller Quell-Angaben
@@ -16099,7 +16148,7 @@ then
   if [ -s "$OLD_KERNEL_LIST" ] &&
      [ $REMOVE_KERNEL_IDX -gt 0 ];
   then
-    e_and_l " Es wurden ${bold_yellow}$REMOVE_KERNEL_IDX${colors_off} Einträge von nicht verwendeten ${light_cyan}Kernel-Versionen${colors_off} gefunden."
+    e_and_l " Es wurden ${bold_yellow}$REMOVE_KERNEL_IDX${colors_off} Einträge von ${light_cyan}nicht verwendeten Kernel-Versionen${colors_off} gefunden."
     e_and_l " Die aktuell verwendete Version ist: ${light_cyan}$CURR_KERNEL_VERSION${colors_off}."
     ask_yes_or_no_plus "remove_unused_kernels" " Nicht verwendete Versionen auswählbar löschen" "" "n"
     if [ $? -eq 1 ];
@@ -16162,16 +16211,20 @@ then
           ask_yes_or_no_plus "" " Jetzt wirklich ${bold_white}initramfs${colors_off} und ${bold_white}GRUB-Loader${colors_off} erneuern"
           if [ $? -eq 1 ];
           then
+            # ---------------------------------------------------------------
             # Resume-Eintrag zurücksetzen
             # (Kann helfen Time-Outs oder Panics beim Booten durch die Suche
             #  nach nicht mehr vorhandenen Partitionen zu eliminieren ;)
+            # ---------------------------------------------------------------
             RESUME_FILE="/etc/initramfs-tools/conf.d/resume"
             if [ -s "$RESUME_FILE" ];
             then
               mv -f "$RESUME_FILE" "$RESUME_FILE.org" &>/dev/null
               echo -e "RESUME=none" > "$RESUME_FILE" 2>/dev/null
             fi
+            # --------------------------------
             # Initial RAM FileSystem erneuern
+            # --------------------------------
             e_and_l -n " Aktualisiere das ${light_yellow}Initial RAM FileSystem${colors_off}  ... "
             update-initramfs -u &>"$LOG_TEMP"
             if [ $? -eq 0 ];
@@ -16210,51 +16263,61 @@ then
   # Löschen verwaister Pakete und Komponenten
   # ============================================================================
   ACTION_MESSAGE=" Löschen ${light_cyan}nicht mehr benötigter Komponenten${colors_off}  ... "
-  PKG_GARBAGE_FILE="$DOWNLOAD_DIR/pkg_garbage_list"
-  apt list ?garbage 2>/dev/null | grep -oP '^(.*)(?=/)' > "$PKG_GARBAGE_FILE"
-  if [ -s "$PKG_GARBAGE_FILE" ];
+  apt list ?garbage 2>/dev/null | grep -oP '^(.*)(?=/)' > "$PKG_GARBAGE_LIST"
+  if [ -s "$PKG_GARBAGE_LIST" ];
   then
-    THE_PKG_GARBAGE_LIST=()
+    PKG_GARBAGE_ARRAY=()
     while read pkg;
     do
       if [ "$pkg" != "" ];
       then
-        THE_PKG_GARBAGE_LIST+=("$pkg")
+        PKG_GARBAGE_ARRAY+=("$pkg")
       fi
-    done < "$PKG_GARBAGE_FILE"
-    e_and_l " Es wurden ${bold_yellow}${#THE_PKG_GARBAGE_LIST[@]}${colors_off} ${light_cyan}nicht mehr benötigte Pakete und System-Komponenten${colors_off} gefunden."
-    ask_yes_or_no_plus "remove_config_rest" " Sollen diese Pakete und Komponenten entfernt werden" "" "n"
-    if [ $? -eq 1 ];
+    done < "$PKG_GARBAGE_LIST"
+    e_and_l " Es wurden ${bold_yellow}${#PKG_GARBAGE_ARRAY[@]}${colors_off} ${light_cyan}nicht mehr benötigte Pakete und System-Komponenten${colors_off} gefunden."
+    e_and_l " Was soll ich tun?"
+    e_and_l " [${bold_yellow}0${colors_off}] Schritt überspringen, nichts löschen und Liste als Datei speichern"
+    e_and_l " [${bold_yellow}1${colors_off}] Jede Komponente einzeln jeweils mit Abfrage löschen"
+    e_and_l " [${bold_yellow}2${colors_off}] Alle Komponenten ohne einzelne Abfragen löschen"
+    user_choice_012
+    REMOVE_MODE=$?
+    if [ $REMOVE_MODE -gt 0 ];
     then
-      e_and_l " Folgende nicht mehr benötigte Pakete und Komponenten wurden gefunden:"
-      for pkg in "${THE_PKG_GARBAGE_LIST[@]}";
-      do
-        e_and_l " - $pkg"
-      done
-      e_and_l " Bitte auswählen, wie diese gelöscht werden sollen:"
-      e_and_l " [${bold_white}0${colors_off}] Abbrechen, nichts löschen"
-      e_and_l " [${bold_white}1${colors_off}] Jede Komponente einzeln mit Abfrage löschen"
-      e_and_l " [${bold_white}2${colors_off}] Alle Komponenten ohne weitere Abfrage löschen"
-      REMOVE_MODE=""
-      while [ "$REMOVE_MODE" == "" ];
-      do
-        read -N 1 -r -s REMOVE_MODE
-        REMOVE_MODE=$(echo $REMOVE_MODE | sed 's/[^0-2]*//g')
-      done
-      if [ "$REMOVE_MODE" == "1" ] ||
-         [ "$REMOVE_MODE" == "2" ];
+      # ----------------------------------------------------
+      # Sicherheitsabfrage wenn alle gelöscht werden sollen
+      # ----------------------------------------------------
+      if [ $REMOVE_MODE -eq 2 ];
       then
-        for pkg in "${THE_PKG_GARBAGE_LIST[@]}";
+        e_and_l " Folgende nicht mehr benötigte Pakete und Komponenten wurden gefunden:"
+        for pkg in "${PKG_GARBAGE_ARRAY[@]}";
+        do
+          e_and_l " - ${light_cyan}$pkg${colors_off}"
+        done
+        e_and_l " Hast Du die Liste genau geprüft, so dass nichts ungewollt gelöscht wird?"
+        ask_yes_or_no_plus "" " Jetzt wirklich ${bold_red}alle${colors_off} vorstehenden Komponenten löschen" "" "n"
+        if [ $? -eq 0 ];
+        then
+          e_and_l " $USER_CHOICE_NO"
+          REMOVE_MODE=0
+        else
+          e_and_l " $USER_CHOICE_YES"
+        fi
+      fi
+      # ----------------------------------------------------
+      if [ $REMOVE_MODE -gt 0 ];
+      then
+        for pkg in "${PKG_GARBAGE_ARRAY[@]}";
         do
           DO_REMOVE_THIS=1
-          if [ "$REMOVE_MODE" == "1" ];
+          if [ $REMOVE_MODE -eq 1 ];
           then
-            ask_yes_or_no_pure " ${bold_white}$pkg${colors_off} löschen"
+            e_and_l " Komponente ${light_cyan}$pkg${colors_off}"
+            ask_yes_or_no_plus "" " Löschen" "" "n"
             DO_REMOVE_THIS=$?
           fi
           if [ $DO_REMOVE_THIS -eq 1 ];
           then
-            e_and_l -n " Lösche ${bold_yellow}$pkg${colors_off} ... "
+            e_and_l -n " Lösche ${light_yellow}$pkg${colors_off} ... "
             apt purge "$pkg" -y &>/dev/null
             if [ $? -eq 0 ];
             then
@@ -16265,62 +16328,76 @@ then
           fi
         done
       fi
+      remove_file "$PKG_GARBAGE_LIST"
+    else
+      e_and_l " $HINWEIS_TAG: Die Liste der nicht mehr benötigten Komponenten ist gespeichert in:"
+      e_and_l " ${light_yellow}$PKG_GARBAGE_LIST${colors_off}"
     fi
     e_and_l "$HALF_LINE"
   else
+    remove_file "$PKG_GARBAGE_LIST"
     e_and_l "$ACTION_MESSAGE$NF_TAG"
   fi
-  remove_file "$PKG_GARBAGE_FILE"
 
   # ============================================================================
   # Löschen Paket-Konfigurationen
   # ============================================================================
   ACTION_MESSAGE=" Löschen ${light_cyan}verwaister Paket-Konfigurationen${colors_off}   ... "
-  CONFIG_REST_FILE="$DOWNLOAD_DIR/config_rest_list"
-  apt list ?config-files 2>/dev/null | grep -oP '^(.*)(?=/)' > "$CONFIG_REST_FILE"
-  if [ -s "$CONFIG_REST_FILE" ];
+  apt list ?config-files 2>/dev/null | grep -oP '^(.*)(?=/)' > "$CONFIG_REST_LIST"
+  if [ -s "$CONFIG_REST_LIST" ];
   then
-    THE_CONFIG_REST_LIST=()
+    CONFIG_REST_ARRAY=()
     while read pkg;
     do
       if [ "$pkg" != "" ];
       then
-        THE_CONFIG_REST_LIST+=("$pkg")
+        CONFIG_REST_ARRAY+=("$pkg")
       fi
-    done < "$CONFIG_REST_FILE"
-    e_and_l " Es wurden ${bold_yellow}${#THE_CONFIG_REST_LIST[@]}${colors_off} ${light_cyan}verwaiste Konfigurationen${colors_off} von gelöschten Paketen gefunden."
-    ask_yes_or_no_plus "remove_config_rest" " Sollen verwaiste Paket-Konfigurationen entfernt werden" "" "n"
-    if [ $? -eq 1 ];
+    done < "$CONFIG_REST_LIST"
+    e_and_l " Es wurden ${bold_yellow}${#CONFIG_REST_ARRAY[@]}${colors_off} ${light_cyan}verwaiste Konfigurationen${colors_off} von gelöschten Paketen gefunden."
+    e_and_l " Was soll ich tun?"
+    e_and_l " [${bold_yellow}0${colors_off}] Schritt überspringen, nichts löschen und Liste als Datei speichern"
+    e_and_l " [${bold_yellow}1${colors_off}] Jede verwaiste Konfiguration einzeln jeweils mit Abfrage löschen"
+    e_and_l " [${bold_yellow}2${colors_off}] Alle verwaisten Konfigurationen ohne einzelne Abfragen löschen"
+    user_choice_012
+    REMOVE_MODE=$?
+    if [ $REMOVE_MODE -gt 0 ];
     then
-      e_and_l " Zu folgenden Paketen wurden verwaiste Konfigurationen gefunden:"
-      for pkg in "${THE_CONFIG_REST_LIST[@]}";
-      do
-        e_and_l " - $pkg"
-      done
-      e_and_l " Bitte auswählen, wie diese gelöscht werden sollen:"
-      e_and_l " [${bold_white}0${colors_off}] Abbrechen, nichts löschen"
-      e_and_l " [${bold_white}1${colors_off}] Jede Konfiguration einzeln mit Abfrage löschen"
-      e_and_l " [${bold_white}2${colors_off}] Alle Konfigurationen ohne weitere Abfrage löschen"
-      REMOVE_MODE=""
-      while [ "$REMOVE_MODE" == "" ];
-      do
-        read -N 1 -r -s REMOVE_MODE
-        REMOVE_MODE=$(echo $REMOVE_MODE | sed 's/[^0-2]*//g')
-      done
-      if [ "$REMOVE_MODE" == "1" ] ||
-         [ "$REMOVE_MODE" == "2" ];
+      # ----------------------------------------------------
+      # Sicherheitsabfrage wenn alle gelöscht werden sollen
+      # ----------------------------------------------------
+      if [ $REMOVE_MODE -eq 2 ];
       then
-        for pkg in "${THE_CONFIG_REST_LIST[@]}";
+        e_and_l " Zu folgenden Paketen wurden verwaiste Konfigurationen gefunden:"
+        for pkg in "${CONFIG_REST_ARRAY[@]}";
+        do
+          e_and_l " - ${light_cyan}$pkg${colors_off}"
+        done
+        e_and_l " Hast Du die Liste genau geprüft, so dass nichts ungewollt gelöscht wird?"
+        ask_yes_or_no_plus "" " Jetzt wirklich ${bold_red}alle${colors_off} vorstehenden Konfigurationen löschen" "" "n"
+        if [ $? -eq 0 ];
+        then
+          e_and_l " $USER_CHOICE_NO"
+          REMOVE_MODE=0
+        else
+          e_and_l " $USER_CHOICE_YES"
+        fi
+      fi
+      # ----------------------------------------------------
+      if [ $REMOVE_MODE -gt 0 ];
+      then
+        for pkg in "${CONFIG_REST_ARRAY[@]}";
         do
           DO_REMOVE_THIS=1
-          if [ "$REMOVE_MODE" == "1" ];
+          if [ $REMOVE_MODE -eq 1 ];
           then
-            ask_yes_or_no_pure " Konfiguration von ${bold_white}$pkg${colors_off} löschen"
+            e_and_l " Konfiguration von ${light_cyan}$pkg${colors_off}"
+            ask_yes_or_no_plus "" " Löschen" "" "n"
             DO_REMOVE_THIS=$?
           fi
           if [ $DO_REMOVE_THIS -eq 1 ];
           then
-            e_and_l -n " Lösche Konfiguration von ${bold_yellow}$pkg${colors_off} ... "
+            e_and_l -n " Lösche Konfiguration von ${light_yellow}$pkg${colors_off} ... "
             apt purge "$pkg" -y &>/dev/null
             if [ $? -eq 0 ];
             then
@@ -16331,12 +16408,16 @@ then
           fi
         done
       fi
+      remove_file "$CONFIG_REST_LIST"
+    else
+      e_and_l " $HINWEIS_TAG: Die Liste der verwaisten Konfigurationen ist gespeichert in:"
+      e_and_l " ${light_yellow}$CONFIG_REST_LIST${colors_off}"
     fi
     e_and_l "$HALF_LINE"
   else
+    remove_file "$CONFIG_REST_LIST"
     e_and_l "$ACTION_MESSAGE$NF_TAG"
   fi
-  remove_file "$CONFIG_REST_FILE"
 
   # ============================================================================
   # Löschen verwaister Flatpak-Pakete (aktuell nur finden, löschen noch ToDo)
@@ -16402,7 +16483,7 @@ then
   # ============================================================================
   BROKEN_LINKS=0
   BROKEN_LINK_TABLE=()
-  echo -e -n > "$BROKEN_LINKS_FILE"
+  echo -e -n > "$BROKEN_LINKS_LIST"
   while read the_link;
   do
     if [ "$the_link" != "" ];
@@ -16425,7 +16506,7 @@ then
         if [ ! -e "$THE_LINK_TARGET" ];
         then
           THE_BROKEN_LINE="$the_link > $THE_LINK_TARGET"
-          echo -e "$THE_BROKEN_LINE" >> "$BROKEN_LINKS_FILE"
+          echo -e "$THE_BROKEN_LINE" >> "$BROKEN_LINKS_LIST"
           BROKEN_LINK_TABLE+=("$THE_BROKEN_LINE")
           ((BROKEN_LINKS+=1))
         fi
@@ -16440,25 +16521,11 @@ then
     # Abfrage
     # --------
     e_and_l " Was soll ich tun?"
-    e_and_l " [${bold_yellow}0${colors_off}] Abbrechen, nichts löschen und die Liste als Datei speichern"
-    e_and_l " [${bold_yellow}1${colors_off}] Alle ungültigen Verknüpfungen einzeln anzeigen und mit Abfrage löschen"
-    e_and_l " [${bold_yellow}2${colors_off}] Nach nur einer Sicherheitsabfrage alle ungültigen Verknüpfungen löschen"
-    if [ ${OPTION_FLAG[notoall]} -eq 0 ];
-    then
-      LINK_ACTION=-1
-      while [ $LINK_ACTION -lt 0 ] ||
-            [ $LINK_ACTION -gt 2 ];
-      do
-        read -N 1 -r -s LINK_ACTION
-        LINK_ACTION=$(echo $LINK_ACTION | sed 's/[^0-9]*//g')
-        if [ "$LINK_ACTION" == "" ]; then LINK_ACTION=-1; fi
-      done
-    else
-      LINK_ACTION=0
-    fi
-    # -------------
-    # Durchführung
-    # -------------
+    e_and_l " [${bold_yellow}0${colors_off}] Schritt überspringen, nichts löschen und Liste als Datei speichern"
+    e_and_l " [${bold_yellow}1${colors_off}] Jede ungültige Verknüpfung einzeln jeweils mit Abfrage löschen"
+    e_and_l " [${bold_yellow}2${colors_off}] Alle ungültigen Verknüpfungen ohne einzelne Abfragen löschen"
+    user_choice_012
+    LINK_ACTION=$?
     if [ $LINK_ACTION -gt 0 ];
     then
       # ----------------------------------------------------
@@ -16478,12 +16545,14 @@ then
           fi
           ((i+=1))
         done
+        e_and_l " Hast Du die Liste genau geprüft, so dass nichts ungewollt gelöscht wird?"
         ask_yes_or_no_plus "" " Jetzt wirklich ${bold_red}alle${colors_off} vorstehenden Verknüpfungen löschen" "" "n"
-        if [ $? -eq 1 ];
+        if [ $? -eq 0 ];
         then
-          LINK_ACTION=2
-        else
+          e_and_l " $USER_CHOICE_NO"
           LINK_ACTION=0
+        else
+          e_and_l " $USER_CHOICE_YES"
         fi
       fi
       # ----------------------------------------------------
@@ -16498,9 +16567,10 @@ then
             # Einzelabfrage
             # --------------
             THE_LINK_PATH="$(echo -e -n "$broken_line" | sed -E "s/'/\\\'/g" | cut -d'>' -f 1 | xargs 2>/dev/null)"
+            THE_TARGET_PATH="$(echo -e -n "$broken_line" | sed -E "s/'/\\\'/g" | cut -d'>' -f 2 | xargs 2>/dev/null)"
             if [ $LINK_ACTION -eq 1 ];
             then
-              e_and_l " ${light_cyan}$THE_LINK_PATH${colors_off}"
+              e_and_l " ${light_cyan}$THE_LINK_PATH${colors_off} -> ${dark_grey}$THE_TARGET_PATH${colors_off}"
               ask_yes_or_no_plus "" " Löschen" "" "n"
               DO_REMOVE_LINK=$?
             fi
@@ -16519,11 +16589,14 @@ then
           fi
         done
       fi
-      remove_file "$BROKEN_LINKS_FILE"
+      remove_file "$BROKEN_LINKS_LIST"
+    else
+      e_and_l " $HINWEIS_TAG: Die Liste der ungültigen Verknüpfungen ist gespeichert in:"
+      e_and_l " ${light_yellow}$BROKEN_LINKS_LIST${colors_off}"
     fi
   else
     e_and_l " Löschen ${light_cyan}ungültiger Verknüpfungen${colors_off} (Symlink) ... $NF_TAG"
-    remove_file "$BROKEN_LINKS_FILE"
+    remove_file "$BROKEN_LINKS_LIST"
   fi
 
   e_and_l "$HALF_LINE"
@@ -16545,7 +16618,7 @@ then
     ask_yes_or_no_plus "delete_user_mails" "$QUESTION_TEXT" "" "n"
     if [ $? -eq 1 ];
     then
-      e_and_l -n "$ACTION_MESSAGE"
+      e_and_l -n " Lösche die ${light_yellow}User-System-Benachrichtigungen${colors_off}  ... "
       remove_file "$USER_MAIL_FILE"
       if [ $? -eq 0 ];
       then
@@ -16560,20 +16633,25 @@ then
 
   # ============================================================================
   # Löschen der veralteten System-Log-Dateien
+  # ------------------------------------------
   # ACHTUNG: Die Anzahl Tage werden weiter oben mit ANZ_LOG_DAYS festgelegt
   # ============================================================================
   ACTION_MESSAGE=" Löschen der veralteten ${light_cyan}System-Log-Dateien${colors_off}  ... "
   VAR_LOG_DIR="/var/log"
   if [ -d "$VAR_LOG_DIR" ];
   then
+    # ------------------------------------
     # Anzahl veralteter Dateien ermitteln
+    # ------------------------------------
     OLD_LOGS_FILES=$(find "$VAR_LOG_DIR" -depth -type f -mtime +${ANZ_LOG_DAYS} 2>/dev/null | wc -l)
     EMPTY_LOG_DIRS=$(find "$VAR_LOG_DIR/journal" -depth -type d -empty 2>/dev/null | wc -l)
     if [ $OLD_LOGS_FILES -gt 0 ] ||
        [ $EMPTY_LOG_DIRS -gt 0 ];
     then
-      # Belegten Speicherplatz der Dateien ermitteln
-      # (nur wenn es auch Dateien gibt, da "du" sonst nicht das gewünschte Ergebnis liefert ;)
+      # --------------------------------------------------------------------
+      # Belegten Speicherplatz der Dateien ermitteln (nur wenn es auch
+       # Dateien gibt, da "du" sonst nicht das gewünschte Ergebnis liefert)
+      # --------------------------------------------------------------------
       if [ $OLD_LOGS_FILES -gt 0 ];
       then
         OLD_LOGS_BYTES=$(find "$VAR_LOG_DIR" -depth -type f -mtime +${ANZ_LOG_DAYS} 2>/dev/null | xargs du -b -c -s 2>/dev/null | tail -1 | awk '{print $1}')
@@ -16587,10 +16665,14 @@ then
       ask_yes_or_no_plus "delete_old_syslogs" "$QUESTION_TEXT" "" "n"
       if [ $? -eq 1 ];
       then
-        e_and_l -n " Löschen der veralteten ${light_yellow}System-Log-Dateien${colors_off}  ... "
+        e_and_l -n " Lösche die veralteten ${light_yellow}System-Log-Dateien${colors_off}   ... "
+        # --------------------------
         # Veraltete Dateien löschen
+        # --------------------------
         find "$VAR_LOG_DIR" -depth -type f -mtime +${ANZ_LOG_DAYS} -delete &>"$LOG_TEMP"
+        # -----------------------------------------
         # Leere Ordner löschen (nur unter journal)
+        # -----------------------------------------
         if [ -d "$VAR_LOG_DIR/journal" ];
         then
           find "$VAR_LOG_DIR/journal" -depth -type d -empty -delete &>>"$LOG_TEMP"
@@ -16627,7 +16709,7 @@ then
       ask_yes_or_no_plus "delete_thumb_cache" "$QUESTION_TEXT" "" "n"
       if [ $? -eq 1 ];
       then
-        e_and_l -n " Löschen der gespeicherten ${light_yellow}Vorschau-Bilder${colors_off}  ... "
+        e_and_l -n " Lösche die gespeicherten ${light_yellow}Vorschau-Bilder${colors_off}   ... "
         rm -f -r ${THUMBS_DIR} &>"$LOG_TEMP"
         if [ $? -eq 0 ];
         then
@@ -16648,8 +16730,10 @@ then
   # Löschen der veralteten Datei-Nutzungsdaten
   # ============================================================================
   ACTION_MESSAGE=" Löschen gespeicherter ${light_cyan}Datei-Nutzungsdaten${colors_off}  ... "
-  # ACHTUNG: Alle Pfadangaben in SEARCH_FILE_LIST sind relativ zum $USER_HOME_DIR
-  #          und dürfen KEINE Leerzeichen enthalten!
+  # ----------------------------------------------------------------------------
+  # ACHTUNG: Alle Pfadangaben in SEARCH_FILE_LIST sind relativ zum
+  #          $USER_HOME_DIR und dürfen KEINE Leerzeichen enthalten!
+  # ----------------------------------------------------------------------------
   SEARCH_FILE_LIST=('.recently-used'
                     '.local/share/recently-used.xbel*'
                     '.local/share/user-places.xbel*'
@@ -16673,11 +16757,13 @@ then
     ask_yes_or_no_plus "delete_user_temp" "$QUESTION_TEXT" "" "n"
     if [ $? -eq 1 ];
     then
-      e_and_l -n " Löschen gespeicherter ${light_yellow}Datei-Nutzungsdaten${colors_off}  ... "
+      e_and_l -n " Lösche gespeicherte ${light_yellow}Datei-Nutzungsdaten${colors_off}    ... "
       for search_mask in ${SEARCH_FILE_LIST[@]};
       do
-        # Zur Sicherheit nur löschen, wenn der Pfad nicht versehentlich leer
-        # ist und dadurch der gesamte Home-Ordner gelöscht würde ... ;o)
+        # --------------------------------------------------------------
+        # Zur Sicherheit nur löschen, wenn der Pfad nicht versehentlich
+        # leer ist und dadurch der gesamte Home-Ordner gelöscht würde
+        # --------------------------------------------------------------
         if [ "$search_mask" != "" ];
         then
           SEARCH_FILE_MASK="$USER_HOME_DIR/$search_mask"
@@ -16732,7 +16818,10 @@ then
     declare -A USER_CONF_COM # Befehl, der nach dem Download der jeweiligen Quelldatei durchgeführt wird
     declare -A USER_CONF_MAO # Wenn "true", dann wird diese Aktion nur auf MATE ausgeführt
     declare -A USER_CONF_MSG # Meldung, die nach der Aktion angezeigt wird
-    # Interne Index-Liste der durchzuführenden Einstellungen (NICHT identisch mit Paketnamen!)
+    # -------------------------------------------------------
+    # Interne Index-Liste der durchzuführenden Einstellungen
+    # (NICHT identisch mit Paketnamen!)
+    # -------------------------------------------------------
     # USER_CONF_LIST=('backpics' 'desktopu' 'firewall' 'matemenu' 'bookmark' 'mimeapps' 'doublcmd' 'kateconf' 'geanycfg' 'smplayer' 'redshift' 'teamview')
     USER_CONF_LIST=('backpics' 'firewall' 'matemenu' 'bookmark' 'mimeapps' 'doublcmd' 'smplayer' 'redshift' 'teamview')
     # Download der Hintergrundbilder
@@ -17182,7 +17271,7 @@ then
       if [ $(echo "$INST_MODE_LIST" | grep -c -E ",1") -ne 0 ];
       then
         TMP_PKG_VERSION=$(get_pkg_apt_version "$REMOVE_PKG_NAME" 0)
-        e_and_l -n " [${bold_white}1${colors_off}] "
+        e_and_l -n " [${bold_yellow}1${colors_off}] "
         if [ "$TMP_PKG_VERSION" != "" ]; then e_and_l -n "Version $TMP_PKG_VERSION "; fi
         e_and_l "als Paket aus dem Standard-Repository"
       fi
@@ -17192,7 +17281,7 @@ then
       if [ $(echo "$INST_MODE_LIST" | grep -c -E ",2") -ne 0 ];
       then
         TMP_PKG_VERSION=$(get_pkg_snap_version "$REMOVE_PKG_NAME" 0)
-        e_and_l -n " [${bold_white}2${colors_off}] "
+        e_and_l -n " [${bold_yellow}2${colors_off}] "
         if [ "$TMP_PKG_VERSION" != "" ]; then e_and_l -n "Version $TMP_PKG_VERSION "; fi
         e_and_l "als Snap-Paket"
       fi
@@ -17202,7 +17291,7 @@ then
       if [ $(echo "$INST_MODE_LIST" | grep -c -E ",3") -ne 0 ];
       then
         TMP_PKG_VERSION=$(get_pkg_deb_version "$REMOVE_PKG_NAME")
-        e_and_l -n " [${bold_white}3${colors_off}] "
+        e_and_l -n " [${bold_yellow}3${colors_off}] "
         if [ "$TMP_PKG_VERSION" != "" ]; then e_and_l -n "Version $TMP_PKG_VERSION "; fi
         e_and_l "in /opt/$OPT_PKG_INST_NAME"
       fi
@@ -17212,7 +17301,7 @@ then
       if [ $(echo "$INST_MODE_LIST" | grep -c -E ",4") -ne 0 ];
       then
         TMP_PKG_VERSION=$(get_pkg_web_version "$REMOVE_PKG_NAME")
-        e_and_l -n " [${bold_white}4${colors_off}] "
+        e_and_l -n " [${bold_yellow}4${colors_off}] "
         if [ "$TMP_PKG_VERSION" != "" ]; then e_and_l -n "Version $TMP_PKG_VERSION "; fi
         e_and_l "in $WEB_PKG_DIR/$WEB_PKG_INST_NAME"
       fi
@@ -17223,7 +17312,7 @@ then
       if [ $(echo "$INST_MODE_LIST" | grep -c -E ",5") -ne 0 ];
       then
         TMP_PKG_VERSION=$(get_pkg_shar_version "$REMOVE_PKG_NAME")
-        e_and_l -n " [${bold_white}5${colors_off}] "
+        e_and_l -n " [${bold_yellow}5${colors_off}] "
         if [ "$TMP_PKG_VERSION" != "" ]; then e_and_l -n "Version $TMP_PKG_VERSION "; fi
         e_and_l "in $SHAR_PKG_INST_DIR"
       fi
@@ -17233,7 +17322,7 @@ then
       if [ $(echo "$INST_MODE_LIST" | grep -c -E ",6") -ne 0 ];
       then
         TMP_PKG_VERSION=$(get_pkg_flatpak_version "$REMOVE_PKG_NAME" 1)
-        e_and_l -n " [${bold_white}6${colors_off}] "
+        e_and_l -n " [${bold_yellow}6${colors_off}] "
         if [ "$TMP_PKG_VERSION" != "" ]; then e_and_l -n "Version $TMP_PKG_VERSION "; fi
         e_and_l "als Flatpak"
       fi
@@ -17262,7 +17351,7 @@ then
     i=0
     while [ $i -lt 4 ];
     do
-      e_and_l " [${bold_white}$i${colors_off}] ${REMOVE_TEXT[$i]}"
+      e_and_l " [${bold_yellow}$i${colors_off}] ${REMOVE_TEXT[$i]}"
       ((i+=1))
     done
     while [ $REMOVE_ACTION -lt 0 ];
