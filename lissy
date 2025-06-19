@@ -1695,10 +1695,11 @@ function do_remove_items {
 # Reaktivierung einer Liste von Komponenten (Ordner und Dateien)
 #===============================================================================
 function do_revive_items {
-  if [ -s "$REVIVE_ITEM_LIST" ];
+  if [ -s "$DEACTIVATED_ITEM_LIST" ];
   then
-    chown -R "$USER_USERNAME:$USER_USERNAME" "$REVIVE_ITEM_LIST" &>/dev/null
-    chmod -R 0664 "$REVIVE_ITEM_LIST" &>/dev/null
+    e_and_l " Es wurden folgende deaktivierten Komponenten gefunden:"
+    chown -R "$USER_USERNAME:$USER_USERNAME" "$DEACTIVATED_ITEM_LIST" &>/dev/null
+    chmod -R 0664 "$DEACTIVATED_ITEM_LIST" &>/dev/null
     declare -A REVIVE_ITEM_TABLE
     REVIVE_TABLE_IDX=0
     while read item_path;
@@ -1710,10 +1711,10 @@ function do_revive_items {
         REVIVE_ITEM_TABLE[$REVIVE_TABLE_IDX]="$item_path"
         ((REVIVE_TABLE_IDX+=1))
       fi
-    done < "$REVIVE_ITEM_LIST"
+    done < "$DEACTIVATED_ITEM_LIST"
     if [ $REVIVE_TABLE_IDX -gt 0 ];
     then
-      e_and_l " Zur Reaktivierung dieser Komponenten stehen folgende Optionen zur Verfügung:"
+      e_and_l " Zur ${bold_white}Reaktivierung${colors_off} dieser Komponenten stehen folgende Optionen zur Verfügung:"
       e_and_l " [${bold_yellow}0${colors_off}] Schritt überspringen, nichts reaktivieren und Liste als Datei speichern"
       e_and_l " [${bold_yellow}1${colors_off}] Jede Komponente einzeln jeweils mit Abfrage reaktivieren"
       e_and_l " [${bold_yellow}2${colors_off}] Alle Komponenten ohne einzelne Abfragen reaktivieren"
@@ -1779,18 +1780,18 @@ function do_revive_items {
           ((i+=1))
         done
         e_and_l "$REBOOT_MSG"
-        remove_file "$REVIVE_ITEM_LIST"
+        remove_file "$DEACTIVATED_ITEM_LIST"
         add_full_log
       else
-        e_and_l " $HINWEIS_TAG: Die Liste der gefundenen Komponenten ist gespeichert in:"
-        e_and_l " ${light_yellow}$REVIVE_ITEM_LIST${colors_off}"
+        e_and_l " $HINWEIS_TAG: Die Liste der deaktivierten Komponenten ist gespeichert in:"
+        e_and_l " ${light_yellow}$DEACTIVATED_ITEM_LIST${colors_off}"
       fi
     else
-      remove_file "$REVIVE_ITEM_LIST"
+      remove_file "$DEACTIVATED_ITEM_LIST"
       e_and_l " $NOTHING_FOUND_TEXT ... $OK_TAG"
     fi
   else
-    remove_file "$REVIVE_ITEM_LIST"
+    remove_file "$DEACTIVATED_ITEM_LIST"
     e_and_l " $NOTHING_FOUND_TEXT ... $OK_TAG"
   fi
 }
@@ -5473,12 +5474,12 @@ USER_SCRIPT_CONFIG="$SCRIPT_CONFIG_DIR/$SCRIPT_NAME.conf"
 BROKEN_LINKS_LIST="$DOWNLOAD_DIR/broken_links.list"
 # Liste verwaister Paket-Konfigurationen
 CONFIG_REST_LIST="$DOWNLOAD_DIR/config_rest.list"
+# Liste vormals deaktivierter Komponenten
+DEACTIVATED_ITEM_LIST="$DOWNLOAD_DIR/deactivated_item.list"
 # Liste fehlerhafter Paket-Abhängigkeiten
 PKG_BROKEN_LIST="$DOWNLOAD_DIR/pkg_broken.list"
 # Liste nicht mehr benötigter Pakete und Komponenten
 PKG_GARBAGE_LIST="$DOWNLOAD_DIR/pkg_garbage.list"
-# Liste vormals deaktivierter Komponenten
-REVIVE_ITEM_LIST="$DOWNLOAD_DIR/revive_item.list"
 
 #===============================================================================
 # Daten für automatische Antworten (autoyorn) einlesen
@@ -15086,15 +15087,15 @@ then
   e_and_l "$FULL_LINE"
   echo -e -n " Starte Suche deaktivierter Komponenten, bitte warten ... "
   NOTHING_FOUND_TEXT="Es wurden keine deaktivierten Komponenten gefunden"
-  echo -e -n "" > "$REVIVE_ITEM_LIST"
-  find / -iname "*.deactivated" -type d,f 1>>"$REVIVE_ITEM_LIST" 2>/dev/null
+  echo -e -n "" > "$DEACTIVATED_ITEM_LIST"
+  find / -iname "*.deactivated" -type d,f 1>>"$DEACTIVATED_ITEM_LIST" 2>/dev/null
   # Doppelte Einträge entfernen
-  if [ -s "$REVIVE_ITEM_LIST" ];
+  if [ -s "$DEACTIVATED_ITEM_LIST" ];
   then
     THE_TEMP_FILE="$DOWNLOAD_DIR/tmp_rv_item_list.tmp"
-    awk '!seen[$0]++' "$REVIVE_ITEM_LIST" > "$THE_TEMP_FILE" 2>/dev/null
-    remove_file "$REVIVE_ITEM_LIST"
-    mv -f "$THE_TEMP_FILE" "$REVIVE_ITEM_LIST" &>/dev/null
+    awk '!seen[$0]++' "$DEACTIVATED_ITEM_LIST" > "$THE_TEMP_FILE" 2>/dev/null
+    remove_file "$DEACTIVATED_ITEM_LIST"
+    mv -f "$THE_TEMP_FILE" "$DEACTIVATED_ITEM_LIST" &>/dev/null
   fi
   echo -e "$FERTIG_TAG"
   do_revive_items
@@ -16462,7 +16463,7 @@ then
   if [ $SNAP_INSTALLED -ne 0 ];
   then
     remove_file "$SNAPSHOT_SNAPS_LIST"
-    LANG=en_US.UTF-8 snap saved | tail --lines=+2 | awk '{print $1, $2, "(A"$3")", "(V"$4")", "(R"$5")", "(S"$6")"}' >> "$SNAPSHOT_SNAPS_LIST"
+    LANG=en_US.UTF-8 snap saved 2>/dev/null | tail --lines=+2 | awk '{print $1, $2, "(A"$3")", "(V"$4")", "(R"$5")", "(S"$6")"}' >> "$SNAPSHOT_SNAPS_LIST"
     if [ -s "$SNAPSHOT_SNAPS_LIST" ];
     then
       remove_snapshots
