@@ -39,8 +39,19 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 19.06.2025
-VERSION="5.0.0"
+# Letzte Änderung: 26.06.2025
+VERSION="5.0.1"
+
+################################################################################
+#                                                                              #
+#           Bei unzureichenden Zugriffsrechten mit sudo durchstarten           #
+#                                                                              #
+################################################################################
+if [ $(id -u) -ne 0 ]; then
+   sudo -kK
+   sudo --preserve-env=XDG_SESSION_TYPE "$0" "$@"
+   exit 0
+fi
 
 ################################################################################
 #                                                                              #
@@ -359,8 +370,8 @@ function ask_yes_no_info {
            [ "$ANSWER" == "i" ];
         then
           echo -e "${light_yellow}"
-          if [ $INSTALL_MODE -eq 1 ]; then apt show "$PACKAGE_NAME"; fi
-          if [ $INSTALL_MODE -eq 2 ]; then snap info "$PACKAGE_NAME"; fi
+          if [ $INSTALL_MODE -eq 1 ]; then apt show "$PACKAGE_NAME" 2>/dev/null; fi
+          if [ $INSTALL_MODE -eq 2 ]; then snap info "$PACKAGE_NAME" 2>/dev/null; fi
           if [ $INSTALL_MODE -eq 3 ] ||
              [ $INSTALL_MODE -eq 4 ];
           then
@@ -1635,6 +1646,7 @@ function do_remove_items {
       then
         echo -e -n "" > "$LOG_TEMP"
         i=0
+        e_and_l "$HALF_MINUS_LINE"
         while [ $i -lt $REMOVE_TABLE_IDX ];
         do
           item_path="${REMOVE_ITEM_TABLE[$i]}"
@@ -1647,12 +1659,14 @@ function do_remove_items {
             # ------------------
             if [ $REMOVE_ITEMS_ACTION -eq 1 ];
             then
-              if [ $i -gt 0 ];
-              then
-                echo -e "$HALF_MINUS_LINE"
-              fi
               e_and_l " ${light_cyan}$item_path${colors_off}"
-              ask_yes_or_no_plus "" " Löschen" "" "n"
+              if [ -d "$item_path" ];
+              then
+                SHOW_FILE_TYPE="Diesen Ordner"
+              else
+                SHOW_FILE_TYPE="Diese Datei"
+              fi
+              ask_yes_or_no_plus "" " $SHOW_FILE_TYPE Löschen" "" "n"
               if [ $? -eq 0 ];
               then
                 DO_REMOVE_ITEM=0
@@ -1672,13 +1686,15 @@ function do_remove_items {
                 e_and_l "$ERROR_TAG"
               fi
             fi
+            e_and_l "$HALF_MINUS_LINE"
           fi
           ((i+=1))
         done
         remove_file "$REMOVE_ITEM_LIST"
         add_full_log
       else
-        e_and_l " $HINWEIS_TAG: Die Liste der gefundenen Ordner und Dateien ist gespeichert in:"
+        e_and_l "$HALF_MINUS_LINE"
+        e_and_l " $HINWEIS_TAG: Die Liste der zuvor gefundenen Ordner und Dateien ist gespeichert in:"
         e_and_l " ${light_yellow}$REMOVE_ITEM_LIST${colors_off}"
       fi
     else
@@ -1695,11 +1711,11 @@ function do_remove_items {
 # Reaktivierung einer Liste von Komponenten (Ordner und Dateien)
 #===============================================================================
 function do_revive_items {
-  if [ -s "$DEACTIVATED_ITEM_LIST" ];
+  if [ -s "$DEACTIVATED_ITEMS_LIST" ];
   then
-    e_and_l " Es wurden folgende deaktivierten Komponenten gefunden:"
-    chown -R "$USER_USERNAME:$USER_USERNAME" "$DEACTIVATED_ITEM_LIST" &>/dev/null
-    chmod -R 0664 "$DEACTIVATED_ITEM_LIST" &>/dev/null
+    e_and_l " Es wurden folgende ${bold_yellow}$(cat $DEACTIVATED_ITEMS_LIST | wc -l)${colors_off} deaktivierten Komponenten gefunden:"
+    chown -R "$USER_USERNAME:$USER_USERNAME" "$DEACTIVATED_ITEMS_LIST" &>/dev/null
+    chmod -R 0664 "$DEACTIVATED_ITEMS_LIST" &>/dev/null
     declare -A REVIVE_ITEM_TABLE
     REVIVE_TABLE_IDX=0
     while read item_path;
@@ -1711,7 +1727,7 @@ function do_revive_items {
         REVIVE_ITEM_TABLE[$REVIVE_TABLE_IDX]="$item_path"
         ((REVIVE_TABLE_IDX+=1))
       fi
-    done < "$DEACTIVATED_ITEM_LIST"
+    done < "$DEACTIVATED_ITEMS_LIST"
     if [ $REVIVE_TABLE_IDX -gt 0 ];
     then
       e_and_l " Zur ${bold_white}Reaktivierung${colors_off} dieser Komponenten stehen folgende Optionen zur Verfügung:"
@@ -1740,6 +1756,7 @@ function do_revive_items {
       then
         echo -e -n "" > "$LOG_TEMP"
         i=0
+        e_and_l "$HALF_MINUS_LINE"
         while [ $i -lt $REVIVE_TABLE_IDX ];
         do
           item_path="${REVIVE_ITEM_TABLE[$i]}"
@@ -1751,12 +1768,8 @@ function do_revive_items {
             # Wenn mit einzelner Bestätigung, dann noch die Sicherheitsabfrage
             if [ $REVIVE_ITEMS_ACTION -eq 1 ];
             then
-              if [ $i -gt 0 ];
-              then
-                echo -e "$HALF_MINUS_LINE"
-              fi
               e_and_l " ${light_cyan}${config_file_old_name}${colors_off}"
-              ask_yes_or_no_plus "" " Reaktivieren" "" "n"
+              ask_yes_or_no_plus "" " Diese Komponente reaktivieren" "" "n"
               if [ $? -eq 0 ];
               then
                 DO_REVIVE_ITEM=0
@@ -1776,22 +1789,24 @@ function do_revive_items {
                 e_and_l "$ERROR_TAG"
               fi
             fi
+            e_and_l "$HALF_MINUS_LINE"
           fi
           ((i+=1))
         done
         e_and_l "$REBOOT_MSG"
-        remove_file "$DEACTIVATED_ITEM_LIST"
+        remove_file "$DEACTIVATED_ITEMS_LIST"
         add_full_log
       else
-        e_and_l " $HINWEIS_TAG: Die Liste der deaktivierten Komponenten ist gespeichert in:"
-        e_and_l " ${light_yellow}$DEACTIVATED_ITEM_LIST${colors_off}"
+        e_and_l "$HALF_MINUS_LINE"
+        e_and_l " $HINWEIS_TAG: Die Liste gefundener deaktivierter Komponenten ist gespeichert in:"
+        e_and_l " ${light_yellow}$DEACTIVATED_ITEMS_LIST${colors_off}"
       fi
     else
-      remove_file "$DEACTIVATED_ITEM_LIST"
+      remove_file "$DEACTIVATED_ITEMS_LIST"
       e_and_l " $NOTHING_FOUND_TEXT ... $OK_TAG"
     fi
   else
-    remove_file "$DEACTIVATED_ITEM_LIST"
+    remove_file "$DEACTIVATED_ITEMS_LIST"
     e_and_l " $NOTHING_FOUND_TEXT ... $OK_TAG"
   fi
 }
@@ -3253,7 +3268,13 @@ function install_pkg {
             then
               if [ ${OPTION_FLAG[force]} -ne 0 ];
               then
-                e_and_l " Installation von ${light_yellow}$PAKET${colors_off} ..."
+                e_and_l -n " Installation von ${light_yellow}$PAKET${colors_off}"
+                if [ "$PKG_VERSION" != "" ];
+                then
+                  e_and_l -n " ${light_yellow}$PKG_VERSION${colors_off}"
+                fi
+                e_and_l -n " (${light_purple}$(inst_status_to_name $INSTALL_MODE)${colors_off}) ... "
+                if [ ${OPTION_FLAG[quiet]} -eq 0 ]; then e_and_l ""; fi
               fi
               FILL_WORD="wirklich"
               # ----------------------------------------------------
@@ -3403,8 +3424,13 @@ function install_pkg {
             if [ $PRE_CONF_RESULT -eq 0 ];
             then
 
-              e_and_l -n " Installation von ${light_yellow}$PAKET${colors_off} (${light_purple}$(inst_status_to_name $INSTALL_MODE)${colors_off}) ... "
-              if [ ${OPTION_FLAG[quiet]} -eq 0 ]; then echo -e ""; fi
+              e_and_l -n " Installation von ${light_yellow}$PAKET${colors_off}"
+              if [ "$PKG_VERSION" != "" ];
+              then
+                e_and_l -n " ${light_yellow}$PKG_VERSION${colors_off}"
+              fi
+              e_and_l -n " (${light_purple}$(inst_status_to_name $INSTALL_MODE)${colors_off}) ... "
+              if [ ${OPTION_FLAG[quiet]} -eq 0 ]; then e_and_l ""; fi
 
               # ----------------------------------------------------------------
               # Installation mit apt
@@ -3467,7 +3493,8 @@ function install_pkg {
                   SHOW_VERSION_TEXT=${SHOW_VERSION_TEXT/ devmode/}
                   SHOW_VERSION_TEXT=${SHOW_VERSION_TEXT/ jailmode/}
                   e_and_l "$PRE_SPACE $ACHTUNG_TAG: Die Version \"${light_red}$SHOW_VERSION_TEXT${colors_off}\" ist nicht für den produktiven Einsatz"
-                  ask_yes_or_no_plus "snap_non_stable_$PAKET" "$PRE_SPACE gedacht und ohne Support. Trotzdem installieren" "" "n"
+                  e_and_l "$PRE_SPACE gedacht sowie ohne Support und ist daher möglicherweise nicht funktionsfähig!"
+                  ask_yes_or_no_plus "snap_non_stable_$PAKET" "$PRE_SPACE Soll diese Version trotzdem installiert werden" "" "n"
                   SNAP_CHECK_1=$?
                 fi
                 # -----------------------------------------------------
@@ -3726,7 +3753,7 @@ function install_pkg {
                 if [ $DOWNLOAD_RESULT -eq 0 ];
                 then
                   e_and_l -n "$PRE_SPACE Installation von ${light_yellow}$LOCAL_DOWNLOAD_FILE${colors_off} ... "
-                  if [ ${OPTION_FLAG[quiet]} -eq 0 ]; then echo -e ""; fi
+                  if [ ${OPTION_FLAG[quiet]} -eq 0 ]; then e_and_l ""; fi
                   chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
                   chmod -R 0664 "$LOCAL_DOWNLOAD_FILE" &>/dev/null
                   if [ ${OPTION_FLAG[quiet]} -eq 1 ];
@@ -4179,8 +4206,15 @@ function inst_status_to_name {
 function make_starter_trusted {
   if [ -s "$1" ];
   then
-    sudo -u ${USER_USERNAME} DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${USER_UID}/bus" gio set "$1" "metadata::trusted" true &>/dev/null # < Ubuntu 21 (opt.: yes)
-    sudo -u ${USER_USERNAME} DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${USER_UID}/bus" gio set "$1" "metadata::caja-trusted-launcher" true &>/dev/null # Ab Ubuntu 21
+    # < Ubuntu 21 (opt.: yes)
+    sudo -u ${USER_USERNAME} DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${USER_UID}/bus" gio set "$1" "metadata::trusted" true &>/dev/null
+    # Ab Ubuntu 21
+    sudo -u ${USER_USERNAME} DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${USER_UID}/bus" gio set "$1" "metadata::caja-trusted-launcher" true &>/dev/null
+    # Sonderfall XFCE
+    if [ "$DESKTOP_ENVIRONMENT" == "XFCE" ];
+    then
+      sudo -u ${USER_USERNAME} DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${USER_UID}/bus" gio set -t string "$1" "metadata::xfce-exe-checksum" "$(sha256sum "$1" | awk '{print $1}')" &>/dev/null
+    fi
   fi
 }
 
@@ -4667,7 +4701,7 @@ function remove_snapshots {
       remove_file "$SNAPSHOT_SNAPS_LIST"
       if [ $(snap saved 2>/dev/null | grep -i -c -E "\s$1\s") -eq 0 ];
       then
-        LANG=en_US.UTF-8 snap saved | grep -i -E "\s$1\s" | awk '{print $1, $2, "(A"$3")", "(V"$4")", "(R"$5")", "(S"$6")"}' >> "$SNAPSHOT_SNAPS_LIST"
+        LANG=en_US.UTF-8 snap saved 2>/dev/null | grep -i -E "\s$1\s" | awk '{print $1, $2, "(A"$3")", "(V"$4")", "(R"$5")", "(S"$6")"}' >> "$SNAPSHOT_SNAPS_LIST"
       fi
     fi
     # --------------------------------------------------------------------
@@ -5315,7 +5349,8 @@ bg_white='\033[47m'
 colors_off='\033[0m'
 colors_invers='\033[7m'
 # Linienfarbe
-line_color='\033[0;90m'
+full_line_color='\033[1;34m'
+half_line_color='\033[0;90m'
 if [ -x "/usr/bin/tput" ] && tput setaf 1 &>/dev/null;
 then
   # clear_this_line=$(tput el) # Aktuell nicht benötigt
@@ -5337,9 +5372,9 @@ fi
 # Textbausteine
 #===============================================================================
 HEADLINE_TITLE="Linux System Setup Utility"
-FULL_LINE="${line_color}$(printf '─%.0s' {1..80})${colors_off}"
-HALF_LINE="${line_color}$(printf '─%.0s' {1..40})${colors_off}"
-HALF_MINUS_LINE="${line_color}$(printf '\x2D%.0s' {1..40})${colors_off}"
+FULL_LINE="${full_line_color}$(printf '─%.0s' {1..80})${colors_off}"
+HALF_LINE="${half_line_color}$(printf '─%.0s' {1..40})${colors_off}"
+HALF_MINUS_LINE="${half_line_color}$(printf '\x2D%.0s' {1..40})${colors_off}"
 PRE_SPACE=$(printf ' %.0s' {1..5})
 NA_TXT="nicht verfügbar"
 NE_TXT="nicht ermittelbar"
@@ -5363,19 +5398,7 @@ ACHTUNG_TAG="${bold_red}Achtung${colors_off}"
 ERROR_TAG="${bold_red}Fehler${colors_off}"
 USER_CHOICE_YES="OK, Du hast es so gewollt ..."
 USER_CHOICE_NO="Sicherheit geht vor!"
-REBOOT_MSG=" $HINWEIS_TAG: Die Änderungen werden erst nach Neustart des Systems wirksam."
-
-#===============================================================================
-# Ausreichende Zugriffsrechte prüfen
-#===============================================================================
-if ! [ $(id -u) -eq 0 ];
-then
-  echo -e ""
-  echo -e " $HEADLINE_TITLE v$VERSION"
-  echo -e " Bitte als Superuser aufrufen: sudo ${0}"
-  echo -e ""
-  exit 1
-fi
+REBOOT_MSG=" $HINWEIS_TAG: Änderungen werden erst nach Neustart des Systems wirksam."
 
 #===============================================================================
 # Eigenen Benutzernamen und Benutzer-ID ermitteln
@@ -5475,7 +5498,9 @@ BROKEN_LINKS_LIST="$DOWNLOAD_DIR/broken_links.list"
 # Liste verwaister Paket-Konfigurationen
 CONFIG_REST_LIST="$DOWNLOAD_DIR/config_rest.list"
 # Liste vormals deaktivierter Komponenten
-DEACTIVATED_ITEM_LIST="$DOWNLOAD_DIR/deactivated_item.list"
+DEACTIVATED_ITEMS_LIST="$DOWNLOAD_DIR/deactivated_items.list"
+# Liste abgelaufener APT-Key-Signaturen
+EXPIRED_APT_KEYS_LIST="$DOWNLOAD_DIR/expired_apt_keys.list"
 # Liste fehlerhafter Paket-Abhängigkeiten
 PKG_BROKEN_LIST="$DOWNLOAD_DIR/pkg_broken.list"
 # Liste nicht mehr benötigter Pakete und Komponenten
@@ -5768,6 +5793,22 @@ then
     MEMORY_AVAIL=0
   fi
 
+  # ---------------
+  # Kernel-Version
+  # ---------------
+  CURR_KERNEL_VERSION="$(uname -r | sed 's/-generic//i' | sed 's/-common//i' | sed 's/-amd64//i' | sed 's/-i386//i')"
+
+  #------------
+  # Boot-Modus
+  #------------
+  if [ $(dmesg 2>/dev/null | grep -c -i -E "\befi\b") -gt 0 ] &&
+     [ -d "/sys/firmware/efi" ];
+  then
+    BOOT_MODE="EFI"
+  else
+    BOOT_MODE="BIOS"
+  fi
+
   #----------------
   # Betriebssystem
   #----------------
@@ -5896,12 +5937,30 @@ then
   DISPLAY_MANAGER="$(cat /etc/X11/default-display-manager 2>/dev/null)"
   DISPLAY_MANAGER="$(echo -n "${DISPLAY_MANAGER##*/}" | tr '[:upper:]' '[:lower:]')"
 
+  # ---------------
+  # Display-Server
+  # ---------------
+  DISPLAY_SERVER="$(echo -e "$XDG_SESSION_TYPE" | xargs 2>/dev/null)"
+  if [ "$DISPLAY_SERVER" == "" ];
+  then
+    DISPLAY_SERVER="$(env | grep -E -i 'x11|xorg|wayland' | cut -d'=' -f 2 | xargs 2>/dev/null)"
+    if [ "$DISPLAY_SERVER" == "" ];
+    then
+      if [ $(ps -def | grep -c -i wayland) -gt 1 ];
+      then
+        DISPLAY_SERVER="(?)Wayland"
+      fi
+    fi
+  fi
+  # First Character upper case with awk (ucfirst ;)
+  DISPLAY_SERVER="$(echo -n ${DISPLAY_SERVER} | sed -E "s/.*x11.*/x11/gi" | sed -E "s/.*wayland.*/wayland/gi" | awk '{print toupper(substr($0,0,1))tolower(substr($0,2))}')"
+
   # --------------------
   # Desktop-Environment
   # --------------------
   DESKTOP_ENVIRONMENT=""
   MAX_ENTRIES=0
-  DESKTOP_NAMES=('Budgie' 'Cinnamon' 'DDE' 'Enlightment' 'Lumina' 'GNOME' 'KDE' 'Kylin' 'LXDE' 'LXQT' 'MATE' 'Pantheon' 'Plasma' 'TDE' 'Unity' 'XFCE')
+  DESKTOP_NAMES=(Budgie Cinnamon DDE Enlightment Lumina GNOME KDE Kylin LXDE LXQT MATE Pantheon Plasma TDE Unity XFCE)
   for desktop_name in ${DESKTOP_NAMES[@]};
   do
     DESKTOP_ENTRIES=$(ps -def | grep -i -c -E "\s+$desktop_name")
@@ -5984,6 +6043,31 @@ then
   SYMBOL_THEME=${SYMBOL_THEME//\"/}
   SYMBOL_THEME=${SYMBOL_THEME//\'/}
 
+  # -------------
+  # Dateimanager
+  # -------------
+  FILEMAN_LIST="caja nemo thunar"
+  FILE_MANAGER=""
+  if xdg-mime --help &>/dev/null;
+  then
+    # DEFAULT_FILE_MIME="$(xdg-mime query default application/x-gnome-saved-search 2>/dev/null)"
+    DEFAULT_FILE_MIME="$(xdg-mime query default inode/directory 2>/dev/null)"
+    DEFAULT_FILE_DESK="/usr/share/applications/$DEFAULT_FILE_MIME"
+    if [ -s "$DEFAULT_FILE_DESK" ];
+    then
+      MIME_FILE_MAN=$(grep -i -E "^\s*exec\s*=" "$DEFAULT_FILE_DESK" 2>/dev/null | head -n 1 | sed -E "s/^\s*exec\s*=//i" | cut -d' ' -f 1)
+      MIME_FILE_MAN="${MIME_FILE_MAN##*/}"
+      for filemanager in ${FILEMAN_LIST[@]};
+      do
+        if [ "$MIME_FILE_MAN" == "$filemanager" ];
+        then
+          FILE_MANAGER="$filemanager"
+          break
+        fi
+      done
+    fi
+  fi
+
   # ------
   # Shell
   # ------
@@ -6025,12 +6109,12 @@ declare -A KATEGORIE_PKGS # Liste mit den in der Kategorie enthaltenen Paketen
 # Alphabetische Reihenfolge
 #---------------------------
 KAT_KEYS_STD=(a b c d e f fo g i m n p q r s t u v w wg x xx z)
-KAT_KEYS_ADD=(gx lx mt mx)
+KAT_KEYS_ADD=(gx lx mt mx xf)
 KAT_KEY_LIST=( ${KAT_KEYS_STD[@]} ${KAT_KEYS_ADD[@]} )
 #--------------------------------------
 # Reihenfolge der Verarbeitung im Menü
 #--------------------------------------
-KAT_ORD_LIST=(x v b i m g t z s w e a d f q c p wg u n r xx fo xlinex mt gx lx mx)
+KAT_ORD_LIST=(x v b i m g t z s w e a d f q c p wg u n r xx fo xlinex mt gx lx mx xf)
 
 # --- CATEGORIES START ---
 KATEGORIE_TEXT[a]="WEB-Server (Apache und PHP)"
@@ -6063,6 +6147,7 @@ KATEGORIE_TEXT[v]="Systemverwaltung (Hilfsprogramme mit Benutzeroberfläche)"
 KATEGORIE_TEXT[w]="Windows API (Wine, Winetricks und PlayOnLinux)"
 KATEGORIE_TEXT[wg]="WireGuard (VPN Tunnel)"
 KATEGORIE_TEXT[x]="Systemergänzungen (Systemmodule und CLI-Systemprogramme)"
+KATEGORIE_TEXT[xf]="XFCE Tools (Erweiterungen für XFCE-Desktop)"
 KATEGORIE_TEXT[xx]="Systemerweiterungen (CLI-Programme für Administratoren)"
 # y
 KATEGORIE_TEXT[z]="Zubehör (Datei-Manager, Packer und diverse Desktop-Tools)"
@@ -6071,9 +6156,11 @@ KATEGORIE_TEXT[z]="Zubehör (Datei-Manager, Packer und diverse Desktop-Tools)"
 # ==============================================================================
 # Status des Kernel-Lockings ermitteln
 # ==============================================================================
-KERNEL_PACKS=('linux-generic' 'linux-headers-generic' 'linux-image-generic' 'linux-signed-generic' 'linux-signed-image-generic')
+IFS=$'\n'
+KERNEL_PACKS=($(apt list "linux-*" 2>/dev/null | grep -i -E "^linux\-(generic|headers|image|signed)" | grep -i -E "nstall" | cut -d'/' -f1))
+IFS=' '
 KERNEL_IS_LOCKED=0
-for kp in ${KERNEL_PACKS[@]};
+for kp in "${KERNEL_PACKS[@]}";
 do
   if [ $(apt-mark showhold 2>/dev/null | grep -c -i -E "$kp") -gt 0 ];
   then
@@ -6090,7 +6177,7 @@ declare -A OPTION_MENU # Index des Menüpunktes, in dem die Option erscheint
 
 OPTION_LIST=()
 OPTION_LIST+=(extends addflat addsnap external prioflat priosnap skipsims esamesrc foreign force quiet status listonly addstart csubdirs) # Menu 2
-OPTION_LIST+=(extras exupdate optimize repair cleansys adcstart setutc kuplock kunlock revive personal dsave dload) # Menu 4
+OPTION_LIST+=(exupdate extras kuplock kunlock setutc optimize revive repair cleansys personal adcstart dsave dload) # Menu 4
 OPTION_LIST+=(noupdate norepo autoyorn notoall skipmesg exupdall infoonly noinfo log logfull nocolor saveconf reset cleantmp) # Menu 5
 
 OPTION_TEXT[adcstart]="Cinnamon-spezifische Starter auf dem Desktop anlegen"
@@ -6114,7 +6201,7 @@ OPTION_TEXT[foreign]="Auch Pakete für Fremd-Architekturen installieren"
 OPTION_TEXT[infoonly]="Nur Systeminformationen anzeigen (sonst nichts tun)"
 OPTION_TEXT[instonly]="Ein einzelnes Programmpaket installieren"
 OPTION_TEXT[kuplock]="Aktualisierungen (Updates) des Kernels blockieren"
-OPTION_TEXT[kunlock]="Aktualisierungen (Updates) des Kernels freigeben"
+OPTION_TEXT[kunlock]="Aktualisierungs-Blockade des Kernels entfernen"
 OPTION_TEXT[listonly]="Nur Pakete je Kategorie auflisten (sonst nichts tun)"
 OPTION_TEXT[log]="Einfache Log-Datei der wichtigsten Aktionen erstellen"
 OPTION_TEXT[logfull]="Vollständige Log-Datei aller Aktionen erstellen"
@@ -6228,9 +6315,9 @@ OPTION_MENU[skipmesg]=5
 # ------------------------------------------------------------------------------
 # In Namen von Flatpak-Paketen Leerzeichen durch Unterstrich ersetzen!
 # ==============================================================================
-# ---------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Apache und PHP (Webserver)- mit vielen PHP-Modulen in aktueller Version ;)
-# ---------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 PHP_VERSION=$(LANG=en apt show "php" 2>/dev/null | grep -i -E "depends\:\s*")
 PHP_VERSION=$(echo -n "${PHP_VERSION##* }" | xargs)
 KATEGORIE_PKGS[a]="apache2 php libapache2-mod-php"
@@ -6242,56 +6329,56 @@ then
     KATEGORIE_PKGS[a]+=" $PHP_VERSION-$php_mod_name"
   done
 fi
-# -----
+# ------------------------------------------------------------------------------
 # Büro
-# -----
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[b]="bookletimposer calibre evolution libreoffice okular pdfarranger pdfchain pdfmod qpdfview scribus"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[b]+=" thingy xreader"; fi
-# --------------
+# ------------------------------------------------------------------------------
 # Cloud-Clients
-# --------------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[c]="owncloud-client nextcloud-desktop onedrive rclone-browser"
-# ------------------------------------
+# ------------------------------------------------------------------------------
 # Datei- und Druckerfreigaben (Samba)
-# ------------------------------------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[d]="samba"
-# ------------
+# ------------------------------------------------------------------------------
 # Entwicklung
-# ------------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[e]="bless closure-compiler codium geany ghex idle kate kdiff3 kompare meld mu-editor python3 scratch thonny"
-# -----------
+# ------------------------------------------------------------------------------
 # FTP-Server
-# -----------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[f]="proftpd-core"
-# ---------
+# ------------------------------------------------------------------------------
 # Forensik
-# ---------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[fo]="forensics-full forensics-samples-all"
-# -------
+# ------------------------------------------------------------------------------
 # Grafik
-# -------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[g]="blender darktable digikam drawing eom fraqtive freecad geeqie gimp gpicview gpick gwenview imagemagick inkscape krita mandelbulber2 mtpaint pinta rawtherapee shotwell simple-scan xnview"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[g]+=" pix xviewer"; fi
-# ---------
+# ------------------------------------------------------------------------------
 # Internet
-# ---------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[i]="anydesk chromium element filezilla firefox hexchat microsoft-edge-stable opera rdesktop realvnc-vnc-server realvnc-vnc-viewer remmina rustdesk teamviewer telegram thunderbird tor-browser transmission virt-viewer x11vnc"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[i]+=" warpinator webapp-manager"; fi
-# -----------
+# ------------------------------------------------------------------------------
 # Multimedia
-# -----------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv gnome-sound-recorder gthumb gtkpod handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv mp3splt obs-studio openshot parole peek rhythmbox shotcut smplayer vlc webcamoid yt-dlp youtube-dl youtubedl-gui youplay"
-# -------------------
+# ------------------------------------------------------------------------------
 # Netzwerkmanagement
-# -------------------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[n]="gnome-nettool gufw ipscan linssid nmapsi4 packetsender putty wireshark zenmap"
-# -----------------------------
+# ------------------------------------------------------------------------------
 # Private Netzwerkverbindungen
-# -----------------------------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[p]="dnsmasq openconnect openvpn vpnc vpnc-scripts"
-# ------------------------------
+# ------------------------------------------------------------------------------
 # Emulation und Virtualisierung
-# ------------------------------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[q]="docker.io qemu-system-common qemu-system-data qemu-system-x86 qemu-system-arm qemu-system-gui qemu-efi-aarch64 qemu-efi-arm qemu-utils qemu-block-extra libvirt-daemon-system libvirt-clients bridge-utils virt-manager"
 if [ $(uname -a 2>/dev/null | grep -i -c -E "debian") -gt 0 ] &&
    [ $(echo "$OS_V_CODENAME" | grep -i -c -E "bookworm") -gt 0 ];
@@ -6302,29 +6389,45 @@ else
   KATEGORIE_PKGS[q]+=" virtualbox"
   # Repo => Extensions siehe AUTO_ADD_PKGS
 fi
-# ---------------------------------------------------
+# ------------------------------------------------------------------------------
 # Systemreparatur (Sicherung und Wiederherstellung)
-# ---------------------------------------------------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[r]="backintime boot-repair grsync grub-customizer rescuezilla"
 # Ohne MINT Timeshift mit in Kategorie Sicherung und Wiederherstellung
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -eq 0 ]; then KATEGORIE_PKGS[r]+=" timeshift"; fi
-# -------
+# ------------------------------------------------------------------------------
 # Spiele
-# -------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[s]="0ad alienarena armagetronad atomix billard-gl biniax2 blockout2 briquolo brutalchess caveexpress code-the-classics criticalmass cuyo dreamchess endless-sky enigma extremetuxracer flightgear flobopuyo foobillardplus freedoom freedroidrpg freegish freetennis frogatto frozen-bubble fs-uae gbrainy gcompris gemdropx gnome-games gnome-mastermind gnubg gweled jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakouthd lix marsshooter megaglest morris naev neverball neverputt nexuiz numptyphysics oolite openarena openclonk open-invaders peg-e pinball pingus pokerth pybik quetoo rocksndiamonds sauerbraten sdl-ball speed_dreams steam stunt_rally supertux supertuxkart teeworlds tesseract torcs trigger-rally tuxmath ufoai wesnoth widelands xonotic ysoccer zaz"
-# ----------
+# ------------------------------------------------------------------------------
 # Tonstudio
-# ----------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[t]="ardour audacity hydrogen lmms qjackctl qtractor yoshimi zynaddsubfx"
-# -------------
+# ------------------------------------------------------------------------------
 # USB-Firewall
-# -------------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[u]="usbauth"
-# ---------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Systemverwaltung (Hilfsprogramme mit Benutzeroberfläche)
-# ---------------------------------------------------------
-KATEGORIE_PKGS[v]="baobab bleachbit blueman caja cpu-x czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted gsmartcontrol gtkhash hardinfo isomaster kleopatra kwalletmanager metadata-cleaner mozo nemo plasma-discover qt5ct seahorse stacer synaptic system-config-printer tilda usbview xfce4-taskmanager"
-# Nur mit LDM
+# ------------------------------------------------------------------------------
+KATEGORIE_PKGS[v]="baobab bleachbit blueman cpu-x czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted gsmartcontrol gtkhash hardinfo isomaster kleopatra kwalletmanager metadata-cleaner mozo plasma-discover qt5ct seahorse stacer synaptic system-config-printer tilda usbview xfce4-taskmanager"
+# -------------------------------------------------------------------------
+# Basispaket des vorinstallierten Dateimanagers hinzufügen, damit auch die
+# zugehörigen Erweiterungen der AUTO_ADD_PKGS mit aufgenommen werden
+# -----------------------------------------------------------
+# Achtung: Die Liste FILEMAN_LIST wird weiter oben definiert
+# -------------------------------------------------------------------------
+for filemanager in ${FILEMAN_LIST[@]};
+do
+  if [ $(LANG=en dpkg-query -W -f='${Status}' "$filemanager" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ] ||
+     [ "$FILE_MANAGER" == "$filemanager" ];
+  then
+    KATEGORIE_PKGS[v]+=" $filemanager"
+  fi
+done
+# ------------------------------------------------
+# Ggf. Einstellungen für lightdm-Login hinzufügen
+# ------------------------------------------------
 if [ -d "$LDM_CONF_DIR" ];
 then
   KATEGORIE_PKGS[v]+=" lightdm-settings"
@@ -6333,18 +6436,32 @@ then
     KATEGORIE_PKGS[v]+=" lightdm-gtk-greeter-settings"
   fi
 fi
-# Nur mit MINT
-if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[v]+=" bulky timeshift"; fi
-# Nur mit Flatpak
-if [ $FLATPAK_INSTALLED -ne 0 ]; then KATEGORIE_PKGS[v]+=" flatseal gnome-software-plugin-flatpak plasma-discover-backend-flatpak"; fi
-# -------------------
+# -------------------------------------------
+# Ggf. vorinstallierte Mint-Tools hinzufügen
+# -------------------------------------------
+if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ];
+then
+  KATEGORIE_PKGS[v]+=" bulky timeshift"
+fi
+# ------------------------------
+# Ggf. Flatpak-Tools hinzufügen
+# ------------------------------
+if [ $FLATPAK_INSTALLED -ne 0 ];
+then
+  KATEGORIE_PKGS[v]+=" flatseal gnome-software-plugin-flatpak plasma-discover-backend-flatpak"
+fi
+# ------------------------------------------------------------------------------
 # Windows-API "Wine"
-# -------------------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[w]="dosbox"
-# Wenn es den WINE-INstaller gibt, diesen statt WINE selbst anzeigen ...
+# -----------------------------------------------------------------------
+# Wenn es den WINE-Installer gibt, diesen statt WINE selbst anzeigen ...
+# -----------------------------------------------------------------------
 if [ $(apt list "wine-installer" 2>/dev/null | grep -i -c -E "wine-installer") -gt 0 ];
 then
+  # --------------------------------------------------------------
   # ... aber nur, wenn WINE damit noch nicht installiert wurde ;)
+  # --------------------------------------------------------------
   if [ $(LANG=en dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
   then
     KATEGORIE_PKGS[w]+=" wine-installer"
@@ -6355,26 +6472,31 @@ else
   KATEGORIE_PKGS[w]+=" wine wine64 wine32"
 fi
 KATEGORIE_PKGS[w]+=" winetricks playonlinux"
-# ----------
+# ------------------------------------------------------------------------------
 # WireGuard
-# ----------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[wg]="wireguard wireguard-tools"
-# -------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Systemergänzungen (Bibliotheken & CLI-Systemprogramme)
-# -------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Standard Debian
+# ----------------
 KATEGORIE_PKGS[x]="bc btrfs-progs busybox bzip2 console-setup curl dconf-cli diffutils dirmngr dosfstools e2fsprogs eject exfatprogs fdisk ffmpegthumbnailer file gdisk gpg gvfs-backends gzip keyboard-configuration less libaacs0 libbluray2 libfuse2 libnss-myhostname libpam-systemd locales lshw lsof manpages nano network-manager ntfs-3g p7zip-full pciutils sane-utils sed tar unzip util-linux wpasupplicant xfsprogs xz-utils zip zstd"
+# ---------------------
 # Ergänzungen für alle
+# ---------------------
 KATEGORIE_PKGS[x]+=" apturl arj calc ccd2iso cifs-utils cryptsetup debsums ethtool exfat-fuse fail2ban firejail ftp gddrescue git hashdeep heif-gdk-pixbuf heif-thumbnailer htop hwinfo iat iftop img2pdf info inxi iotop jfsutils lftp lhasa libbluray-bdj libbluray-bin libdvd-pkg lrzip lz4 lzip lzop mtools ncompress neofetch net-tools numlockx openssh-client openssh-server plocate qpdf resolvconf rsync rzip screen sharutils smartmontools smbclient sqlite3 sshguard traceroute tree udftools ufw units usbutils wget whois zenity"
+# ---------------------
 # Ergänzungen für MINT
+# ---------------------
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[x]+=" lsb mint-meta-codecs"; fi
-# --------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Systemerweiterungen (CLI-Programme für Administratoren)
-# --------------------------------------------------------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[xx]="alien apt-file apt-rdepends apt-show-versions arping arp-scan bash-completion bash-doc chntpw clonezilla cpu-checker debootstrap dpkg-repack efibootmgr elinks extundelete f3 flashrom gpart growisofs hdparm hexedit kpartx memtester menu msr-tools netcat-traditional nfacct nmap nvme-cli partclone partimage pdfcrack pdfresurrect ppa-purge rfkill strace stress stress-ng stressapptest sysbench sysfsutils sysstat tcpdump tcptrack testdisk udpcast xorriso xsltproc"
-# --------
+# ------------------------------------------------------------------------------
 # Zubehör
-# --------
+# ------------------------------------------------------------------------------
 KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk copyq doublecmd electrum engrampa file-roller freefilesync galculator gedit gnome-weather gucharmap kdeconnect keepass2 kfind klavaro ksnip ktouch magnus mousepad onboard plank pluma redshift rpi-imager sardu unetbootin usb-creator-common veracrypt xournal"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[z]+=" sticky xed"; fi
 if [ "$DESKTOP_ENVIRONMENT" == "Cinnamon" ]; then KATEGORIE_PKGS[z]+=" cinnamon-desktop-environment"; fi
@@ -6386,9 +6508,9 @@ if [ "$DESKTOP_ENVIRONMENT" == "Cinnamon" ]; then KATEGORIE_PKGS[z]+=" cinnamon-
 # Achtung: Nicht verwechseln mit ADDITIONAL_S_NAMES[vg],
 # welche nur die Starter zur Systemverwaltung enthält!
 # ------------------------------------------------------------------------------
-GNOME_APPS=('boxes' 'calculator' 'calendar' 'characters' 'clocks' 'commander' 'connections' 'contacts' 'firmware' 'font-viewer' 'keyring' 'logs' 'maps' 'passwordsafe' 'screenshot' 'snapshot' 'system-monitor' 'system-tools' 'terminal' 'text-editor' 'tweaks' 'usage')
+GNOME_BASE_APPS=(boxes calculator calendar characters clocks commander connections contacts firmware font-viewer keyring logs maps passwordsafe screenshot snapshot system-monitor system-tools terminal text-editor tweaks usage)
 KATEGORIE_PKGS[gx]=""
-for pkg in ${GNOME_APPS[@]};
+for pkg in ${GNOME_BASE_APPS[@]};
 do
   KATEGORIE_PKGS[gx]+=" gnome-$pkg"
 done
@@ -6398,14 +6520,24 @@ done
 # Achtung: Nicht verwechseln mit ADDITIONAL_S_NAMES[vl],
 # welche nur die Starter zur Systemverwaltung enthält!
 # ------------------------------------------------------------------------------
-KATEGORIE_PKGS[lx]="lxappearance lxhotkey-gtk lxinput lxrandr lxsession-edit lxtask lxterminal"
+LXDE_BASE_APPS=(appearance hotkey-gtk input randr session-edit task terminal)
+KATEGORIE_PKGS[lx]=""
+for pkg in ${LXDE_BASE_APPS[@]};
+do
+  KATEGORIE_PKGS[lx]+=" lx$pkg"
+done
 # ------------------------------------------------------------------------------
 # MATE Tools
 # -----------
 # Achtung: Nicht verwechseln mit ADDITIONAL_S_NAMES[vm],
 # welche nur die Starter zur Systemverwaltung enthält!
 # ------------------------------------------------------------------------------
-KATEGORIE_PKGS[mx]="mate-applets mate-control-center mate-indicator-applet mate-media mate-sensors-applet mate-terminal mate-utils"
+MATE_BASE_APPS=(applets control-center indicator-applet media sensors-applet terminal utils)
+KATEGORIE_PKGS[mx]=""
+for pkg in ${MATE_BASE_APPS[@]};
+do
+  KATEGORIE_PKGS[mx]+=" mate-$pkg"
+done
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ];
 then
   KATEGORIE_PKGS[mx]+=" mate-calc mate-dock-applet mate-menu mate-tweak mate-user-admin mate-user-share"
@@ -6416,7 +6548,24 @@ if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "ubuntu") -gt 0 ]; then KATEGORI
 # ------------------------------------------------------------------------------
 # Mint Tools
 # ------------------------------------------------------------------------------
-KATEGORIE_PKGS[mt]="mintbackup mintchat mintdesktop mintdrivers mintinstall mintlocale mintreport mintsources mintstick mintupdate mintwelcome"
+MINT_BASE_APPS=(backup chat desktop drivers install locale report sources stick update welcome)
+KATEGORIE_PKGS[mt]=""
+for pkg in ${MINT_BASE_APPS[@]};
+do
+  KATEGORIE_PKGS[mt]+=" mint$pkg"
+done
+# ------------------------------------------------------------------------------
+# XFCE Tools
+# -----------
+# Achtung: Nicht verwechseln mit ADDITIONAL_S_NAMES[vx],
+# welche nur die Starter zur Systemverwaltung enthält!
+# ------------------------------------------------------------------------------
+XFCE_BASE_APPS=(appfinder dict helpers notifyd panel power-manager screenshooter settings taskmanager terminal)
+KATEGORIE_PKGS[xf]=""
+for pkg in ${XFCE_BASE_APPS[@]};
+do
+  KATEGORIE_PKGS[xf]+=" xfce4-$pkg"
+done
 
 #===============================================================================
 # Pakete innerhalb der Kategorien alphabetisch sortieren
@@ -6444,7 +6593,17 @@ declare -A AUTO_ADD_PKGS # Liste der zusätzlichen Pakete
 declare -A AUTO_ADD_PPOS # Wenn "true" zusätzliche Pakete VOR Basispaket einfügen
 
 # AUTO_ADD_PKGS[alien-arena]="alien-arena-data" # Derzeit besser als Flatpak
-AUTO_ADD_PKGS[caja]="caja-actions caja-admin caja-eiciel caja-extensions-common caja-gtkhash caja-image-converter caja-mediainfo caja-open-terminal caja-rename caja-seahorse caja-sendto caja-share caja-wallpaper caja-xattr-tags"
+
+if [ $(LANG=en dpkg-query -W -f='${Status}' "caja" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
+then
+  AUTO_ADD_PKGS[caja]=""
+  CAJA_ADD_PKGS=(actions admin eiciel extensions-common gtkhash image-converter mediainfo open-terminal rename seahorse sendto share wallpaper xattr-tags)
+  for pkg in ${CAJA_ADD_PKGS[@]};
+  do
+    AUTO_ADD_PKGS[caja]+=" caja-$pkg"
+  done
+fi
+
 AUTO_ADD_PKGS[doublecmd-common]="doublecmd-gtk"
 # AUTO_ADD_PKGS[frogatto]="frogatto-data" # Derzeit besser als Flatpak
 # AUTO_ADD_PKGS[fs-uae]="fs-uae-launcher" # Derzeit nicht im Angebot, da auf
@@ -6456,11 +6615,32 @@ AUTO_ADD_PKGS[libreoffice-common]="libreoffice-gnome libreoffice-l10n-de"
 AUTO_ADD_PKGS[mediainfo]="mediainfo-gui"
 AUTO_ADD_PKGS[mkvtoolnix]="mkvtoolnix-gui"
 AUTO_ADD_PKGS[mp3splt]="mp3splt-gtk"
-AUTO_ADD_PKGS[nemo]="nemo-audio-tab nemo-compare nemo-emblems nemo-filename-repairer nemo-fileroller nemo-font-manager nemo-gtkhash nemo-image-converter nemo-media-columns nemo-pastebin nemo-preview nemo-share nemo-terminal"
+
+if [ $(LANG=en dpkg-query -W -f='${Status}' "nemo" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
+then
+  AUTO_ADD_PKGS[nemo]=""
+  NEMO_ADD_PKGS=(audio-tab compare emblems filename-repairer fileroller font-manager gtkhash image-converter media-columns pastebin preview share terminal)
+  for pkg in ${NEMO_ADD_PKGS[@]};
+  do
+    AUTO_ADD_PKGS[nemo]+=" nemo-$pkg"
+  done
+fi
+
 AUTO_ADD_PKGS[onedrive]="onedrivegui"
 AUTO_ADD_PKGS[openvpn]="network-manager-openvpn network-manager-openvpn-gnome"
 AUTO_ADD_PKGS[redshift]="redshift-gtk"
 AUTO_ADD_PKGS[scribus]="scribus-template"
+
+if [ $(LANG=en dpkg-query -W -f='${Status}' "thunar" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
+then
+  AUTO_ADD_PKGS[thunar]=""
+  THUNAR_ADD_PKGS=(archive-plugin font-manager gtkhash volman)
+  for pkg in ${THUNAR_ADD_PKGS[@]};
+  do
+    AUTO_ADD_PKGS[thunar]+=" thunar-$pkg"
+  done
+fi
+
 AUTO_ADD_PKGS[transmission]="transmission-gtk"
 AUTO_ADD_PKGS[transmission-common]="transmission-gtk"
 AUTO_ADD_PKGS[usbauth]="usbauth-notifier"
@@ -7902,6 +8082,14 @@ do
   ADDITIONAL_S_NAMES[vm]+=" mate-$add_pkg"
 done
 ADDITIONAL_DIRNAME[vm]="MATE"
+# ------------------------------------------
+# Starter nur zur Systemverwaltung von XFCE
+# ------------------------------------------
+# Achtung: Nicht verwechseln mit KATEGORIE_PKGS[xf],
+# welches alle Pakete der XFCE Tools enthält
+# ------------------------------------------
+ADDITIONAL_S_NAMES[vx]="xfce-settings-manager xfce4-taskmanager xfce4-terminal"
+ADDITIONAL_DIRNAME[vx]="XFCE"
 
 #===============================================================================
 # Raspbian Tools - Namen der Starter (vollständige Dateinamen ohne Pfadangabe
@@ -7917,7 +8105,7 @@ RASPBIAN_EXT_STARTER=( 'agnostics' 'alacarte' 'arandr' 'Node-RED' 'obconf' 'pcma
 # jedoch zuweilen - damit diese Starter trotzdem angelegt werden, können deren
 # Paketnamen (NICHT Dateinamen!) in dem Array "FORCE_STARTER" angegeben werden.
 #===============================================================================
-FORCE_STARTER=( 'caja' 'pi-gpk-prefs' 'pi-gpk-log' 'pi-gpk-update-viewer' )
+FORCE_STARTER=( 'caja' 'nemo' 'thunar' 'pi-gpk-prefs' 'pi-gpk-log' 'pi-gpk-update-viewer' )
 
 #===============================================================================
 # Auszulassende Starter (nur DATEI-Name ohne Pfadangabe und Endung .desktop),
@@ -7926,7 +8114,7 @@ FORCE_STARTER=( 'caja' 'pi-gpk-prefs' 'pi-gpk-log' 'pi-gpk-update-viewer' )
 # ACHTUNG: Bei Einsatz von Wildcards (*) darauf achten, dass diese mit
 #          "find -iname" und mit "grep -E" die gleichen Ergebnisse liefern!
 #===============================================================================
-REJECT_STARTER=( 'alacarte-made' 'caja-autorun-software' 'caja-browser' 'caja-computer' 'caja-folder-handler' 'caja-home' 'chromium_daemon' 'cinnamon-wayland' 'clamtk-kde' 'idle-python*' 'mate-panel' 'mate-network-scheme' 'mate-theme-installer' 'mozo-made' 'nemo-autostart' 'org.gnome.Evolution-alarm-notify')
+REJECT_STARTER=('alacarte-made' 'caja-autorun-software' 'caja-browser' 'caja-computer' 'caja-folder-handler' 'caja-home' 'chromium_daemon' 'cinnamon-wayland' 'clamtk-kde' 'idle-python*' 'mate-panel' 'mate-network-scheme' 'mate-theme-installer' 'mozo-made' 'nemo-autostart' 'org.gnome.Evolution-alarm-notify' 'panel-desktop-handler' 'xfce4-run')
 
 #===============================================================================
 # Starter die bspw. aufgrund ihres Dateinamens unvermeidbar zusätzlich oder
@@ -8045,7 +8233,7 @@ then
       # echo -e "Name=Lissy\\\n(Terminal)" >> "$STARTER_FILE" 2>/dev/null
       echo -e "Name=Lissy" >> "$STARTER_FILE" 2>/dev/null
       echo -e "Comment=Lissy im Terminal starten" >> "$STARTER_FILE" 2>/dev/null
-      echo -e "Exec=bash -c 'cd $SCRIPT_PATH && sudo ./$SCRIPT_NAME;\$SHELL'" >> "$STARTER_FILE" 2>/dev/null
+      echo -e "Exec=bash -c 'cd $SCRIPT_PATH && sudo --preserve-env=XDG_SESSION_TYPE ./$SCRIPT_NAME;\$SHELL'" >> "$STARTER_FILE" 2>/dev/null
       echo -e "Icon=lissy" >> "$STARTER_FILE" 2>/dev/null
       echo -e "Categories=System;" >> "$STARTER_FILE" 2>/dev/null
       echo -e "Terminal=true" >> "$STARTER_FILE" 2>/dev/null
@@ -8590,6 +8778,7 @@ EOF
         fi
         # ----------------------------------------------------------------------
         # Auswahl der Paket-Kategorien
+        # (Wenn nicht Linux Mint, dann Mint Tools auslassen)
         # ----------------------------------------------------------------------
         if [ $MENU_AUSWAHL -eq 1 ];
         then
@@ -8599,20 +8788,24 @@ EOF
             KAT_MENU_LIST=()
             for k in ${KAT_ORD_LIST[@]};
             do
-              if [ "$k" == "xlinex" ];
+              if [ "$k" != "mt" ] ||
+                 [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ];
               then
-                KAT_MENU_LIST+=("$k" "──────────────────────────────" "off" "[Enter]=Bestätigen")
-              else
-                KAT_MENU_LIST+=("$k" "${KATEGORIE_TEXT[$k]}")
-                if [ ${KATEGORIE_FLAG[$k]} -eq 1 ];
+                if [ "$k" == "xlinex" ];
                 then
-                  KAT_MENU_LIST+=("on")
+                  KAT_MENU_LIST+=("$k" "──────────────────────────────" "off" "[Enter]=Bestätigen")
                 else
-                  KAT_MENU_LIST+=("off")
+                  KAT_MENU_LIST+=("$k" "${KATEGORIE_TEXT[$k]}")
+                  if [ ${KATEGORIE_FLAG[$k]} -eq 1 ];
+                  then
+                    KAT_MENU_LIST+=("on")
+                  else
+                    KAT_MENU_LIST+=("off")
+                  fi
+                  KAT_MENU_LIST+=("Kommandozeilen-Parameter: $k $SUB_MENU_HELP")
                 fi
-                KAT_MENU_LIST+=("Kommandozeilen-Parameter: $k $SUB_MENU_HELP")
+                ((ANZ_KATEGORIES+=1))
               fi
-              ((ANZ_KATEGORIES+=1))
             done
             # -------------------------------------
             # Auswahlliste der Kategorien anzeigen
@@ -8782,6 +8975,7 @@ EOF
             if [[ ${KATEGORIE_FLAG[gx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "GNOME" ]] ||
                [[ ${KATEGORIE_FLAG[lx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "LXDE" ]]  ||
                [[ ${KATEGORIE_FLAG[mx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "MATE" ]]  ||
+               [[ ${KATEGORIE_FLAG[xf]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "XFCE" ]]  ||
                [[ ${KATEGORIE_FLAG[mt]} -eq 1 && $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -eq 0 ]] ||
                [[ ${OPTION_FLAG[adcstart]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "Cinnamon" ]];
             then
@@ -8900,7 +9094,7 @@ then
                 bold_black bold_red bold_green bold_yellow bold_blue bold_purple bold_cyan bold_white
                 uline_black uline_red uline_green uline_yellow uline_blue uline_purple uline_cyan uline_white
                 bg_black bg_red bg_green bg_yellow bg_blue bg_purple bg_cyan bg_white
-                colors_off colors_invers line_color)
+                colors_off colors_invers full_line_color half_line_color)
   for i in ${COL_VAR_LIST[@]};
   do
     declare $i="" # Besser als eval "${i}=''"
@@ -9202,7 +9396,7 @@ then
   SYS_INFO_TXT=""
   if [ "$MACHINE_MODEL" != "" ];
   then
-    SYS_INFO_TXT+=" Hardware: ${bold_yellow}$MACHINE_MODEL${colors_off}"$'\n'
+    SYS_INFO_TXT+=" Modell: ${bold_yellow}$MACHINE_MODEL${colors_off}"$'\n'
   fi
 
   SYS_INFO_TXT+=" Prozessor:${bold_yellow}"
@@ -9225,13 +9419,21 @@ then
   then
     MEMORY_HUMAN_AVAIL=$(show_human_bytes ${MEMORY_AVAIL} "M")
     MEMORY_HUMAN_TOTAL=$(show_human_bytes ${MEMORY_TOTAL} "M")
-    SYS_INFO_TXT+=" Memory: ${bold_yellow}$MEMORY_HUMAN_AVAIL${colors_off} verfügbar / ${bold_yellow}$MEMORY_HUMAN_TOTAL${colors_off} total"$'\n'
+    SYS_INFO_TXT+=" Speicher: ${bold_yellow}$MEMORY_HUMAN_AVAIL${colors_off} verfügbar / ${bold_yellow}$MEMORY_HUMAN_TOTAL${colors_off} total"$'\n'
   fi
 
   if [ "$GPU_MODEL" != "" ];
   then
     SYS_INFO_TXT+=" Grafik: ${bold_yellow}$GPU_MODEL${colors_off}"$'\n'
   fi
+
+  if [ "$BOOT_MODE" != "" ];
+  then
+    SYS_INFO_TXT+=" Boot-Modus: ${bold_yellow}$BOOT_MODE${colors_off}"$'\n'
+  fi
+
+  boot_device="$(findmnt -n / 2>/dev/null | awk '{ print $2 }' | sed -E "s/\/dev\///")" # util-linux
+  SYS_INFO_TXT+=" Systempartition: ${bold_yellow}$boot_device${colors_off}"$'\n'
 
   if [ "$OPERATION_SYSTEM" != "" ];
   then
@@ -9258,7 +9460,7 @@ then
   if [ "$ARCHITECTURE_MAIN" != "" ] ||
      [ "$ARCHITECTURE_OTHER" != "" ];
   then
-    SYS_INFO_TXT+=" Software-Architektur: ${bold_yellow}$ARCHITECTURE_MAIN${colors_off}"
+    SYS_INFO_TXT+=" System-Architektur: ${bold_yellow}$ARCHITECTURE_MAIN${colors_off}"
     SYS_INFO_TXT+=" ${bold_cyan}($(uname -m))${colors_off}"
     if [ "${ARCHITECTURE_OTHER}" != "" ];
     then
@@ -9274,12 +9476,14 @@ then
     SYS_INFO_TXT+=$'\n'
   fi
 
-  boot_device="$(findmnt -n / 2>/dev/null | awk '{ print $2 }' | sed -E "s/\/dev\///")" # util-linux
-  SYS_INFO_TXT+=" Systempartition: ${bold_yellow}$boot_device${colors_off}"$'\n'
-
   if [ "$DISPLAY_MANAGER" != "" ];
   then
     SYS_INFO_TXT+=" Display-Manager: ${bold_yellow}$DISPLAY_MANAGER${colors_off}"$'\n'
+  fi
+
+  if [ "$DISPLAY_SERVER" != "" ];
+  then
+    SYS_INFO_TXT+=" Display-Server: ${bold_yellow}$DISPLAY_SERVER${colors_off}"$'\n'
   fi
 
   if [ "$DESKTOP_ENVIRONMENT" != "" ];
@@ -9302,6 +9506,11 @@ then
     SYS_INFO_TXT+=" Symbol-Thema: ${bold_yellow}$SYMBOL_THEME${colors_off}"$'\n'
   fi
 
+  if [ "$FILE_MANAGER" != "" ];
+  then
+    SYS_INFO_TXT+=" Dateimanager: ${bold_yellow}$FILE_MANAGER${colors_off}"$'\n'
+  fi
+
   if [ "$SHELL_TEXT" != "" ];
   then
     SYS_INFO_TXT+=" Shell: ${bold_yellow}$SHELL_TEXT${colors_off}"$'\n'
@@ -9316,7 +9525,7 @@ then
 
   XTERM_NR="$(who | grep -E "\(\:" | head -n 1 | cut -d'(' -f 2 | cut -d')' -f 1)"
   if [ "$XTERM_NR" != "" ]; then XTERM_NR="["$XTERM_NR"]"; fi
-  SYS_INFO_TXT+=" Benutzer: ${bold_yellow}$USER_USERNAME${colors_off} at ${bold_cyan}$(tty) $XTERM_NR${colors_off}"
+  SYS_INFO_TXT+=" Benutzer: ${bold_yellow}$USER_USERNAME${colors_off} ${light_yellow}(${USER_UID})${colors_off} at ${bold_cyan}$(tty) $XTERM_NR${colors_off}"
 
   do_log "$FULL_LINE"
   e_and_l "$SYS_INFO_TXT"
@@ -9343,117 +9552,6 @@ then
   if [ $? -ne 1 ];
   then
     exit 0
-  fi
-fi
-
-#===============================================================================
-# Überprüfung und Installation von zur korrekten Ausführung
-# dieses Skriptes zwingend benötigten System-Komponenten
-#===============================================================================
-if [ ${OPTION_FLAG[listonly]} -eq 0 ];
-then
-  e_and_l "$FULL_LINE"
-  e_and_l " ${bold_blue}Überprüfung benötigter Systemkomponenten${colors_off}"
-  e_and_l "$FULL_LINE"
-  # ----------------------------------------------------------------------------
-  # Zum Downloaden und Entpacken von Dateien benötigte Komponenten
-  # ----------------------------------------------------------------------------
-  ALL_COMPONENTS_AVAIL=1
-  COMPONENTS_REQUIRED=('coreutils' 'diffutils' 'lshw' 'p7zip-full' 'sed' 'tar' 'util-linux' 'wget')
-  if [ $DCONF_NEEDED -eq 1 ];
-  then
-    COMPONENTS_REQUIRED+=('dconf-cli')
-  fi
-  # ----------------------------------------------------------------------------
-  # Schnell-Test
-  # ----------------------------------------------------------------------------
-  ALL_COMPONENTS_INSTALLED=1
-  for required_pkg in ${COMPONENTS_REQUIRED[@]};
-  do
-    ((ANZ_SPACES=12-${#required_pkg}))
-    if [ $(LANG=en dpkg-query -W -f='${Status}' "$required_pkg" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
-    then
-      ALL_COMPONENTS_INSTALLED=0
-      break
-    fi
-  done
-  # ----------------------------------------------------------------------------
-  # Wenn alle benötigten Komponenten installiert sind, nur eine kurze Meldung anzeigen ...
-  # ----------------------------------------------------------------------------
-  if [ $ALL_COMPONENTS_INSTALLED -eq 1 ];
-  then
-    e_and_l " Alle benötigten Komponenten sind installiert ... $OK_TAG"
-  # ----------------------------------------------------------------------------
-  # ... sonst alle Komponenten anzeigen und fehlende installieren ...
-  # ----------------------------------------------------------------------------
-  else
-    for required_pkg in ${COMPONENTS_REQUIRED[@]};
-    do
-      ((ANZ_SPACES=11-${#required_pkg}))
-      if [ $(LANG=en dpkg-query -W -f='${Status}' "$required_pkg" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
-      then
-        e_and_l -n " Modul ${bold_yellow}$required_pkg${colors_off}"
-        insert_spaces $ANZ_SPACES
-        e_and_l -n " wird installiert  ... "
-        apt install "$required_pkg" -y &>"$LOG_TEMP"
-        if [ $? -eq 0 ];
-        then
-          e_and_l "$OK_TAG"
-        else
-          e_and_l "$ERROR_TAG"
-          ALL_COMPONENTS_AVAIL=0
-        fi
-        add_full_log
-      else
-        e_and_l -n " Modul ${light_cyan}$required_pkg${colors_off}"
-        insert_spaces $ANZ_SPACES
-        e_and_l -n " ... "
-        e_and_l "$OK_TAG"
-      fi
-    done
-  fi
-  # ----------------------------------------------------------------------------
-  # Cross-Build Pakete zur Ausführung von armhf-Programmen auf arm64
-  # ----------------------------------------------------------------------------
-  if [ $(echo "$ARCHITECTURE_MAIN" | grep -i -c -E "arm64") -gt 0 ] &&
-     [ $(echo "$ARCHITECTURE_OTHER" | grep -i -c -E "armhf") -gt 0 ];
-  then
-    ACTION_MESSAGE=" ${light_cyan}Cross-Build-Pakete${colors_off}"
-    e_and_l "$HALF_LINE"
-    e_and_l " ${bold_blue}Erweiterungen für die Architektur armhf auf arm64${colors_off}"
-    e_and_l "$HALF_LINE"
-    if [ $(LANG=en dpkg-query -W -f='${Status}' "crossbuild-essential-armhf" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
-    then
-      if [ $(apt list "crossbuild-essential-armhf" 2>/dev/null | grep -i -c -E "crossbuild-essential-armhf") -gt 0 ];
-      then
-        ask_yes_or_no_plus "crossbuild" "$ACTION_MESSAGE für armhf auf arm64 installieren" "" "j"
-        if [ $? -eq 1 ];
-        then
-          e_and_l -n "${ACTION_MESSAGE//96m/93m} werden installiert, bitte warten ... "
-          apt install "crossbuild-essential-armhf" -y &>"$LOG_TEMP"
-          if [ $? -eq 0 ];
-          then
-            e_and_l "$OK_TAG"
-          else
-            e_and_l "$ERROR_TAG"
-          fi
-          add_full_log
-        fi
-      else
-        e_and_l "$(skip_text "$ACTION_MESSAGE " "$NV_TXT")"
-      fi
-    else
-      e_and_l "$ACTION_MESSAGE ... $OK_TAG"
-    fi
-  fi
-  # ----------------------------------------------------------------------------
-  # Wenn eine benötigte Komponente fehlt, Programm beenden
-  # ----------------------------------------------------------------------------
-  if [ $ALL_COMPONENTS_AVAIL -eq 0 ];
-  then
-    e_and_l " $ERROR_TAG: Leider sind benötigte Systemkomponenten ${bold_red}nicht${colors_off} verfügbar :("
-    e_and_l " Das Skript wird daher jetzt beendet!"
-    exit 1
   fi
 fi
 
@@ -9540,7 +9638,7 @@ then
       while [ "$NEW_USERNAME" == "" ];
       do
         e_and_l -n " Bitte neuen Benutzernamen eingeben: "
-        read NEW_USERNAME
+        read -r NEW_USERNAME
         if [ "$NEW_USERNAME" != "" ];
         then
           NEW_USERNAME=$(echo $NEW_USERNAME | tr -d -c '[:alnum:]_' | tr '[:upper:]' '[:lower:]')
@@ -9608,20 +9706,18 @@ then
 fi # Ende username pi
 
 #===============================================================================
-# Sicherheitssabfrage für quiet, sofern relevante Aktionen durchgeführt werden
+# Hinweis auf mehrere Software-Architekturen
 #===============================================================================
-if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
-   [ ${OPTION_FLAG[quiet]} -eq 1 ] &&
-   [ ${OPTION_FLAG[status]} -eq 0 ];
+if [ $TOTAL_PACKS -gt 0 ] &&
+   [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
+   [ ${OPTION_FLAG[foreign]} -eq 0 ] &&
+   [ "$ARCHITECTURE_OTHER" != "" ];
 then
   e_and_l "$FULL_LINE"
-  e_and_l " $ACHTUNG_TAG: Die Option ${bold_yellow}quiet${colors_off} ist aktiviert!"
-  e_and_l " Dadurch werden alle Ausgaben der Installationsroutinen unterdrückt und"
-  e_and_l " Programmpakete OHNE Rückfrage nach deren Standard-Vorgabe installiert!"
-  e_and_l " Wenn das gewünscht ist, die folgende Frage mit [${bold_yellow}J${colors_off}]a beantworten, sonst"
-  e_and_l " wird bei Eingabe von [${bold_yellow}N${colors_off}]ein ohne Quiet-Modus weitergemacht (empfohlen)."
-  ask_yes_or_no_plus "use_quiet" " Wirklich im Quiet-Modus weitermachen" "" "n"
-  if [ $? -eq 0 ]; then OPTION_FLAG[quiet]=0; fi
+  e_and_l " $HINWEIS_TAG: Auf diesem System sind mehrere Software-Architekturen eingerichtet."
+  e_and_l " Um die Stabilität des Systems nicht zu gefährden, werden alle Programmpakete"
+  e_and_l " nur für die Haupt-Architektur ${bold_yellow}$ARCHITECTURE_MAIN${colors_off} installiert, sofern mit Angabe der Option"
+  e_and_l " \"foreign\" nicht auch Pakete für die Sekundär-Architekturen erlaubt werden."
 fi
 
 #===============================================================================
@@ -9651,6 +9747,24 @@ then
     e_and_l "."
     e_and_l " ${light_cyan}Tipp${colors_off}: Mit Option ${light_cyan}noconfig${colors_off} werden keine individuellen Einstellungen geladen."
   fi
+fi
+
+#===============================================================================
+# Sicherheitssabfrage für quiet, sofern relevante Aktionen durchgeführt werden
+# Derzeit nicht verwendet
+#===============================================================================
+if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
+   [ ${OPTION_FLAG[quiet]} -eq 1 ] &&
+   [ ${OPTION_FLAG[status]} -eq 0 ];
+then
+  e_and_l "$FULL_LINE"
+  e_and_l " $ACHTUNG_TAG: Die Option ${bold_yellow}quiet${colors_off} ist aktiviert!"
+  e_and_l " Dadurch werden alle Ausgaben der Installationsroutinen unterdrückt und"
+  e_and_l " Programmpakete OHNE Rückfrage nach deren Standard-Vorgabe installiert!"
+  e_and_l " Wenn das gewünscht ist, die folgende Frage mit [${bold_yellow}J${colors_off}]a beantworten, sonst"
+  e_and_l " wird bei Eingabe von [${bold_yellow}N${colors_off}]ein ohne Quiet-Modus weitergemacht (empfohlen)."
+  ask_yes_or_no_plus "use_quiet" " Wirklich im Quiet-Modus weitermachen" "" "n"
+  if [ $? -eq 0 ]; then OPTION_FLAG[quiet]=0; fi
 fi
 
 #===============================================================================
@@ -9698,22 +9812,7 @@ then
 fi # Ende Neue Einstellungen speichern
 
 #===============================================================================
-# Hinweis auf mehrere Software-Architekturen
-#===============================================================================
-if [ $TOTAL_PACKS -gt 0 ] &&
-   [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
-   [ ${OPTION_FLAG[foreign]} -eq 0 ] &&
-   [ "$ARCHITECTURE_OTHER" != "" ];
-then
-  e_and_l "$FULL_LINE"
-  e_and_l " $HINWEIS_TAG: Auf diesem System sind mehrere Software-Architekturen eingerichtet."
-  e_and_l " Um die Stabilität des Systems nicht zu gefährden, werden alle Programmpakete"
-  e_and_l " nur für die Haupt-Architektur ${bold_yellow}$ARCHITECTURE_MAIN${colors_off} installiert, sofern mit Angabe der Option"
-  e_and_l " \"foreign\" nicht auch Pakete für die Sekundär-Architekturen erlaubt werden."
-fi
-
-#===============================================================================
-# Prüfen ob die Paketverwaltung zur Verwendung frei ist und Repo aktualisieren
+# Prüfen ob die Paketverwaltung zur Verwendung frei ist
 #===============================================================================
 if [ $TOTAL_PACKS -gt 0 ] ||
    [ $USE_ILIST_FILE -eq 1 ] ||
@@ -9760,18 +9859,123 @@ then
     e_and_l " Das Skript wird jetzt beendet - bitte später nochmals versuchen."
     exit 1
   fi
+fi # Ende Prüfen der Paketverwaltung
+
+#===============================================================================
+# Überprüfung und Installation von zur korrekten Ausführung
+# dieses Skriptes zwingend benötigten System-Komponenten
+#===============================================================================
+if [ ${OPTION_FLAG[listonly]} -eq 0 ];
+then
+  e_and_l "$FULL_LINE"
+  e_and_l " ${bold_blue}Überprüfung benötigter Systemkomponenten${colors_off}"
+  e_and_l "$FULL_LINE"
   # ----------------------------------------------------------------------------
-  # Repo aktualisieren
+  # Zum Downloaden und Entpacken von Dateien benötigte Komponenten
   # ----------------------------------------------------------------------------
-  if [ ${OPTION_FLAG[norepo]} -eq 0 ] &&
-     [ ${OPTION_FLAG[listonly]} -eq 0 ];
+  ALL_COMPONENTS_AVAIL=1
+  COMPONENTS_REQUIRED=(coreutils diffutils lshw p7zip-full sed tar util-linux wget)
+  if [ $DCONF_NEEDED -eq 1 ];
   then
-    e_and_l "$FULL_LINE"
-    e_and_l " ${bold_blue}Aktualisierung der Paketlisten${colors_off}"
-    e_and_l "$FULL_LINE"
-    repo_update " Aktualisierung des Standard-Repository, bitte warten ... "
+    COMPONENTS_REQUIRED+=('dconf-cli')
   fi
-fi # Ende Prüfen der Paketverwaltung und Repo-Aktualisierung
+  # ----------------------------------------------------------------------------
+  # Schnell-Test
+  # ----------------------------------------------------------------------------
+  ALL_COMPONENTS_INSTALLED=1
+  for required_pkg in ${COMPONENTS_REQUIRED[@]};
+  do
+    ((ANZ_SPACES=12-${#required_pkg}))
+    if [ $(LANG=en dpkg-query -W -f='${Status}' "$required_pkg" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+    then
+      ALL_COMPONENTS_INSTALLED=0
+      break
+    fi
+  done
+  # ----------------------------------------------------------------------------
+  # Wenn alle benötigten Komponenten (sowie Flatpak und Snap - falls diese
+  # verwendet werden sollen) installiert sind, nur eine kurze Meldung anzeigen
+  # ----------------------------------------------------------------------------
+  if [ $ALL_COMPONENTS_INSTALLED -eq 1 ];
+  then
+    if [[ ${OPTION_FLAG[addflat]} -eq 0 || $FLATPAK_INSTALLED -eq 1 ]] &&
+       [[ ${OPTION_FLAG[addsnap]} -eq 0 || $SNAP_INSTALLED -eq 1 ]];
+    then
+      e_and_l " Alle benötigten Komponenten sind installiert ... $OK_TAG"
+    fi
+  # ----------------------------------------------------------------------------
+  # ... sonst alle Komponenten anzeigen und fehlende installieren ...
+  # ----------------------------------------------------------------------------
+  else
+    for required_pkg in ${COMPONENTS_REQUIRED[@]};
+    do
+      ((ANZ_SPACES=11-${#required_pkg}))
+      if [ $(LANG=en dpkg-query -W -f='${Status}' "$required_pkg" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+      then
+        e_and_l -n " Modul ${bold_yellow}$required_pkg${colors_off}"
+        insert_spaces $ANZ_SPACES
+        e_and_l -n " wird installiert  ... "
+        apt install "$required_pkg" -y &>"$LOG_TEMP"
+        if [ $? -eq 0 ];
+        then
+          e_and_l "$OK_TAG"
+        else
+          e_and_l "$ERROR_TAG"
+          ALL_COMPONENTS_AVAIL=0
+        fi
+        add_full_log
+      else
+        e_and_l -n " Modul ${light_cyan}$required_pkg${colors_off}"
+        insert_spaces $ANZ_SPACES
+        e_and_l -n " ... "
+        e_and_l "$OK_TAG"
+      fi
+    done
+  fi
+  # ----------------------------------------------------------------------------
+  # Cross-Build Pakete zur Ausführung von armhf-Programmen auf arm64
+  # ----------------------------------------------------------------------------
+  if [ $(echo "$ARCHITECTURE_MAIN" | grep -i -c -E "arm64") -gt 0 ] &&
+     [ $(echo "$ARCHITECTURE_OTHER" | grep -i -c -E "armhf") -gt 0 ];
+  then
+    ACTION_MESSAGE=" ${light_cyan}Cross-Build-Pakete${colors_off}"
+    e_and_l "$HALF_LINE"
+    e_and_l " ${bold_blue}Erweiterungen für die Architektur armhf auf arm64${colors_off}"
+    e_and_l "$HALF_LINE"
+    if [ $(LANG=en dpkg-query -W -f='${Status}' "crossbuild-essential-armhf" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+    then
+      if [ $(apt list "crossbuild-essential-armhf" 2>/dev/null | grep -i -c -E "crossbuild-essential-armhf") -gt 0 ];
+      then
+        ask_yes_or_no_plus "crossbuild" "$ACTION_MESSAGE für armhf auf arm64 installieren" "" "j"
+        if [ $? -eq 1 ];
+        then
+          e_and_l -n "${ACTION_MESSAGE//96m/93m} werden installiert, bitte warten ... "
+          apt install "crossbuild-essential-armhf" -y &>"$LOG_TEMP"
+          if [ $? -eq 0 ];
+          then
+            e_and_l "$OK_TAG"
+          else
+            e_and_l "$ERROR_TAG"
+          fi
+          add_full_log
+        fi
+      else
+        e_and_l "$(skip_text "$ACTION_MESSAGE " "$NV_TXT")"
+      fi
+    else
+      e_and_l "$ACTION_MESSAGE ... $OK_TAG"
+    fi
+  fi
+  # ----------------------------------------------------------------------------
+  # Wenn eine benötigte Komponente fehlt, Programm beenden
+  # ----------------------------------------------------------------------------
+  if [ $ALL_COMPONENTS_AVAIL -eq 0 ];
+  then
+    e_and_l " $ERROR_TAG: Leider sind benötigte Systemkomponenten ${bold_red}nicht${colors_off} verfügbar :("
+    e_and_l " Das Skript wird daher jetzt beendet!"
+    exit 1
+  fi
+fi
 
 #===============================================================================
 # Die Flatpak- und Snap-Verwaltung installieren, wenn noch nicht installiert
@@ -9779,16 +9983,15 @@ fi # Ende Prüfen der Paketverwaltung und Repo-Aktualisierung
 if [ ${OPTION_FLAG[listonly]} -eq 0 ];
 then
   if [ $TOTAL_PACKS -gt 0 ] ||
-    [ $USE_ILIST_FILE -eq 1 ];
+     [ $USE_ILIST_FILE -eq 1 ];
   then
-    # ----------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # FLATPAK
-    # ----------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     if [ ${OPTION_FLAG[addflat]} -eq 1 ] &&
        [ $FLATPAK_INSTALLED -eq 0 ] &&
        [ $(apt list "flatpak" 2>/dev/null | grep -i -c "flatpak") -gt 0 ];
     then
-      e_and_l "$FULL_LINE"
       e_and_l " $ACHTUNG_TAG: Die Flatpak-Paketverwaltung ist nicht installiert."
       ask_yes_or_no_plus "install_flatpak" " Die Flatpak-Paketverwaltung jetzt installieren" "" "j"
       if [ $? -eq 1 ];
@@ -9804,15 +10007,15 @@ then
         fi
         add_full_log
       fi
+      e_and_l ""
     fi
-    # ----------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # SNAP
-    # ----------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     if [ ${OPTION_FLAG[addsnap]} -eq 1 ] &&
        [ $SNAP_INSTALLED -eq 0 ] &&
        [ $(apt list "snapd" 2>/dev/null | grep -i -c "snapd") -gt 0 ];
     then
-      e_and_l "$FULL_LINE"
       e_and_l " $ACHTUNG_TAG: Die Snap-Paketverwaltung ist nicht installiert."
       ask_yes_or_no_plus "install_snap" " Die Snap-Paketverwaltung jetzt installieren" "" "n"
       if [ $? -eq 1 ];
@@ -9840,39 +10043,73 @@ then
 fi # Ende Flatpak- und Snap-Verwaltung installieren
 
 #===============================================================================
-# Das Flatpak-Repo und die Flatpak-Listen aktualisieren
+# Paketlisten der Repositories aktualisieren
 #===============================================================================
-if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
-   [ $FLATPAK_INSTALLED -ne 0 ];
+if [ ${OPTION_FLAG[listonly]} -eq 0 ];
 then
-  # ----------------------------------------------------------------------------
-  # Standard-Flatpak-Repo (Flathub) hinzufügen
-  # ----------------------------------------------------------------------------
-  if [ $(flatpak remotes | grep -c -i -E "flathub") -eq 0 ];
+
+  if [ ${OPTION_FLAG[norepo]} -eq 0 ] ||
+     [ $FLATPAK_INSTALLED -ne 0 ];
   then
-    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo &>/dev/null
+    e_and_l "$FULL_LINE"
+    e_and_l " ${bold_blue}Aktualisierung der Paketlisten${colors_off}"
+    e_and_l "$FULL_LINE"
   fi
-  if [ ${OPTION_FLAG[addflat]} -eq 1 ];
+
+  #=============================================================================
+  # Standard-Repo aktualisieren
+  #=============================================================================
+  REPO_UPDATE_TEXT=" Aktualisierung des Standard-Repository"
+  if [ ${OPTION_FLAG[norepo]} -eq 0 ];
   then
-    e_and_l -n " Aktualisierung des Flatpak-Repository, bitte warten  ... "
-    # Flatpak-Repo-Updates nur einmal täglich durchführen
-    if [ $(find "$DOWNLOAD_DIR" -type f -iname "flatpak_appstream_update_blocker" -mtime -1 -print0 2>/dev/null | grep -i -c -E "flatpak_appstream_update_blocker") -eq 0 ];
+    if [ $TOTAL_PACKS -gt 0 ] ||
+       [ $USE_ILIST_FILE -eq 1 ] ||
+       [ ${OPTION_FLAG[exupdate]} -eq 1 ] ||
+       [ ${OPTION_FLAG[remove]} -eq 1 ];
     then
-      echo -e $(date) > "$DOWNLOAD_DIR/flatpak_appstream_update_blocker" 2>/dev/null
-      flatpak update --appstream flathub 2>/dev/null
-      remove_file "$THE_FLATPAK_REMOTE_LIST"
+      repo_update "$REPO_UPDATE_TEXT, bitte warten ... "
+    else
+      e_and_l "${dark_grey}$REPO_UPDATE_TEXT übersprungen  ... (nicht benötigt)${colors_off}"
     fi
-    # Liste der verfügbaren Flatpaks erstellen
-    if [ ! -s "$THE_FLATPAK_REMOTE_LIST" ];
+  else
+    e_and_l "${dark_grey}$REPO_UPDATE_TEXT übersprungen  ... (manuell abgewählt)${colors_off}"
+  fi
+
+  #=============================================================================
+  # Das Flatpak-Repo und die Flatpak-Listen aktualisieren
+  #=============================================================================
+  if [ $FLATPAK_INSTALLED -ne 0 ];
+  then
+    # --------------------------------------------------------------------------
+    # Standard-Flatpak-Repo (Flathub) hinzufügen
+    # --------------------------------------------------------------------------
+    if [ $(flatpak remotes | grep -c -i -E "flathub") -eq 0 ];
     then
-      flatpak remote-ls --app --columns=name,version,ref > "$THE_FLATPAK_REMOTE_LIST" 2>/dev/null
+      flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo &>/dev/null
     fi
+    if [ ${OPTION_FLAG[addflat]} -eq 1 ];
+    then
+      e_and_l -n " Aktualisierung des Flatpak-Repository, bitte warten  ... "
+      # Flatpak-Repo-Updates nur einmal täglich durchführen
+      if [ $(find "$DOWNLOAD_DIR" -type f -iname "flatpak_appstream_update_blocker" -mtime -1 -print0 2>/dev/null | grep -i -c -E "flatpak_appstream_update_blocker") -eq 0 ];
+      then
+        echo -e $(date) > "$DOWNLOAD_DIR/flatpak_appstream_update_blocker" 2>/dev/null
+        flatpak update --appstream flathub 2>/dev/null
+        remove_file "$THE_FLATPAK_REMOTE_LIST"
+      fi
+      # Liste der verfügbaren Flatpaks erstellen
+      if [ ! -s "$THE_FLATPAK_REMOTE_LIST" ];
+      then
+        flatpak remote-ls --app --columns=name,version,ref > "$THE_FLATPAK_REMOTE_LIST" 2>/dev/null
+      fi
+      e_and_l "$OK_TAG"
+    fi
+    e_and_l -n " Aktualisierung der Flatpak-Statusinfos, bitte warten ... "
+    update_flatpak_list
     e_and_l "$OK_TAG"
-  fi
-  e_and_l -n " Aktualisierung der Flatpak-Statusinfos, bitte warten ... "
-  update_flatpak_list
-  e_and_l "$OK_TAG"
-fi # Ende Flatpak-Repo und die Flatpak-Listen aktualisieren
+  fi # Ende Flatpak-Repo und die Flatpak-Listen aktualisieren
+
+fi
 
 #===============================================================================
 # Update von Programmen, die keinen eigenen Eintrag im Repository besitzen
@@ -10078,9 +10315,9 @@ then
             if [ $? -eq 1 ];
             then
               e_and_l " $USER_CHOICE_YES"
-              # ------------------------------------------------------------------
+              # ----------------------------------------------------------------
               # 1. Konfigurationsdaten sichern
-              # ------------------------------------------------------------------
+              # ----------------------------------------------------------------
               CONFIG_NAMES=( "$USER_HOME_DIR/$pkg_name"
                             "$USER_HOME_DIR/.$pkg_name"
                             "$USER_HOME_DIR/$THE_PKG_INST_NAME"
@@ -10123,9 +10360,9 @@ then
                   fi
                 fi
               done
-              # ------------------------------------------------------------------
+              # ----------------------------------------------------------------
               # 2. Benutzerbezogenen Autostart-Eintrag sichern
-              # ------------------------------------------------------------------
+              # ----------------------------------------------------------------
               AUTOSTART_FILE="$USER_CONFIG_DIR/autostart/${pkg_name}.desktop"
               if [ -f "$AUTOSTART_FILE" ];
               then
@@ -10137,27 +10374,27 @@ then
                   e_and_l " ${bold_purple}Autostart${colors_off} gesichert in ${bold_purple}$BACKUP_FILE${colors_off}"
                 fi
               fi
-              # ------------------------------------------------------------------
+              # ----------------------------------------------------------------
               # 3. Programm löschen
               # Programme werden vollständig inklusive ihrer Konfigurationsdaten
               # gelöscht, um bei der Gelegenheit ev. bestehende Altlasten mit zu
               # bereinigen. Die Benutzer-bezogenen Konfigurations-Daten bleiben
               # hingegen erhalten (und wurden zudem zuvor ja auch noch gesichert).
-              # ------------------------------------------------------------------
+              # ----------------------------------------------------------------
               remove_pkg "$pkg_name" 1
 
-              # ------------------------------------------------------------------
+              # ----------------------------------------------------------------
               # Nur weitermachen, wenn das Löschen erfolgreich war
-              # ------------------------------------------------------------------
+              # ----------------------------------------------------------------
               if [ $REMOVE_RESULT -eq 0 ];
               then
-                # ----------------------------------------------------------------
+                # --------------------------------------------------------------
                 # 4. Starter löschen
-                # ----------------------------------------------------------------
+                # --------------------------------------------------------------
                 remove_starter "$pkg_name"
-                # ----------------------------------------------------------------
+                # --------------------------------------------------------------
                 # 5. Programm neu installieren
-                # ----------------------------------------------------------------
+                # --------------------------------------------------------------
                 LAST_ERW_PACK=""
                 LAST_PPA_PACK=""
                 # --------------------------------------
@@ -10389,9 +10626,9 @@ then
        [ "$DESKTOP_ENVIRONMENT" == "GNOME" ];
     then
       e_and_l " $WARN_TAG: Für alle ausgewählten u. installierte Pakete werden Starter erstellt."
-      ask_yes_or_no_plus "many_starter" " Wirklich so viele Starter direkt auf dem Desktop erstellen" "" ""
+      ask_yes_or_no_plus "many_starter" " Wirklich so viele Starter direkt auf dem Desktop erstellen" "" "n"
       OPTION_FLAG[addstart]=$?
-      e_and_l ""
+      e_and_l "$FULL_LINE"
     fi
     # ------------------------------------------------------------------
 
@@ -10474,7 +10711,34 @@ then
   e_and_l "$HALF_LINE"
 
   # ----------------------------------------------------------------------------
-  # GNOME Apps Starter (wenn ausgewählt)
+  # Cinnamon Tools Starter (wenn ausgewählt)
+  # ----------------------------------------------------------------------------
+  if [ ${OPTION_FLAG[adcstart]} -eq 1 ];
+  then
+    NEW_STARTER_COUNTER=0
+    e_and_l " ${bold_blue}Cinnamon Tools${colors_off}"
+    e_and_l "$HALF_LINE"
+    e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}Cinnamon-Desktop${colors_off}, bitte warten ... "
+    KAT_SHORT_NAME="Cinnamon Tools"
+    SEARCH_RESULT_STANDARD=$(find /usr/share/applications -type f -iname "*.desktop" -print | grep -i -E "cinnamon\-.*\.desktop$")
+    SEARCH_RESULT_SNAP=""
+    if [ -d "/var/lib/snapd/desktop/applications" ];
+    then
+      SEARCH_RESULT_SNAP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -print | grep -i -E "cinnamon\-.*\.desktop$")
+    fi
+    SEARCH_RESULT_FLATPAK=""
+    if [ -d "/var/lib/flatpak/app" ];
+    then
+      SEARCH_RESULT_FLATPAK=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -print | grep -i -E "\/export" | grep -i -E "cinnamon\-.*\.desktop$")
+    fi
+    SEARCH_STARTER_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
+    EXCLUDE_STARTER_LIST=""
+    copy_starter_list
+    e_and_l "$HALF_LINE"
+  fi
+
+  # ----------------------------------------------------------------------------
+  # GNOME Apps Starter
   # ----------------------------------------------------------------------------
   if [ ${KATEGORIE_FLAG[gx]} -eq 1 ];
   then
@@ -10505,7 +10769,34 @@ then
   fi
 
   # ----------------------------------------------------------------------------
-  # MATE Tools Starter (wenn ausgewählt)
+  # LXDE Tools Starter
+  # ----------------------------------------------------------------------------
+  if [ ${KATEGORIE_FLAG[lx]} -eq 1 ];
+  then
+    NEW_STARTER_COUNTER=0
+    e_and_l " ${bold_blue}LXDE Tools${colors_off}"
+    e_and_l "$HALF_LINE"
+    e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}LXDE-Desktop${colors_off}, bitte warten ... "
+    KAT_SHORT_NAME="${KATEGORIE_TEXT[lx]}"
+    SEARCH_RESULT_STANDARD=$(find /usr/share/applications -type f -iname "*.desktop" -print | grep -i -E "^lx.*\.desktop$")
+    SEARCH_RESULT_SNAP=""
+    if [ -d "/var/lib/snapd/desktop/applications" ];
+    then
+      SEARCH_RESULT_SNAP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -print | grep -i -E "^lx.*\.desktop$")
+    fi
+    SEARCH_RESULT_FLATPAK=""
+    if [ -d "/var/lib/flatpak/app" ];
+    then
+      SEARCH_RESULT_FLATPAK=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -print | grep -i -E "\/export" | grep -i -E "^lx.*\.desktop$")
+    fi
+    SEARCH_STARTER_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
+    EXCLUDE_STARTER_LIST=""
+    copy_starter_list
+    e_and_l "$HALF_LINE"
+  fi
+
+  # ----------------------------------------------------------------------------
+  # MATE Tools Starter
   # ----------------------------------------------------------------------------
   if [ ${KATEGORIE_FLAG[mx]} -eq 1 ];
   then
@@ -10533,52 +10824,25 @@ then
   fi
 
   # ----------------------------------------------------------------------------
-  # LXDE Tools Starter (wenn ausgewählt)
+  # XFCE Tools Starter
   # ----------------------------------------------------------------------------
-  if [ ${KATEGORIE_FLAG[lx]} -eq 1 ];
+  if [ ${KATEGORIE_FLAG[xf]} -eq 1 ];
   then
     NEW_STARTER_COUNTER=0
-    e_and_l " ${bold_blue}LXDE Tools${colors_off}"
+    e_and_l " ${bold_blue}XFCE Tools${colors_off}"
     e_and_l "$HALF_LINE"
-    e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}LXDE-Desktop${colors_off}, bitte warten ... "
-    KAT_SHORT_NAME="${KATEGORIE_TEXT[lx]}"
-    SEARCH_RESULT_STANDARD=$(find /usr/share/applications -type f -iname "*.desktop" -print | grep -i -E "^lx.*\.desktop$")
+    e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}XFCE-Desktop${colors_off}, bitte warten ... "
+    KAT_SHORT_NAME="${KATEGORIE_TEXT[xf]}"
+    SEARCH_RESULT_STANDARD=$(find /usr/share/applications -type f -iname "*.desktop" -print | grep -i -E "^xfce.*\.desktop$")
     SEARCH_RESULT_SNAP=""
     if [ -d "/var/lib/snapd/desktop/applications" ];
     then
-      SEARCH_RESULT_SNAP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -print | grep -i -E "^lx.*\.desktop$")
+      SEARCH_RESULT_SNAP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -print | grep -i -E "^xfce.*\.desktop$")
     fi
     SEARCH_RESULT_FLATPAK=""
     if [ -d "/var/lib/flatpak/app" ];
     then
-      SEARCH_RESULT_FLATPAK=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -print | grep -i -E "\/export" | grep -i -E "^lx.*\.desktop$")
-    fi
-    SEARCH_STARTER_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
-    EXCLUDE_STARTER_LIST=""
-    copy_starter_list
-    e_and_l "$HALF_LINE"
-  fi
-
-  # ----------------------------------------------------------------------------
-  # Cinnamon Tools Starter (wenn ausgewählt)
-  # ----------------------------------------------------------------------------
-  if [ ${OPTION_FLAG[adcstart]} -eq 1 ];
-  then
-    NEW_STARTER_COUNTER=0
-    e_and_l " ${bold_blue}Cinnamon Tools${colors_off}"
-    e_and_l "$HALF_LINE"
-    e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}Cinnamon-Desktop${colors_off}, bitte warten ... "
-    KAT_SHORT_NAME="Cinnamon Tools"
-    SEARCH_RESULT_STANDARD=$(find /usr/share/applications -type f -iname "*.desktop" -print | grep -i -E "cinnamon\-.*\.desktop$")
-    SEARCH_RESULT_SNAP=""
-    if [ -d "/var/lib/snapd/desktop/applications" ];
-    then
-      SEARCH_RESULT_SNAP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -print | grep -i -E "cinnamon\-.*\.desktop$")
-    fi
-    SEARCH_RESULT_FLATPAK=""
-    if [ -d "/var/lib/flatpak/app" ];
-    then
-      SEARCH_RESULT_FLATPAK=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -print | grep -i -E "\/export" | grep -i -E "cinnamon\-.*\.desktop$")
+      SEARCH_RESULT_FLATPAK=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -print | grep -i -E "\/export" | grep -i -E "^xfce.*\.desktop$")
     fi
     SEARCH_STARTER_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
     EXCLUDE_STARTER_LIST=""
@@ -10628,6 +10892,7 @@ then
          [ ${KATEGORIE_FLAG[lx]} -eq 1 ] ||
          [ ${KATEGORIE_FLAG[mx]} -eq 1 ] ||
          [ ${KATEGORIE_FLAG[mt]} -eq 1 ] ||
+         [ ${KATEGORIE_FLAG[xf]} -eq 1 ] ||
          [ ${OPTION_FLAG[adcstart]} -eq 1 ];
       then
         # ----------------------------------------------------------
@@ -10999,9 +11264,9 @@ then
     e_and_l " ${bold_blue}Weitere System-Komponenten${colors_off}"
     e_and_l "$HALF_LINE"
 
-    # ========================================================================
+    # ==========================================================================
     # Einstellung der Sprachumgebung (des Systems) auf deutsch (oder andere)
-    # ========================================================================
+    # ==========================================================================
     if [ "$CUR_SYS_LANG" != "de" ];
     then
       e_and_l " Die Sprachumgebung des Systems ist nicht auf deutsch eingestellt."
@@ -11021,9 +11286,9 @@ then
       e_and_l " Einstellung der ${light_cyan}Sprachumgebung${colors_off} auf deutsch ... $NC_TAG"
     fi
 
-    # ========================================================================
+    # ==========================================================================
     # Zusätzliche Sprachpakete (fehlende Sprachunterstützung) installieren
-    # ========================================================================
+    # ==========================================================================
     ACTION_MESSAGE=" Zusätzliche ${light_cyan}Sprachpakete${colors_off} installieren"
     if [ $(LANG=en dpkg-query -W -f='${Status}' "language-selector-common" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
     then
@@ -11046,12 +11311,12 @@ then
       for lang_code in ${CHECK_LANGUAGES[@]};
       do
         ACTION_MESSAGE=" Zusätzliche ${light_cyan}Sprachpakete ($lang_code)${colors_off} installieren"
-        THE_TEMP_FILE="$DOWNLOAD_DIR/missing-language-support"
+        MISSING_SUPPORT_LIST="$DOWNLOAD_DIR/missing_language_support_$lang_code.list"
         MISSING_LANGUAGE_SUPPORT=$(check-language-support -l ${lang_code} 2>/dev/null)
         if [ "$MISSING_LANGUAGE_SUPPORT" != "" ];
         then
-          echo -e "$MISSING_LANGUAGE_SUPPORT" > "$THE_TEMP_FILE" 2>/dev/null
-          ask_yes_or_no_plus "language-support" "$ACTION_MESSAGE" "$THE_TEMP_FILE" "j"
+          echo -e "$MISSING_LANGUAGE_SUPPORT" 2>/dev/null | tr ' ' '\n' | sed -E "s/^/ - /g" > "$MISSING_SUPPORT_LIST"
+          ask_yes_or_no_plus "language-support" "$ACTION_MESSAGE" "$MISSING_SUPPORT_LIST" "j"
           if [ $? -eq 1 ];
           then
             e_and_l -n " Installiere zusätzliche ${light_yellow}Sprachpakete ($lang_code)${colors_off}, bitte warten ... "
@@ -11065,7 +11330,8 @@ then
             fi
             add_full_log
           fi
-          remove_file "$THE_TEMP_FILE"
+          e_and_l "$HALF_MINUS_LINE"
+          remove_file "$MISSING_SUPPORT_LIST"
         else
           e_and_l "$ACTION_MESSAGE ... $KF_TAG"
         fi
@@ -11074,9 +11340,9 @@ then
       e_and_l "$(skip_text "$ACTION_MESSAGE     " "$NA_TXT")"
     fi
 
-    # ========================================================================
+    # ==========================================================================
     # Schriftarten MegaFontPack oder ersatzweise MS Windows Fonts installieren
-    # ========================================================================
+    # ==========================================================================
     SYSTEM_FONT_DIR="/usr/share/fonts/truetype"
     MEGA_FONT_DIR="$SYSTEM_FONT_DIR/MegaFontPack"
     if [ ! -d "$MEGA_FONT_DIR" ];
@@ -11113,6 +11379,7 @@ then
           remove_file "$LOCAL_DOWNLOAD_FILE"
           add_full_log
         fi
+        e_and_l "$HALF_MINUS_LINE"
       else
         ACTION_MESSAGE=" Schriftarten ${light_cyan}MS Windows Fonts${colors_off} installieren"
         if [ $(LANG=en dpkg-query -W -f='${Status}' "ttf-mscorefonts-installer" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
@@ -11132,6 +11399,7 @@ then
               add_full_log
               remove_file "$LAST_EXIT_CODE"
               clear # Die Installation von ttf-mscorefonts hinterlässt leider keinen sauberen Terminal-Status!
+              e_and_l "$HALF_MINUS_LINE"
             fi
           else
             e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
@@ -11144,9 +11412,9 @@ then
       e_and_l " Schriftartensatz ${light_cyan}MegaFontPack${colors_off} installieren ... $NC_TAG"
     fi
 
-    # ========================================================================
+    # ==========================================================================
     # Mauszeiger (CursorPack) installieren
-    # ========================================================================
+    # ==========================================================================
     ACTION_MESSAGE=" Extra-Mauszeiger ${light_cyan}CursorPack${colors_off} installieren"
     USER_ICON_DIR="$USER_HOME_DIR/.icons"
     if [ "$DESKTOP_ENVIRONMENT" == "MATE" ];
@@ -11193,6 +11461,7 @@ then
             remove_file "$LOCAL_DOWNLOAD_FILE"
             add_full_log
           fi
+          e_and_l "$HALF_MINUS_LINE"
         fi
       else
         e_and_l "$ACTION_MESSAGE   ... $NC_TAG"
@@ -11201,9 +11470,9 @@ then
       e_and_l "$(skip_text "$ACTION_MESSAGE  " "$NM_TXT")"
     fi
 
-    # ========================================================================
+    # ==========================================================================
     # Themen Ambiant und Radiant installieren
-    # ========================================================================
+    # ==========================================================================
     ACTION_MESSAGE=" Themen ${light_cyan}Ambiant und Radiant${colors_off} installieren"
     if [ "$DESKTOP_ENVIRONMENT" == "MATE" ];
     then
@@ -11293,6 +11562,7 @@ then
           fi
           remove_file "$LOCAL_DOWNLOAD_FILE"
           rm -f -r "$DOWNLOAD_DIR/MATE" &>/dev/null
+          e_and_l "$HALF_MINUS_LINE"
         fi
       else
         e_and_l "$ACTION_MESSAGE    ... $NC_TAG"
@@ -11301,9 +11571,9 @@ then
       e_and_l "$(skip_text "$ACTION_MESSAGE   " "$NM_TXT")"
     fi
 
-    # ========================================================================
+    # ==========================================================================
     # Desktop-Themen Ubuntu-MATE installieren
-    # ========================================================================
+    # ==========================================================================
     ACTION_MESSAGE=" Desktop-Themen ${light_cyan}Ubuntu MATE${colors_off} installieren"
     if [ $(apt list "ubuntu-mate-themes" 2>/dev/null | grep -i -c "ubuntu-mate-themes") -gt 0 ];
     then
@@ -11322,6 +11592,7 @@ then
             e_and_l "$ERROR_TAG"
           fi
           add_full_log
+          e_and_l "$HALF_MINUS_LINE"
         fi
       else
         e_and_l "$ACTION_MESSAGE    ... $NC_TAG"
@@ -11330,9 +11601,9 @@ then
       e_and_l "$(skip_text "$ACTION_MESSAGE   " "$NA_TXT")"
     fi
 
-    # ========================================================================
+    # ==========================================================================
     # Desktop-Themen Yaru installieren
-    # ========================================================================
+    # ==========================================================================
     ACTION_MESSAGE=" Desktop-Themen ${light_cyan}Yaru${colors_off} installieren"
     deskpart=""
     if [ "$DESKTOP_ENVIRONMENT" == "Cinnamon" ]; then deskpart="-cinnamon"; fi
@@ -11372,6 +11643,7 @@ then
             e_and_l "$ERROR_TAG"
           fi
           add_full_log
+          e_and_l "$HALF_MINUS_LINE"
         fi
       else
         e_and_l "$ACTION_MESSAGE           ... $NC_TAG"
@@ -11380,188 +11652,210 @@ then
       e_and_l "$(skip_text "$ACTION_MESSAGE          " "$NA_TXT")"
     fi
 
-    # ========================================================================
+    # ==========================================================================
     # Bildschirmschoner XScreenSaver installieren
-    # ========================================================================
+    # ==========================================================================
     ACTION_MESSAGE=" Bildschirmschoner ${light_cyan}XScreenSaver${colors_off} einrichten"
-    XSCRSAVER_EPKG_LIST=('xscreensaver' 'xscreensaver-data' 'xscreensaver-data-extra' 'xscreensaver-gl' 'xscreensaver-gl-extra' 'rss-glx')
-    XSCRSAVER_AVAILABLE=0 # Verfügbare Module
-    XSCRSAVER_INSTALLED=0 # Bereits installierte Module
-    XSCRSAVER_NEWINST=0   # Neu installierte Module
-    for xs_pkg in ${XSCRSAVER_EPKG_LIST[@]};
-    do
-      if [ $(apt list "$xs_pkg" 2>/dev/null | grep -i -c "$xs_pkg") -gt 0 ];
-      then
-        ((XSCRSAVER_AVAILABLE+=1))
-      fi
-      get_install_status "$xs_pkg"
-      if [ $? -ne 0 ];
-      then
-        ((XSCRSAVER_INSTALLED+=1))
-      fi
-    done
-    if [ $XSCRSAVER_AVAILABLE -gt 1 ];
+    if [ "$DISPLAY_SERVER" == "" ] ||
+       [ "$DISPLAY_SERVER" == "X11" ];
     then
-      # Fehlende XScreenSaver-Komponenten installieren
-      if [ $XSCRSAVER_INSTALLED -ne $XSCRSAVER_AVAILABLE ];
-      then
-        ask_yes_or_no_plus "xscreensaver_$xs_pkg" "$ACTION_MESSAGE" "" "n"
-        if [ $? -eq 1 ];
+      XSCRSAVER_EPKG_LIST=('xscreensaver' 'xscreensaver-data' 'xscreensaver-data-extra' 'xscreensaver-gl' 'xscreensaver-gl-extra' 'rss-glx')
+      XSCRSAVER_AVAILABLE=0 # Verfügbare Module
+      XSCRSAVER_INSTALLED=0 # Bereits installierte Module
+      XSCRSAVER_NEWINST=0   # Neu installierte Module
+      for xs_pkg in ${XSCRSAVER_EPKG_LIST[@]};
+      do
+        if [ $(apt list "$xs_pkg" 2>/dev/null | grep -i -c "$xs_pkg") -gt 0 ];
         then
-          if [ $XSCRSAVER_INSTALLED -ne $XSCRSAVER_AVAILABLE ];
+          ((XSCRSAVER_AVAILABLE+=1))
+        fi
+        get_install_status "$xs_pkg"
+        if [ $? -ne 0 ];
+        then
+          ((XSCRSAVER_INSTALLED+=1))
+        fi
+      done
+      if [ $XSCRSAVER_AVAILABLE -gt 1 ];
+      then
+        # -----------------------------------------------
+        # Fehlende XScreenSaver-Komponenten installieren
+        # -----------------------------------------------
+        if [ $XSCRSAVER_INSTALLED -ne $XSCRSAVER_AVAILABLE ];
+        then
+          ask_yes_or_no_plus "xscreensaver_$xs_pkg" "$ACTION_MESSAGE" "" "n"
+          if [ $? -eq 1 ];
           then
-            e_and_l -n " Installiere ${light_yellow}XScreen-Module${colors_off}, bitte warten   ... "
-            echo -e "" > "$LOG_TEMP"
-            for xs_pkg in ${XSCRSAVER_EPKG_LIST[@]};
-            do
-              # Wenn das Modul noch nicht installiert ist ...
-              if [ $(LANG=en dpkg-query -W -f='${Status}' "$xs_pkg" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
-              then
-                # ... und verfügbar ist, dann neu installieren ...
-                if [ $(apt list "$xs_pkg" 2>/dev/null | grep -i -c "$xs_pkg") -gt 0 ];
+            if [ $XSCRSAVER_INSTALLED -ne $XSCRSAVER_AVAILABLE ];
+            then
+              e_and_l -n " Installiere ${light_yellow}XScreen-Module${colors_off}, bitte warten   ... "
+              echo -e "" > "$LOG_TEMP"
+              for xs_pkg in ${XSCRSAVER_EPKG_LIST[@]};
+              do
+                # ----------------------------------------------
+                # Wenn das Modul noch nicht installiert ist ...
+                # ----------------------------------------------
+                if [ $(LANG=en dpkg-query -W -f='${Status}' "$xs_pkg" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
                 then
-                  apt install "$xs_pkg" -y &>>"$LOG_TEMP"
-                  if [ $? -eq 0 ];
+                  # -------------------------------------------------
+                  # ... und verfügbar ist, dann neu installieren ...
+                  # -------------------------------------------------
+                  if [ $(apt list "$xs_pkg" 2>/dev/null | grep -i -c "$xs_pkg") -gt 0 ];
                   then
-                    ((XSCRSAVER_NEWINST+=1))
+                    apt install "$xs_pkg" -y &>>"$LOG_TEMP"
+                    if [ $? -eq 0 ];
+                    then
+                      ((XSCRSAVER_NEWINST+=1))
+                    fi
                   fi
                 fi
+              done
+              if [ $XSCRSAVER_NEWINST -gt 0 ];
+              then
+                e_and_l "$OK_TAG"
+                # -------------------------------------------
+                # Starter für Einstellungen des XScreenSaver
+                # der Systemverwaltung zuordnen
+                # -------------------------------------------
+                CURRENT_CATEGORY="v"
+                KAT_SHORT_NAME="${KATEGORIE_TEXT[v]}"
+                copy_starter_to_desktop "xscreensaver-properties" "" 0
+                copy_starter_to_desktop "xscreensaver-settings" "" 0
+                CHANGES_MADE=1
+              else
+                e_and_l "$ERROR_TAG"
               fi
-            done
-            if [ $XSCRSAVER_NEWINST -gt 0 ];
+              add_full_log
+              remove_file "$LOG_TEMP"
+            fi
+            # e_and_l "$HALF_MINUS_LINE"
+          fi
+        else
+          e_and_l "$ACTION_MESSAGE  ... $NC_TAG"
+        fi
+        # ---------------------------------------------------
+        # Wenn XScreenSaver verfügbar, dann Autostarteintrag
+        # für XScreenSaver erstellen/aktivieren
+        # ---------------------------------------------------
+        if [ $XSCRSAVER_INSTALLED -eq $XSCRSAVER_AVAILABLE ] ||
+           [ $XSCRSAVER_NEWINST -gt 0 ];
+        then
+          X_SCREENSAVER_AUTOSTART_FILE="$USER_HOME_DIR/.config/autostart/xscreensaver.desktop"
+          if [ ! -s "$X_SCREENSAVER_AUTOSTART_FILE" ];
+          then
+            e_and_l -n " Erstelle Autostarteintrag für ${light_yellow}XScreenSaver${colors_off} ... "
+            XSCR_EXEC_TEXT="xscreensaver"
+            if [ $(xscreensaver --help 2>&1 | grep -c -E "no-splash") -gt 0 ]; then XSCR_EXEC_TEXT+=" --no-splash"; fi
+            create_autostart_file "$X_SCREENSAVER_AUTOSTART_FILE" "XScreenSaver" "Bildschirmschoner und Bildschirmsperre" "$XSCR_EXEC_TEXT" "xscreensaver"
+            if [ $? -eq 0 ];
             then
               e_and_l "$OK_TAG"
-              CURRENT_CATEGORY="v" # Starter für Einstellungen des XScreenSaver der Systemverwaltung zuordnen
-              KAT_SHORT_NAME="${KATEGORIE_TEXT[v]}"
-              copy_starter_to_desktop "xscreensaver-properties" "" 0
-              copy_starter_to_desktop "xscreensaver-settings" "" 0
               CHANGES_MADE=1
             else
               e_and_l "$ERROR_TAG"
             fi
-            add_full_log
-            remove_file "$LOG_TEMP"
           fi
         fi
-      else
-        e_and_l "$ACTION_MESSAGE  ... $NC_TAG"
-      fi
-      # Wenn XScreenSaver verfügbar, dann Autostarteintrag für XScreenSaver erstellen/aktivieren
-      if [ $XSCRSAVER_INSTALLED -eq $XSCRSAVER_AVAILABLE ] ||
-         [ $XSCRSAVER_NEWINST -gt 0 ];
-      then
-        X_SCREENSAVER_AUTOSTART_FILE="$USER_HOME_DIR/.config/autostart/xscreensaver.desktop"
-        if [ ! -s "$X_SCREENSAVER_AUTOSTART_FILE" ];
+        # ------------------------------------------
+        # Wenn XScreenSaver verfügbar ist, dann die
+        # Original-Bildschirmschoner deaktivieren
+        # ------------------------------------------
+        if [ $XSCRSAVER_INSTALLED -eq $XSCRSAVER_AVAILABLE ] ||
+           [ $XSCRSAVER_NEWINST -gt 0 ];
         then
-          e_and_l -n " Erstelle Autostarteintrag für ${light_yellow}XScreenSaver${colors_off} ... "
-          XSCR_EXEC_TEXT="xscreensaver"
-          if [ $(xscreensaver --help 2>&1 | grep -c -E "no-splash") -gt 0 ]; then XSCR_EXEC_TEXT+=" --no-splash"; fi
-          create_autostart_file "$X_SCREENSAVER_AUTOSTART_FILE" "XScreenSaver" "Bildschirmschoner und Bildschirmsperre" "$XSCR_EXEC_TEXT" "xscreensaver"
-          if [ $? -eq 0 ];
-          then
-            e_and_l "$OK_TAG"
-            CHANGES_MADE=1
-          else
-            e_and_l "$ERROR_TAG"
-          fi
-        fi
-      fi
-      # ------------------------------------------
-      # Wenn XScreenSaver verfügbar ist, dann die
-      # Original-Bildschirmschoner deaktivieren
-      # ------------------------------------------
-      if [ $XSCRSAVER_INSTALLED -eq $XSCRSAVER_AVAILABLE ] ||
-          [ $XSCRSAVER_NEWINST -gt 0 ];
-      then
-        for ((screen_saver = 1; screen_saver < 3; screen_saver++));
-        do
-          ORG_FILES_NAME=""
-          # -------------
-          # MATE-Desktop
-          # -------------
-          if [ $screen_saver -eq 1 ];
-          then
-            if [ -e "/usr/bin/mate-screensaver" ] ||
-               [ -e "/usr/bin/mate-screensaver.deactivated" ];
+          for ((screen_saver = 1; screen_saver < 3; screen_saver++));
+          do
+            ORG_FILES_NAME=""
+            # -------------
+            # MATE-Desktop
+            # -------------
+            if [ $screen_saver -eq 1 ];
             then
-              ORG_FILES_NAME="MATE"
-              declare -A ORG_SCRSAVER_FILES
-              # Binär-Datei
-              ORG_SCRSAVER_FILES[0]="/usr/bin/mate-screensaver"
-              # Autostart-Einträge
-              ORG_SCRSAVER_FILES[1]="/etc/xdg/autostart/mate-screensaver.desktop"
-              ORG_SCRSAVER_FILES[2]="$USER_CONFIG_DIR/autostart/mate-screensaver.desktop"
-              # Menü-Einträge
-              ORG_SCRSAVER_FILES[3]="/usr/share/applications/mate-screensaver-preferences.desktop"
-              ORG_SCRSAVER_FILES[4]="/usr/share/mate/applications/mate-screensaver-preferences.desktop"
-            fi
-          fi
-          # -----------------
-          # Cinnamon-Desktop
-          # -----------------
-          if [ $screen_saver -eq 2 ];
-          then
-            if [ -e "/usr/bin/cinnamon-screensaver" ] ||
-               [ -e "/usr/bin/cinnamon-screensaver.deactivated" ];
-            then
-              ORG_FILES_NAME="Cinnamon"
-              declare -A ORG_SCRSAVER_FILES
-              # Binär-Datei
-              ORG_SCRSAVER_FILES[0]="/usr/bin/cinnamon-screensaver"
-              ORG_SCRSAVER_FILES[1]="/usr/bin/cinnamon-screensaver-lock-dialog"
-              # Autostart-Einträge
-              ORG_SCRSAVER_FILES[2]="/etc/xdg/autostart/cinnamon-settings-daemon-screensaver-proxy.desktop"
-              ORG_SCRSAVER_FILES[3]="$USER_CONFIG_DIR/autostart/cinnamon-settings-daemon-screensaver-proxy.desktop"
-              # Menü-Einträge
-              ORG_SCRSAVER_FILES[4]="/usr/share/applications/cinnamon-settings-screensaver.desktop"
-            fi
-          fi
-          # ---------------------------------------------------------
-          # Wenn Original-Bildschirmschoner aktiv, dann deaktivieren
-          # ---------------------------------------------------------
-          if [ "$ORG_FILES_NAME" != "" ];
-          then
-            ORG_ACTIVE_SS_FILES=0
-            for scr_saver_file in ${ORG_SCRSAVER_FILES[@]};
-            do
-              if [ -e "$scr_saver_file" ]; then ((ORG_ACTIVE_SS_FILES+=1)); fi
-            done
-            if [ $ORG_ACTIVE_SS_FILES -gt 0 ];
-            then
-              e_and_l " $HINWEIS_TAG: Mit $ORG_FILES_NAME- und XScreenSaver sind zwei Bildschirmschoner aktiv."
-              ask_yes_or_no_plus "deactivate_org_screensaver" " $ORG_FILES_NAME-Screensaver vollständig deaktivieren (empfohlen)" "" "j"
-              if [ $? -eq 1 ];
+              if [ -e "/usr/bin/mate-screensaver" ] ||
+                 [ -e "/usr/bin/mate-screensaver.deactivated" ];
               then
-                e_and_l -n " Deaktiviere den ${light_yellow}$ORG_FILES_NAME-Bildschirmschoner${colors_off} ... "
-                MSCR_RESULT=0
-                for scr_saver_file in ${ORG_SCRSAVER_FILES[@]};
-                do
-                  if [ -e "$scr_saver_file" ];
-                  then
-                    mv -f "$scr_saver_file" "$scr_saver_file.deactivated" &>/dev/null
-                    if [ $? -ne 0 ]; then ((MSCR_RESULT+=1)); fi
-                  fi
-                done
-                if [ $MSCR_RESULT -eq 0 ];
+                ORG_FILES_NAME="MATE"
+                declare -A ORG_SCRSAVER_FILES
+                # Binär-Datei
+                ORG_SCRSAVER_FILES[0]="/usr/bin/mate-screensaver"
+                # Autostart-Einträge
+                ORG_SCRSAVER_FILES[1]="/etc/xdg/autostart/mate-screensaver.desktop"
+                ORG_SCRSAVER_FILES[2]="$USER_CONFIG_DIR/autostart/mate-screensaver.desktop"
+                # Menü-Einträge
+                ORG_SCRSAVER_FILES[3]="/usr/share/applications/mate-screensaver-preferences.desktop"
+                ORG_SCRSAVER_FILES[4]="/usr/share/mate/applications/mate-screensaver-preferences.desktop"
+              fi
+            fi
+            # -----------------
+            # Cinnamon-Desktop
+            # -----------------
+            if [ $screen_saver -eq 2 ];
+            then
+              if [ -e "/usr/bin/cinnamon-screensaver" ] ||
+                 [ -e "/usr/bin/cinnamon-screensaver.deactivated" ];
+              then
+                ORG_FILES_NAME="Cinnamon"
+                declare -A ORG_SCRSAVER_FILES
+                # Binär-Datei
+                ORG_SCRSAVER_FILES[0]="/usr/bin/cinnamon-screensaver"
+                ORG_SCRSAVER_FILES[1]="/usr/bin/cinnamon-screensaver-lock-dialog"
+                # Autostart-Einträge
+                ORG_SCRSAVER_FILES[2]="/etc/xdg/autostart/cinnamon-settings-daemon-screensaver-proxy.desktop"
+                ORG_SCRSAVER_FILES[3]="$USER_CONFIG_DIR/autostart/cinnamon-settings-daemon-screensaver-proxy.desktop"
+                # Menü-Einträge
+                ORG_SCRSAVER_FILES[4]="/usr/share/applications/cinnamon-settings-screensaver.desktop"
+              fi
+            fi
+            # ---------------------------------------------------------
+            # Wenn Original-Bildschirmschoner aktiv, dann deaktivieren
+            # ---------------------------------------------------------
+            if [ "$ORG_FILES_NAME" != "" ];
+            then
+              ORG_ACTIVE_SS_FILES=0
+              for scr_saver_file in ${ORG_SCRSAVER_FILES[@]};
+              do
+                if [ -e "$scr_saver_file" ]; then ((ORG_ACTIVE_SS_FILES+=1)); fi
+              done
+              if [ $ORG_ACTIVE_SS_FILES -gt 0 ];
+              then
+                e_and_l "$HALF_MINUS_LINE"
+                e_and_l " $ACHTUNG_TAG: Mit $ORG_FILES_NAME- und XScreenSaver sind zwei Bildschirmschoner aktiv."
+                ask_yes_or_no_plus "deactivate_org_screensaver" " $ORG_FILES_NAME-Screensaver vollständig deaktivieren (empfohlen)" "" "j"
+                if [ $? -eq 1 ];
                 then
-                  e_and_l "$OK_TAG"
-                  e_and_l "$REBOOT_MSG"
-                  CHANGES_MADE=1
-                else
-                  e_and_l "$ERROR_TAG"
+                  e_and_l -n " Deaktiviere den ${light_yellow}$ORG_FILES_NAME-Bildschirmschoner${colors_off} ... "
+                  MSCR_RESULT=0
+                  for scr_saver_file in ${ORG_SCRSAVER_FILES[@]};
+                  do
+                    if [ -e "$scr_saver_file" ];
+                    then
+                      mv -f "$scr_saver_file" "$scr_saver_file.deactivated" &>/dev/null
+                      if [ $? -ne 0 ]; then ((MSCR_RESULT+=1)); fi
+                    fi
+                  done
+                  if [ $MSCR_RESULT -eq 0 ];
+                  then
+                    e_and_l "$OK_TAG"
+                    e_and_l "$REBOOT_MSG"
+                    CHANGES_MADE=1
+                  else
+                    e_and_l "$ERROR_TAG"
+                  fi
+                  e_and_l "$HALF_MINUS_LINE"
                 fi
               fi
             fi
-          fi
-        done
+          done
+        fi
+      else # Kein XScreenSaver verfügbar
+        e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
       fi
-    else # Kein XScreenSaver verfügbar
-      e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
+    else # Kein X11 (vermutlich Wayland)
+      e_and_l "$(skip_text "$ACTION_MESSAGE " "nur mit X11")"
     fi
 
-    # ========================================================================
+    # ==========================================================================
     # Diverse Desktop-Tools einrichten (ggf. mit Autostart)
-    # ========================================================================
+    # ==========================================================================
     AUTOSTART_ACTIVATE_LIST=('copyq' 'redshift-gtk' 'tilda')
     AUTOSTART_ACTIVATE_NAME=('CopyQ' 'Redshift' 'Tilda')
     AUTOSTART_ACTIVATE_DESC=('Zwischenablage-Manager ' 'Farbtemperaturanpassung' 'Ausklapp-Terminal (F12)')
@@ -11577,11 +11871,12 @@ then
       ((ANZ_SPACES-=${#PACKET_NAME_TO_SHOW}))
       i=1; while [ $i -lt $ANZ_SPACES ]; do ACTION_MESSAGE+=" "; ((i+=1)); done
       if [ "${AUTOSTART_ACTIVATE_ONLY[$a]}" == "all" ] ||
-          [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "${AUTOSTART_ACTIVATE_ONLY[$a]}") -gt 0 ];
+         [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E "${AUTOSTART_ACTIVATE_ONLY[$a]}") -gt 0 ];
       then
-        # --------------------------------------------------------------------
+        # ---------------------------
         # 1. Installation des Moduls
-        # --------------------------------------------------------------------
+        # ---------------------------
+        MODULE_NEW_INSTALLED=0
         get_install_status "${AUTOSTART_ACTIVATE_LIST[$a]}"
         INSTALL_STATUS=$?
         if [ $INSTALL_STATUS -eq 0 ];
@@ -11599,6 +11894,7 @@ then
               apt install "${AUTOSTART_ACTIVATE_LIST[$a]}" -y &>"$LOG_TEMP"
               if [ $? -eq 0 ];
               then
+                MODULE_NEW_INSTALLED=1
                 INSTALL_STATUS=1
                 CHANGES_MADE=1
                 e_and_l "$OK_TAG"
@@ -11612,16 +11908,17 @@ then
         else
           e_and_l "$ACTION_MESSAGE ... $NC_TAG"
         fi
-        # --------------------------------------------------------------------
+        # --------------------------------------
         # 2. Einrichtung des Autostart-Eintrags
-        # --------------------------------------------------------------------
+        # --------------------------------------
         if [ $INSTALL_STATUS -eq 1 ];
         then
-          # ---------------------------------------------------------------
-          # Auf MATE- und Cinnamon-Desktop zusätzlich Autostart einrichten
-          # ---------------------------------------------------------------
-          if [ "$DESKTOP_ENVIRONMENT" == "MATE" ] ||
-              [ "$DESKTOP_ENVIRONMENT" == "Cinnamon" ];
+          # --------------------------------------------------------
+          # Auf geeigneten-Desktops zusätzlich Autostart einrichten
+          # --------------------------------------------------------
+          if [ "$DESKTOP_ENVIRONMENT" == "Cinnamon" ] ||
+             [ "$DESKTOP_ENVIRONMENT" == "MATE" ] ||
+             [ "$DESKTOP_ENVIRONMENT" == "XFCE" ];
           then
             e_and_l -n " Autostart für ${bold_white}$PACKET_NAME_TO_SHOW${colors_off} einrichten"
             ANZ_SPACES=18
@@ -11692,19 +11989,23 @@ then
             fi
           fi
         fi
+        if [ $MODULE_NEW_INSTALLED -gt 0 ];
+        then
+          e_and_l "$HALF_MINUS_LINE"
+        fi
       else # Kein Ubuntu
         e_and_l "$(skip_text "$ACTION_MESSAGE" "$NU_TXT")"
       fi
       ((a+=1))
     done
 
-    # ========================================================================
+    # ==========================================================================
     # Erstellung diverser Menü-Einträge für Wine
     # -------------------------------------------
     # ACHTUNG:
     # In "wine_post_inst" wird WINE_STARTER_LIST statt PKG_STARTER_LIST[wine] zur
     # Auswahl der Starter verwendet. Bei Änderungen in beiden Skripten anpassen!
-    # ========================================================================
+    # ==========================================================================
     ACTION_MESSAGE=" Fehlende ${light_cyan}Menü-Einträge für Wine${colors_off} erstellen"
     if [ $(LANG=en dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
     then
@@ -11782,12 +12083,12 @@ then
         e_and_l "$ACTION_MESSAGE  ... $NC_TAG"
       fi
     else
-      e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
+      e_and_l "$(skip_text "$ACTION_MESSAGE " "kein WINE")"
     fi
 
-    # ========================================================================
+    # ==========================================================================
     # Signaturen der Blu-ray-Datenbank erneuern
-    # ========================================================================
+    # ==========================================================================
     ACTION_MESSAGE=" Signaturen der ${light_cyan}Blu-ray-Datenbank${colors_off} erneuern "
     if [ $(LANG=en dpkg-query -W -f='${Status}' "libbluray2" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
     then
@@ -11868,31 +12169,38 @@ if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
    [[ ${OPTION_FLAG[kuplock]} -eq 1 || ${OPTION_FLAG[kunlock]} -eq 1 ]];
 then
   e_and_l "$FULL_LINE"
-  e_and_l " ${bold_blue}Kernel-Update-Locking${colors_off}"
-  e_and_l "$FULL_LINE"
-  e_and_l " Die aktuell verwendete Kernel-Version ist ${bold_yellow}$(uname -r)${colors_off}."
+  e_and_l -n " ${bold_blue}Kernel-Update-Locking${colors_off} ${dark_grey}[ku"
   if [ ${OPTION_FLAG[kuplock]} -eq 1 ];
   then
-    e_and_l " Zur Stabilisierung des Systems können Updates des Kernels blockiert werden."
-    KERNEL_QUESTION="jetzt blockieren"
+    e_and_l -n "p"
   else
-    e_and_l " Aktualisierungen (Updates) für den Kernel sind derzeit blockiert."
-    KERNEL_QUESTION="wieder freigeben"
+    e_and_l -n "n"
+  fi
+  e_and_l "lock]${colors_off}"
+  e_and_l "$FULL_LINE"
+  # e_and_l " Die aktuell verwendete Kernel-Version ist ${bold_white}$CURR_KERNEL_VERSION${colors_off}."
+  if [ ${OPTION_FLAG[kuplock]} -eq 1 ];
+  then
+    e_and_l " Zur Stabilisierung des Systems können ${light_cyan}Updates des Kernels${colors_off} blockiert werden."
+    KERNEL_QUESTION="jetzt ${light_cyan}blockieren${colors_off}"
+  else
+    e_and_l " ${light_cyan}Aktualisierungen${colors_off} (Updates) ${light_cyan}für den Kernel${colors_off} sind derzeit blockiert."
+    KERNEL_QUESTION="wieder ${light_cyan}freigeben${colors_off}"
   fi
   ask_yes_or_no_plus "" " Updates für den Kernel $KERNEL_QUESTION" "" "n"
   if [ $? -eq 1 ];
   then
     if [ ${OPTION_FLAG[kuplock]} -eq 1 ];
     then
-      e_and_l -n " Blockiere Aktualisierungen (Updates) für den Linux-Kernel ... "
+      e_and_l -n " ${light_yellow}Blockiere Aktualisierungen${colors_off} (Updates) für den Linux-Kernel ... "
     else
-      e_and_l -n " Hebe Aktualisierungs-Blockade für den Linux-Kernel auf ... "
+      e_and_l -n " ${light_yellow}Entferne die Aktualisierungs-Blockade${colors_off} für den Linux-Kernel ... "
     fi
     LOCKING_ERRORS=0
     echo -e "" > "$LOG_TEMP"
-    for kp in ${KERNEL_PACKS[@]};
+    for kp in "${KERNEL_PACKS[@]}";
     do
-      if [ $(dpkg -l 2>/dev/null | grep -c -i -E "$kp") -gt 0 ];
+      if [ $(dpkg -l 2>/dev/null | grep -c -i "$kp") -gt 0 ];
       then
         if [ ${OPTION_FLAG[kuplock]} -eq 1 ];
         then
@@ -12030,6 +12338,7 @@ then
               e_and_l "$ERROR_TAG"
             fi
           fi
+          e_and_l "$HALF_MINUS_LINE"
         else
           e_and_l "$ACTION_MESSAGE ... $NC_TAG"
         fi
@@ -12139,6 +12448,7 @@ then
           e_and_l "$ERROR_TAG"
           add_full_log
         fi
+        e_and_l "$HALF_MINUS_LINE"
       fi
     else
       e_and_l "$ACTION_MESSAGE    ... $NC_TAG"
@@ -12166,6 +12476,7 @@ then
             e_and_l "$ERROR_TAG"
             add_full_log
           fi
+          e_and_l "$HALF_MINUS_LINE"
         fi
       else
         e_and_l "$ACTION_MESSAGE    ... $NC_TAG"
@@ -12233,7 +12544,6 @@ then
     if [ $ASKED_SSH_INST_NO -eq 0 ];
     then
       ACTION_MESSAGE=" Aktivierung des ${light_cyan}SSH-Server${colors_off} bei Systemstart"
-      TEMP_MSG="$ACTION_MESSAGE ... "
       if [ $OPENSSH_INSTALL_STATUS -eq 0 ];
       then
         if [ $(LANG=en systemctl is-enabled ssh 2>/dev/null | grep -i -c -E "enabled") -eq 0 ];
@@ -12252,13 +12562,13 @@ then
               add_full_log
             fi
             systemctl start ssh &>/dev/null
+            e_and_l "$HALF_MINUS_LINE"
           fi
         else
-          TEMP_MSG+="$NC_TAG"
-          e_and_l "$TEMP_MSG"
+          e_and_l "$ACTION_MESSAGE ... $NC_TAG"
         fi
       else # openssh-server nicht installiert
-        e_and_l "$(skip_text "$TEMP_MSG" "$NA_TXT")"
+        e_and_l "$(skip_text "$ACTION_MESSAGE ... " "$NA_TXT")"
       fi
     fi
   else # openssh-server nicht verfügbar
@@ -12303,8 +12613,8 @@ then
       while [ $NEW_SWAPPING -lt $MIN_SWAPPING ] ||
             [ $NEW_SWAPPING -gt $MAX_SWAPPING ];
       do
-        e_and_l -n " Bitte neuen Wert eingeben von ${bold_yellow}$MIN_SWAPPING${colors_off} bis ${bold_yellow}$MAX_SWAPPING${colors_off}"
-        read -p ": " NEW_SWAPPING
+        e_and_l -n " Bitte neuen Wert eingeben von ${bold_yellow}$MIN_SWAPPING${colors_off} bis ${bold_yellow}$MAX_SWAPPING${colors_off}: "
+        read -r NEW_SWAPPING
         NEW_SWAPPING=$(echo $NEW_SWAPPING | sed 's/[^0-9]*//g')
         if [ "$NEW_SWAPPING" == "" ]; then NEW_SWAPPING=0; fi
       done
@@ -12340,6 +12650,7 @@ then
         e_and_l "$ERROR_TAG"
         add_full_log
       fi
+      e_and_l "$HALF_MINUS_LINE"
     fi
   fi
 
@@ -12376,6 +12687,7 @@ then
         else
           e_and_l "$ERROR_TAG"
         fi
+        e_and_l "$HALF_MINUS_LINE"
       fi
     else
       e_and_l "$ACTION_MESSAGE$NC_TAG"
@@ -12405,6 +12717,7 @@ then
       e_and_l "$TEMP_MSG $NC_TAG"
       REDUCE_TMP_RAM=1
     else
+      e_and_l "$HALF_MINUS_LINE"
       # Abfrage ---------------------------------------------------------------
       # Wenn nach Abzug einer ev. vorhandenen RAM Disk und der Sicherheitsreserve für Linux
       # noch Platz ist, dann anbieten /tmp in den Hauptspeicher zu verlagern ...
@@ -12416,7 +12729,7 @@ then
         DO_MOVE_TMP=$?
       else # ... sonst fragen ob das trotzdem gewollt ist
         e_and_l " Es sind nur ${light_yellow}$FREE_MEMORY${colors_off} Hauptspeicher frei. Soll der Ordner ${light_cyan}/tmp${colors_off} trotzdem in den"
-        ask_yes_or_no_plus "unused_memory_2" " ${light_cyan}Hauptspeicher${colors_off} auslagert werden (NICHT empfohlen)" "" "n"
+        ask_yes_or_no_plus "unused_memory_2" " ${light_cyan}Hauptspeicher${colors_off} ausgelagert werden (NICHT empfohlen)" "" "n"
         DO_MOVE_TMP=$?
       fi
       # Auslagern -------------------------------------------------------------
@@ -12443,6 +12756,7 @@ then
           add_full_log
         fi
       fi
+      e_and_l "$HALF_MINUS_LINE"
     fi
   else
     e_and_l "$(skip_text "$ACTION_MESSAGE" "keine fstab!")"
@@ -12473,6 +12787,7 @@ then
     else
       if [ $FREE_FOR_RAMDISK -ge $RAMDISK_MIN_SIZE ];
       then
+        e_and_l "$HALF_MINUS_LINE"
         ask_yes_or_no_plus "ram_disk" "$ACTION_MESSAGE" "" "n"
         if [ $? -eq 1 ];
         then
@@ -12484,8 +12799,8 @@ then
             then
               e_and_l " ${bold_yellow}Tipp${colors_off}: Für die Verlagerung von Browser-Caches mind. ${light_yellow}$BROWSER_CACHE_MIN_SIZE${colors_off} (MB) angeben."
             fi
-            e_and_l -n " Bitte maximale Größe angeben von ${bold_yellow}$RAMDISK_MIN_SIZE${colors_off} bis ${bold_yellow}$FREE_FOR_RAMDISK${colors_off} (MB)"
-            read -p ": " RAMDISK_SIZE
+            e_and_l -n " Bitte maximale Größe angeben von ${bold_yellow}$RAMDISK_MIN_SIZE${colors_off} bis ${bold_yellow}$FREE_FOR_RAMDISK${colors_off} (MB): "
+            read -r RAMDISK_SIZE
             RAMDISK_SIZE=$(echo $RAMDISK_SIZE | sed 's/[^0-9]*//g')
             if [ "$RAMDISK_SIZE" == "" ]; then RAMDISK_SIZE=0; fi
           done
@@ -12539,6 +12854,7 @@ then
       else
         e_and_l "$TEMP_MSG ${bold_yellow}besser nicht${colors_off} ${dark_grey}(zu wenig Memory)${colors_off}"
       fi
+      e_and_l "$HALF_MINUS_LINE"
     fi
   else
     e_and_l "$(skip_text "$ACTION_MESSAGE " "keine fstab!")"
@@ -12623,6 +12939,7 @@ then
             remove_file "$LOCAL_DOWNLOAD_FILE"
             add_full_log
           fi
+          e_and_l "$HALF_MINUS_LINE"
         fi
       else
         e_and_l "$(skip_text "$ACTION_MESSAGE" "ab $BROWSER_CACHE_MIN_SIZE MB RDisk")"
@@ -12650,14 +12967,14 @@ then
       ask_yes_or_no_plus "wifi_speed_up" "$ACTION_MESSAGE" "" "j"
       if [ $? -eq 1 ];
       then
-        e_and_l -n "${ACTION_MESSAGE//96m/93m} ..."
+        e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
         create_backup_file "$WLAN_CONF_FILE"
         echo "$WLAN_CONF_TEXT" >> "$WLAN_CONF_FILE" 2>/dev/null
         modprobe -r iwlwifi &>/dev/null
         modprobe iwlwifi &>/dev/null
         if [ $? -eq 0 ];
         then
-          e_and_l "$OK_TAG"
+          e_and_l " $OK_TAG"
           CHANGES_MADE=1
           remove_double_empty_lines "$WLAN_CONF_FILE"
         else
@@ -12665,6 +12982,7 @@ then
           remove_file "$WLAN_CONF_FILE"
           restore_backup_file "$WLAN_CONF_FILE"
         fi
+        e_and_l "$HALF_MINUS_LINE"
       fi
     fi
   else
@@ -12695,6 +13013,7 @@ then
         else
           e_and_l " ... $ERROR_TAG $LINENO"
         fi
+        e_and_l "$HALF_MINUS_LINE"
       fi
     fi
   else
@@ -12732,6 +13051,7 @@ then
           remove_file "$WLAN_CONF_FILE"
           restore_backup_file "$WLAN_CONF_FILE"
         fi
+        e_and_l "$HALF_MINUS_LINE"
       fi
     fi
   else
@@ -12756,18 +13076,18 @@ then
       if [ $? -eq 1 ];
       then
         e_and_l " Ok, die Module zur ${light_yellow}Fehlerbericht-Erstellung${colors_off} werden jetzt entfernt."
-        echo -e "$HALF_MINUS_LINE"
+        e_and_l "$HALF_MINUS_LINE"
         if [ $APPORT_INSTALL_STATUS -gt 0 ];
         then
           INST_STATUS=1
           remove_pkg apport 0
-          echo -e "$HALF_MINUS_LINE"
+          e_and_l "$HALF_MINUS_LINE"
         fi
         if [ $WHOOPSIE_INSTALL_STATUS -gt 0 ];
         then
           INST_STATUS=1
           remove_pkg whoopsie 0
-          echo -e "$HALF_MINUS_LINE"
+          e_and_l "$HALF_MINUS_LINE"
         fi
       else
         # Wenn die System-Fehlerberichte nicht komplett deaktiviert werden sollen,
@@ -12811,6 +13131,7 @@ then
                 e_and_l "$ERROR_TAG"
                 add_full_log
               fi
+              e_and_l "$HALF_MINUS_LINE"
             fi
           else
             e_and_l "$ACTION_MESSAGE$NC_TAG"
@@ -12861,6 +13182,7 @@ then
           e_and_l "$ERROR_TAG"
           add_full_log
         fi
+        e_and_l "$HALF_MINUS_LINE"
       fi
     else
       e_and_l "$ACTION_MESSAGE$OK_TAG ${dark_grey}(Wert: $VALUE_MESSAGE)${colors_off}"
@@ -12913,6 +13235,7 @@ then
             e_and_l " $USER_CHOICE_NO"
           fi
         fi
+        # e_and_l "$HALF_MINUS_LINE"
       else # Schon optimiert
         e_and_l "$ACTION_MESSAGE ... $NC_TAG"
       fi
@@ -12968,11 +13291,11 @@ then
       ask_yes_or_no_plus "raspy_performance" " Sollen die Taktfreqenzen geändert werden"
       if [ $? -eq 1 ];
       then
-        echo -e " Bitte neues Performance-Profil auswählen"
+        e_and_l " Bitte neues Performance-Profil auswählen"
         i=0
         for perfname in ${pi_perfname[@]};
         do
-          echo -e " [${bold_yellow}$i${colors_off}] $perfname (${pi_arm_freq[$i]} MHz)"
+          e_and_l " [${bold_yellow}$i${colors_off}] $perfname (${pi_arm_freq[$i]} MHz)"
           ((i+=1))
         done
         setterm -cursor off 2>/dev/null
@@ -13056,6 +13379,7 @@ then
             e_and_l "$ERROR_TAG"
           fi
         fi
+        e_and_l "$HALF_MINUS_LINE"
       fi
     else # Keine config.txt
       SHOW_SKIP_MESSAGE="$PIOS_TXT"
@@ -13122,6 +13446,7 @@ then
                 e_and_l "$ERROR_TAG $LINENO"
               fi
             fi
+            e_and_l "$HALF_MINUS_LINE"
           fi
         else
           e_and_l -n "$ACTION_MESSAGE"
@@ -13238,6 +13563,7 @@ then
             e_and_l "$ERROR_TAG"
           fi
         fi
+        e_and_l "$HALF_MINUS_LINE"
       fi
     else # Keine Config-Datei
       e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
@@ -13277,6 +13603,7 @@ then
           e_and_l "$ERROR_TAG $LINENO"
           add_full_log
         fi
+        e_and_l "$HALF_MINUS_LINE"
       fi
     else
       e_and_l "$ACTION_MESSAGE ... $NC_TAG"
@@ -13314,6 +13641,7 @@ then
             else
               e_and_l "$ERROR_TAG $LINENO"
             fi
+            e_and_l "$HALF_MINUS_LINE"
           fi
         else
           e_and_l "$ACTION_MESSAGE ... $NC_TAG"
@@ -13360,6 +13688,7 @@ then
               e_and_l "$ERROR_TAG $LINENO"
             fi
           fi
+          # e_and_l "$HALF_MINUS_LINE"
         else
           e_and_l "$ACTION_MESSAGE ... $ERROR_TAG $LINENO"
         fi
@@ -13506,6 +13835,7 @@ EOF
           else
             e_and_l "$ERROR_TAG"
           fi
+          e_and_l "$HALF_MINUS_LINE"
         fi
       else
         e_and_l "$ACTION_MESSAGE  ... $NC_TAG"
@@ -13604,6 +13934,7 @@ EOF
         else
           e_and_l "$OK_TAG"
         fi
+        e_and_l "$HALF_MINUS_LINE"
       fi
     else
       e_and_l "$ACTION_MESSAGE ... $NC_TAG"
@@ -13622,6 +13953,7 @@ EOF
     if [ $(grep -i -c -E "$THE_GUESTUSER_LINE" "$LDM_CONF_FILE" 2>/dev/null) -gt 0 ];
     then
       THE_BAD_LINE=$(grep -i -E "$THE_GUESTUSER_LINE" "$LDM_CONF_FILE" 2>/dev/null)
+      e_and_l "$HALF_MINUS_LINE"
       e_and_l " $WARN_TAG: Die Anmeldung enthält einen ${light_cyan}Gastzugang${colors_off}."
       ask_yes_or_no_plus "login_no_guest" " Soll die ${light_cyan}Anmeldung als Gast${colors_off} deaktiviert werden"
       if [ $? -eq 1 ];
@@ -13644,6 +13976,7 @@ EOF
         else
           e_and_l "$ERROR_TAG"
         fi
+        e_and_l "$HALF_MINUS_LINE"
       fi
     else
       e_and_l -n "$ACTION_MESSAGE ... "
@@ -13849,6 +14182,7 @@ EOF
         else
           TEMP_MSG+="$OK_TAG"
         fi
+        TEMP_MSG+="$HALF_MINUS_LINE"
       fi
       # ----------------------------------------------------------
 
@@ -13911,8 +14245,8 @@ EOF
     ARCTICA_FILE="/usr/share/glib-2.0/schemas/30_ubuntu-mate.gschema.override"
     LDM_CFILE_LIST="lightdm-gtk-greeter.conf.d/99_linuxmint.conf lightdm-gtk-greeter.conf slick-greeter.conf"
     if [ -s "$ARCTICA_FILE" ] ||
-      [ -s "$GDM_DCONF_FILE" ] ||
-      [ -d "$LDM_CONF_DIR" ];
+       [ -s "$GDM_DCONF_FILE" ] ||
+       [ -d "$LDM_CONF_DIR" ];
     then
       if [ ! -s "$ARCTICA_FILE" ];
       then
@@ -13965,9 +14299,9 @@ EOF
           while [ "$THE_NEW_BG_FILE" == "NONE" ];
           do
             e_and_l -n " Neues Bild: "
-            read THE_NEW_BG_FILE
+            read -r THE_NEW_BG_FILE
             if [ "$THE_NEW_BG_FILE" != "" ] &&
-              [[ ! -s "$THE_NEW_BG_FILE" || -d "$THE_NEW_BG_FILE" ]];
+               [[ ! -s "$THE_NEW_BG_FILE" || -d "$THE_NEW_BG_FILE" ]];
             then
               THE_NEW_BG_FILE="NONE"
             fi
@@ -14075,6 +14409,7 @@ EOF
           else
             e_and_l " Das ist bereits das Hintergrundbild und wird daher ${bold_white}nicht${colors_off} geändert."
           fi
+          # e_and_l "$HALF_MINUS_LINE"
         fi
       else
         e_and_l "$(skip_text "$ACTION_MESSAGE" "nicht in Arctica")"
@@ -14127,6 +14462,7 @@ EOF
           else
             e_and_l "$ERROR_TAG $LINENO"
           fi
+          e_and_l "$HALF_MINUS_LINE"
         fi
       else
         e_and_l "$ACTION_MESSAGE      ... $NC_TAG"
@@ -14195,6 +14531,7 @@ EOF
         e_and_l "$ERROR_TAG $LINENO"
         add_full_log
       fi
+      e_and_l "$HALF_MINUS_LINE"
     fi
   fi
   remove_file "$LOCAL_DOWNLOAD_FILE"
@@ -14251,6 +14588,7 @@ EOF
             remove_file "$LOCAL_DOWNLOAD_FILE"
             add_full_log
           fi
+          e_and_l "$HALF_MINUS_LINE"
         fi
       else
         e_and_l "$ACTION_MESSAGE   ... $NC_TAG"
@@ -14296,6 +14634,7 @@ EOF
         else
           e_and_l "$ERROR_TAG $LINENO"
         fi
+        e_and_l "$HALF_MINUS_LINE"
       fi
     else
       e_and_l "$ACTION_MESSAGE ... $NC_TAG"
@@ -14391,6 +14730,7 @@ EOF
         else
           e_and_l "$ERROR_TAG"
         fi
+        # e_and_l "$HALF_MINUS_LINE"
       fi
     else
       e_and_l "$ACTION_MESSAGE$OK_TAG ${dark_grey}(Wert: $VALUE_MESSAGE)${colors_off}"
@@ -14458,6 +14798,7 @@ EOF
         else
           e_and_l "$ERROR_TAG $LINENO"
         fi
+        e_and_l "$HALF_MINUS_LINE"
       fi
     else
       e_and_l "$ACTION_MESSAGE   ... $NC_TAG"
@@ -14528,6 +14869,7 @@ EOF
           else
             e_and_l "$ERROR_TAG $LINENO"
           fi
+          e_and_l "$HALF_MINUS_LINE"
         fi
       else
         e_and_l "$ACTION_MESSAGE ... $NC_TAG"
@@ -14630,6 +14972,7 @@ EOF
             restore_backup_file "$BASH_ALIAS_FILE"
             e_and_l "$ERROR_TAG $LINENO"
           fi
+          # e_and_l "$HALF_MINUS_LINE"
         fi
       else
         e_and_l "$ACTION_MESSAGE  ... $NC_TAG"
@@ -15018,7 +15361,7 @@ EOF
         e_and_l -n " - Anzahl der ${light_cyan}geschriebenen Bytes${colors_off}    ... "
         TOTAL_BYTES_WRITTEN=$((DISK_TOTAL_LBA * 512))
         TOTAL_BYTES_WRITTEN=$(show_human_bytes ${TOTAL_BYTES_WRITTEN} "M")
-        echo -e "${light_yellow}$TOTAL_BYTES_WRITTEN${colors_off}"
+        e_and_l "${light_yellow}$TOTAL_BYTES_WRITTEN${colors_off}"
       fi
       # ---------------------------------------
     done < "$THE_DISK_LIST"
@@ -15085,19 +15428,19 @@ then
   e_and_l "$FULL_LINE"
   e_and_l " ${bold_blue}Reaktivierung vormals deaktivierter Komponenten${colors_off} ${dark_grey}[revive]${colors_off}"
   e_and_l "$FULL_LINE"
-  echo -e -n " Starte Suche deaktivierter Komponenten, bitte warten ... "
+  e_and_l -n " Starte Suche deaktivierter Komponenten, bitte warten ... "
   NOTHING_FOUND_TEXT="Es wurden keine deaktivierten Komponenten gefunden"
-  echo -e -n "" > "$DEACTIVATED_ITEM_LIST"
-  find / -iname "*.deactivated" -type d,f 1>>"$DEACTIVATED_ITEM_LIST" 2>/dev/null
+  echo -e -n "" > "$DEACTIVATED_ITEMS_LIST"
+  find / -iname "*.deactivated" -type d,f 1>>"$DEACTIVATED_ITEMS_LIST" 2>/dev/null
   # Doppelte Einträge entfernen
-  if [ -s "$DEACTIVATED_ITEM_LIST" ];
+  if [ -s "$DEACTIVATED_ITEMS_LIST" ];
   then
     THE_TEMP_FILE="$DOWNLOAD_DIR/tmp_rv_item_list.tmp"
-    awk '!seen[$0]++' "$DEACTIVATED_ITEM_LIST" > "$THE_TEMP_FILE" 2>/dev/null
-    remove_file "$DEACTIVATED_ITEM_LIST"
-    mv -f "$THE_TEMP_FILE" "$DEACTIVATED_ITEM_LIST" &>/dev/null
+    awk '!seen[$0]++' "$DEACTIVATED_ITEMS_LIST" > "$THE_TEMP_FILE" 2>/dev/null
+    remove_file "$DEACTIVATED_ITEMS_LIST"
+    mv -f "$THE_TEMP_FILE" "$DEACTIVATED_ITEMS_LIST" &>/dev/null
   fi
-  echo -e "$FERTIG_TAG"
+  e_and_l "$FERTIG_TAG"
   do_revive_items
 fi
 
@@ -15514,11 +15857,23 @@ then
   if [ -s "$DESKTOP_STARTER_LIST" ];
   then
     ANZAHL_STARTER=$(cat "$DESKTOP_STARTER_LIST" | wc -l)
+    e_and_l "$HALF_MINUS_LINE"
     e_and_l " Es wurden ${bold_yellow}$ANZAHL_STARTER${colors_off} ${light_cyan}Starter${colors_off} auf dem Desktop des Benutzers gefunden."
+    STARTER_IN_SUBDIRS=$(cat "$DESKTOP_STARTER_LIST" | grep -E "$DESKTOP_DIR\/.*\/" | wc -l)
+    if [ $STARTER_IN_SUBDIRS -gt 0 ];
+    then
+      e_and_l " Davon sind ${light_yellow}$STARTER_IN_SUBDIRS${colors_off} Starter in Unterordnern enthalten."
+      if [ "$DESKTOP_ENVIRONMENT" == "XFCE" ];
+      then
+        e_and_l " $HINWEIS_TAG: Auf dem XFCE-Desktop werden zu Startern in Unterordnern nicht die"
+        e_and_l " Anwendungsnamen sondern nur deren Dateinamen angezeigt. Dies ist ein Manko"
+        e_and_l " in XFCE und kann auch mit korrekten Zugriffsrechten nicht geändert werden."
+      fi
+    fi
     ask_yes_or_no_plus "all_starter_trusted" " Sollen alle Starter ausführbar gemacht werden" "" "n"
     if [ $? -eq 1 ];
     then
-      e_and_l -n " Mache ${light_yellow}Starter ausführbar${colors_off}, bitte warten   ... "
+      e_and_l -n " Mache die ${light_yellow}Starter ausführbar${colors_off}, bitte warten ... "
       while read starter_file;
       do
         if [ "$starter_file" != "" ];
@@ -15591,6 +15946,7 @@ then
         apt clean &>/dev/null
         apt autoclean &>/dev/null
         e_and_l "$OK_TAG"
+        e_and_l "$HALF_MINUS_LINE"
         for pkg in "${PKG_BROKEN_ARRAY[@]}";
         do
           DO_REPAIR_THIS=1
@@ -15611,10 +15967,12 @@ then
               e_and_l "$ERROR_TAG"
             fi
           fi
+          e_and_l "$HALF_MINUS_LINE"
         done
       fi
       remove_file "$PKG_BROKEN_LIST"
     else
+      e_and_l "$HALF_MINUS_LINE"
       e_and_l " $HINWEIS_TAG: Die Liste der fehlerhaften Abhängigkeiten ist gespeichert in:"
       e_and_l " ${light_yellow}$PKG_BROKEN_LIST${colors_off}"
     fi
@@ -15648,15 +16006,12 @@ then
   if [ $? -eq 0 ];
   then
     e_and_l -n "$ACTION_MESSAGE"
-    EXPIRED_APT_FILE="expired-apt-keys.txt"
-    EXPIRED_APT_LIST="$DOWNLOAD_DIR/$EXPIRED_APT_FILE"
     LANG=en apt-key list 2>/dev/null | grep -A 2 -i -E "(expired|verfallen):" | awk 'NR>1' | \
-    sed 's/^[[:space:]]*/ /g' | sed 's/[[:space:]]*uid.*\][[:space:]]*/ /gi' > "$EXPIRED_APT_LIST"
-    if [ -s "$EXPIRED_APT_LIST" ];
+    sed 's/^[[:space:]]*/ /g' | sed 's/[[:space:]]*uid.*\][[:space:]]*/ /gi' > "$EXPIRED_APT_KEYS_LIST"
+    if [ -s "$EXPIRED_APT_KEYS_LIST" ];
     then
       e_and_l "$WARN_TAG"
-      e_and_l " Folgende APT-Signaturen sind ${bold_red}abgelaufen${colors_off} und damit ungültig"
-      e_and_l " (Liste wurde auch gespeichert in $EXPIRED_APT_FILE):"
+      e_and_l " Folgende APT-Signaturen sind ${bold_red}abgelaufen${colors_off} und damit ungültig:"
       declare -A APT_EXP_KEY
       declare -A APT_EXP_DSC
       APT_KEY_IDX=1
@@ -15666,8 +16021,9 @@ then
         APT_EXP_KEY["$APT_KEY_IDX"]="$expired_key"
         APT_EXP_DSC["$APT_KEY_IDX"]="$key_description"
         ((APT_KEY_IDX+=1))
-      done < "$EXPIRED_APT_LIST"
+      done < "$EXPIRED_APT_KEYS_LIST"
       knr=1
+      e_and_l "$HALF_MINUS_LINE"
       while [ $knr -lt $APT_KEY_IDX ];
       do
         expired_key="${APT_EXP_KEY[$knr]}"
@@ -15719,9 +16075,13 @@ then
           fi
         fi
         ((knr+=1))
+        e_and_l "$HALF_MINUS_LINE"
       done
+      e_and_l " $HINWEIS_TAG: Die Liste der abgelaufenen APT-Key-Signaturen ist gespeichert in:"
+      e_and_l " ${light_yellow}$EXPIRED_APT_KEYS_LIST${colors_off}"
+      e_and_l "$HALF_LINE"
     else
-      remove_file "$EXPIRED_APT_LIST"
+      remove_file "$EXPIRED_APT_KEYS_LIST"
       e_and_l "$NF_TAG"
     fi
   else
@@ -15771,11 +16131,11 @@ then
           e_and_l " Es wurden veraltete Einträge gefunden. Es wird empfohlen, die folgenden"
           e_and_l " Einträge in ein neues Format umzuwandeln (bitte jeweils auswählen):"
           knr=1
+          e_and_l "$HALF_MINUS_LINE"
           while [ $knr -lt $APT_KEY_IDX ];
           do
             THE_OLD_KEY="${APT_TMP_KEY[$knr]}"
             THE_KEY_DESC="${APT_TMP_DSC[$knr]}"
-            echo -e "$HALF_MINUS_LINE"
             ask_yes_or_no_plus "" " - $THE_KEY_DESC" "" "j"
             if [ $? -eq 1 ];
             then
@@ -15820,6 +16180,7 @@ then
                 e_and_l " $ERROR_TAG $LINENO"
               fi
             fi
+            e_and_l "$HALF_MINUS_LINE"
             ((knr+=1))
           done
           add_full_log
@@ -16123,9 +16484,9 @@ then
   # Löschen nicht verwendeter Kernel-Versionen
   # ============================================================================
   OLD_KERNEL_LIST="$DOWNLOAD_DIR/old_kernel_List.tmp"
-  # Aktuelle Kernel-Version ermitteln
-  CURR_KERNEL_VERSION="$(uname -r | sed 's/-generic//i' | sed 's/-common//i' | sed 's/-amd64//i' | sed 's/-i386//i')"
+  # ----------------------------------------------------------------------------
   # Nicht verwendete Kernel-Versionen ermitteln
+  # ----------------------------------------------------------------------------
   echo $(dpkg -l linux-{image,headers}-"[0-9]*" 2>/dev/null | awk '/ii/{print $2}' | grep -ve "$(uname -r | sed -r 's/-[a-z]+//')") > "$OLD_KERNEL_LIST"
   declare -A REMOVE_KERNEL_TABLE
   REMOVE_KERNEL_IDX=0
@@ -16146,26 +16507,35 @@ then
       fi
     fi
   done < "$OLD_KERNEL_LIST"
+  # ----------------------------------------------------------------------------
+  # Wenn Einträge gefunden wurden, dann diese einzeln mit Abfrage löschen
+  # ----------------------------------------------------------------------------
   if [ -s "$OLD_KERNEL_LIST" ] &&
      [ $REMOVE_KERNEL_IDX -gt 0 ];
   then
     e_and_l " Es wurden ${bold_yellow}$REMOVE_KERNEL_IDX${colors_off} Einträge von ${light_cyan}nicht verwendeten Kernel-Versionen${colors_off} gefunden."
-    e_and_l " Die aktuell verwendete Version ist: ${light_cyan}$CURR_KERNEL_VERSION${colors_off}."
+    e_and_l " Die aktuell verwendete Version ist: ${bold_white}$CURR_KERNEL_VERSION${colors_off}."
     ask_yes_or_no_plus "remove_unused_kernels" " Nicht verwendete Versionen auswählbar löschen" "" "n"
     if [ $? -eq 1 ];
     then
       kernel_changed=0
+      e_and_l "$HALF_MINUS_LINE"
       for old_kernel in ${REMOVE_KERNEL_TABLE[@]};
       do
-        ask_yes_or_no_plus "" " Version ${light_cyan}$old_kernel${colors_off} löschen"
+        ask_yes_or_no_plus "" " Version ${light_cyan}$old_kernel${colors_off} löschen" "" "n"
         if [ $? -eq 1 ];
         then
+          # ----------------------
           # Kernel selbst löschen
+          # ----------------------
           e_and_l -n " Lösche ${bold_yellow}$old_kernel${colors_off} ... "
           apt-get purge -y "$old_kernel" &>"$LOG_TEMP"
           if [ $? -eq 0 ];
           then
-            # Verbliebene Komponenten löschen, sofern diese nicht mehr gebraucht werden
+            # ----------------------------------------
+            # Verbliebene Komponenten löschen, sofern
+            # diese nicht mehr gebraucht werden
+            # ----------------------------------------
             kernel_base_name="$(echo ${old_kernel} | sed 's/linux-image-//i' | sed 's/linux-headers-//i')"
             kernel_config_file="/boot/config-$kernel_base_name"
             if [ -f "$kernel_config_file" ];
@@ -16198,7 +16568,11 @@ then
             add_full_log
           fi
         fi
+        e_and_l "$HALF_MINUS_LINE"
       done
+      # ------------------------------------------------------------------------
+      # Wenn Einträge gelöscht wurden, initramfs und Boot-Loader aktualisieren
+      # ------------------------------------------------------------------------
       if [ $kernel_changed -gt 0 ];
       then
         e_and_l " Es wurden ${light_yellow}$kernel_changed${colors_off} Einträge gelöscht."
@@ -16307,6 +16681,7 @@ then
       # ----------------------------------------------------
       if [ $REMOVE_MODE -gt 0 ];
       then
+        e_and_l "$HALF_MINUS_LINE"
         for pkg in "${PKG_GARBAGE_ARRAY[@]}";
         do
           DO_REMOVE_THIS=1
@@ -16327,10 +16702,12 @@ then
               e_and_l "$ERROR_TAG"
             fi
           fi
+          e_and_l "$HALF_MINUS_LINE"
         done
       fi
       remove_file "$PKG_GARBAGE_LIST"
     else
+      e_and_l "$HALF_MINUS_LINE"
       e_and_l " $HINWEIS_TAG: Die Liste der nicht mehr benötigten Komponenten ist gespeichert in:"
       e_and_l " ${light_yellow}$PKG_GARBAGE_LIST${colors_off}"
     fi
@@ -16387,6 +16764,7 @@ then
       # ----------------------------------------------------
       if [ $REMOVE_MODE -gt 0 ];
       then
+        e_and_l "$HALF_MINUS_LINE"
         for pkg in "${CONFIG_REST_ARRAY[@]}";
         do
           DO_REMOVE_THIS=1
@@ -16407,10 +16785,12 @@ then
               e_and_l "$ERROR_TAG"
             fi
           fi
+          e_and_l "$HALF_MINUS_LINE"
         done
       fi
       remove_file "$CONFIG_REST_LIST"
     else
+      e_and_l "$HALF_MINUS_LINE"
       e_and_l " $HINWEIS_TAG: Die Liste der verwaisten Konfigurationen ist gespeichert in:"
       e_and_l " ${light_yellow}$CONFIG_REST_LIST${colors_off}"
     fi
@@ -16536,6 +16916,7 @@ then
       then
         e_and_l " Folgende ungültigen Verknüpfungen wurden gefunden:"
         i=1
+        e_and_l "$HALF_MINUS_LINE"
         for broken_line in "${BROKEN_LINK_TABLE[@]}";
         do
           if [ "$broken_line" != "" ];
@@ -16543,6 +16924,7 @@ then
             THE_LINK_PATH="$(echo -e -n "$broken_line" | sed -E "s/'/\\\'/g" | cut -d'>' -f 1 | xargs 2>/dev/null)"
             THE_TARGET_PATH="$(echo -e -n "$broken_line" | sed -E "s/'/\\\'/g" | cut -d'>' -f 2 | xargs 2>/dev/null)"
             e_and_l " $i. ${light_red}$THE_LINK_PATH${colors_off} -> ${light_purple}$THE_TARGET_PATH${colors_off}"
+            e_and_l "$HALF_MINUS_LINE"
           fi
           ((i+=1))
         done
@@ -16559,6 +16941,7 @@ then
       # ----------------------------------------------------
       if [ $LINK_ACTION -gt 0 ];
       then
+        e_and_l "$HALF_MINUS_LINE"
         for broken_line in "${BROKEN_LINK_TABLE[@]}";
         do
           if [ "$broken_line" != "" ];
@@ -16572,7 +16955,7 @@ then
             if [ $LINK_ACTION -eq 1 ];
             then
               e_and_l " ${light_cyan}$THE_LINK_PATH${colors_off} -> ${dark_grey}$THE_TARGET_PATH${colors_off}"
-              ask_yes_or_no_plus "" " Löschen" "" "n"
+              ask_yes_or_no_plus "" " Ungültige Verknüpfung löschen" "" "n"
               DO_REMOVE_LINK=$?
             fi
             # --------------
@@ -16587,11 +16970,13 @@ then
                 e_and_l "$ERROR_TAG"
               fi
             fi
+            e_and_l "$HALF_MINUS_LINE"
           fi
         done
       fi
       remove_file "$BROKEN_LINKS_LIST"
     else
+      e_and_l "$HALF_MINUS_LINE"
       e_and_l " $HINWEIS_TAG: Die Liste der ungültigen Verknüpfungen ist gespeichert in:"
       e_and_l " ${light_yellow}$BROKEN_LINKS_LIST${colors_off}"
     fi
@@ -16627,6 +17012,7 @@ then
       else
         e_and_l "$ERROR_TAG"
       fi
+      e_and_l "$HALF_MINUS_LINE"
     fi
   else
     e_and_l "$ACTION_MESSAGE$NF_TAG"
@@ -16685,6 +17071,7 @@ then
           e_and_l "$ERROR_TAG"
         fi
         add_full_log
+        e_and_l "$HALF_MINUS_LINE"
       fi
     else
       e_and_l "$ACTION_MESSAGE$ND_TAG"
@@ -16719,6 +17106,7 @@ then
           e_and_l "$ERROR_TAG"
         fi
         add_full_log
+        e_and_l "$HALF_MINUS_LINE"
       fi
     else
       e_and_l "$ACTION_MESSAGE$ND_TAG"
@@ -16778,6 +17166,7 @@ then
         e_and_l "$ERROR_TAG"
         add_full_log
       fi
+      # e_and_l "$HALF_MINUS_LINE"
     fi
   else
     e_and_l "$ACTION_MESSAGE$ND_TAG"
@@ -16797,11 +17186,12 @@ then
   # -----------------------------------------------------------------------
   # Eingabe der Zugangsdaten zur Verifizierung auf dem Server
   # -----------------------------------------------------------------------
-  read -i "$USER_USERNAME" -p " Bitte Benutzernamen eingeben: " -r TMP_USER_NAME
+  e_and_l -n " Bitte Benutzernamen eingeben: "
+  read -i "$USER_USERNAME" -r TMP_USER_NAME
   TMP_USER_NAME="${TMP_USER_NAME:-$USER_USERNAME}"
   TMP_USER_NAME=$(echo "$TMP_USER_NAME" | tr -d -c '[:alnum:]_' | tr '[:upper:]' '[:lower:]')
-  e_and_l -n " ${colors_off}Bitte Passwort für ${bold_yellow}${TMP_USER_NAME}${colors_off} eingeben: "
   stty -echo &>/dev/null
+  e_and_l -n " Bitte Passwort für ${bold_yellow}${TMP_USER_NAME}${colors_off} eingeben: "
   read -r -s USER_PASSWORD
   stty echo &>/dev/null
   DOWNLOAD_FILE_URL="$RESSOURCE_DOWNLOADER"
@@ -17406,7 +17796,7 @@ then
     # -----
     if [ $SNAP_INSTALLED -ne 0 ];
     then
-      snap list | grep -i ${GUESS_NAME} 1>"$GUESS_INSTALL_LIST_SNAP" 2>/dev/null
+      snap list 2>/dev/null | grep -i ${GUESS_NAME} 1>"$GUESS_INSTALL_LIST_SNAP" 2>/dev/null
     fi
     # ----
     # WEB
@@ -17511,12 +17901,16 @@ then
     if [ $INST_STATUS -eq 0 ];
     then
       e_and_l " ${light_blue}Schritt 1/3:${colors_off} Löschen verbliebener Paketrückstände"
-      echo -e " Starte Suche, bitte warten ... $FERTIG_TAG"
+      e_and_l " Starte Suche, bitte warten ... $FERTIG_TAG" # Nur Info-Anzeige
       TMP_PURGE_OUT="$DOWNLOAD_DIR/purge_output.tmp"
       if [ $(apt list "$REMOVE_PKG_NAME" -a 2>/dev/null | grep -c -i -E "$REMOVE_PKG_NAME") -gt 0 ];
       then
         { apt purge "$REMOVE_PKG_NAME" -y 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; } | tee "$TMP_PURGE_OUT"
-        # REMOVE_RESULT=$(cat "$LAST_EXIT_CODE")
+        REMOVE_RESULT=$(cat "$LAST_EXIT_CODE")
+        if [ $REMOVE_RESULT -eq 0 ];
+        then
+          e_and_l " Gefundene Paketrückstände wurden entfernt ... $OK_TAG"
+        fi
       fi
       if [ ! -s "$TMP_PURGE_OUT" ];
       then
