@@ -5379,6 +5379,7 @@ PRE_SPACE=$(printf ' %.0s' {1..5})
 NA_TXT="nicht verfügbar"
 NE_TXT="nicht ermittelbar"
 NF_TXT="nicht gefunden"
+NG_TXT="nicht bei GNOME"
 NM_TXT="nur MATE-Desktop"
 NR_TXT="nicht für root"
 NU_TXT="nur mit Ubuntu"
@@ -8114,7 +8115,7 @@ FORCE_STARTER=( 'caja' 'nemo' 'thunar' 'pi-gpk-prefs' 'pi-gpk-log' 'pi-gpk-updat
 # ACHTUNG: Bei Einsatz von Wildcards (*) darauf achten, dass diese mit
 #          "find -iname" und mit "grep -E" die gleichen Ergebnisse liefern!
 #===============================================================================
-REJECT_STARTER=('alacarte-made' 'caja-autorun-software' 'caja-browser' 'caja-computer' 'caja-folder-handler' 'caja-home' 'chromium_daemon' 'cinnamon-wayland' 'clamtk-kde' 'idle-python*' 'mate-panel' 'mate-network-scheme' 'mate-theme-installer' 'mozo-made' 'nemo-autostart' 'org.gnome.Evolution-alarm-notify' 'panel-desktop-handler' 'xfce4-run')
+REJECT_STARTER=('alacarte-made' 'caja-autorun-software' 'caja-browser' 'caja-computer' 'caja-folder-handler' 'caja-home' 'chromium_daemon' 'cinnamon-wayland' 'clamtk-kde' 'idle-python*' 'mate-panel' 'mate-network-scheme' 'mate-theme-installer' 'mozo-made' 'nemo-autostart' 'nemo-autorun-software' 'org.gnome.Evolution-alarm-notify' 'panel-desktop-handler' 'xfce4-run')
 
 #===============================================================================
 # Starter die bspw. aufgrund ihres Dateinamens unvermeidbar zusätzlich oder
@@ -11329,8 +11330,8 @@ then
               e_and_l "$ERROR_TAG $LINENO"
             fi
             add_full_log
+            e_and_l "$HALF_MINUS_LINE"
           fi
-          e_and_l "$HALF_MINUS_LINE"
           remove_file "$MISSING_SUPPORT_LIST"
         else
           e_and_l "$ACTION_MESSAGE ... $KF_TAG"
@@ -11417,7 +11418,7 @@ then
     # ==========================================================================
     ACTION_MESSAGE=" Extra-Mauszeiger ${light_cyan}CursorPack${colors_off} installieren"
     USER_ICON_DIR="$USER_HOME_DIR/.icons"
-    if [ "$DESKTOP_ENVIRONMENT" == "MATE" ];
+    if [ "$DESKTOP_ENVIRONMENT" != "GNOME" ];
     then
       if [ ! -f "$USER_ICON_DIR/.CursorPack_ok" ];
       then
@@ -11430,8 +11431,8 @@ then
           LOCAL_DOWNLOAD_FILE="$DOWNLOAD_DIR/$DOWNLOAD_FILE_NAME"
           wget -nv -O "$LOCAL_DOWNLOAD_FILE" "$DOWNLOAD_FILE_URL" &>"$LOG_TEMP"
           if [ $? -eq 0 ] &&
-              [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
-              [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
+             [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
+             [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
           then
             chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
             if [ ! -d "$USER_ICON_DIR" ];
@@ -11466,8 +11467,8 @@ then
       else
         e_and_l "$ACTION_MESSAGE   ... $NC_TAG"
       fi
-    else # kein MATE
-      e_and_l "$(skip_text "$ACTION_MESSAGE  " "$NM_TXT")"
+    else # Gnome
+      e_and_l "$(skip_text "$ACTION_MESSAGE  " "$NG_TXT")"
     fi
 
     # ==========================================================================
@@ -12787,7 +12788,7 @@ then
     else
       if [ $FREE_FOR_RAMDISK -ge $RAMDISK_MIN_SIZE ];
       then
-        e_and_l "$HALF_MINUS_LINE"
+        # e_and_l "$HALF_MINUS_LINE"
         ask_yes_or_no_plus "ram_disk" "$ACTION_MESSAGE" "" "n"
         if [ $? -eq 1 ];
         then
@@ -12850,11 +12851,11 @@ then
               e_and_l " Sicherheitshalber wurde die ${light_cyan}RAM Disk${colors_off} ${bold_red}nicht${colors_off} neu erstellt!"
             fi
           fi
+          e_and_l "$HALF_MINUS_LINE"
         fi
       else
         e_and_l "$TEMP_MSG ${bold_yellow}besser nicht${colors_off} ${dark_grey}(zu wenig Memory)${colors_off}"
       fi
-      e_and_l "$HALF_MINUS_LINE"
     fi
   else
     e_and_l "$(skip_text "$ACTION_MESSAGE " "keine fstab!")"
@@ -13976,11 +13977,10 @@ EOF
         else
           e_and_l "$ERROR_TAG"
         fi
-        e_and_l "$HALF_MINUS_LINE"
       fi
+      e_and_l "$HALF_MINUS_LINE"
     else
-      e_and_l -n "$ACTION_MESSAGE ... "
-      e_and_l "$NC_TAG"
+      e_and_l "$ACTION_MESSAGE ... $NC_TAG"
     fi
   else
     e_and_l "$(skip_text "$ACTION_MESSAGE" "nur bei LDM")"
@@ -14285,6 +14285,7 @@ EOF
           fi
         # fi
         if [ "$CURRENT_LOGIN_BG" == "" ]; then CURRENT_LOGIN_BG="Standard"; fi
+        e_and_l "$HALF_MINUS_LINE"
         e_and_l " ${light_cyan}Hintergrundbild${colors_off}: ${dark_grey}$CURRENT_LOGIN_BG${colors_off}"
         # -------------------
         # Sicherheitsabfrage
@@ -14418,7 +14419,7 @@ EOF
       e_and_l "$(skip_text "$ACTION_MESSAGE" "nur LDM und GDM")"
     fi
   else
-    e_and_l "$(skip_text "$ACTION_MESSAGE" "nicht bei GNOME")"
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "$NG_TXT")"
   fi
   # ============================================================================
 
