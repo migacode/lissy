@@ -39,7 +39,7 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 26.06.2025
+# Letzte Änderung: 27.06.2025
 VERSION="5.0.1"
 
 ################################################################################
@@ -11199,13 +11199,13 @@ then
             add_full_log
           fi
         else
-          e_and_l "$(skip_text "$ACTION_MESSAGE " "$NV_TXT")"
+          e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
         fi
       else
         e_and_l "$ACTION_MESSAGE $NC_TAG"
       fi
     else
-      e_and_l "$(skip_text "$ACTION_MESSAGE " "$NV_TXT")"
+      e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
     fi
 
     # ==========================================================================
@@ -11856,11 +11856,11 @@ then
     # ==========================================================================
     # Diverse Desktop-Tools einrichten (ggf. mit Autostart)
     # ==========================================================================
-    AUTOSTART_ACTIVATE_LIST=('copyq' 'redshift-gtk' 'tilda')
-    AUTOSTART_ACTIVATE_NAME=('CopyQ' 'Redshift' 'Tilda')
-    AUTOSTART_ACTIVATE_DESC=('Zwischenablage-Manager ' 'Farbtemperaturanpassung' 'Ausklapp-Terminal (F12)')
-    AUTOSTART_ACTIVATE_ICON=('copyq' 'redshift' 'tilda')
-    AUTOSTART_ACTIVATE_ONLY=('all' 'all' 'ubuntu')
+    AUTOSTART_ACTIVATE_LIST=('copyq' 'redshift-gtk')
+    AUTOSTART_ACTIVATE_NAME=('CopyQ' 'Redshift')
+    AUTOSTART_ACTIVATE_DESC=('Zwischenablage-Manager' 'Farbtemperaturanpassung')
+    AUTOSTART_ACTIVATE_ICON=('copyq' 'redshift')
+    AUTOSTART_ACTIVATE_ONLY=('all' 'all')
     a=0
     while [ $a -lt ${#AUTOSTART_ACTIVATE_LIST[@]} ];
     do
@@ -14540,62 +14540,90 @@ EOF
   # Sichtbarkeit der Scrollbalken verbessern (nur für den aktuellen Benutzer)
   # ============================================================================
   ACTION_MESSAGE=" Sichtbarkeit der ${light_cyan}Scrollbalken${colors_off} verbessern"
-  if [ $(echo "$WINDOW_THEME" | grep -i -c -E "\-Dark") -gt 0 ];
+  GTK3_CONF_DIR="$USER_CONFIG_DIR/gtk-3.0"
+  if [ -d "$GTK3_CONF_DIR" ];
   then
-    GTK3_CONF_DIR="$USER_CONFIG_DIR/gtk-3.0"
-    if [ -d "$GTK3_CONF_DIR" ];
+    GTK3_CFG_FILE="$GTK3_CONF_DIR/gtk.css"
+    SCROLL_CONFIG_OK=0
+    # --------------------------------------------------------------------------
+    # Wenn es schon eine Konfig-Datei gibt, dann prüfen ob es auch gültige
+    # Konfigurations-Einträge darin gibt
+    # --------------------------------------------------------------------------
+    if [ -s "$GTK3_CFG_FILE" ];
     then
-      GTK3_CFG_FILE="$GTK3_CONF_DIR/gtk.css"
-      if [ ! -s "$GTK3_CFG_FILE" ];
+      # ----------------------------------------------------
+      # Prüfen ob es den Eintrag "Scrollbar Tweaks" gibt
+      # (dann ist die Datei höchstwahrscheinlich von uns ;)
+      # ----------------------------------------------------
+      if [ $(cat "$GTK3_CFG_FILE" | grep -c -i "Scrollbar Tweaks") -gt 0 ];
       then
-        ask_yes_or_no_plus "desktop_big_scrollbars" "$ACTION_MESSAGE" "" "j"
-        if [ $? -eq 1 ];
+        # --------------------------------------------------
+        # Prüfen ob es den zum Thema passenden Bereich gibt
+        # --------------------------------------------------
+        if [[ $(echo "$WINDOW_THEME" | grep -i -c -E "\-Dark") -eq 0 && $(grep -c -i "Light Mode" "$GTK3_CFG_FILE") -gt 0 ]] ||
+           [[ $(echo "$WINDOW_THEME" | grep -i -c -E "\-Dark") -gt 0 && $(grep -c -i "Dark Mode" "$GTK3_CFG_FILE") -gt 0 ]];
         then
-          e_and_l -n "${ACTION_MESSAGE//96m/93m}   ... "
-          DOWNLOAD_FILE_URL="$RESSOURCE_SERVER_DIR/cfg/gtk.css"
-          DOWNLOAD_FILE_NAME="${DOWNLOAD_FILE_URL##*/}"
-          LOCAL_DOWNLOAD_FILE="$DOWNLOAD_DIR/$DOWNLOAD_FILE_NAME"
-          wget -nv -O "$LOCAL_DOWNLOAD_FILE" "$DOWNLOAD_FILE_URL" &>"$LOG_TEMP"
-          if [ $? -eq 0 ] &&
-             [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
-             [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
+          SCROLL_CONFIG_OK=1
+        fi
+      fi
+    fi
+    # -------------------------------------
+    # Passende Konfiguration herunterladen
+    # -------------------------------------
+    if [ $SCROLL_CONFIG_OK -eq 0 ];
+    then
+      ask_yes_or_no_plus "desktop_big_scrollbars" "$ACTION_MESSAGE" "" "j"
+      if [ $? -eq 1 ];
+      then
+        e_and_l -n "${ACTION_MESSAGE//96m/93m}   ... "
+        if [ $(echo "$WINDOW_THEME" | grep -i -c -E "\-Dark") -gt 0 ];
+        then
+          DOWNLOAD_FILE_URL="$RESSOURCE_SERVER_DIR/cfg/gtk_dark.css"
+        else
+          DOWNLOAD_FILE_URL="$RESSOURCE_SERVER_DIR/cfg/gtk_light.css"
+        fi
+        DOWNLOAD_FILE_NAME="${DOWNLOAD_FILE_URL##*/}"
+        LOCAL_DOWNLOAD_FILE="$DOWNLOAD_DIR/$DOWNLOAD_FILE_NAME"
+        wget -nv -O "$LOCAL_DOWNLOAD_FILE" "$DOWNLOAD_FILE_URL" &>"$LOG_TEMP"
+        if [ $? -eq 0 ] &&
+           [ -s "$LOCAL_DOWNLOAD_FILE" ] &&
+           [ $(grep -i -c -E "Error\s*404" "$LOCAL_DOWNLOAD_FILE") -eq 0 ];
+        then
+          chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
+          if [ ! -d "$GTK3_CONF_DIR" ];
           then
-            chown -R "$USER_USERNAME:$USER_USERNAME" "$LOCAL_DOWNLOAD_FILE" &>/dev/null
-            if [ ! -d "$GTK3_CONF_DIR" ];
-            then
-              mkdir -p "$GTK3_CONF_DIR" &>/dev/null
-            fi
+            mkdir -p "$GTK3_CONF_DIR" &>/dev/null
+          fi
+          if [ $? -eq 0 ];
+          then
+            create_backup_file "$GTK3_CFG_FILE"
+            cp -f "$LOCAL_DOWNLOAD_FILE" "$GTK3_CFG_FILE" &>"$LOG_TEMP"
             if [ $? -eq 0 ];
             then
-              create_backup_file "$GTK3_CFG_FILE"
-              cp -f "$LOCAL_DOWNLOAD_FILE" "$GTK3_CFG_FILE" &>"$LOG_TEMP"
-              if [ $? -eq 0 ];
-              then
-                chown -R "$USER_USERNAME:$USER_USERNAME" "$GTK3_CONF_DIR" &>/dev/null
-                e_and_l "$OK_TAG"
-                CHANGES_MADE=1
-              else
-                restore_backup_file "$GTK3_CFG_FILE"
-                e_and_l "$ERROR_TAG $LINENO"
-                add_full_log
-              fi
+              chown -R "$USER_USERNAME:$USER_USERNAME" "$GTK3_CONF_DIR" &>/dev/null
+              e_and_l "$OK_TAG"
+              CHANGES_MADE=1
             else
+              restore_backup_file "$GTK3_CFG_FILE"
               e_and_l "$ERROR_TAG $LINENO"
               add_full_log
             fi
           else
             e_and_l "$ERROR_TAG $LINENO"
-            remove_file "$LOCAL_DOWNLOAD_FILE"
             add_full_log
           fi
-          e_and_l "$HALF_MINUS_LINE"
+        else
+          e_and_l "$ERROR_TAG $LINENO"
+          remove_file "$LOCAL_DOWNLOAD_FILE"
+          add_full_log
         fi
-      else
-        e_and_l "$ACTION_MESSAGE   ... $NC_TAG"
+        e_and_l "$HALF_MINUS_LINE"
       fi
+    else
+      e_and_l "$ACTION_MESSAGE   ... $NC_TAG"
     fi
   else
-    e_and_l "$(skip_text "$ACTION_MESSAGE  " "nur Dark-Themen")"
+    e_and_l "$ACTION_MESSAGE   ... $NA_TXT"
   fi
 
   # ============================================================================
