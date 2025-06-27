@@ -1,5 +1,20 @@
 # Lissy - Linux System Setup Utility
-<b>Lissy</b> ist das All-in-One-Tool und Swiss-Army-Knife für alle Debian-basierten Linux-Systeme.<br />
+<strong>Das Standard-Werkzeug zur Einrichtung, Konfiguration und Optimierung von Debian-basierten Linux-Systemen.</strong><br />
+<br />
+<b>Lissy</b> ist das All-in-One-Tool und Swiss-Army-Knife für alle (Debian-basierten) Linux-Systeme.<br />
+<br />
+Umfassende Funktionalität - individuell anpassbar und interaktiv:
+<ul>
+<li>Installation von beliebigen Programmpaketen - auswählbar aus verschiedenen Quellen</li>
+<li>Vollständig geführte Konfiguration zahlreicher Programmpakete</li>
+<li>Entfernung von Programmpaketen und dessen Daten</li>
+<li>Installation umfangreicher System-Erweiterungen</li>
+<li>Einfache Konfiguration wichtiger System-Komponenten</li>
+<li>Sinnvolle Optimierungen des Betriebssystems und Desktops</li>
+<li>Einfache Reparaturen von Boot-Loader und Dateisystemen</li>
+<li>Bereinigung und Entfernung veralteter und verwaister Daten</li>
+<li>u.v.m.</li>
+</ul>
 <br />
 Dieses Skript ermöglicht die automatisierte <b>Installation von Programmpaketen</b> aus verschiedenen Quellen einschließlich der <b>Konfiguration</b> der Programme und Erstellung von Startern (Programmsymbolen) auf dem Desktop.<br />
 Die zur Verfügung stehenden Programmpakete sind dazu in Kategorien geordnet, welche individuell aus- oder abgewählt und beliebig angepasst werden können.<br />
