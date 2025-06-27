@@ -15,7 +15,6 @@ Umfassende Funktionalität - individuell anpassbar und interaktiv:
 <li>Bereinigung und Entfernung veralteter und verwaister Daten</li>
 <li>u.v.m.</li>
 </ul>
-<br />
 Dieses Skript ermöglicht die automatisierte <b>Installation von Programmpaketen</b> aus verschiedenen Quellen einschließlich der <b>Konfiguration</b> der Programme und Erstellung von Startern (Programmsymbolen) auf dem Desktop.<br />
 Die zur Verfügung stehenden Programmpakete sind dazu in Kategorien geordnet, welche individuell aus- oder abgewählt und beliebig angepasst werden können.<br />
 Zudem stehen diverse Optionen zur Verfügung, mit denen sich die Auswahl von Programmpaketen und der Ablauf des Skriptes individuell anpassen lassen.<br />
