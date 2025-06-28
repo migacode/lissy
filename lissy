@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 27.06.2025
-VERSION="5.0.1"
+# Letzte Änderung: 28.06.2025
+VERSION="5.0.2"
 
 ################################################################################
 #                                                                              #
@@ -9291,7 +9291,7 @@ then
   e_and_l "            dieses Skriptes."
   e_and_l ""
   e_and_l "   notoall  Alle Abfragen werden automatisch mit Nein beantwortet."
-  e_and_l "            Diese Option überlagert die Optionen force und autoyorn."
+  e_and_l "            Diese Option überlagert die Optionen autoyorn und force."
   e_and_l ""
   e_and_l "  noupdate  Prüft nicht auf eine neuere Version dieses Skripts."
   e_and_l ""
@@ -9861,6 +9861,51 @@ then
     exit 1
   fi
 fi # Ende Prüfen der Paketverwaltung
+
+#===============================================================================
+# Hinweis bei Auswahl konkurrierender Optionen zu Sicherheits-Abfragen
+#===============================================================================
+if [ ${OPTION_FLAG[listonly]} -eq 0 ];
+then
+  AUTO_ANSWER_FLAGS=0
+  if [ ${OPTION_FLAG[autoyorn]} -gt 0 ];
+  then
+    ((AUTO_ANSWER_FLAGS+=1))
+  fi
+  if [ ${OPTION_FLAG[force]} -gt 0 ] &&
+     [ ${OPTION_FLAG[status]} -eq 0 ] &&
+     [[ $TOTAL_PACKS -gt 0 || $USE_ILIST_FILE -ne 0 ]];
+  then
+    ((AUTO_ANSWER_FLAGS+=1))
+  fi
+  if [ ${OPTION_FLAG[notoall]} -gt 0 ];
+  then
+    ((AUTO_ANSWER_FLAGS+=1))
+  fi
+  if [ $AUTO_ANSWER_FLAGS -gt 1 ];
+  then
+    i=1
+    e_and_l "$FULL_LINE"
+    e_and_l " $HINWEIS_TAG: Es sind mehrere Optionen zur Behandlung von Abfragen ausgewählt,"
+    e_and_l " welche situativ miteinander konkurrieren können. Die Priorisierung ist:"
+    if [ ${OPTION_FLAG[notoall]} -gt 0 ];
+    then
+      e_and_l " $i. notoall  - Alle Abfragen immer mit Nein beantworten"
+      ((i+=1))
+    fi
+    if [ ${OPTION_FLAG[autoyorn]} -gt 0 ];
+    then
+      e_and_l " $i. autoyorn - Abfragen wie im Lauf zuvor beantworten (falls gespeichert)"
+      ((i+=1))
+    fi
+    if [ ${OPTION_FLAG[force]} -gt 0 ];
+    then
+      e_and_l " $i. force    - Vor der Installation von Paketen nicht nachfragen"
+      e_and_l "               (sofern keine Mehrfachauswahl oder ein Konflikt besteht)"
+    fi
+  fi
+fi
+# ---------------------------------------------------------------------
 
 #===============================================================================
 # Überprüfung und Installation von zur korrekten Ausführung
@@ -14843,7 +14888,8 @@ EOF
   USER_BASHRC_FILE="$USER_HOME_DIR/.bashrc"
   if [ -s "$USER_BASHRC_FILE" ];
   then
-    THE_NEW_PATH=""
+    # Suche im aktuellen Pfad beginnen
+    THE_NEW_PATH="::"
     # 1. Suche nach eigenen Skripten in ~/bin
     if [ -d "$USER_HOME_DIR/bin" ] &&
        [ $(echo "$ORIGINAL_USER_PATH" | grep -i -c -E "$USER_HOME_DIR\/bin") -eq 0 ];
