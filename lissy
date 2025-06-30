@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 28.06.2025
-VERSION="5.0.2"
+# Letzte Änderung: 30.06.2025
+VERSION="5.0.3"
 
 ################################################################################
 #                                                                              #
@@ -3493,7 +3493,7 @@ function install_pkg {
                   SHOW_VERSION_TEXT=${SHOW_VERSION_TEXT/ devmode/}
                   SHOW_VERSION_TEXT=${SHOW_VERSION_TEXT/ jailmode/}
                   e_and_l "$PRE_SPACE $ACHTUNG_TAG: Die Version \"${light_red}$SHOW_VERSION_TEXT${colors_off}\" ist nicht für den produktiven Einsatz"
-                  e_and_l "$PRE_SPACE gedacht sowie ohne Support und ist daher möglicherweise nicht funktionsfähig!"
+                  e_and_l "$PRE_SPACE gedacht sowie ohne Support und somit möglicherweise nicht funktionsfähig!"
                   ask_yes_or_no_plus "snap_non_stable_$PAKET" "$PRE_SPACE Soll diese Version trotzdem installiert werden" "" "n"
                   SNAP_CHECK_1=$?
                 fi
