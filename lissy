@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 30.06.2025
-VERSION="5.0.3"
+# Letzte Änderung: 01.07.2025
+VERSION="5.0.4"
 
 ################################################################################
 #                                                                              #
@@ -990,21 +990,25 @@ function copy_starter_to_desktop {
             if [ -d "/usr/share/raspi-ui-overrides/applications" ];
             then
               SEARCH_RESULT_TMP=$(find "/usr/share/raspi-ui-overrides/applications" -iname "$SEARCH_NAME".desktop -print 2>/dev/null)
+              # echo -e "1.1: $SEARCH_RESULT_TMP"
               if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
             fi
 
             # 1.2. Datei mit Paketnamen im Benutzer-Ordner suchen
             SEARCH_RESULT_TMP=$(find "$STARTMENU_DIR/" -iname "$SEARCH_NAME".desktop -print 2>/dev/null)
+            # echo -e "1.2: $SEARCH_RESULT_TMP"
             if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
             # 1.3. Datei mit Paketnamen im System-Ordner suchen
             SEARCH_RESULT_TMP=$(find /usr/share/applications/ -iname "$SEARCH_NAME".desktop -print 2>/dev/null)
+            # echo -e "1.3: $SEARCH_RESULT_TMP"
             if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
             # 1.4. Datei mit Paketnamen im Snap-Ordner suchen
             if [ -d "/var/lib/snapd/desktop/applications" ];
             then
               SEARCH_RESULT_TMP=$(find /var/lib/snapd/desktop/applications -iname "$SEARCH_NAME".desktop -print 2>/dev/null)
+              # echo -e "1.4: $SEARCH_RESULT_TMP"
               if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
             fi
 
@@ -1016,13 +1020,16 @@ function copy_starter_to_desktop {
               # --------------------------------
               # 2.1. Auftreten des Paketnamens innerhalb der Dateien im Benutzer-Ordner suchen
               SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" "$STARTMENU_DIR/"* 2>/dev/null)
+              # echo -e "2.1: $SEARCH_RESULT_TMP"
               if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
               # 2.2. Auftreten des Paketnamens innerhalb der Dateien im System-Ordner suchen
               SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" /usr/share/applications/* 2>/dev/null)
+              # echo -e "2.2: $SEARCH_RESULT_TMP"
               if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
               # 2.3. Auftreten des Paketnamens innerhalb der Dateien im System-Ordner suchen
+              # echo -e "2.3: $SEARCH_RESULT_TMP"
               SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "(X-Ubuntu-Gettext-Domain)=\b$SEARCH_NAME\b" /usr/share/applications/* 2>/dev/null)
               if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
@@ -1033,8 +1040,10 @@ function copy_starter_to_desktop {
                 # zusammen mit diversen Binärdateien unter einem Pfad. Daher wird dem grep hier
                 # ein find vorangestellt, um nur die .desktop-Dateien durchsuchen zu müssen.
                 SEARCH_RESULT_TMP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -exec grep -i -l -o -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" {} \;)
+                # echo -e "2.4.1: $SEARCH_RESULT_TMP"
                 if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
                 SEARCH_RESULT_TMP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -exec grep -i -l -o -E "(X-SnapInstanceName)=\b$SEARCH_NAME\b" {} \;)
+                # echo -e "2.4.2: $SEARCH_RESULT_TMP"
                 if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
               fi
 
@@ -1052,6 +1061,7 @@ function copy_starter_to_desktop {
                   # zusammen mit diversen Binärdateien unter einem Pfad. Daher wird dem grep hier
                   # ein find vorangestellt, um nur die .desktop-Dateien durchsuchen zu müssen.
                   SEARCH_RESULT_TMP=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -exec grep -i -l -o -E "^\s*exec\s*=\s*(/usr/bin/flatpak)(.)*$THE_FLATPAK_REF_STRING" {} \;)
+                  # echo -e "2.5: $SEARCH_RESULT_TMP"
                   if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
                 fi
               fi
@@ -1064,6 +1074,7 @@ function copy_starter_to_desktop {
             tmp_list=${PKG_STARTER_LIST[$SEARCH_NAME]};
             if [ "$tmp_list" != "" ];
             then
+              SEARCH_RESULT_TMP=""
               for starter_file in ${tmp_list[@]};
               do
                 full_starter_file_path="/usr/share/applications/$starter_file.desktop"
@@ -1073,7 +1084,8 @@ function copy_starter_to_desktop {
                   SEARCH_RESULT_TMP+=$'\n'
                 fi
               done
-              SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"
+              # echo -e "3: $SEARCH_RESULT_TMP"
+              if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
             fi
 
             # ------------------------------------------------------------------
@@ -1155,10 +1167,11 @@ function copy_starter_to_desktop {
             # --------------------------------------------
             for desktop_file in ${STARTER_LIST_ARRAY[@]};
             do
-              # ------------------------------
-              # Nur .desktop-Dateien kopieren
-              # ------------------------------
-              if [ "${desktop_file:(-8):8}" == ".desktop" ];
+              # -------------------------------------------
+              # Nur existierende .desktop-Dateien kopieren
+              # -------------------------------------------
+              if [ -f "$desktop_file" ] &&
+                 [ "${desktop_file:(-8):8}" == ".desktop" ];
               then
                 FILE_BASE_NAME="${desktop_file##*/}"
                 # -----------------------------------------
@@ -6570,18 +6583,23 @@ done
 
 #===============================================================================
 # Pakete innerhalb der Kategorien alphabetisch sortieren
+# (sicherheitshalber nicht für Wine, damit dafür in jedem Fall die gewünschte
+#  Reihenfolge wine -> wine64 -> wine32 erhalten bleibt)
 #===============================================================================
 for k in ${KAT_KEY_LIST[@]};
 do
-  THE_PKGS_LIST=(${KATEGORIE_PKGS[$k]})
-  IFS=$'\n'
-  TEMP_LIST=($(sort <<<"${THE_PKGS_LIST[*]}"))
-  IFS=' '
-  KATEGORIE_PKGS[$k]=""
-  for p in ${TEMP_LIST[@]};
-  do
-    KATEGORIE_PKGS[$k]+="$p "
-  done
+  if [ "$k" != "w" ];
+  then
+    THE_PKGS_LIST=(${KATEGORIE_PKGS[$k]})
+    IFS=$'\n'
+    TEMP_LIST=($(sort <<<"${THE_PKGS_LIST[*]}"))
+    IFS=' '
+    KATEGORIE_PKGS[$k]=""
+    for p in ${TEMP_LIST[@]};
+    do
+      KATEGORIE_PKGS[$k]+="$p "
+    done
+  fi
 done
 
 #===============================================================================
@@ -7856,6 +7874,8 @@ PRE_INST_CONF[steam]="$RESSOURCE_SERVER_DIR/scripts/steam_pre_inst"
 PRE_INST_CONF[steam-launcher]="$RESSOURCE_SERVER_DIR/scripts/steam_pre_inst"
 PRE_INST_CONF[veracrypt]="$RESSOURCE_SERVER_DIR/scripts/veracrypt_pre_inst"
 PRE_INST_CONF[wine]="$RESSOURCE_SERVER_DIR/scripts/wine_pre_inst"
+PRE_INST_CONF[wine32]="$RESSOURCE_SERVER_DIR/scripts/wine32_pre_inst"
+PRE_INST_CONF[wine64]="$RESSOURCE_SERVER_DIR/scripts/wine64_pre_inst"
 
 #===============================================================================
 # Wenn zu Programmpaketen NACH deren Installation eine weitere Konfiguration
