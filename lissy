@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 01.07.2025
-VERSION="5.0.4"
+# Letzte Änderung: 03.07.2025
+VERSION="5.0.6"
 
 ################################################################################
 #                                                                              #
@@ -3366,7 +3366,7 @@ function install_pkg {
             PRE_CONF_RESULT=0
             if [ "${PRE_INST_CONF[$PAKET]}" != "" ];
             then
-              e_and_l ""
+              # e_and_l ""
               e_and_l -n " Führe vorbereitende ${light_yellow}Konfiguration${colors_off} für ${light_yellow}$PAKET${colors_off} durch ... "
               PRE_ACTION="${PRE_INST_CONF[$PAKET]}"
               if [ $(echo -n "$PRE_ACTION" | grep -i -c -E "^\s*http") -gt 0 ];
@@ -4701,20 +4701,24 @@ function remove_pkg {
 
 #===============================================================================
 # Löschen aller (verbliebenen) Schnappschüsse von Snap-Paketen
+# -----------------------------
+# Parameter:
+# $1: Paketname - wenn angegeben werden nur Snapschüsse dieses Pakets gelöscht
 #===============================================================================
 function remove_snapshots {
+  SNAP_REMOVE_SINGLE="$1"
   if [ $SNAP_INSTALLED -ne 0 ];
   then
     # -------------------------------------------------------------------------
     # Wenn nur die Schnappschüsse eines bestimmten Snap-Pakets entfernt werden
     # sollen, dann dazu neue dedizierte Liste der Schnappschüsse erstellen
     # -------------------------------------------------------------------------
-    if [ "$1" != "" ];
+    if [ "$SNAP_REMOVE_SINGLE" != "" ];
     then
       remove_file "$SNAPSHOT_SNAPS_LIST"
-      if [ $(snap saved 2>/dev/null | grep -i -c -E "\s$1\s") -eq 0 ];
+      if [ $(snap saved 2>/dev/null | grep -i -c -E "\s$1\s") -gt 0 ];
       then
-        LANG=en_US.UTF-8 snap saved 2>/dev/null | grep -i -E "\s$1\s" | awk '{print $1, $2, "(A"$3")", "(V"$4")", "(R"$5")", "(S"$6")"}' >> "$SNAPSHOT_SNAPS_LIST"
+        LANG=en_US.UTF-8 snap saved 2>/dev/null | grep -i -E "\s$1\s" | awk '{print $1, $2, "(A"$3")", "(V"$4")", "(R"$5")", "(S"$6")"}' > "$SNAPSHOT_SNAPS_LIST"
       fi
     fi
     # --------------------------------------------------------------------
@@ -4722,65 +4726,139 @@ function remove_snapshots {
     # --------------------------------------------------------------------
     if [ -s "$SNAPSHOT_SNAPS_LIST" ];
     then
-      e_and_l " Es wurden folgende ${light_cyan}Snap-Snapschüsse${colors_off} gefunden:"
-      e_and_l " ${bold_white}Name                      Version                  Revision   Set    Größe${colors_off}"
+      declare -A SNAP_SET_LIST
+      declare -A SNAP_NAME_LIST
+      declare -A SNAP_AGE_LIST
+      declare -A SNAP_VERSION_LIST
+      declare -A SNAP_REVISION_LIST
+      declare -A SNAP_SIZE_LIST
+      i=0
       while read snapset snapname snapage snapversion snaprevision snapsize
       do
-        # -----
-        # Name
-        # -----
-        SNAP_PKG_NAME="$snapname"
-        e_and_l -n " ${SNAP_PKG_NAME:0:25}"
-        ((ANZ_SPACES=25-${#SNAP_PKG_NAME}))
-        insert_spaces $ANZ_SPACES
-        # --------
-        # Version
-        # --------
-        SNAP_VERSION="${snapversion/(V/}"
-        SNAP_VERSION="${SNAP_VERSION/)/}"
-        e_and_l -n " ${SNAP_VERSION:0:25}"
-        ((ANZ_SPACES=25-${#SNAP_VERSION}))
-        insert_spaces $ANZ_SPACES
-        # ---------
-        # Revision
-        # ---------
-        SNAP_REVISION="${snaprevision/(R/}"
-        SNAP_REVISION="${SNAP_REVISION/)/}"
-        e_and_l -n "${SNAP_REVISION:0:11}"
-        ((ANZ_SPACES=11-${#SNAP_REVISION}))
-        insert_spaces $ANZ_SPACES
-        # ---------------------------------------------------------------
-        # Snap-Set (fortlaufende Nummer der Gruppe von gelöschten Snaps)
-        # ---------------------------------------------------------------
-        e_and_l -n "${snapset:0:7}"
-        ((ANZ_SPACES=7-${#snapset}))
-        insert_spaces $ANZ_SPACES
-        # ------
-        # Größe
-        # ------
-        SNAP_SIZE="${snapsize/(S/}"
-        SNAP_SIZE="${SNAP_SIZE/)/}"
-        e_and_l "$SNAP_SIZE"
+        if [ "$snapset" != "" ] &&
+           [ "$snapname" != "" ];
+        then
+          SNAP_SET_LIST[$i]="$snapset"
+          SNAP_NAME_LIST[$i]="$snapname"
+          SNAP_AGE_LIST[$i]="$snapage"
+          SNAP_VERSION_LIST[$i]="$snapversion"
+          SNAP_REVISION_LIST[$i]="$snaprevision"
+          SNAP_SIZE_LIST[$i]="$snapsize"
+          ((i+=1))
+        fi
       done < "$SNAPSHOT_SNAPS_LIST"
-      ask_yes_or_no_plus "" " Jetzt ${bold_white}ALLE${colors_off} vorstehenden Snap-Schnappschüsse löschen" "" "n"
-      if [ $? -eq 1 ];
+      ANZAHL_SNAPSHOTS=${#SNAP_SET_LIST[@]}
+      if [ $ANZAHL_SNAPSHOTS -gt 0 ];
       then
-        while read snapset snapname snapage snapversion snaprevision snapsize
-        do
-          e_and_l -n " Lösche Schnappschuss Set ${light_yellow}$snapset${colors_off} ... "
-          snap forget "$snapset" "$snapname" &>/dev/null
-          if [ $? -eq 0 ];
+        e_and_l "$HALF_MINUS_LINE"
+        e_and_l " Es wurden ${bold_yellow}$ANZAHL_SNAPSHOTS${colors_off} ${light_cyan}veraltete Snap-Schnappschüsse${colors_off} gefunden."
+        e_and_l " Was soll ich tun?"
+        e_and_l " [${bold_yellow}0${colors_off}] Schritt überspringen, nichts löschen"
+        e_and_l " [${bold_yellow}1${colors_off}] Jeden Schnappschuss einzeln jeweils mit Abfrage löschen"
+        e_and_l " [${bold_yellow}2${colors_off}] Alle Schnappschüsse ohne einzelne Abfragen löschen"
+        user_choice_012
+        REMOVE_MODE=$?
+        if [ $REMOVE_MODE -gt 0 ];
+        then
+          # ----------------------------------------------------
+          # Sicherheitsabfrage wenn alle gelöscht werden sollen
+          # ----------------------------------------------------
+          if [ $REMOVE_MODE -eq 2 ];
           then
-            e_and_l "$OK_TAG"
-          else
-            e_and_l "$ERROR_TAG"
+            e_and_l " Es wurden folgende ${light_cyan}Schnappschüsse${colors_off} gefunden:"
+            e_and_l " ${bold_white}Name                      Version                  Revision   Set    Größe${colors_off}"
+            ss=0
+            while [ $ss -lt $ANZAHL_SNAPSHOTS ];
+            do
+              # -----
+              # Name
+              # -----
+              SNAP_PKG_NAME="${SNAP_NAME_LIST[$ss]}"
+              e_and_l -n " ${light_yellow}${SNAP_PKG_NAME:0:25}${colors_off}"
+              ((ANZ_SPACES=25-${#SNAP_PKG_NAME}))
+              insert_spaces $ANZ_SPACES
+              # --------
+              # Version
+              # --------
+              SNAP_PKG_VERSION="${SNAP_VERSION_LIST[$ss]}"
+              SNAP_PKG_VERSION="${SNAP_PKG_VERSION/(V/}"
+              SNAP_PKG_VERSION="${SNAP_PKG_VERSION/)/}"
+              e_and_l -n " ${light_yellow}${SNAP_PKG_VERSION:0:25}${colors_off}"
+              ((ANZ_SPACES=25-${#SNAP_PKG_VERSION}))
+              insert_spaces $ANZ_SPACES
+              # ---------
+              # Revision
+              # ---------
+              SNAP_PKG_REVISION="${SNAP_REVISION_LIST[$ss]}"
+              SNAP_PKG_REVISION="${SNAP_PKG_REVISION/(R/}"
+              SNAP_PKG_REVISION="${SNAP_PKG_REVISION/)/}"
+              e_and_l -n "${SNAP_PKG_REVISION:0:11}"
+              ((ANZ_SPACES=11-${#SNAP_PKG_REVISION}))
+              insert_spaces $ANZ_SPACES
+              # ---------------------------------------------------------------
+              # Snap-Set (fortlaufende Nummer der Gruppe von gelöschten Snaps)
+              # ---------------------------------------------------------------
+              SNAP_PKG_SET="${SNAP_SET_LIST[$ss]}"
+              e_and_l -n "${SNAP_PKG_SET:0:7}"
+              ((ANZ_SPACES=6-${#snapset}))
+              insert_spaces $ANZ_SPACES
+              # ------
+              # Größe
+              # ------
+              SNAP_PKG_SIZE="${SNAP_SIZE_LIST[$ss]}"
+              SNAP_PKG_SIZE="${SNAP_PKG_SIZE/(S/}"
+              SNAP_PKG_SIZE="${SNAP_PKG_SIZE/)/}"
+              e_and_l "$SNAP_PKG_SIZE"
+              ((ss+=1))
+            done
+            e_and_l "$HALF_MINUS_LINE"
+            e_and_l " Hast Du die Liste genau geprüft, so dass nichts ungewollt gelöscht wird?"
+            ask_yes_or_no_plus "" " Jetzt wirklich ${bold_red}alle${colors_off} Schnappschüsse löschen" "" "n"
+            if [ $? -eq 0 ];
+            then
+              e_and_l " $USER_CHOICE_NO"
+              REMOVE_MODE=0
+            else
+              e_and_l " $USER_CHOICE_YES"
+            fi
           fi
-        done < "$SNAPSHOT_SNAPS_LIST"
-      fi
-      e_and_l " $HINWEIS_TAG: Zum Löschen veralteter ${bold_white}Snap-Revisionen${colors_off} das Tool ${light_purple}snapco${colors_off} verwenden ;)"
-    fi
+          # ----------------------------------------------------
+          if [ $REMOVE_MODE -gt 0 ];
+          then
+            ss=0
+            while [ $ss -lt $ANZAHL_SNAPSHOTS ];
+            do
+              e_and_l "$HALF_MINUS_LINE"
+              THE_SNAP_TEXT="${SNAP_NAME_LIST[$ss]} ${SNAP_VERSION_LIST[$ss]/(V/}"
+              THE_SNAP_TEXT="${THE_SNAP_TEXT/)/} (Set ${SNAP_SET_LIST[$ss]})"
+              DO_REMOVE_THIS=1
+              if [ $REMOVE_MODE -eq 1 ];
+              then
+                e_and_l " Schnappschuss ${light_cyan}$THE_SNAP_TEXT${colors_off}"
+                ask_yes_or_no_plus "" " Löschen" "" "n"
+                DO_REMOVE_THIS=$?
+              fi
+              if [ $DO_REMOVE_THIS -eq 1 ];
+              then
+                e_and_l -n " Lösche ${light_yellow}$THE_SNAP_TEXT${colors_off} ... "
+                snap forget "${SNAP_SET_LIST[$ss]}" "${SNAP_NAME_LIST[$ss]}" &>/dev/null
+                if [ $? -eq 0 ];
+                then
+                  e_and_l "$OK_TAG"
+                else
+                  e_and_l "$ERROR_TAG"
+                fi
+              fi
+              ((ss+=1))
+            done
+            e_and_l "$HALF_MINUS_LINE"
+          fi
+        fi
+        e_and_l " $HINWEIS_TAG: Zum Löschen veralteter ${bold_white}Snap-Revisionen${colors_off} das Tool ${light_purple}snapco${colors_off} verwenden ;)"
+      fi # Keine Schnappschüsse in Liste enthalten
+    fi # Keine Liste mit Schnappschüssen
     remove_file "$SNAPSHOT_SNAPS_LIST"
-  fi
+  fi # Kein Snap
 }
 
 #===============================================================================
@@ -5628,6 +5706,16 @@ do
   fi
 done
 
+# ==============================================================================
+# Status zu Flatpak und Snap ermitteln
+# ==============================================================================
+FLATPAK_INSTALLED=$(LANG=en dpkg-query -W -f='${Status}' "flatpak" 2>/dev/null | grep -i -c -E "ok installed")
+THE_FLATPAK_REMOTE_LIST="$DOWNLOAD_DIR/flatpak_remote_list"
+THE_FLATPAK_INSTALLED_LIST="$DOWNLOAD_DIR/flatpak_installed_list"
+SNAP_INSTALLED=$(LANG=en dpkg-query -W -f='${Status}' "snapd" 2>/dev/null | grep -i -c -E "ok installed")
+SNAPSHOT_SNAPS_LIST="$DOWNLOAD_DIR/snap_snapshot.list"
+# =============================================================================
+
 #===============================================================================
 # Systemarchitektur ermitteln
 #===============================================================================
@@ -6092,23 +6180,27 @@ then
   # -----
   # Wine
   # -----
+
   WINE_VERSION=""
-  if wine --version &>/dev/null;
+  if [ $(LANG=en dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
   then
-    WINE_VERSION="$(wine --version 2>/dev/null | cut -d" " -f 1 | cut -d "-" -f 2)"
+    WINE_VERSION_APT="$(wine --version 2>/dev/null | cut -d" " -f 1 | cut -d "-" -f 2 | xargs 2>/dev/null)"
+    if [ "$WINE_VERSION_APT" != "" ];
+    then
+      WINE_VERSION+="$WINE_VERSION_APT (STD)"
+    fi
+  fi
+  if [ $FLATPAK_INSTALLED -ne 0 ];
+  then
+    WINE_VERSION_FLAT="$(flatpak list --columns=name,version,ref | grep -i -E "^Wine[0-9]*\s+[0-9]" | tail -n 1 | cut -f 2 | xargs 2>/dev/null)"
+    if [ "$WINE_VERSION_FLAT" != "" ];
+    then
+      if [ "$WINE_VERSION" != "" ]; then WINE_VERSION+=" + "; fi
+      WINE_VERSION+="$WINE_VERSION_FLAT (FLAT)"
+    fi
   fi
 
 fi
-
-# ==============================================================================
-# Flatpak und Snap
-# ==============================================================================
-FLATPAK_INSTALLED=$(LANG=en dpkg-query -W -f='${Status}' "flatpak" 2>/dev/null | grep -i -c -E "ok installed")
-THE_FLATPAK_REMOTE_LIST="$DOWNLOAD_DIR/flatpak_remote_list"
-THE_FLATPAK_INSTALLED_LIST="$DOWNLOAD_DIR/flatpak_installed_list"
-SNAP_INSTALLED=$(LANG=en dpkg-query -W -f='${Status}' "snapd" 2>/dev/null | grep -i -c -E "ok installed")
-SNAPSHOT_SNAPS_LIST="$DOWNLOAD_DIR/snapshot_list.tmp"
-# =============================================================================
 
 # ==============================================================================
 # Listen zur Auswahl der Kategorien definieren
@@ -6158,7 +6250,7 @@ KATEGORIE_TEXT[s]="Spiele (Michael's Auswahl)"
 KATEGORIE_TEXT[t]="Tonstudio (Audio-Bearbeitung und Musikproduktion)"
 KATEGORIE_TEXT[u]="USB-Firewall (Selektives Zulassen von USB-Geräten)"
 KATEGORIE_TEXT[v]="Systemverwaltung (Hilfsprogramme mit Benutzeroberfläche)"
-KATEGORIE_TEXT[w]="Windows API (Wine, Winetricks und PlayOnLinux)"
+KATEGORIE_TEXT[w]="Windows API (DOSBox, Wine, Wine-Tools und PlayOnLinux)"
 KATEGORIE_TEXT[wg]="WireGuard (VPN Tunnel)"
 KATEGORIE_TEXT[x]="Systemergänzungen (Systemmodule und CLI-Systemprogramme)"
 KATEGORIE_TEXT[xf]="XFCE Tools (Erweiterungen für XFCE-Desktop)"
@@ -6209,7 +6301,7 @@ OPTION_TEXT[extends]="Repository um individuelle Pakete und PPAs erweitern"
 OPTION_TEXT[external]="Programme zum Download aus externen Quellen hinzufügen"
 OPTION_TEXT[extras]="Extras (Treiber und zus. Systemkomponenten) installieren"
 OPTION_TEXT[exupdate]="Programmpakete aus externen Quellen aktualisieren"
-OPTION_TEXT[exupdall]="Updates für ext. Pakete anbieten wenn anders installiert"
+OPTION_TEXT[exupdall]="Updates für externe Pakete auch aus anderen Quellen"
 OPTION_TEXT[force]="Ja/Nein-Abfrage vor jeder Installation überspringen"
 OPTION_TEXT[foreign]="Auch Pakete für Fremd-Architekturen installieren"
 OPTION_TEXT[infoonly]="Nur Systeminformationen anzeigen (sonst nichts tun)"
@@ -6381,7 +6473,7 @@ if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORI
 # ------------------------------------------------------------------------------
 # Multimedia
 # ------------------------------------------------------------------------------
-KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv gnome-sound-recorder gthumb gtkpod handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv mp3splt obs-studio openshot parole peek rhythmbox shotcut smplayer vlc webcamoid yt-dlp youtube-dl youtubedl-gui youplay"
+KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv gnome-sound-recorder gthumb gtkpod handbrake hypnotix iptvnator k3b kdenlive kid3 kodi lame makemkv-bin mediainfo mixxx mkvtoolnix mpv mp3splt obs-studio openshot parole peek rhythmbox shotcut smplayer vlc webcamoid yt-dlp youplay"
 # ------------------------------------------------------------------------------
 # Netzwerkmanagement
 # ------------------------------------------------------------------------------
@@ -6424,7 +6516,7 @@ KATEGORIE_PKGS[u]="usbauth"
 # ------------------------------------------------------------------------------
 # Systemverwaltung (Hilfsprogramme mit Benutzeroberfläche)
 # ------------------------------------------------------------------------------
-KATEGORIE_PKGS[v]="baobab bleachbit blueman cpu-x czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted gsmartcontrol gtkhash hardinfo isomaster kleopatra kwalletmanager metadata-cleaner mozo plasma-discover qt5ct seahorse stacer synaptic system-config-printer tilda usbview xfce4-taskmanager"
+KATEGORIE_PKGS[v]="baobab bleachbit blueman cpu-x czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted gsmartcontrol gtkhash hardinfo isomaster kleopatra metadata-cleaner mozo plasma-discover qt5ct seahorse stacer synaptic system-config-printer tilda usbview xfce4-taskmanager"
 # -------------------------------------------------------------------------
 # Basispaket des vorinstallierten Dateimanagers hinzufügen, damit auch die
 # zugehörigen Erweiterungen der AUTO_ADD_PKGS mit aufgenommen werden
@@ -6457,35 +6549,30 @@ if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ];
 then
   KATEGORIE_PKGS[v]+=" bulky timeshift"
 fi
-# ------------------------------
+# --------------------------------------------------------------------
 # Ggf. Flatpak-Tools hinzufügen
-# ------------------------------
+# (s.a. AUTO_ADD_PKGS mit flatpak-Erweiterungen für bestimmte Pakete)
+# --------------------------------------------------------------------
 if [ $FLATPAK_INSTALLED -ne 0 ];
 then
-  KATEGORIE_PKGS[v]+=" flatseal gnome-software-plugin-flatpak plasma-discover-backend-flatpak"
+  KATEGORIE_PKGS[v]+=" flatseal"
 fi
 # ------------------------------------------------------------------------------
 # Windows-API "Wine"
 # ------------------------------------------------------------------------------
 KATEGORIE_PKGS[w]="dosbox"
-# -----------------------------------------------------------------------
-# Wenn es den WINE-Installer gibt, diesen statt WINE selbst anzeigen ...
-# -----------------------------------------------------------------------
-if [ $(apt list "wine-installer" 2>/dev/null | grep -i -c -E "wine-installer") -gt 0 ];
+# ----------------------------------------------------------
+# Wenn es den WINE-Installer gibt und WINE damit noch nicht
+# installiert wurde, diesen statt WINE selbst anzeigen
+# ----------------------------------------------------------
+if [ $(apt list "wine-installer" 2>/dev/null | grep -i -c -E "wine-installer") -gt 0 ] &&
+   [ $(LANG=en dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
 then
-  # --------------------------------------------------------------
-  # ... aber nur, wenn WINE damit noch nicht installiert wurde ;)
-  # --------------------------------------------------------------
-  if [ $(LANG=en dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
-  then
-    KATEGORIE_PKGS[w]+=" wine-installer"
-  else
-    KATEGORIE_PKGS[w]+=" wine"
-  fi
+  KATEGORIE_PKGS[w]+=" wine-installer"
 else
-  KATEGORIE_PKGS[w]+=" wine wine64 wine32"
+  KATEGORIE_PKGS[w]+=" wine"
 fi
-KATEGORIE_PKGS[w]+=" winetricks playonlinux"
+KATEGORIE_PKGS[w]+=" playonlinux"
 # ------------------------------------------------------------------------------
 # WireGuard
 # ------------------------------------------------------------------------------
@@ -6666,12 +6753,25 @@ AUTO_ADD_PKGS[usbauth]="usbauth-notifier"
 AUTO_ADD_PKGS[usb-creator-common]="usb-creator-gtk"
 AUTO_ADD_PKGS[virtualbox]="virtualbox-ext-pack virtualbox-guest-additions-iso"
 AUTO_ADD_PKGS[vpnc]="network-manager-vpnc network-manager-vpnc-gnome"
+AUTO_ADD_PKGS[wine]="wine64 wine32 winetricks"
+
+AUTO_ADD_PKGS[yt-dlp]="youtube-dl youtubedl-gui"
+
 # --------------------------------------------------------------------------
 # Diese Spiele sollten derzeit besser nur als Flatpak installiert werden :|
 # --------------------------------------------------------------------------
 # AUTO_ADD_PPOS[alien-arena]="true"
 # AUTO_ADD_PPOS[frogatto]="true"
 # AUTO_ADD_PPOS[gcompris-qt]="true"
+
+# -----------------------------------------------------------
+# Ggf. Flatpak-Erweiterungen für bestimmte Pakete hinzufügen
+# -----------------------------------------------------------
+if [ $FLATPAK_INSTALLED -ne 0 ];
+then
+  AUTO_ADD_PKGS[gnome-software]="gnome-software-plugin-flatpak"
+  AUTO_ADD_PKGS[plasma-discover]="plasma-discover-backend-flatpak"
+fi
 
 #===============================================================================
 # Einige Programme sind nicht in jedem Repository enthalten und können dann
@@ -7876,6 +7976,7 @@ PRE_INST_CONF[veracrypt]="$RESSOURCE_SERVER_DIR/scripts/veracrypt_pre_inst"
 PRE_INST_CONF[wine]="$RESSOURCE_SERVER_DIR/scripts/wine_pre_inst"
 PRE_INST_CONF[wine32]="$RESSOURCE_SERVER_DIR/scripts/wine32_pre_inst"
 PRE_INST_CONF[wine64]="$RESSOURCE_SERVER_DIR/scripts/wine64_pre_inst"
+PRE_INST_CONF[winetricks]="$RESSOURCE_SERVER_DIR/scripts/winetricks_pre_inst"
 
 #===============================================================================
 # Wenn zu Programmpaketen NACH deren Installation eine weitere Konfiguration
@@ -9042,7 +9143,7 @@ EOF
             if [ ${OPTION_FLAG[force]} -eq 1 ] &&
                [ ${OPTION_FLAG[skipsims]} -eq 1 ];
             then
-              MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nDurch die Kombination \Z4force\Z0 und \Z4skipsims\Z0 werden Pakete nicht auf ähnliche Pakete geprüft, was zu merhfacher Installation gleicher Pakete führen kann."
+              MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nDurch die Kombination \Z4force\Z0 und \Z4skipsims\Z0 wird nicht auf ähnliche Pakete geprüft, was zu mehrfacher Installation gleicher Pakete aus verschiedenen Quellen führen kann."
             fi
           fi
         fi # Ende listonly
@@ -10281,7 +10382,7 @@ then
     fi
 
     # ----------------------------------
-    # Hinweis wenn als SANO installiert
+    # Hinweis wenn als SNAP installiert
     # ----------------------------------
     if [ $INST_STATUS -eq 2 ];
     then
@@ -10339,139 +10440,148 @@ then
             fi
           fi
           e_and_l " zur Verfügung."
-          e_and_l " Zum Update muss die alte Version erst vollständig entfernt und danach die"
-          e_and_l " neue Version installiert werden. Eventuell bestehende Konfigurationsdaten"
-          e_and_l " werden zuvor natürlich gesichert."
-          # --------------------------------------------------------
-          # Falls vorhanden Voraussetzungen anzeigen und evaluieren
-          # --------------------------------------------------------
-          FILL_WORD="jetzt"
-          SHOW_PKG_MSG=""
-          TMP_PACK_MSG="${WEB_PKG_MESG[$pkg_name]}"
-          if [ "$TMP_PACK_MSG" == "" ]; then TMP_PACK_MSG="${DEB_PKG_MESG[$pkg_name]}"; fi
-          if [ "$TMP_PACK_MSG" != "" ];
+
+          if [[ "$NEW_PKG_SRC" == "WEB" && ${OPTION_FLAG[external]} -ne 1 ]];
           then
-            SHOW_PKG_MSG="${bold_red}Achtung:${colors_off} ${light_yellow}$TMP_PACK_MSG${colors_off}"
-          fi
-          if [ "$SHOW_PKG_MSG" != "" ];
-          then
-            EVAL_TEST="${WEB_PKG_EVAL["$pkg_name"]}"
-            if [ "$EVAL_TEST" == "" ]; then EVAL_TEST="${DEB_PKG_EVAL["$pkg_name"]}"; fi
-            if [ "$EVAL_TEST" != "" ];
+            e_and_l " $HINWEIS_TAG: Die Option zur Installation von Paketen aus dieser Quelle wurde nicht"
+            e_and_l " ausgewählt, daher kann auch kein Update des Pakets daraus durchgeführt werden."
+            e_and_l " Aus Sicherheitsgründen und zugunsten einer höheren Flexibilität zur Auswahl"
+            e_and_l " der Paketquellen wird diese Option hier auch nicht automatisch aktiviert."
+          else
+            e_and_l " Zum Update muss die alte Version erst vollständig entfernt und danach die"
+            e_and_l " neue Version installiert werden. Eventuell bestehende Konfigurationsdaten"
+            e_and_l " werden zuvor natürlich gesichert."
+            # --------------------------------------------------------
+            # Falls vorhanden Voraussetzungen anzeigen und evaluieren
+            # --------------------------------------------------------
+            FILL_WORD="jetzt"
+            SHOW_PKG_MSG=""
+            TMP_PACK_MSG="${WEB_PKG_MESG[$pkg_name]}"
+            if [ "$TMP_PACK_MSG" == "" ]; then TMP_PACK_MSG="${DEB_PKG_MESG[$pkg_name]}"; fi
+            if [ "$TMP_PACK_MSG" != "" ];
             then
-              eval "$EVAL_TEST" &>/dev/null
-              if [ $? -ne 0 ];
-              then
-                e_and_l " $SHOW_PKG_MSG"
-                e_and_l " Diese Voraussetzung scheint ${bold_red}nicht${colors_off} erfüllt zu sein!"
-                FILL_WORD="trotzdem"
-              fi
-            else
-              e_and_l " $SHOW_PKG_MSG"
-              e_and_l " Bitte prüfe vor der Installation, ob diese Voraussetzung erfüllt ist."
+              SHOW_PKG_MSG="${bold_red}Achtung:${colors_off} ${light_yellow}$TMP_PACK_MSG${colors_off}"
             fi
-          fi
-          # --------------------------------------
-          # Vor Update zweimal bewusst bestätigen
-          # --------------------------------------
-          ask_yes_or_no_plus "exupdate_$pkg_name" " ${light_cyan}$pkg_name${colors_off} $FILL_WORD auf Version ${light_yellow}$NEW_PKG_INST_VERS${colors_off} updaten"
-          if [ $? -eq 1 ];
-          then
-            ask_yes_or_no_plus "" " Programm ${bold_yellow}$pkg_name $PKG_VERSION${colors_off} entfernen"
+            if [ "$SHOW_PKG_MSG" != "" ];
+            then
+              EVAL_TEST="${WEB_PKG_EVAL["$pkg_name"]}"
+              if [ "$EVAL_TEST" == "" ]; then EVAL_TEST="${DEB_PKG_EVAL["$pkg_name"]}"; fi
+              if [ "$EVAL_TEST" != "" ];
+              then
+                eval "$EVAL_TEST" &>/dev/null
+                if [ $? -ne 0 ];
+                then
+                  e_and_l " $SHOW_PKG_MSG"
+                  e_and_l " Diese Voraussetzung scheint ${bold_red}nicht${colors_off} erfüllt zu sein!"
+                  FILL_WORD="trotzdem"
+                fi
+              else
+                e_and_l " $SHOW_PKG_MSG"
+                e_and_l " Bitte prüfe vor der Installation, ob diese Voraussetzung erfüllt ist."
+              fi
+            fi
+            # --------------------------------------
+            # Vor Update zweimal bewusst bestätigen
+            # --------------------------------------
+            ask_yes_or_no_plus "exupdate_$pkg_name" " ${light_cyan}$pkg_name${colors_off} $FILL_WORD auf Version ${light_yellow}$NEW_PKG_INST_VERS${colors_off} updaten"
             if [ $? -eq 1 ];
             then
-              e_and_l " $USER_CHOICE_YES"
-              # ----------------------------------------------------------------
-              # 1. Konfigurationsdaten sichern
-              # ----------------------------------------------------------------
-              CONFIG_NAMES=( "$USER_HOME_DIR/$pkg_name"
-                            "$USER_HOME_DIR/.$pkg_name"
-                            "$USER_HOME_DIR/$THE_PKG_INST_NAME"
-                            "$USER_CONFIG_DIR/$pkg_name"
-                            "$USER_CONFIG_DIR/.$pkg_name"
-                            "$USER_CONFIG_DIR/$THE_PKG_INST_NAME"
-                            "$USER_HOME_DIR/Dokumente/$pkg_name"
-                            "$USER_HOME_DIR/Dokumente/.$pkg_name"
-                            "$USER_HOME_DIR/Dokumente/$THE_PKG_INST_NAME"
-                            "$USER_HOME_DIR/.local/share/$pkg_name"
-                            "$USER_HOME_DIR/.local/share/.$pkg_name"
-                            "$USER_HOME_DIR/.local/share/$THE_PKG_INST_NAME" )
-              for config_name in ${CONFIG_NAMES[@]};
-              do
-                BACKUP_NAME="${config_name}_bak"
-                # -------
-                # Ordner
-                # -------
-                if [ -d "$config_name" ] &&
-                   [ ! -d "$BACKUP_NAME" ];
-                then
-                  cp -r -u --no-dereference "$config_name" "$BACKUP_NAME" &>/dev/null
-                  if [ $? -eq 0 ];
-                  then
-                    chown -R "$USER_USERNAME:$USER_USERNAME" "$BACKUP_NAME" &>/dev/null
-                    e_and_l " ${bold_purple}Konfiguration${colors_off} gesichert in ${bold_purple}$BACKUP_NAME${colors_off}"
-                  fi
-                fi
-                # -----------------
-                # Einzelne Dateien
-                # -----------------
-                if [ -f "$config_name" ] &&
-                   [ ! -s "$BACKUP_NAME" ];
-                then
-                  cp -u --no-dereference "$config_name" "$BACKUP_NAME" &>/dev/null
-                  if [ $? -eq 0 ];
-                  then
-                    chown -R "$USER_USERNAME:$USER_USERNAME" "$BACKUP_NAME" &>/dev/null
-                    e_and_l " ${bold_purple}Konfiguration${colors_off} gesichert in ${bold_purple}$BACKUP_NAME${colors_off}"
-                  fi
-                fi
-              done
-              # ----------------------------------------------------------------
-              # 2. Benutzerbezogenen Autostart-Eintrag sichern
-              # ----------------------------------------------------------------
-              AUTOSTART_FILE="$USER_CONFIG_DIR/autostart/${pkg_name}.desktop"
-              if [ -f "$AUTOSTART_FILE" ];
+              ask_yes_or_no_plus "" " Programm ${bold_yellow}$pkg_name $PKG_VERSION${colors_off} entfernen"
+              if [ $? -eq 1 ];
               then
-                BACKUP_FILE="${AUTOSTART_FILE}_bak"
-                cp -u --no-dereference "$AUTOSTART_FILE" "$BACKUP_FILE" &>/dev/null
-                if [ $? -eq 0 ];
+                e_and_l " $USER_CHOICE_YES"
+                # ----------------------------------------------------------------
+                # 1. Konfigurationsdaten sichern
+                # ----------------------------------------------------------------
+                CONFIG_NAMES=( "$USER_HOME_DIR/$pkg_name"
+                              "$USER_HOME_DIR/.$pkg_name"
+                              "$USER_HOME_DIR/$THE_PKG_INST_NAME"
+                              "$USER_CONFIG_DIR/$pkg_name"
+                              "$USER_CONFIG_DIR/.$pkg_name"
+                              "$USER_CONFIG_DIR/$THE_PKG_INST_NAME"
+                              "$USER_HOME_DIR/Dokumente/$pkg_name"
+                              "$USER_HOME_DIR/Dokumente/.$pkg_name"
+                              "$USER_HOME_DIR/Dokumente/$THE_PKG_INST_NAME"
+                              "$USER_HOME_DIR/.local/share/$pkg_name"
+                              "$USER_HOME_DIR/.local/share/.$pkg_name"
+                              "$USER_HOME_DIR/.local/share/$THE_PKG_INST_NAME" )
+                for config_name in ${CONFIG_NAMES[@]};
+                do
+                  BACKUP_NAME="${config_name}_bak"
+                  # -------
+                  # Ordner
+                  # -------
+                  if [ -d "$config_name" ] &&
+                    [ ! -d "$BACKUP_NAME" ];
+                  then
+                    cp -r -u --no-dereference "$config_name" "$BACKUP_NAME" &>/dev/null
+                    if [ $? -eq 0 ];
+                    then
+                      chown -R "$USER_USERNAME:$USER_USERNAME" "$BACKUP_NAME" &>/dev/null
+                      e_and_l " ${bold_purple}Konfiguration${colors_off} gesichert in ${bold_purple}$BACKUP_NAME${colors_off}"
+                    fi
+                  fi
+                  # -----------------
+                  # Einzelne Dateien
+                  # -----------------
+                  if [ -f "$config_name" ] &&
+                    [ ! -s "$BACKUP_NAME" ];
+                  then
+                    cp -u --no-dereference "$config_name" "$BACKUP_NAME" &>/dev/null
+                    if [ $? -eq 0 ];
+                    then
+                      chown -R "$USER_USERNAME:$USER_USERNAME" "$BACKUP_NAME" &>/dev/null
+                      e_and_l " ${bold_purple}Konfiguration${colors_off} gesichert in ${bold_purple}$BACKUP_NAME${colors_off}"
+                    fi
+                  fi
+                done
+                # ----------------------------------------------------------------
+                # 2. Benutzerbezogenen Autostart-Eintrag sichern
+                # ----------------------------------------------------------------
+                AUTOSTART_FILE="$USER_CONFIG_DIR/autostart/${pkg_name}.desktop"
+                if [ -f "$AUTOSTART_FILE" ];
                 then
-                  chown -R "$USER_USERNAME:$USER_USERNAME" "$BACKUP_FILE" &>/dev/null
-                  e_and_l " ${bold_purple}Autostart${colors_off} gesichert in ${bold_purple}$BACKUP_FILE${colors_off}"
+                  BACKUP_FILE="${AUTOSTART_FILE}_bak"
+                  cp -u --no-dereference "$AUTOSTART_FILE" "$BACKUP_FILE" &>/dev/null
+                  if [ $? -eq 0 ];
+                  then
+                    chown -R "$USER_USERNAME:$USER_USERNAME" "$BACKUP_FILE" &>/dev/null
+                    e_and_l " ${bold_purple}Autostart${colors_off} gesichert in ${bold_purple}$BACKUP_FILE${colors_off}"
+                  fi
                 fi
-              fi
-              # ----------------------------------------------------------------
-              # 3. Programm löschen
-              # Programme werden vollständig inklusive ihrer Konfigurationsdaten
-              # gelöscht, um bei der Gelegenheit ev. bestehende Altlasten mit zu
-              # bereinigen. Die Benutzer-bezogenen Konfigurations-Daten bleiben
-              # hingegen erhalten (und wurden zudem zuvor ja auch noch gesichert).
-              # ----------------------------------------------------------------
-              remove_pkg "$pkg_name" 1
+                # ----------------------------------------------------------------
+                # 3. Programm löschen
+                # Programme werden vollständig inklusive ihrer Konfigurationsdaten
+                # gelöscht, um bei der Gelegenheit ev. bestehende Altlasten mit zu
+                # bereinigen. Die Benutzer-bezogenen Konfigurations-Daten bleiben
+                # hingegen erhalten (und wurden zudem zuvor ja auch noch gesichert).
+                # ----------------------------------------------------------------
+                remove_pkg "$pkg_name" 1
 
-              # ----------------------------------------------------------------
-              # Nur weitermachen, wenn das Löschen erfolgreich war
-              # ----------------------------------------------------------------
-              if [ $REMOVE_RESULT -eq 0 ];
-              then
-                # --------------------------------------------------------------
-                # 4. Starter löschen
-                # --------------------------------------------------------------
-                remove_starter "$pkg_name"
-                # --------------------------------------------------------------
-                # 5. Programm neu installieren
-                # --------------------------------------------------------------
-                LAST_ERW_PACK=""
-                LAST_PPA_PACK=""
-                # --------------------------------------
-                # Für die Neu-Installation die Optionen
-                # "force" und "quiet" berücksichtigen
-                # --------------------------------------
-                OPTION_FLAG[force]=$PRESERVED_FORCE_FLAG
-                OPTION_FLAG[quiet]=$PRESERVED_QUIET_FLAG
-                install_pkg $pkg_name 0 0 1
-                OPTION_FLAG[force]=0
-                OPTION_FLAG[quiet]=0
+                # ----------------------------------------------------------------
+                # Nur weitermachen, wenn das Löschen erfolgreich war
+                # ----------------------------------------------------------------
+                if [ $REMOVE_RESULT -eq 0 ];
+                then
+                  # --------------------------------------------------------------
+                  # 4. Starter löschen
+                  # --------------------------------------------------------------
+                  remove_starter "$pkg_name"
+                  # --------------------------------------------------------------
+                  # 5. Programm neu installieren
+                  # --------------------------------------------------------------
+                  LAST_ERW_PACK=""
+                  LAST_PPA_PACK=""
+                  # --------------------------------------
+                  # Für die Neu-Installation die Optionen
+                  # "force" und "quiet" berücksichtigen
+                  # --------------------------------------
+                  OPTION_FLAG[force]=$PRESERVED_FORCE_FLAG
+                  OPTION_FLAG[quiet]=$PRESERVED_QUIET_FLAG
+                  install_pkg $pkg_name 0 0 1
+                  OPTION_FLAG[force]=0
+                  OPTION_FLAG[quiet]=0
+                fi
               fi
             fi
           fi
@@ -12982,6 +13092,9 @@ then
                   if [ $(cat "$LAST_EXIT_CODE") -eq 0 ];
                   then
                     e_and_l "$OK_TAG"
+                    e_and_l " $HINWEIS_TAG: Diese Funktion wird erst nach der nächsten Anmeldung aktiv. Darüber"
+                    e_and_l " hinaus müssen die betroffenen Browser bis dahin bereits jeweils mindestens"
+                    e_and_l " einmal gestartet worden sein, damit deren zu ändernde Konfiguration existiert."
                     CHANGES_MADE=1
                   else
                     e_and_l "$ERROR_TAG $LINENO"
@@ -16938,7 +17051,7 @@ then
   if [ $SNAP_INSTALLED -ne 0 ];
   then
     remove_file "$SNAPSHOT_SNAPS_LIST"
-    LANG=en_US.UTF-8 snap saved 2>/dev/null | tail --lines=+2 | awk '{print $1, $2, "(A"$3")", "(V"$4")", "(R"$5")", "(S"$6")"}' >> "$SNAPSHOT_SNAPS_LIST"
+    LANG=en_US.UTF-8 snap saved 2>/dev/null | tail --lines=+2 | awk '{print $1, $2, "(A"$3")", "(V"$4")", "(R"$5")", "(S"$6")"}' > "$SNAPSHOT_SNAPS_LIST"
     if [ -s "$SNAPSHOT_SNAPS_LIST" ];
     then
       remove_snapshots
