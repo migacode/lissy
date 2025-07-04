@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 03.07.2025
-VERSION="5.0.6"
+# Letzte Änderung: 04.07.2025
+VERSION="5.0.7"
 
 ################################################################################
 #                                                                              #
@@ -6182,6 +6182,8 @@ then
   # -----
 
   WINE_VERSION=""
+  WINE_VERSION_APT=""
+  WINE_VERSION_FLAT=""
   if [ $(LANG=en dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
   then
     WINE_VERSION_APT="$(wine --version 2>/dev/null | cut -d" " -f 1 | cut -d "-" -f 2 | xargs 2>/dev/null)"
@@ -6753,7 +6755,42 @@ AUTO_ADD_PKGS[usbauth]="usbauth-notifier"
 AUTO_ADD_PKGS[usb-creator-common]="usb-creator-gtk"
 AUTO_ADD_PKGS[virtualbox]="virtualbox-ext-pack virtualbox-guest-additions-iso"
 AUTO_ADD_PKGS[vpnc]="network-manager-vpnc network-manager-vpnc-gnome"
-AUTO_ADD_PKGS[wine]="wine64 wine32 winetricks"
+
+# ------------------------------------------------------------------------------
+# Je nach Installations-Status von Wine gibt es unterschiedliche Erweiterungen
+# ------------------------------------------------------------------------------
+AUTO_ADD_PKGS[wine]=""
+WINE_APT_ADDONS="wine64 wine32 winetricks"
+WINE_FLAT_ADDONS=""
+# ---------------------------
+# Wine ist nicht installiert
+# ---------------------------
+if [[ "$WINE_VERSION_APT" == "" && "$WINE_VERSION_FLAT" == "" ]];
+then
+  AUTO_ADD_PKGS[wine]="$WINE_APT_ADDONS $WINE_FLAT_ADDONS"
+fi
+# -----------------------------------------------------
+# Wine ist nur aus dem Standard-Repository installiert
+# -----------------------------------------------------
+if [[ "$WINE_VERSION_APT" != "" && "$WINE_VERSION_FLAT" == "" ]];
+then
+  AUTO_ADD_PKGS[wine]="$WINE_APT_ADDONS"
+fi
+# -------------------------------------
+# Wine ist nur als Flatpak installiert
+# -------------------------------------
+if [[ "$WINE_VERSION_APT" == "" && "$WINE_VERSION_FLAT" != "" ]];
+then
+  AUTO_ADD_PKGS[wine]="$WINE_FLAT_ADDONS"
+fi
+# -----------------------------------------------------------------
+# Wine ist aus dem Standard-Repository und als Flatpak installiert
+# -----------------------------------------------------------------
+if [[ "$WINE_VERSION_APT" != "" && "$WINE_VERSION_FLAT" != "" ]];
+then
+  AUTO_ADD_PKGS[wine]="$WINE_APT_ADDONS $WINE_FLAT_ADDONS"
+fi
+#-------------------------------------------------------------------------------
 
 AUTO_ADD_PKGS[yt-dlp]="youtube-dl youtubedl-gui"
 
