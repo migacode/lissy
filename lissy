@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 04.07.2025
-VERSION="5.0.7"
+# Letzte Änderung: 05.07.2025
+VERSION="5.0.8"
 
 ################################################################################
 #                                                                              #
@@ -916,7 +916,7 @@ function copy_starter_to_desktop {
     then
 
       # -------------------------------------------------------------------
-      # Hauptordner "Neue Starter" erstellen (nicht bei GNOME, dort werden
+      # Hauptordner "Neue Starter" erstellen (nicht mit GNOME, dort werden
       # die Starter ohne Ordnerstruktur direkt auf dem Desktop angelegt)
       # -------------------------------------------------------------------
       if [ "$DESKTOP_ENVIRONMENT" != "GNOME" ];
@@ -939,7 +939,7 @@ function copy_starter_to_desktop {
       then
 
         # ---------------------------------------------------------------
-        # Unterordner für aktuelle Kategorie erstellen (nicht bei GNOME)
+        # Unterordner für aktuelle Kategorie erstellen (nicht mit GNOME)
         # ---------------------------------------------------------------
         if [ "$DESKTOP_ENVIRONMENT" != "GNOME" ];
         then
@@ -5470,13 +5470,13 @@ PRE_SPACE=$(printf ' %.0s' {1..5})
 NA_TXT="nicht verfügbar"
 NE_TXT="nicht ermittelbar"
 NF_TXT="nicht gefunden"
-NG_TXT="nicht bei GNOME"
-NM_TXT="nur MATE-Desktop"
+NG_TXT="nicht mit GNOME"
+NM_TXT="nur mit MATE"
 NR_TXT="nicht für root"
 NU_TXT="nur mit Ubuntu"
 NV_TXT="nicht vorhanden"
 RASPY_TXT="nur Raspberry Pi"
-PIOS_TXT="nur bei Pi OS"
+PIOS_TXT="nur mit Pi OS"
 KF_TAG="${bold_green}ok${colors_off} ${dark_grey}(keine fehlenden gefunden)${colors_off}"
 NC_TAG="${bold_green}ok${colors_off} ${dark_grey}(keine Änderung)${colors_off}"
 ND_TAG="${bold_green}ok${colors_off} ${dark_grey}(keine Dateien gefunden)${colors_off}"
@@ -12220,22 +12220,22 @@ then
     # Auswahl der Starter verwendet. Bei Änderungen in beiden Skripten anpassen!
     # ==========================================================================
     ACTION_MESSAGE=" Fehlende ${light_cyan}Menü-Einträge für Wine${colors_off} erstellen"
-    if [ $(LANG=en dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
+    # if [ $(LANG=en dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
+    if [ "$WINE_VERSION_APT" != "" ] ||
+       [ "$WINE_VERSION_FLAT" != "" ];
     then
-      WINE_STARTER_MISSING=0
-      tmp_list=${PKG_STARTER_LIST[wine]};
-      for starter_file in ${tmp_list[@]};
-      do
-        if [ ! -s "/usr/share/applications/$starter_file.desktop" ];
-        then
-          ((WINE_STARTER_MISSING+=1))
-          break
-        fi
-      done
-      if [ $WINE_STARTER_MISSING -gt 0 ];
+      # ------------------------------------------------------------------------
+      # Liste der zu erstellenden Starter zusammenbauen
+      # ------------------------------------------------------------------------
+      tmp_list=""
+      declare -A WINE_STARTER_NAME
+      declare -A WINE_STARTER_EXEC
+      # ---------------------------------------------
+      # Wine installiert aus dem Standard-Repository
+      # ---------------------------------------------
+      if [ "$WINE_VERSION_APT" != "" ];
       then
-        declare -A WINE_STARTER_NAME
-        declare -A WINE_STARTER_EXEC
+        tmp_list+=" ${PKG_STARTER_LIST[wine]}";
         WINE_STARTER_NAME[wine-browsedrive]='Laufwerk C:'
         WINE_STARTER_EXEC[wine-browsedrive]='xdg-open .wine/dosdevices/c:'
         WINE_STARTER_NAME[wine-control]='Kontrollpanel'
@@ -12256,33 +12256,72 @@ then
         WINE_STARTER_EXEC[wine-wineconsole]='wine wineconsole'
         WINE_STARTER_NAME[wine-winemine]='MineSweeper'
         WINE_STARTER_EXEC[wine-winemine]='wine winemine'
+      fi
+      # -----------------------------
+      # Wine installiert als Flatpak
+      # -----------------------------
+      if [ "$WINE_VERSION_FLAT" != "" ];
+      then
+        tmp_list+=" wine-winetricks-flatpak wine-regedit-flatpak wine-winecfg-flatpak wine-wineconsole-flatpak wine-winemine-flatpak";
+        WINE_STARTER_NAME[wine-winetricks-flatpak]='Winetricks (Flatpak)'
+        WINE_STARTER_EXEC[wine-winetricks-flatpak]='flatpak run --command=winetricks org.winehq.Wine'
+        WINE_STARTER_NAME[wine-regedit-flatpak]="Registry Editor (Flatpak)"
+        WINE_STARTER_EXEC[wine-regedit-flatpak]='flatpak run --command=regedit org.winehq.Wine'
+        WINE_STARTER_NAME[wine-winecfg-flatpak]="Konfiguration (Flatpak)"
+        WINE_STARTER_EXEC[wine-winecfg-flatpak]='flatpak run --command=winecfg org.winehq.Wine'
+        WINE_STARTER_NAME[wine-wineconsole-flatpak]="Windows Konsole (Flatpak)"
+        WINE_STARTER_EXEC[wine-wineconsole-flatpak]='flatpak run --command=wineconsole org.winehq.Wine'
+        WINE_STARTER_NAME[wine-winemine-flatpak]="MineSweeper (Flatpak)"
+        WINE_STARTER_EXEC[wine-winemine-flatpak]='flatpak run --command=winemine org.winehq.Wine'
+      fi
+      # ---------------------------------------------
+      # Prüfen ob schonn alle Starter vorhanden sind
+      # ---------------------------------------------
+      WINE_STARTER_MISSING=0
+      for starter_file in ${tmp_list[@]};
+      do
+        if [ ! -s "/usr/share/applications/$starter_file.desktop" ];
+        then
+          ((WINE_STARTER_MISSING+=1))
+          break
+        fi
+      done
+      # -----------------------------------------
+      # Wenn Starter fehlen, diese neu erstellen
+      # -----------------------------------------
+      if [ $WINE_STARTER_MISSING -gt 0 ];
+      then
         e_and_l -n "$ACTION_MESSAGE  ... "
         WINE_STARTER_ERRORS=0
         for starter_file in ${tmp_list[@]};
         do
-          WINE_STARTER_FILE="/usr/share/applications/$starter_file.desktop"
-          if [ ! -s "$WINE_STARTER_FILE" ];
+          if [ "$starter_file" != "" ];
           then
-            echo -e "[Desktop Entry]" > "$WINE_STARTER_FILE" 2>/dev/null
-            if [ $? -eq 0 ];
+            WINE_STARTER_FILE="/usr/share/applications/$starter_file.desktop"
+            ICON_NAME="${starter_file/-flatpak/}"
+            if [ ! -s "$WINE_STARTER_FILE" ];
             then
-              echo -e "Type=Application" >> "$WINE_STARTER_FILE" 2>/dev/null
-              echo -e "Name=Wine ${WINE_STARTER_NAME[$starter_file]}" >> "$WINE_STARTER_FILE" 2>/dev/null
-              echo -e "Exec=${WINE_STARTER_EXEC[$starter_file]}" >> "$WINE_STARTER_FILE" 2>/dev/null
-              echo -e "Icon=$starter_file" >> "$WINE_STARTER_FILE" 2>/dev/null
-              echo -e "Terminal=false" >> "$WINE_STARTER_FILE" 2>/dev/null
-              echo -e "StartupNotify=false" >> "$WINE_STARTER_FILE" 2>/dev/null
-              echo -e "Categories=Wine;" >> "$WINE_STARTER_FILE" 2>/dev/null
-              chown -R "root:root" "$WINE_STARTER_FILE" &>/dev/null
-              chmod -R 0644 "$WINE_STARTER_FILE" &>/dev/null
-              download_icon_file "$starter_file"
-              if [ ${OPTION_FLAG[addstart]} -ne 0 ];
+              echo -e "[Desktop Entry]" > "$WINE_STARTER_FILE" 2>/dev/null
+              if [ $? -eq 0 ];
               then
-                KAT_SHORT_NAME="${KATEGORIE_TEXT[w]}"
-                copy_starter_to_desktop "$starter_file" "" 1 # TODO TESTEN!
+                echo -e "Type=Application" >> "$WINE_STARTER_FILE" 2>/dev/null
+                echo -e "Name=Wine ${WINE_STARTER_NAME[$starter_file]}" >> "$WINE_STARTER_FILE" 2>/dev/null
+                echo -e "Exec=${WINE_STARTER_EXEC[$starter_file]}" >> "$WINE_STARTER_FILE" 2>/dev/null
+                echo -e "Icon=$ICON_NAME" >> "$WINE_STARTER_FILE" 2>/dev/null
+                echo -e "Terminal=false" >> "$WINE_STARTER_FILE" 2>/dev/null
+                echo -e "StartupNotify=false" >> "$WINE_STARTER_FILE" 2>/dev/null
+                echo -e "Categories=Wine;" >> "$WINE_STARTER_FILE" 2>/dev/null
+                chown -R "root:root" "$WINE_STARTER_FILE" &>/dev/null
+                chmod -R 0644 "$WINE_STARTER_FILE" &>/dev/null
+                download_icon_file "$ICON_NAME"
+                if [ ${OPTION_FLAG[addstart]} -ne 0 ];
+                then
+                  KAT_SHORT_NAME="${KATEGORIE_TEXT[w]}"
+                  copy_starter_to_desktop "$WINE_STARTER_FILE" "" 1
+                fi
+              else
+                ((WINE_STARTER_ERRORS+=1))
               fi
-            else
-              ((WINE_STARTER_ERRORS+=1))
             fi
           fi
         done
@@ -12296,7 +12335,7 @@ then
         e_and_l "$ACTION_MESSAGE  ... $NC_TAG"
       fi
     else
-      e_and_l "$(skip_text "$ACTION_MESSAGE " "kein WINE")"
+      e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
     fi
 
     # ==========================================================================
@@ -13358,7 +13397,7 @@ then
       e_and_l "$ACTION_MESSAGE ... $NC_TAG"
     fi
   else # (wenn es überhaupt kein apport und auch kein whoopsie gibt)
-    e_and_l "$(skip_text "$ACTION_MESSAGE" "nur bei Ubuntu")"
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "$NV_TXT")"
   fi
 
   # =============================================================================
@@ -14198,7 +14237,7 @@ EOF
       e_and_l "$ACTION_MESSAGE ... $NC_TAG"
     fi
   else
-    e_and_l "$(skip_text "$ACTION_MESSAGE" "nur bei LDM")"
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "nur mit LDM")"
   fi
 
   # ============================================================================
@@ -14439,7 +14478,7 @@ EOF
       TEMP_MSG+="${bold_red}nicht${colors_off} eingerichtet"
     fi
   else
-    TEMP_MSG+="übersprungen (nur bei LDM)"
+    TEMP_MSG+="übersprungen (nur mit LDM)"
     TEMP_MSG="$(clear_text "$TEMP_MSG")"
     TEMP_MSG="${dark_grey}$TEMP_MSG${colors_off}"
   fi
