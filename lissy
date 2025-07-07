@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 05.07.2025
-VERSION="5.0.8"
+# Letzte Änderung: 07.07.2025
+VERSION="5.0.9"
 
 ################################################################################
 #                                                                              #
@@ -1000,7 +1000,7 @@ function copy_starter_to_desktop {
             if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
             # 1.3. Datei mit Paketnamen im System-Ordner suchen
-            SEARCH_RESULT_TMP=$(find /usr/share/applications/ -iname "$SEARCH_NAME".desktop -print 2>/dev/null)
+            SEARCH_RESULT_TMP=$(find "$GLOBAL_STARTER_DIR" -iname "$SEARCH_NAME".desktop -print 2>/dev/null)
             # echo -e "1.3: $SEARCH_RESULT_TMP"
             if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
@@ -1024,13 +1024,13 @@ function copy_starter_to_desktop {
               if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
               # 2.2. Auftreten des Paketnamens innerhalb der Dateien im System-Ordner suchen
-              SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" /usr/share/applications/* 2>/dev/null)
+              SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "^(exec|name|icon|comment)\s*=\s*(/usr/bin/)*\b$SEARCH_NAME\b" "$GLOBAL_STARTER_DIR/"* 2>/dev/null)
               # echo -e "2.2: $SEARCH_RESULT_TMP"
               if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
               # 2.3. Auftreten des Paketnamens innerhalb der Dateien im System-Ordner suchen
               # echo -e "2.3: $SEARCH_RESULT_TMP"
-              SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "(X-Ubuntu-Gettext-Domain)=\b$SEARCH_NAME\b" /usr/share/applications/* 2>/dev/null)
+              SEARCH_RESULT_TMP=$(grep -i -l -o -r -E "(X-Ubuntu-Gettext-Domain)=\b$SEARCH_NAME\b" "$GLOBAL_STARTER_DIR/"* 2>/dev/null)
               if [ "$SEARCH_RESULT_TMP" != "" ]; then SEARCH_RESULT_ALL+=$'\n'"$SEARCH_RESULT_TMP"; fi
 
               # 2.4. Auftreten des Paketnamens innerhalb der Dateien im Snap-Ordner suchen
@@ -1077,7 +1077,7 @@ function copy_starter_to_desktop {
               SEARCH_RESULT_TMP=""
               for starter_file in ${tmp_list[@]};
               do
-                full_starter_file_path="/usr/share/applications/$starter_file.desktop"
+                full_starter_file_path="$GLOBAL_STARTER_DIR/$starter_file.desktop"
                 if [ -s "$full_starter_file_path" ];
                 then
                   SEARCH_RESULT_TMP+=$full_starter_file_path
@@ -3920,7 +3920,7 @@ function install_pkg {
                             chmod -R 0644 "$ICON_TARGET_FILE" &>/dev/null
                           fi
                           # .desktop-Datei anlegen
-                          DESKTOP_FILE="/usr/share/applications/$WPKG_CLEAN_NAME.desktop"
+                          DESKTOP_FILE="$GLOBAL_STARTER_DIR/$WPKG_CLEAN_NAME.desktop"
                           echo -e "[Desktop Entry]" > "$DESKTOP_FILE" 2>/dev/null
                           if [ $? -eq 0 ];
                           then
@@ -4485,7 +4485,7 @@ function remove_starter {
     # -----------------------------------------------------------
     # Starter mit dem gleichen Dateinamen wie das Paketes selbst
     # -----------------------------------------------------------
-    remove_file "/usr/share/applications/$THE_PKG_REAL_NAME.desktop"
+    remove_file "$GLOBAL_STARTER_DIR/$THE_PKG_REAL_NAME.desktop"
     find "$USER_HOME_DIR" -type f -iname "$THE_PKG_REAL_NAME.desktop" -delete &>"$LOG_TEMP"
     # -----------------------------------------------
     # Starter mit ähnlichen Dateinamen wie das Paket
@@ -4501,7 +4501,7 @@ function remove_starter {
     then
       for starter_file in ${tmp_list[@]};
       do
-        remove_file "/usr/share/applications/$starter_file.desktop"
+        remove_file "$GLOBAL_STARTER_DIR/$starter_file.desktop"
         find "$USER_HOME_DIR" -type f -iname "$starter_file.desktop" -delete &>"$LOG_TEMP"
       done
     fi
@@ -6154,7 +6154,7 @@ then
   then
     # DEFAULT_FILE_MIME="$(xdg-mime query default application/x-gnome-saved-search 2>/dev/null)"
     DEFAULT_FILE_MIME="$(xdg-mime query default inode/directory 2>/dev/null)"
-    DEFAULT_FILE_DESK="/usr/share/applications/$DEFAULT_FILE_MIME"
+    DEFAULT_FILE_DESK="$GLOBAL_STARTER_DIR/$DEFAULT_FILE_MIME"
     if [ -s "$DEFAULT_FILE_DESK" ];
     then
       MIME_FILE_MAN=$(grep -i -E "^\s*exec\s*=" "$DEFAULT_FILE_DESK" 2>/dev/null | head -n 1 | sed -E "s/^\s*exec\s*=//i" | cut -d' ' -f 1)
@@ -8107,6 +8107,12 @@ PKG_STARTER_XDIR[libreoffice]="LibreOffice"
 PKG_STARTER_LIST[oolite]="oolite.org"
 PKG_STARTER_XDIR[oolite]=""
 PKG_STARTER_LIST[wine]="wine-browsedrive wine-control wine-explorer wine-iexplore wine-regedit wine-taskmgr wine-uninstaller wine-winecfg wine-wineconsole wine-winemine"
+# ---------------------------------------------------------------
+# Für Wine individuelle Listen je nach Installations-Art anlegen
+# ---------------------------------------------------------------
+WINE_STARTER_LIST_APT="${PKG_STARTER_LIST[wine]}"
+WINE_STARTER_LIST_FLAT="wine-winetricks-flatpak wine-regedit-flatpak wine-winecfg-flatpak wine-wineconsole-flatpak wine-winemine-flatpak"
+# ---------------------------------------------------------------
 PKG_STARTER_XDIR[wine]=""
 PKG_STARTER_LIST[wine-installer]="${PKG_STARTER_LIST[wine]}"
 PKG_STARTER_XDIR[wine-installer]=""
@@ -8281,6 +8287,11 @@ REJECT_STARTER=('alacarte-made' 'caja-autorun-software' 'caja-browser' 'caja-com
 # Dateinamen werden ebenfalls ohne die Endung ".desktop" angegeben.
 #===============================================================================
 WRONG_STARTER=('Entwicklung/org.gnome.Keysign' 'Internet/chromium-bsu' 'Spiele/Laufen und Springen/org.neverball.Neverball.Neverputt' 'Spiele/Simulation/flightgear')
+
+#===============================================================================
+# Ordner mit systemweiten Startern (.desktop-Dateien)
+#===============================================================================
+GLOBAL_STARTER_DIR="/usr/share/applications"
 
 #===============================================================================
 # Zu manchen Programmpaketen werden keine Symbolbilder (Icons) installiert,
@@ -11994,7 +12005,7 @@ then
                 ORG_SCRSAVER_FILES[1]="/etc/xdg/autostart/mate-screensaver.desktop"
                 ORG_SCRSAVER_FILES[2]="$USER_CONFIG_DIR/autostart/mate-screensaver.desktop"
                 # Menü-Einträge
-                ORG_SCRSAVER_FILES[3]="/usr/share/applications/mate-screensaver-preferences.desktop"
+                ORG_SCRSAVER_FILES[3]="$GLOBAL_STARTER_DIR/mate-screensaver-preferences.desktop"
                 ORG_SCRSAVER_FILES[4]="/usr/share/mate/applications/mate-screensaver-preferences.desktop"
               fi
             fi
@@ -12015,7 +12026,7 @@ then
                 ORG_SCRSAVER_FILES[2]="/etc/xdg/autostart/cinnamon-settings-daemon-screensaver-proxy.desktop"
                 ORG_SCRSAVER_FILES[3]="$USER_CONFIG_DIR/autostart/cinnamon-settings-daemon-screensaver-proxy.desktop"
                 # Menü-Einträge
-                ORG_SCRSAVER_FILES[4]="/usr/share/applications/cinnamon-settings-screensaver.desktop"
+                ORG_SCRSAVER_FILES[4]="$GLOBAL_STARTER_DIR/cinnamon-settings-screensaver.desktop"
               fi
             fi
             # ---------------------------------------------------------
@@ -12214,10 +12225,7 @@ then
 
     # ==========================================================================
     # Erstellung diverser Menü-Einträge für Wine
-    # -------------------------------------------
-    # ACHTUNG:
-    # In "wine_post_inst" wird WINE_STARTER_LIST statt PKG_STARTER_LIST[wine] zur
-    # Auswahl der Starter verwendet. Bei Änderungen in beiden Skripten anpassen!
+    # ACHTUNG: Bei Änderungen auch "wine_post_inst" anpassen!
     # ==========================================================================
     ACTION_MESSAGE=" Fehlende ${light_cyan}Menü-Einträge für Wine${colors_off} erstellen"
     # if [ $(LANG=en dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
@@ -12235,7 +12243,7 @@ then
       # ---------------------------------------------
       if [ "$WINE_VERSION_APT" != "" ];
       then
-        tmp_list+=" ${PKG_STARTER_LIST[wine]}";
+        tmp_list+="$WINE_STARTER_LIST_APT";
         WINE_STARTER_NAME[wine-browsedrive]='Laufwerk C:'
         WINE_STARTER_EXEC[wine-browsedrive]='xdg-open .wine/dosdevices/c:'
         WINE_STARTER_NAME[wine-control]='Kontrollpanel'
@@ -12262,7 +12270,8 @@ then
       # -----------------------------
       if [ "$WINE_VERSION_FLAT" != "" ];
       then
-        tmp_list+=" wine-winetricks-flatpak wine-regedit-flatpak wine-winecfg-flatpak wine-wineconsole-flatpak wine-winemine-flatpak";
+        if [ "$tmp_list" != "" ]; then tmp_list+=" "; fi
+        tmp_list+="$WINE_STARTER_LIST_FLAT";
         WINE_STARTER_NAME[wine-winetricks-flatpak]='Winetricks (Flatpak)'
         WINE_STARTER_EXEC[wine-winetricks-flatpak]='flatpak run --command=winetricks org.winehq.Wine'
         WINE_STARTER_NAME[wine-regedit-flatpak]="Registry Editor (Flatpak)"
@@ -12280,7 +12289,7 @@ then
       WINE_STARTER_MISSING=0
       for starter_file in ${tmp_list[@]};
       do
-        if [ ! -s "/usr/share/applications/$starter_file.desktop" ];
+        if [ ! -s "$GLOBAL_STARTER_DIR/$starter_file.desktop" ];
         then
           ((WINE_STARTER_MISSING+=1))
           break
@@ -12297,7 +12306,7 @@ then
         do
           if [ "$starter_file" != "" ];
           then
-            WINE_STARTER_FILE="/usr/share/applications/$starter_file.desktop"
+            WINE_STARTER_FILE="$GLOBAL_STARTER_DIR/$starter_file.desktop"
             ICON_NAME="${starter_file/-flatpak/}"
             if [ ! -s "$WINE_STARTER_FILE" ];
             then
