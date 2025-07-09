@@ -10904,7 +10904,10 @@ then
   then
     e_and_l "$FULL_LINE"
   fi
-  e_and_l " ${bold_blue}Erstellung zusätzlicher Starter (Programm-Symbole)${colors_off}"
+  e_and_l -n " ${bold_blue}Erstellung zusätzlicher Starter (Programm-Symbole)${colors_off}"
+  if [ ${OPTION_FLAG[adcstart]} -eq 1 ]; then e_and_l -n " ${dark_grey}[adcstart]${colors_off}"; fi
+  if [ ${OPTION_FLAG[addstart]} -eq 1 ]; then e_and_l -n " ${dark_grey}[addstart]${colors_off}"; fi
+  e_and_l ""
   e_and_l "$FULL_LINE"
 
   if [ ${OPTION_FLAG[addstart]} -eq 1 ];
@@ -16026,10 +16029,10 @@ then
   fi
 
   # ==========================================================================
-  # Erstellung diverser Menü-Einträge für Wine
+  # Erstellung diverser Menü-Einträge (Starter) für Wine
   # ACHTUNG: Bei Änderungen auch "wine_post_inst" anpassen!
   # ==========================================================================
-  ACTION_MESSAGE=" Fehlende ${light_cyan}Menü-Einträge für Wine${colors_off} erstellen"
+  ACTION_MESSAGE=" Fehlende ${light_cyan}Start-Einträge für Wine${colors_off} erstellen"
   # if [ $(LANG=en dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
   if [ "$WINE_VERSION_APT" != "" ] ||
      [ "$WINE_VERSION_FLAT" != "" ];
@@ -16102,7 +16105,7 @@ then
     # -----------------------------------------
     if [ $WINE_STARTER_MISSING -gt 0 ];
     then
-      e_and_l -n "$ACTION_MESSAGE  ... "
+      e_and_l -n "$ACTION_MESSAGE ... "
       WINE_STARTER_ERRORS=0
       for starter_file in ${tmp_list[@]};
       do
@@ -16143,10 +16146,10 @@ then
         e_and_l "$ERROR_TAG"
       fi
     else
-      e_and_l "$ACTION_MESSAGE  ... $NC_TAG"
+      e_and_l "$ACTION_MESSAGE ... $NC_TAG"
     fi
   else
-    e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
   fi
 
   # ============================================================================
