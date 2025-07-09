@@ -10905,36 +10905,174 @@ then
     e_and_l "$FULL_LINE"
   fi
 
-  # ----------------------------------------------------------------------------
-  # Starter der einzelnen Kategorien (wenn ausgewählt)
-  # ----------------------------------------------------------------------------
-  e_and_l " ${bold_blue}Erstellung zusätzlicher Starter (Programm-Symbole)${colors_off}"
-  e_and_l "$FULL_LINE"
-  if [ $ALL_STARTER_COUNTER -gt 0 ];
+  if [ ${OPTION_FLAG[addstart]} -eq 1 ];
   then
-    e_and_l " Bisher bereits neu erstellte Starter: ${bold_yellow}$ALL_STARTER_COUNTER${colors_off}"
-    e_and_l "$HALF_LINE"
-  fi
-  e_and_l " ${bold_blue}Kategorien${colors_off}"
-  e_and_l "$HALF_LINE"
-  NEW_STARTER_COUNTER=0
-  for katidx in "${!ADDITIONAL_STARTER[@]}";
-  do
-    if [ ${KATEGORIE_FLAG[$katidx]} -eq 1 ];
+
+    # --------------------------------------------------------------------------
+    # Starter der einzelnen Kategorien (wenn ausgewählt)
+    # --------------------------------------------------------------------------
+    e_and_l " ${bold_blue}Erstellung zusätzlicher Starter (Programm-Symbole)${colors_off}"
+    e_and_l "$FULL_LINE"
+    if [ $ALL_STARTER_COUNTER -gt 0 ];
     then
-      KAT_SHORT_NAME="${KATEGORIE_TEXT[$katidx]}"
-      ADD_STARTER_LIST=(${ADDITIONAL_STARTER[$katidx]})
-      e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}${KAT_SHORT_NAME%% (*}${colors_off}, bitte warten ... "
-      for starter_name in "${ADD_STARTER_LIST[@]}";
+      e_and_l " Bisher bereits neu erstellte Starter: ${bold_yellow}$ALL_STARTER_COUNTER${colors_off}"
+      e_and_l "$HALF_LINE"
+    fi
+    e_and_l " ${bold_blue}Kategorien${colors_off}"
+    e_and_l "$HALF_LINE"
+    NEW_STARTER_COUNTER=0
+    for katidx in "${!ADDITIONAL_STARTER[@]}";
+    do
+      if [ ${KATEGORIE_FLAG[$katidx]} -eq 1 ];
+      then
+        KAT_SHORT_NAME="${KATEGORIE_TEXT[$katidx]}"
+        ADD_STARTER_LIST=(${ADDITIONAL_STARTER[$katidx]})
+        e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}${KAT_SHORT_NAME%% (*}${colors_off}, bitte warten ... "
+        for starter_name in "${ADD_STARTER_LIST[@]}";
+        do
+          copy_starter_to_desktop "$starter_name" "" 1
+        done
+        e_and_l "$OK_TAG"
+        ((ALL_STARTER_COUNTER+=NEW_STARTER_COUNTER))
+      fi
+    done
+    e_and_l " - Es wurden ${bold_green}$NEW_STARTER_COUNTER${colors_off} neue Starter erstellt"
+    e_and_l "$HALF_LINE"
+
+    # --------------------------------------------------------------------------
+    # GNOME Apps Starter
+    # --------------------------------------------------------------------------
+    if [ ${KATEGORIE_FLAG[gx]} -eq 1 ];
+    then
+      NEW_STARTER_COUNTER=0
+      e_and_l " ${bold_blue}GNOME Apps${colors_off}"
+      e_and_l "$HALF_LINE"
+      e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}GNOME-Desktop${colors_off}, bitte warten ... "
+      KAT_SHORT_NAME="${KATEGORIE_TEXT[gx]}"
+      SEARCH_RESULT_STANDARD=$(find /usr/share/applications -type f -iname "*.desktop" -print | grep -i -E "gnome.*\.desktop$")
+      SEARCH_RESULT_SNAP=""
+      if [ -d "/var/lib/snapd/desktop/applications" ];
+      then
+        SEARCH_RESULT_SNAP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -print | grep -i -E "gnome.*\.desktop$")
+      fi
+      SEARCH_RESULT_FLATPAK=""
+      if [ -d "/var/lib/flatpak/app" ];
+      then
+        SEARCH_RESULT_FLATPAK=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -print | grep -i -E "\/export" | grep -i -E "gnome.*\.desktop$")
+      fi
+      SEARCH_STARTER_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
+      # -----------------------------------------
+      # Spiele (und vielleicht später mal Pakete
+      # aus anderen Kategorien) auslassen
+      # -----------------------------------------
+      EXCLUDE_STARTER_LIST="${PKG_STARTER_LIST[gnome-games]} org.gnome.atomix org.gnome.gbrainy gnome-mastermind"
+      copy_starter_list
+      e_and_l "$HALF_LINE"
+    fi
+
+    # --------------------------------------------------------------------------
+    # LXDE Tools Starter
+    # --------------------------------------------------------------------------
+    if [ ${KATEGORIE_FLAG[lx]} -eq 1 ];
+    then
+      NEW_STARTER_COUNTER=0
+      e_and_l " ${bold_blue}LXDE Tools${colors_off}"
+      e_and_l "$HALF_LINE"
+      e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}LXDE-Desktop${colors_off}, bitte warten ... "
+      KAT_SHORT_NAME="${KATEGORIE_TEXT[lx]}"
+      SEARCH_RESULT_STANDARD=$(find /usr/share/applications -type f -iname "*.desktop" -print | grep -i -E "^lx.*\.desktop$")
+      SEARCH_RESULT_SNAP=""
+      if [ -d "/var/lib/snapd/desktop/applications" ];
+      then
+        SEARCH_RESULT_SNAP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -print | grep -i -E "^lx.*\.desktop$")
+      fi
+      SEARCH_RESULT_FLATPAK=""
+      if [ -d "/var/lib/flatpak/app" ];
+      then
+        SEARCH_RESULT_FLATPAK=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -print | grep -i -E "\/export" | grep -i -E "^lx.*\.desktop$")
+      fi
+      SEARCH_STARTER_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
+      EXCLUDE_STARTER_LIST=""
+      copy_starter_list
+      e_and_l "$HALF_LINE"
+    fi
+
+    # --------------------------------------------------------------------------
+    # MATE Tools Starter
+    # --------------------------------------------------------------------------
+    if [ ${KATEGORIE_FLAG[mx]} -eq 1 ];
+    then
+      NEW_STARTER_COUNTER=0
+      e_and_l " ${bold_blue}MATE Tools${colors_off}"
+      e_and_l "$HALF_LINE"
+      e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}MATE-Desktop${colors_off}, bitte warten ... "
+      KAT_SHORT_NAME="${KATEGORIE_TEXT[mx]}"
+      SEARCH_RESULT_STANDARD=$(find /usr/share/applications -type f -iname "*.desktop" -print | grep -i -E "mate\-.*\.desktop$")
+      SEARCH_RESULT_SNAP=""
+      if [ -d "/var/lib/snapd/desktop/applications" ];
+      then
+        SEARCH_RESULT_SNAP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -print | grep -i -E "mate\-.*\.desktop$")
+      fi
+      SEARCH_RESULT_FLATPAK=""
+      if [ -d "/var/lib/flatpak/app" ];
+      then
+        SEARCH_RESULT_FLATPAK=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -print | grep -i -E "\/export" | grep -i -E "mate\-.*\.desktop$")
+      fi
+      SEARCH_STARTER_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
+      copy_starter_to_desktop "matecc" "" 0 # Control-Center / Steuerzentrale separat ("-" fehlt im Namen)
+      EXCLUDE_STARTER_LIST=""
+      copy_starter_list
+      e_and_l "$HALF_LINE"
+    fi
+
+    # --------------------------------------------------------------------------
+    # XFCE Tools Starter
+    # --------------------------------------------------------------------------
+    if [ ${KATEGORIE_FLAG[xf]} -eq 1 ];
+    then
+      NEW_STARTER_COUNTER=0
+      e_and_l " ${bold_blue}XFCE Tools${colors_off}"
+      e_and_l "$HALF_LINE"
+      e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}XFCE-Desktop${colors_off}, bitte warten ... "
+      KAT_SHORT_NAME="${KATEGORIE_TEXT[xf]}"
+      SEARCH_RESULT_STANDARD=$(find /usr/share/applications -type f -iname "*.desktop" -print | grep -i -E "^xfce.*\.desktop$")
+      SEARCH_RESULT_SNAP=""
+      if [ -d "/var/lib/snapd/desktop/applications" ];
+      then
+        SEARCH_RESULT_SNAP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -print | grep -i -E "^xfce.*\.desktop$")
+      fi
+      SEARCH_RESULT_FLATPAK=""
+      if [ -d "/var/lib/flatpak/app" ];
+      then
+        SEARCH_RESULT_FLATPAK=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -print | grep -i -E "\/export" | grep -i -E "^xfce.*\.desktop$")
+      fi
+      SEARCH_STARTER_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
+      EXCLUDE_STARTER_LIST=""
+      copy_starter_list
+      e_and_l "$HALF_LINE"
+    fi
+
+    # ----------------------------------------------------------------------------
+    # Raspbian Tools Starter (automatisch)
+    # ----------------------------------------------------------------------------
+    if [ $RASPBIAN -ne 0 ];
+    then
+      NEW_STARTER_COUNTER=0
+      e_and_l " ${bold_blue}Raspbian Tools${colors_off}"
+      e_and_l "$HALF_LINE"
+      e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}Raspbian-Desktop${colors_off}, bitte warten ... "
+      KAT_SHORT_NAME="Raspbian Tools"
+      for desktop_starter in "${RASPBIAN_EXT_STARTER[@]}";
       do
-        copy_starter_to_desktop "$starter_name" "" 1
+        copy_starter_to_desktop "$desktop_starter" "" 0
       done
       e_and_l "$OK_TAG"
+      e_and_l " - Es wurden ${bold_green}$NEW_STARTER_COUNTER${colors_off} neue Starter erstellt"
+      e_and_l "$HALF_LINE"
       ((ALL_STARTER_COUNTER+=NEW_STARTER_COUNTER))
     fi
-  done
-  e_and_l " - Es wurden ${bold_green}$NEW_STARTER_COUNTER${colors_off} neue Starter erstellt"
-  e_and_l "$HALF_LINE"
+
+  fi
 
   # ----------------------------------------------------------------------------
   # Cinnamon Tools Starter (wenn ausgewählt)
@@ -10961,139 +11099,6 @@ then
     EXCLUDE_STARTER_LIST=""
     copy_starter_list
     e_and_l "$HALF_LINE"
-  fi
-
-  # ----------------------------------------------------------------------------
-  # GNOME Apps Starter
-  # ----------------------------------------------------------------------------
-  if [ ${KATEGORIE_FLAG[gx]} -eq 1 ];
-  then
-    NEW_STARTER_COUNTER=0
-    e_and_l " ${bold_blue}GNOME Apps${colors_off}"
-    e_and_l "$HALF_LINE"
-    e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}GNOME-Desktop${colors_off}, bitte warten ... "
-    KAT_SHORT_NAME="${KATEGORIE_TEXT[gx]}"
-    SEARCH_RESULT_STANDARD=$(find /usr/share/applications -type f -iname "*.desktop" -print | grep -i -E "gnome.*\.desktop$")
-    SEARCH_RESULT_SNAP=""
-    if [ -d "/var/lib/snapd/desktop/applications" ];
-    then
-      SEARCH_RESULT_SNAP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -print | grep -i -E "gnome.*\.desktop$")
-    fi
-    SEARCH_RESULT_FLATPAK=""
-    if [ -d "/var/lib/flatpak/app" ];
-    then
-      SEARCH_RESULT_FLATPAK=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -print | grep -i -E "\/export" | grep -i -E "gnome.*\.desktop$")
-    fi
-    SEARCH_STARTER_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
-    # -----------------------------------------
-    # Spiele (und vielleicht später mal Pakete
-    # aus anderen Kategorien) auslassen
-    # -----------------------------------------
-    EXCLUDE_STARTER_LIST="${PKG_STARTER_LIST[gnome-games]} org.gnome.atomix org.gnome.gbrainy gnome-mastermind"
-    copy_starter_list
-    e_and_l "$HALF_LINE"
-  fi
-
-  # ----------------------------------------------------------------------------
-  # LXDE Tools Starter
-  # ----------------------------------------------------------------------------
-  if [ ${KATEGORIE_FLAG[lx]} -eq 1 ];
-  then
-    NEW_STARTER_COUNTER=0
-    e_and_l " ${bold_blue}LXDE Tools${colors_off}"
-    e_and_l "$HALF_LINE"
-    e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}LXDE-Desktop${colors_off}, bitte warten ... "
-    KAT_SHORT_NAME="${KATEGORIE_TEXT[lx]}"
-    SEARCH_RESULT_STANDARD=$(find /usr/share/applications -type f -iname "*.desktop" -print | grep -i -E "^lx.*\.desktop$")
-    SEARCH_RESULT_SNAP=""
-    if [ -d "/var/lib/snapd/desktop/applications" ];
-    then
-      SEARCH_RESULT_SNAP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -print | grep -i -E "^lx.*\.desktop$")
-    fi
-    SEARCH_RESULT_FLATPAK=""
-    if [ -d "/var/lib/flatpak/app" ];
-    then
-      SEARCH_RESULT_FLATPAK=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -print | grep -i -E "\/export" | grep -i -E "^lx.*\.desktop$")
-    fi
-    SEARCH_STARTER_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
-    EXCLUDE_STARTER_LIST=""
-    copy_starter_list
-    e_and_l "$HALF_LINE"
-  fi
-
-  # ----------------------------------------------------------------------------
-  # MATE Tools Starter
-  # ----------------------------------------------------------------------------
-  if [ ${KATEGORIE_FLAG[mx]} -eq 1 ];
-  then
-    NEW_STARTER_COUNTER=0
-    e_and_l " ${bold_blue}MATE Tools${colors_off}"
-    e_and_l "$HALF_LINE"
-    e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}MATE-Desktop${colors_off}, bitte warten ... "
-    KAT_SHORT_NAME="${KATEGORIE_TEXT[mx]}"
-    SEARCH_RESULT_STANDARD=$(find /usr/share/applications -type f -iname "*.desktop" -print | grep -i -E "mate\-.*\.desktop$")
-    SEARCH_RESULT_SNAP=""
-    if [ -d "/var/lib/snapd/desktop/applications" ];
-    then
-      SEARCH_RESULT_SNAP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -print | grep -i -E "mate\-.*\.desktop$")
-    fi
-    SEARCH_RESULT_FLATPAK=""
-    if [ -d "/var/lib/flatpak/app" ];
-    then
-      SEARCH_RESULT_FLATPAK=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -print | grep -i -E "\/export" | grep -i -E "mate\-.*\.desktop$")
-    fi
-    SEARCH_STARTER_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
-    copy_starter_to_desktop "matecc" "" 0 # Control-Center / Steuerzentrale separat ("-" fehlt im Namen)
-    EXCLUDE_STARTER_LIST=""
-    copy_starter_list
-    e_and_l "$HALF_LINE"
-  fi
-
-  # ----------------------------------------------------------------------------
-  # XFCE Tools Starter
-  # ----------------------------------------------------------------------------
-  if [ ${KATEGORIE_FLAG[xf]} -eq 1 ];
-  then
-    NEW_STARTER_COUNTER=0
-    e_and_l " ${bold_blue}XFCE Tools${colors_off}"
-    e_and_l "$HALF_LINE"
-    e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}XFCE-Desktop${colors_off}, bitte warten ... "
-    KAT_SHORT_NAME="${KATEGORIE_TEXT[xf]}"
-    SEARCH_RESULT_STANDARD=$(find /usr/share/applications -type f -iname "*.desktop" -print | grep -i -E "^xfce.*\.desktop$")
-    SEARCH_RESULT_SNAP=""
-    if [ -d "/var/lib/snapd/desktop/applications" ];
-    then
-      SEARCH_RESULT_SNAP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -print | grep -i -E "^xfce.*\.desktop$")
-    fi
-    SEARCH_RESULT_FLATPAK=""
-    if [ -d "/var/lib/flatpak/app" ];
-    then
-      SEARCH_RESULT_FLATPAK=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -print | grep -i -E "\/export" | grep -i -E "^xfce.*\.desktop$")
-    fi
-    SEARCH_STARTER_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
-    EXCLUDE_STARTER_LIST=""
-    copy_starter_list
-    e_and_l "$HALF_LINE"
-  fi
-
-  # ----------------------------------------------------------------------------
-  # Raspbian Tools Starter (automatisch)
-  # ----------------------------------------------------------------------------
-  if [ $RASPBIAN -ne 0 ];
-  then
-    NEW_STARTER_COUNTER=0
-    e_and_l " ${bold_blue}Raspbian Tools${colors_off}"
-    e_and_l "$HALF_LINE"
-    e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}Raspbian-Desktop${colors_off}, bitte warten ... "
-    KAT_SHORT_NAME="Raspbian Tools"
-    for desktop_starter in "${RASPBIAN_EXT_STARTER[@]}";
-    do
-      copy_starter_to_desktop "$desktop_starter" "" 0
-    done
-    e_and_l "$OK_TAG"
-    e_and_l " - Es wurden ${bold_green}$NEW_STARTER_COUNTER${colors_off} neue Starter erstellt"
-    e_and_l "$HALF_LINE"
-    ((ALL_STARTER_COUNTER+=NEW_STARTER_COUNTER))
   fi
 
   # ----------------------------------------------------------------------------
