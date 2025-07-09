@@ -10904,6 +10904,8 @@ then
   then
     e_and_l "$FULL_LINE"
   fi
+  e_and_l " ${bold_blue}Erstellung zusätzlicher Starter (Programm-Symbole)${colors_off}"
+  e_and_l "$FULL_LINE"
 
   if [ ${OPTION_FLAG[addstart]} -eq 1 ];
   then
@@ -10911,8 +10913,6 @@ then
     # --------------------------------------------------------------------------
     # Starter der einzelnen Kategorien (wenn ausgewählt)
     # --------------------------------------------------------------------------
-    e_and_l " ${bold_blue}Erstellung zusätzlicher Starter (Programm-Symbole)${colors_off}"
-    e_and_l "$FULL_LINE"
     if [ $ALL_STARTER_COUNTER -gt 0 ];
     then
       e_and_l " Bisher bereits neu erstellte Starter: ${bold_yellow}$ALL_STARTER_COUNTER${colors_off}"
