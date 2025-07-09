@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 07.07.2025
-VERSION="5.0.9"
+# Letzte Änderung: 09.07.2025
+VERSION="5.1.0"
 
 ################################################################################
 #                                                                              #
@@ -6440,7 +6440,7 @@ fi
 # ------------------------------------------------------------------------------
 # Büro
 # ------------------------------------------------------------------------------
-KATEGORIE_PKGS[b]="bookletimposer calibre evolution libreoffice okular pdfarranger pdfchain pdfmod qpdfview scribus"
+KATEGORIE_PKGS[b]="bookletimposer calibre evolution libreoffice okular pdfarranger pdfchain pdfmod qpdfview scribus texstudio"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[b]+=" thingy xreader"; fi
 # ------------------------------------------------------------------------------
 # Cloud-Clients
@@ -6563,14 +6563,15 @@ fi
 # Windows-API "Wine"
 # ------------------------------------------------------------------------------
 KATEGORIE_PKGS[w]="dosbox"
-# ----------------------------------------------------------
-# Wenn es den WINE-Installer gibt und WINE damit noch nicht
+# -----------------------------------------------------
+# Wenn es den WINE-Installer gibt und WINE noch nicht
 # installiert wurde, diesen statt WINE selbst anzeigen
-# ----------------------------------------------------------
+# HINWEIS: Siehe auch AUTO_ADD_PKGS[wine]
+# -----------------------------------------------------
 if [ $(apt list "wine-installer" 2>/dev/null | grep -i -c -E "wine-installer") -gt 0 ] &&
    [ $(LANG=en dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
 then
-  KATEGORIE_PKGS[w]+=" wine-installer"
+  KATEGORIE_PKGS[w]+=" wine-installer winetricks"
 else
   KATEGORIE_PKGS[w]+=" wine"
 fi
@@ -6738,6 +6739,7 @@ AUTO_ADD_PKGS[onedrive]="onedrivegui"
 AUTO_ADD_PKGS[openvpn]="network-manager-openvpn network-manager-openvpn-gnome"
 AUTO_ADD_PKGS[redshift]="redshift-gtk"
 AUTO_ADD_PKGS[scribus]="scribus-template"
+AUTO_ADD_PKGS[texstudio]="texstudio-l10n"
 
 if [ $(LANG=en dpkg-query -W -f='${Status}' "thunar" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
 then
@@ -12224,130 +12226,6 @@ then
     done
 
     # ==========================================================================
-    # Erstellung diverser Menü-Einträge für Wine
-    # ACHTUNG: Bei Änderungen auch "wine_post_inst" anpassen!
-    # ==========================================================================
-    ACTION_MESSAGE=" Fehlende ${light_cyan}Menü-Einträge für Wine${colors_off} erstellen"
-    # if [ $(LANG=en dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
-    if [ "$WINE_VERSION_APT" != "" ] ||
-       [ "$WINE_VERSION_FLAT" != "" ];
-    then
-      # ------------------------------------------------------------------------
-      # Liste der zu erstellenden Starter zusammenbauen
-      # ------------------------------------------------------------------------
-      tmp_list=""
-      declare -A WINE_STARTER_NAME
-      declare -A WINE_STARTER_EXEC
-      # ---------------------------------------------
-      # Wine installiert aus dem Standard-Repository
-      # ---------------------------------------------
-      if [ "$WINE_VERSION_APT" != "" ];
-      then
-        tmp_list+="$WINE_STARTER_LIST_APT";
-        WINE_STARTER_NAME[wine-browsedrive]='Laufwerk C:'
-        WINE_STARTER_EXEC[wine-browsedrive]='xdg-open .wine/dosdevices/c:'
-        WINE_STARTER_NAME[wine-control]='Kontrollpanel'
-        WINE_STARTER_EXEC[wine-control]='wine control'
-        WINE_STARTER_NAME[wine-explorer]='Windows Explorer'
-        WINE_STARTER_EXEC[wine-explorer]='wine explorer'
-        WINE_STARTER_NAME[wine-iexplore]='Internet Explorer'
-        WINE_STARTER_EXEC[wine-iexplore]='wine iexplore'
-        WINE_STARTER_NAME[wine-regedit]='Registry Editor'
-        WINE_STARTER_EXEC[wine-regedit]='wine regedit'
-        WINE_STARTER_NAME[wine-taskmgr]='Taskmanager'
-        WINE_STARTER_EXEC[wine-taskmgr]='wine taskmgr'
-        WINE_STARTER_NAME[wine-uninstaller]='Software UnInstaller'
-        WINE_STARTER_EXEC[wine-uninstaller]='wine uninstaller'
-        WINE_STARTER_NAME[wine-winecfg]='Konfiguration'
-        WINE_STARTER_EXEC[wine-winecfg]='winecfg'
-        WINE_STARTER_NAME[wine-wineconsole]='Windows Konsole'
-        WINE_STARTER_EXEC[wine-wineconsole]='wine wineconsole'
-        WINE_STARTER_NAME[wine-winemine]='MineSweeper'
-        WINE_STARTER_EXEC[wine-winemine]='wine winemine'
-      fi
-      # -----------------------------
-      # Wine installiert als Flatpak
-      # -----------------------------
-      if [ "$WINE_VERSION_FLAT" != "" ];
-      then
-        if [ "$tmp_list" != "" ]; then tmp_list+=" "; fi
-        tmp_list+="$WINE_STARTER_LIST_FLAT";
-        WINE_STARTER_NAME[wine-winetricks-flatpak]='Winetricks (Flatpak)'
-        WINE_STARTER_EXEC[wine-winetricks-flatpak]='flatpak run --command=winetricks org.winehq.Wine'
-        WINE_STARTER_NAME[wine-regedit-flatpak]="Registry Editor (Flatpak)"
-        WINE_STARTER_EXEC[wine-regedit-flatpak]='flatpak run --command=regedit org.winehq.Wine'
-        WINE_STARTER_NAME[wine-winecfg-flatpak]="Konfiguration (Flatpak)"
-        WINE_STARTER_EXEC[wine-winecfg-flatpak]='flatpak run --command=winecfg org.winehq.Wine'
-        WINE_STARTER_NAME[wine-wineconsole-flatpak]="Windows Konsole (Flatpak)"
-        WINE_STARTER_EXEC[wine-wineconsole-flatpak]='flatpak run --command=wineconsole org.winehq.Wine'
-        WINE_STARTER_NAME[wine-winemine-flatpak]="MineSweeper (Flatpak)"
-        WINE_STARTER_EXEC[wine-winemine-flatpak]='flatpak run --command=winemine org.winehq.Wine'
-      fi
-      # ---------------------------------------------
-      # Prüfen ob schonn alle Starter vorhanden sind
-      # ---------------------------------------------
-      WINE_STARTER_MISSING=0
-      for starter_file in ${tmp_list[@]};
-      do
-        if [ ! -s "$GLOBAL_STARTER_DIR/$starter_file.desktop" ];
-        then
-          ((WINE_STARTER_MISSING+=1))
-          break
-        fi
-      done
-      # -----------------------------------------
-      # Wenn Starter fehlen, diese neu erstellen
-      # -----------------------------------------
-      if [ $WINE_STARTER_MISSING -gt 0 ];
-      then
-        e_and_l -n "$ACTION_MESSAGE  ... "
-        WINE_STARTER_ERRORS=0
-        for starter_file in ${tmp_list[@]};
-        do
-          if [ "$starter_file" != "" ];
-          then
-            WINE_STARTER_FILE="$GLOBAL_STARTER_DIR/$starter_file.desktop"
-            ICON_NAME="${starter_file/-flatpak/}"
-            if [ ! -s "$WINE_STARTER_FILE" ];
-            then
-              echo -e "[Desktop Entry]" > "$WINE_STARTER_FILE" 2>/dev/null
-              if [ $? -eq 0 ];
-              then
-                echo -e "Type=Application" >> "$WINE_STARTER_FILE" 2>/dev/null
-                echo -e "Name=Wine ${WINE_STARTER_NAME[$starter_file]}" >> "$WINE_STARTER_FILE" 2>/dev/null
-                echo -e "Exec=${WINE_STARTER_EXEC[$starter_file]}" >> "$WINE_STARTER_FILE" 2>/dev/null
-                echo -e "Icon=$ICON_NAME" >> "$WINE_STARTER_FILE" 2>/dev/null
-                echo -e "Terminal=false" >> "$WINE_STARTER_FILE" 2>/dev/null
-                echo -e "StartupNotify=false" >> "$WINE_STARTER_FILE" 2>/dev/null
-                echo -e "Categories=Wine;" >> "$WINE_STARTER_FILE" 2>/dev/null
-                chown -R "root:root" "$WINE_STARTER_FILE" &>/dev/null
-                chmod -R 0644 "$WINE_STARTER_FILE" &>/dev/null
-                download_icon_file "$ICON_NAME"
-                if [ ${OPTION_FLAG[addstart]} -ne 0 ];
-                then
-                  KAT_SHORT_NAME="${KATEGORIE_TEXT[w]}"
-                  copy_starter_to_desktop "$WINE_STARTER_FILE" "" 1
-                fi
-              else
-                ((WINE_STARTER_ERRORS+=1))
-              fi
-            fi
-          fi
-        done
-        if [ $WINE_STARTER_ERRORS -eq 0 ];
-        then
-          e_and_l "$OK_TAG"
-        else
-          e_and_l "$ERROR_TAG"
-        fi
-      else
-        e_and_l "$ACTION_MESSAGE  ... $NC_TAG"
-      fi
-    else
-      e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
-    fi
-
-    # ==========================================================================
     # Signaturen der Blu-ray-Datenbank erneuern
     # ==========================================================================
     ACTION_MESSAGE=" Signaturen der ${light_cyan}Blu-ray-Datenbank${colors_off} erneuern "
@@ -16140,6 +16018,130 @@ then
     fi
   else
     e_and_l "$(skip_text "$ACTION_MESSAGE " "$NR_TXT")"
+  fi
+
+  # ==========================================================================
+  # Erstellung diverser Menü-Einträge für Wine
+  # ACHTUNG: Bei Änderungen auch "wine_post_inst" anpassen!
+  # ==========================================================================
+  ACTION_MESSAGE=" Fehlende ${light_cyan}Menü-Einträge für Wine${colors_off} erstellen"
+  # if [ $(LANG=en dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
+  if [ "$WINE_VERSION_APT" != "" ] ||
+     [ "$WINE_VERSION_FLAT" != "" ];
+  then
+    # ------------------------------------------------------------------------
+    # Liste der zu erstellenden Starter zusammenbauen
+    # ------------------------------------------------------------------------
+    tmp_list=""
+    declare -A WINE_STARTER_NAME
+    declare -A WINE_STARTER_EXEC
+    # ---------------------------------------------
+    # Wine installiert aus dem Standard-Repository
+    # ---------------------------------------------
+    if [ "$WINE_VERSION_APT" != "" ];
+    then
+      tmp_list+="$WINE_STARTER_LIST_APT";
+      WINE_STARTER_NAME[wine-browsedrive]='Laufwerk C:'
+      WINE_STARTER_EXEC[wine-browsedrive]='xdg-open .wine/dosdevices/c:'
+      WINE_STARTER_NAME[wine-control]='Kontrollpanel'
+      WINE_STARTER_EXEC[wine-control]='wine control'
+      WINE_STARTER_NAME[wine-explorer]='Windows Explorer'
+      WINE_STARTER_EXEC[wine-explorer]='wine explorer'
+      WINE_STARTER_NAME[wine-iexplore]='Internet Explorer'
+      WINE_STARTER_EXEC[wine-iexplore]='wine iexplore'
+      WINE_STARTER_NAME[wine-regedit]='Registry Editor'
+      WINE_STARTER_EXEC[wine-regedit]='wine regedit'
+      WINE_STARTER_NAME[wine-taskmgr]='Taskmanager'
+      WINE_STARTER_EXEC[wine-taskmgr]='wine taskmgr'
+      WINE_STARTER_NAME[wine-uninstaller]='Software UnInstaller'
+      WINE_STARTER_EXEC[wine-uninstaller]='wine uninstaller'
+      WINE_STARTER_NAME[wine-winecfg]='Konfiguration'
+      WINE_STARTER_EXEC[wine-winecfg]='winecfg'
+      WINE_STARTER_NAME[wine-wineconsole]='Windows Konsole'
+      WINE_STARTER_EXEC[wine-wineconsole]='wine wineconsole'
+      WINE_STARTER_NAME[wine-winemine]='MineSweeper'
+      WINE_STARTER_EXEC[wine-winemine]='wine winemine'
+    fi
+    # -----------------------------
+    # Wine installiert als Flatpak
+    # -----------------------------
+    if [ "$WINE_VERSION_FLAT" != "" ];
+    then
+      if [ "$tmp_list" != "" ]; then tmp_list+=" "; fi
+      tmp_list+="$WINE_STARTER_LIST_FLAT";
+      WINE_STARTER_NAME[wine-winetricks-flatpak]='Winetricks (Flatpak)'
+      WINE_STARTER_EXEC[wine-winetricks-flatpak]='flatpak run --command=winetricks org.winehq.Wine'
+      WINE_STARTER_NAME[wine-regedit-flatpak]="Registry Editor (Flatpak)"
+      WINE_STARTER_EXEC[wine-regedit-flatpak]='flatpak run --command=regedit org.winehq.Wine'
+      WINE_STARTER_NAME[wine-winecfg-flatpak]="Konfiguration (Flatpak)"
+      WINE_STARTER_EXEC[wine-winecfg-flatpak]='flatpak run --command=winecfg org.winehq.Wine'
+      WINE_STARTER_NAME[wine-wineconsole-flatpak]="Windows Konsole (Flatpak)"
+      WINE_STARTER_EXEC[wine-wineconsole-flatpak]='flatpak run --command=wineconsole org.winehq.Wine'
+      WINE_STARTER_NAME[wine-winemine-flatpak]="MineSweeper (Flatpak)"
+      WINE_STARTER_EXEC[wine-winemine-flatpak]='flatpak run --command=winemine org.winehq.Wine'
+    fi
+    # ---------------------------------------------
+    # Prüfen ob schonn alle Starter vorhanden sind
+    # ---------------------------------------------
+    WINE_STARTER_MISSING=0
+    for starter_file in ${tmp_list[@]};
+    do
+      if [ ! -s "$GLOBAL_STARTER_DIR/$starter_file.desktop" ];
+      then
+        ((WINE_STARTER_MISSING+=1))
+        break
+      fi
+    done
+    # -----------------------------------------
+    # Wenn Starter fehlen, diese neu erstellen
+    # -----------------------------------------
+    if [ $WINE_STARTER_MISSING -gt 0 ];
+    then
+      e_and_l -n "$ACTION_MESSAGE  ... "
+      WINE_STARTER_ERRORS=0
+      for starter_file in ${tmp_list[@]};
+      do
+        if [ "$starter_file" != "" ];
+        then
+          WINE_STARTER_FILE="$GLOBAL_STARTER_DIR/$starter_file.desktop"
+          ICON_NAME="${starter_file/-flatpak/}"
+          if [ ! -s "$WINE_STARTER_FILE" ];
+          then
+            echo -e "[Desktop Entry]" > "$WINE_STARTER_FILE" 2>/dev/null
+            if [ $? -eq 0 ];
+            then
+              echo -e "Type=Application" >> "$WINE_STARTER_FILE" 2>/dev/null
+              echo -e "Name=Wine ${WINE_STARTER_NAME[$starter_file]}" >> "$WINE_STARTER_FILE" 2>/dev/null
+              echo -e "Exec=${WINE_STARTER_EXEC[$starter_file]}" >> "$WINE_STARTER_FILE" 2>/dev/null
+              echo -e "Icon=$ICON_NAME" >> "$WINE_STARTER_FILE" 2>/dev/null
+              echo -e "Terminal=false" >> "$WINE_STARTER_FILE" 2>/dev/null
+              echo -e "StartupNotify=false" >> "$WINE_STARTER_FILE" 2>/dev/null
+              echo -e "Categories=Wine;" >> "$WINE_STARTER_FILE" 2>/dev/null
+              chown -R "root:root" "$WINE_STARTER_FILE" &>/dev/null
+              chmod -R 0644 "$WINE_STARTER_FILE" &>/dev/null
+              download_icon_file "$ICON_NAME"
+              if [ ${OPTION_FLAG[addstart]} -ne 0 ];
+              then
+                KAT_SHORT_NAME="${KATEGORIE_TEXT[w]}"
+                copy_starter_to_desktop "$WINE_STARTER_FILE" "" 1
+              fi
+            else
+              ((WINE_STARTER_ERRORS+=1))
+            fi
+          fi
+        fi
+      done
+      if [ $WINE_STARTER_ERRORS -eq 0 ];
+      then
+        e_and_l "$OK_TAG"
+      else
+        e_and_l "$ERROR_TAG"
+      fi
+    else
+      e_and_l "$ACTION_MESSAGE  ... $NC_TAG"
+    fi
+  else
+    e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
   fi
 
   # ============================================================================
