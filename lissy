@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 09.07.2025
-VERSION="5.1.0"
+# Letzte Änderung: 14.07.2025
+VERSION="5.1.4"
 
 ################################################################################
 #                                                                              #
@@ -880,8 +880,9 @@ function copy_starter_to_desktop {
   # --------------------------------------------------------------------------
   # Ohne Auswahl einer gültigen Option keinen Starter auf dem Desktop anlegen
   # --------------------------------------------------------------------------
-  if [ ${OPTION_FLAG[adcstart]} -ne 1 ] &&
-     [ ${OPTION_FLAG[addstart]} -ne 1 ];
+  # if [ ${OPTION_FLAG[adcstart]} -ne 1 ] &&
+  #    [ ${OPTION_FLAG[addstart]} -ne 1 ];
+  if [ ${OPTION_FLAG[addstart]} -ne 1 ];
   then
     return 1
   fi
@@ -4312,7 +4313,7 @@ function ready_for_action {
   TOTAL_PACKS=${#ALL_PKG_LIST[@]}
   if [[ $TOTAL_PACKS             -eq 0 &&
         $USE_ILIST_FILE          -eq 0 &&
-        ${OPTION_FLAG[adcstart]} -eq 0 &&
+        # ${OPTION_FLAG[adcstart]} -eq 0 &&
         ${OPTION_FLAG[cleansys]} -eq 0 &&
         ${OPTION_FLAG[dload]}    -eq 0 &&
         ${OPTION_FLAG[dsave]}    -eq 0 &&
@@ -5829,7 +5830,12 @@ then
   if lshw &>/dev/null;
   then
     GPU_MODEL=$(LANG=en lshw -short 2>/dev/null | grep display | head -n 1)
-    GPU_MODEL=$(echo -n "${GPU_MODEL##*display}")
+    if [ $(echo ${GPU_MODEL} | grep -c -i "integrated") -gt 0 ];
+    then
+      GPU_MODEL="$(echo -n ${GPU_MODEL} | sed -E "s/(.*)(integrated\s.*)/\2/i" | xargs)"
+    else
+      GPU_MODEL=$(echo -n "${GPU_MODEL##*display}")
+    fi
     GPU_MODEL=$(echo -n "${GPU_MODEL:0:32}" | xargs)
   fi
 
@@ -6017,10 +6023,10 @@ then
   # ------------------------
   # Systemsprache ermitteln
   # ------------------------
-  CUR_SYS_LANG=$(echo -n "${LANGUAGE:0:2}" | xargs)
+  CUR_SYS_LANG=$(echo -n "${LANGUAGE:0:5}" | xargs)
   if [ "$CUR_SYS_LANG" == "" ];
   then
-    CUR_SYS_LANG=$(echo -n "${LANG:0:2}" | xargs)
+    CUR_SYS_LANG=$(echo -n "${LANG:0:5}" | xargs)
   fi
   CUR_LANG_NAME=$(locale -k LC_IDENTIFICATION 2>/dev/null | grep -i -E "language")
   CUR_LANG_NAME="${CUR_LANG_NAME##*=}"
@@ -6217,17 +6223,18 @@ declare -A KATEGORIE_PKGS # Liste mit den in der Kategorie enthaltenen Paketen
 # Alphabetische Reihenfolge
 #---------------------------
 KAT_KEYS_STD=(a b c d e f fo g i m n p q r s t u v w wg x xx z)
-KAT_KEYS_ADD=(gx lx mt mx xf)
+KAT_KEYS_ADD=(ci gx lx mt mx xf)
 KAT_KEY_LIST=( ${KAT_KEYS_STD[@]} ${KAT_KEYS_ADD[@]} )
 #--------------------------------------
 # Reihenfolge der Verarbeitung im Menü
 #--------------------------------------
-KAT_ORD_LIST=(x v b i m g t z s w e a d f q c p wg u n r xx fo xlinex mt gx lx mx xf)
+KAT_ORD_LIST=(x v b i m g t z s w e a d f q c p wg u n r xx fo xlinex mt ci gx lx mx xf)
 
 # --- CATEGORIES START ---
 KATEGORIE_TEXT[a]="WEB-Server (Apache und PHP)"
 KATEGORIE_TEXT[b]="Büro (Office, Publishing, E-Book- und PDF-Tools)"
 KATEGORIE_TEXT[c]="Cloud-Clients (Clients für Online-Datenspeicher)"
+KATEGORIE_TEXT[ci]="Cinnamon Tools (Erweiterungen für Cinnamon-Desktop)"
 KATEGORIE_TEXT[d]="SMB-Server (Datei- und Druckerfreigaben / Samba)"
 KATEGORIE_TEXT[e]="Entwicklung (Programmier-Werkzeuge und Editoren)"
 KATEGORIE_TEXT[f]="FTP-Server (ProFTPD)"
@@ -6360,12 +6367,14 @@ OPTION_MENU[status]=2
 
 OPTION_MENU[remove]=3 # Wird nicht tatsächlich verwendet, Prüfung erfolgt auf REMOVE_PKG_NAME
 
-if [ "$DESKTOP_ENVIRONMENT" == "Cinnamon" ];
-then
-  OPTION_MENU[adcstart]=4
-else
-  OPTION_MENU[adcstart]=0
-fi
+# if [ "$DESKTOP_ENVIRONMENT" == "Cinnamon" ];
+# then
+#   OPTION_MENU[adcstart]=4
+# else
+#   OPTION_MENU[adcstart]=0
+# fi
+OPTION_MENU[adcstart]=0
+
 OPTION_MENU[cleansys]=4
 OPTION_MENU[dload]=0 # Derzeit nicht im Menü angeboten
 OPTION_MENU[dsave]=0 # Derzeit nicht im Menü angeboten
@@ -6518,7 +6527,12 @@ KATEGORIE_PKGS[u]="usbauth"
 # ------------------------------------------------------------------------------
 # Systemverwaltung (Hilfsprogramme mit Benutzeroberfläche)
 # ------------------------------------------------------------------------------
-KATEGORIE_PKGS[v]="baobab bleachbit blueman cpu-x czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted gsmartcontrol gtkhash hardinfo isomaster kleopatra metadata-cleaner mozo plasma-discover qt5ct seahorse stacer synaptic system-config-printer tilda usbview xfce4-taskmanager"
+KATEGORIE_PKGS[v]="baobab bleachbit blueman cpu-x czkawka dconf-editor deja-dup filelight font-manager gdebi gnome-disk-utility gnome-software gparted gsmartcontrol gtkhash hardinfo isomaster kleopatra metadata-cleaner mozo qt5ct seahorse stacer synaptic system-config-printer tilda usbview xfce4-taskmanager"
+if [ "$DESKTOP_ENVIRONMENT" == "KDE" ] ||
+   [ "$DESKTOP_ENVIRONMENT" == "Plasma" ];
+then
+  KATEGORIE_PKGS[v]=" plasma-discover"
+fi
 # -------------------------------------------------------------------------
 # Basispaket des vorinstallierten Dateimanagers hinzufügen, damit auch die
 # zugehörigen Erweiterungen der AUTO_ADD_PKGS mit aufgenommen werden
@@ -6603,7 +6617,16 @@ KATEGORIE_PKGS[xx]="alien apt-file apt-rdepends apt-show-versions arping arp-sca
 # ------------------------------------------------------------------------------
 KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk copyq doublecmd electrum engrampa file-roller freefilesync galculator gedit gnome-weather gucharmap kdeconnect keepass2 kfind klavaro ksnip ktouch magnus mousepad onboard plank pluma redshift rpi-imager sardu unetbootin usb-creator-common veracrypt xournal"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[z]+=" sticky xed"; fi
-if [ "$DESKTOP_ENVIRONMENT" == "Cinnamon" ]; then KATEGORIE_PKGS[z]+=" cinnamon-desktop-environment"; fi
+
+
+# ------------------------------------------------------------------------------
+# Cinnamon Tools
+# ---------------
+# Achtung: Nicht verwechseln mit ADDITIONAL_S_NAMES[vc],
+# welche nur die Starter zur Systemverwaltung enthält!
+# ------------------------------------------------------------------------------
+KATEGORIE_PKGS[ci]="cinnamon-desktop-environment"
+
 # ------------------------------------------------------------------------------
 # GNOME Apps
 # Ohne die folgenden, welche bereits in anderen Kategorien enthalten sind:
@@ -8205,9 +8228,12 @@ ADDITIONAL_STARTER[q]="org.gnome.Boxes"
 # ------------------------------------------------------------------------------
 ADDITIONAL_STARTER[v]="ayatana-settings debian-xterm caja-file-management-properties ccsm htop lightdm-settings nvidia-settings software-properties-gtk software-properties-qt time-admin update-manager users-admin xarchiver xpra xscreensaver-properties xscreensaver-settings xterm"
 
-# ----------------------------------------------
+# ---------------------------------------------------
 # Starter nur zur Systemverwaltung von Cinnamon
-# ----------------------------------------------
+# ---------------------------------------------------
+# Achtung: Nicht verwechseln mit KATEGORIE_PKGS[ci],
+# welches alle Pakete der Cinnam on Tools enthält
+# ---------------------------------------------------
 ADDITIONAL_S_NAMES[vc]="cinnamon-menu-editor cinnamon-settings"
 ADDITIONAL_DIRNAME[vc]="Cinnamon"
 # -------------------------------------------
@@ -8950,7 +8976,6 @@ EOF
         fi
         # ----------------------------------------------------------------------
         # Auswahl der Paket-Kategorien
-        # (Wenn nicht Linux Mint, dann Mint Tools auslassen)
         # ----------------------------------------------------------------------
         if [ $MENU_AUSWAHL -eq 1 ];
         then
@@ -8960,8 +8985,12 @@ EOF
             KAT_MENU_LIST=()
             for k in ${KAT_ORD_LIST[@]};
             do
-              if [ "$k" != "mt" ] ||
-                 [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ];
+              # ------------------------------------------------------------
+              # Menüpunkt nur anzeigen, wenn die System-Umgebung dazu passt
+              # ------------------------------------------------------------
+              if [[ "$k" != "mt" || $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]] &&
+                 [[ "$k" != "ci" || "$DESKTOP_ENVIRONMENT" == "Cinnamon" ]];
+              # ------------------------------------------------------------
               then
                 if [ "$k" == "xlinex" ];
                 then
@@ -9149,7 +9178,8 @@ EOF
                [[ ${KATEGORIE_FLAG[mx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "MATE" ]]  ||
                [[ ${KATEGORIE_FLAG[xf]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "XFCE" ]]  ||
                [[ ${KATEGORIE_FLAG[mt]} -eq 1 && $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -eq 0 ]] ||
-               [[ ${OPTION_FLAG[adcstart]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "Cinnamon" ]];
+               # [[ ${OPTION_FLAG[adcstart]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "Cinnamon" ]];
+               [[ ${KATEGORIE_FLAG[ci]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "Cinnamon" ]];
             then
               MENU_INFO_TEXT="\Z1\ZbWarnung\Zn\nEs wurden Tool-Pakete ausgewählt, die nicht für diesen Desktop vorgesehen sind."
             fi
@@ -9349,9 +9379,9 @@ then
   e_and_l " $HALF_LINE"
   e_and_l ""
   # --- OPTIONS START ---
-  e_and_l "  adcstart  Auf dem Cinnamon-Desktop automatisch für diesen Desktop"
-  e_and_l "            spezifische Starter anlegen."
-  e_and_l ""
+#   e_and_l "  adcstart  Auf dem Cinnamon-Desktop automatisch für diesen Desktop"
+#   e_and_l "            spezifische Starter anlegen."
+#   e_and_l ""
   e_and_l "   addflat  Erlaubt die Auswahl und Installation von Flatpak-Paketen."
   e_and_l ""
   e_and_l "   addsnap  Erlaubt die Auswahl und Installation von Snap-Paketen."
@@ -10346,7 +10376,7 @@ then
   OPTION_FLAG[status]=0
   # ----------------------------------------------------------------------------
   e_and_l "$FULL_LINE"
-  e_and_l -n " ${bold_blue}Updates für von externen Quellen verfügbare Programme${colors_off} ${dark_grey}[exupdate]${colors_off}"
+  e_and_l -n " ${bold_blue}Updates für aus externen Quellen verfügbare Programme${colors_off} ${dark_grey}[exupdate]${colors_off}"
   if [ ${OPTION_FLAG[exupdall]} -eq 1 ]; then e_and_l -n " ${dark_grey}[exupdall]${colors_off}"; fi
   e_and_l ""
   e_and_l "$FULL_LINE"
@@ -10642,6 +10672,10 @@ then
       fi
     fi
   done
+  if [ $exupdate_counter -eq 0 ];
+  then
+    e_and_l " Es sind keine aus externen Quellen verfügbare Programme installiert ... $OK_TAG"
+  fi
 
   # ----------------------------------------------------------------------------
   # Einstellungen des Benutzers zu weiterem Skript-Ablauf wieder herstellen
@@ -10650,7 +10684,7 @@ then
   OPTION_FLAG[quiet]=$PRESERVED_QUIET_FLAG
   OPTION_FLAG[status]=$PRESERVED_STATUS_FLAG
   # ----------------------------------------------------------------------------
-fi # Ende Update von externen Programmen [exupdate]
+fi # Ende Update aus externen Programmen [exupdate]
 
 #===============================================================================
 # Hauptschleife zur Installation oder Anzeige (wenn Pakete ausgewählt wurden)
@@ -10896,7 +10930,8 @@ fi # Ende Hauptschleife zur Installation/Anzeige (wenn Pakete ausgewählt wurden
 # Zusätzliche Starter erstellen
 #===============================================================================
 if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
-   [[ ${OPTION_FLAG[adcstart]} -eq 1 || ${OPTION_FLAG[addstart]} -eq 1 ]];
+   # [[ ${OPTION_FLAG[adcstart]} -eq 1 || ${OPTION_FLAG[addstart]} -eq 1 ]];
+   [ ${OPTION_FLAG[addstart]} -eq 1 ];
 then
 
   if [ $TOTAL_PACKS -eq 0 ] &&
@@ -10905,7 +10940,7 @@ then
     e_and_l "$FULL_LINE"
   fi
   e_and_l -n " ${bold_blue}Erstellung zusätzlicher Starter (Programm-Symbole)${colors_off}"
-  if [ ${OPTION_FLAG[adcstart]} -eq 1 ]; then e_and_l -n " ${dark_grey}[adcstart]${colors_off}"; fi
+  # if [ ${OPTION_FLAG[adcstart]} -eq 1 ]; then e_and_l -n " ${dark_grey}[adcstart]${colors_off}"; fi
   if [ ${OPTION_FLAG[addstart]} -eq 1 ]; then e_and_l -n " ${dark_grey}[addstart]${colors_off}"; fi
   e_and_l ""
   e_and_l "$FULL_LINE"
@@ -10941,6 +10976,35 @@ then
     done
     e_and_l " - Es wurden ${bold_green}$NEW_STARTER_COUNTER${colors_off} neue Starter erstellt"
     e_and_l "$HALF_LINE"
+
+# ----------------------------------------------------------------------------
+# Cinnamon Tools Starter (wenn ausgewählt)
+# ----------------------------------------------------------------------------
+# if [ ${OPTION_FLAG[adcstart]} -eq 1 ];
+if [ ${KATEGORIE_FLAG[ci]} -eq 1 ];
+then
+  NEW_STARTER_COUNTER=0
+  e_and_l " ${bold_blue}Cinnamon Tools${colors_off}"
+  e_and_l "$HALF_LINE"
+  e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}Cinnamon-Desktop${colors_off}, bitte warten ... "
+# KAT_SHORT_NAME="Cinnamon Tools"
+  KAT_SHORT_NAME="${KATEGORIE_TEXT[ci]}"
+  SEARCH_RESULT_STANDARD=$(find /usr/share/applications -type f -iname "*.desktop" -print | grep -i -E "cinnamon\-.*\.desktop$")
+  SEARCH_RESULT_SNAP=""
+  if [ -d "/var/lib/snapd/desktop/applications" ];
+  then
+    SEARCH_RESULT_SNAP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -print | grep -i -E "cinnamon\-.*\.desktop$")
+  fi
+  SEARCH_RESULT_FLATPAK=""
+  if [ -d "/var/lib/flatpak/app" ];
+  then
+    SEARCH_RESULT_FLATPAK=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -print | grep -i -E "\/export" | grep -i -E "cinnamon\-.*\.desktop$")
+  fi
+  SEARCH_STARTER_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
+  EXCLUDE_STARTER_LIST=""
+  copy_starter_list
+  e_and_l "$HALF_LINE"
+fi
 
     # --------------------------------------------------------------------------
     # GNOME Apps Starter
@@ -11078,40 +11142,14 @@ then
   fi
 
   # ----------------------------------------------------------------------------
-  # Cinnamon Tools Starter (wenn ausgewählt)
-  # ----------------------------------------------------------------------------
-  if [ ${OPTION_FLAG[adcstart]} -eq 1 ];
-  then
-    NEW_STARTER_COUNTER=0
-    e_and_l " ${bold_blue}Cinnamon Tools${colors_off}"
-    e_and_l "$HALF_LINE"
-    e_and_l -n " Erstelle zusätzliche Starter für ${bold_white}Cinnamon-Desktop${colors_off}, bitte warten ... "
-    KAT_SHORT_NAME="Cinnamon Tools"
-    SEARCH_RESULT_STANDARD=$(find /usr/share/applications -type f -iname "*.desktop" -print | grep -i -E "cinnamon\-.*\.desktop$")
-    SEARCH_RESULT_SNAP=""
-    if [ -d "/var/lib/snapd/desktop/applications" ];
-    then
-      SEARCH_RESULT_SNAP=$(find /var/lib/snapd/desktop/applications -type f -iname "*.desktop" -print | grep -i -E "cinnamon\-.*\.desktop$")
-    fi
-    SEARCH_RESULT_FLATPAK=""
-    if [ -d "/var/lib/flatpak/app" ];
-    then
-      SEARCH_RESULT_FLATPAK=$(find /var/lib/flatpak/app -type f -iname "*.desktop" -print | grep -i -E "\/export" | grep -i -E "cinnamon\-.*\.desktop$")
-    fi
-    SEARCH_STARTER_RESULT="${SEARCH_RESULT_STANDARD[@]} ${SEARCH_RESULT_SNAP[@]} ${SEARCH_RESULT_FLATPAK[@]}"
-    EXCLUDE_STARTER_LIST=""
-    copy_starter_list
-    e_and_l "$HALF_LINE"
-  fi
-
-  # ----------------------------------------------------------------------------
   # Starter bereinigen
   # ----------------------------------------------------------------------------
   e_and_l " ${bold_blue}Optimierung${colors_off}"
   e_and_l "$HALF_LINE"
-  e_and_l -n " Optimiere die Starter auf dem Desktop, bitte warten ... "
+  e_and_l -n " Bereinige und reorganisiere Starter auf dem Desktop, bitte warten ... "
   NEW_STARTER_COUNTER=0
   STARTER_DELETED=0
+  DIRS_DELETED=0
   STARTER_MOVED=0
   if [ -d "$DESKTOP_STARTER_DIR" ];
   then
@@ -11127,7 +11165,8 @@ then
          [ ${KATEGORIE_FLAG[mx]} -eq 1 ] ||
          [ ${KATEGORIE_FLAG[mt]} -eq 1 ] ||
          [ ${KATEGORIE_FLAG[xf]} -eq 1 ] ||
-         [ ${OPTION_FLAG[adcstart]} -eq 1 ];
+         # [ ${OPTION_FLAG[adcstart]} -eq 1 ];
+         [ ${KATEGORIE_FLAG[ci]} -eq 1 ];
       then
         # ----------------------------------------------------------
         # Ordner Systemverwaltung anlegen wenn noch nicht vorhanden
@@ -11144,78 +11183,75 @@ then
         fi
         if [ -d "$SYS_V_DIR" ];
         then
-          # ------------------------------------------------------
-          # Für jedes Desktop (außer den Startern "für alle") ...
-          # ------------------------------------------------------
+          # ------------------
+          # Für jedes Desktop
+          # ------------------
           for asn in "${!ADDITIONAL_S_NAMES[@]}";
           do
-            # if [ "$asn" != "va" ];
-            # then
-              DESKTOP_STARTER_DIR_NAME="${ADDITIONAL_DIRNAME[$asn]}"
-              DESKTOP_SYS_STARTER_LIST=(${ADDITIONAL_S_NAMES[$asn]})
-              if [ ${#DESKTOP_SYS_STARTER_LIST} -gt 0 ];
+            DESKTOP_STARTER_DIR_NAME="${ADDITIONAL_DIRNAME[$asn]}"
+            DESKTOP_SYS_STARTER_LIST=(${ADDITIONAL_S_NAMES[$asn]})
+            if [ ${#DESKTOP_SYS_STARTER_LIST} -gt 0 ];
+            then
+              V_STARTER_TARGET_DIR="$SYS_V_DIR/$DESKTOP_STARTER_DIR_NAME"
+              # -----------------------------------------
+              # Desktop-spezifischen Unterordner anlegen
+              # -----------------------------------------
+              if [ ! -d "$V_STARTER_TARGET_DIR" ];
               then
-                V_STARTER_TARGET_DIR="$SYS_V_DIR/$DESKTOP_STARTER_DIR_NAME"
-                # -----------------------------------------
-                # Desktop-spezifischen Unterordner anlegen
-                # -----------------------------------------
-                if [ ! -d "$V_STARTER_TARGET_DIR" ];
+                mkdir -p "$V_STARTER_TARGET_DIR" &>/dev/null
+                if [ $? -eq 0 ];
                 then
-                  mkdir -p "$V_STARTER_TARGET_DIR" &>/dev/null
-                  if [ $? -eq 0 ];
-                  then
-                    chown -R "$USER_USERNAME:$USER_USERNAME" "$V_STARTER_TARGET_DIR" &>/dev/null
-                    chmod -R 0755 "$V_STARTER_TARGET_DIR" &>/dev/null
-                  fi
-                fi
-                # --------------------------------
-                # Alle Starter der Liste kopieren
-                # --------------------------------
-                if [ -d "$V_STARTER_TARGET_DIR" ];
-                then
-                  for starter_name in ${DESKTOP_SYS_STARTER_LIST[@]};
-                  do
-                    if [ "$starter_name" != "" ];
-                    then
-                      # ------------------------------------------
-                      # Wenn es den Starter schon im Haupt-Ordner
-                      # der Systemverwaltung gibt ...
-                      # ------------------------------------------
-                      if [ -s "$SYS_V_DIR/$starter_name.desktop" ];
-                      then
-                        # ---------------------------------------------------
-                        # ... und es diesen auch schon im Ziel-Ordner gibt,
-                        # dann den doppelten im Haupt-Ordner wieder löschen
-                        # ---------------------------------------------------
-                        if [ -s "$V_STARTER_TARGET_DIR/$starter_name.desktop" ];
-                        then
-                          remove_file "$SYS_V_DIR/$starter_name.desktop"
-                          ((STARTER_DELETED+=1))
-                          ((ALL_STARTER_COUNTER-=1))
-                        # -------------------------------------------------
-                        # ... sonst, wenn es den Starter im Ziel-Ordner
-                        # noch nicht gibt, den Starter dorthin verschieben
-                        # -------------------------------------------------
-                        else
-                          mv -f "$SYS_V_DIR/$starter_name.desktop" "$V_STARTER_TARGET_DIR/$starter_name.desktop" &>/dev/null
-                          if [ $? -eq 0 ];
-                          then
-                            make_starter_trusted "$V_STARTER_TARGET_DIR/$starter_name.desktop"
-                            ((STARTER_MOVED+=1))
-                          fi
-                        fi
-                      # ----------------------------------------
-                      # ... sonst Starter suchen und direkt in
-                      # den entsprechenden Unterordner kopieren
-                      # ----------------------------------------
-                      else
-                        copy_starter_to_desktop "$starter_name" "$V_STARTER_TARGET_DIR" 1
-                      fi
-                    fi
-                  done
+                  chown -R "$USER_USERNAME:$USER_USERNAME" "$V_STARTER_TARGET_DIR" &>/dev/null
+                  chmod -R 0755 "$V_STARTER_TARGET_DIR" &>/dev/null
                 fi
               fi
-            # fi
+              # --------------------------------
+              # Alle Starter der Liste kopieren
+              # --------------------------------
+              if [ -d "$V_STARTER_TARGET_DIR" ];
+              then
+                for starter_name in ${DESKTOP_SYS_STARTER_LIST[@]};
+                do
+                  if [ "$starter_name" != "" ];
+                  then
+                    # ------------------------------------------
+                    # Wenn es den Starter schon im Haupt-Ordner
+                    # der Systemverwaltung gibt ...
+                    # ------------------------------------------
+                    if [ -s "$SYS_V_DIR/$starter_name.desktop" ];
+                    then
+                      # ---------------------------------------------------
+                      # ... und es diesen auch schon im Ziel-Ordner gibt,
+                      # dann den doppelten im Haupt-Ordner wieder löschen
+                      # ---------------------------------------------------
+                      if [ -s "$V_STARTER_TARGET_DIR/$starter_name.desktop" ];
+                      then
+                        remove_file "$SYS_V_DIR/$starter_name.desktop"
+                        ((STARTER_DELETED+=1))
+                        ((ALL_STARTER_COUNTER-=1))
+                      # -------------------------------------------------
+                      # ... sonst, wenn es den Starter im Ziel-Ordner
+                      # noch nicht gibt, den Starter dorthin verschieben
+                      # -------------------------------------------------
+                      else
+                        mv -f "$SYS_V_DIR/$starter_name.desktop" "$V_STARTER_TARGET_DIR/$starter_name.desktop" &>/dev/null
+                        if [ $? -eq 0 ];
+                        then
+                          make_starter_trusted "$V_STARTER_TARGET_DIR/$starter_name.desktop"
+                          ((STARTER_MOVED+=1))
+                        fi
+                      fi
+                    # ----------------------------------------
+                    # ... sonst Starter suchen und direkt in
+                    # den entsprechenden Unterordner kopieren
+                    # ----------------------------------------
+                    else
+                      copy_starter_to_desktop "$starter_name" "$V_STARTER_TARGET_DIR" 1
+                    fi
+                  fi
+                done
+              fi
+            fi
           done
         fi
       fi
@@ -11280,6 +11316,7 @@ then
       if [ $(ls -A "$dir_entry" | wc -w) -eq 0 ];
       then
         rmdir "$dir_entry" &>/dev/null
+        if [ $? -eq 0 ]; then ((DIRS_DELETED+=1)); fi
       fi
     done <<< $(find "$DESKTOP_STARTER_DIR" -type d -print)
 
@@ -11296,6 +11333,10 @@ then
   if [ $STARTER_DELETED -gt 0 ];
   then
     e_and_l " - Es wurden ${bold_red}$STARTER_DELETED${colors_off} unpassende Starter entfernt"
+  fi
+  if [ $DIRS_DELETED -gt 0 ];
+  then
+    e_and_l " - Es wurden ${bold_white}$DIRS_DELETED${colors_off} leere Ordner entfernt"
   fi
 fi # Ende Zusätzliche Starter erstellen
 
@@ -11501,7 +11542,8 @@ then
     # ==========================================================================
     # Einstellung der Sprachumgebung (des Systems) auf deutsch (oder andere)
     # ==========================================================================
-    if [ "$CUR_SYS_LANG" != "de" ];
+    if [ "$CUR_SYS_LANG" != "de" ] &&
+       [ "$CUR_SYS_LANG" != "de_DE" ];
     then
       e_and_l " Die Sprachumgebung des Systems ist nicht auf deutsch eingestellt."
       ask_yes_or_no_plus "cur_sys_lang" " Soll die ${light_cyan}Systemsprache${colors_off} geändert werden" "" "n"
@@ -11541,7 +11583,7 @@ then
     fi
     if check-language-support --help  &>/dev/null;
     then
-      CHECK_LANGUAGES="$CUR_SYS_LANG en"
+      CHECK_LANGUAGES="${CUR_SYS_LANG:0:2} en"
       for lang_code in ${CHECK_LANGUAGES[@]};
       do
         ACTION_MESSAGE=" Zusätzliche ${light_cyan}Sprachpakete ($lang_code)${colors_off} installieren"
@@ -11916,6 +11958,7 @@ then
         # -----------------------------------------------
         if [ $XSCRSAVER_INSTALLED -ne $XSCRSAVER_AVAILABLE ];
         then
+          # e_and_l "$HALF_MINUS_LINE"
           ask_yes_or_no_plus "xscreensaver_$xs_pkg" "$ACTION_MESSAGE" "" "n"
           if [ $? -eq 1 ];
           then
@@ -11961,8 +12004,8 @@ then
               add_full_log
               remove_file "$LOG_TEMP"
             fi
-            # e_and_l "$HALF_MINUS_LINE"
           fi
+          # e_and_l "$HALF_MINUS_LINE"
         else
           e_and_l "$ACTION_MESSAGE  ... $NC_TAG"
         fi
@@ -14045,7 +14088,12 @@ EOF
     # --------------------------------------------------------------------------
     if [ $AUTO_LOGIN_FOUND -ne 0 ];
     then
-      e_and_l " $WARN_TAG: Der Benutzer ${light_cyan}$AUTO_LOGIN_USER_NAME${colors_off} wird automatisch am System angemeldet!"
+      e_and_l -n " $WARN_TAG: Der Benutzer"
+      if [ "$AUTO_LOGIN_USER_NAME" != "" ];
+      then
+        e_and_l -n " ${light_cyan}$AUTO_LOGIN_USER_NAME${colors_off}"
+      fi
+      e_and_l " wird automatisch am System angemeldet!"
       ask_yes_or_no_plus "login_deactivate_auto_login" " Soll die ${light_cyan}automatische Anmeldung${colors_off} deaktiviert werden"
       if [ $? -eq 1 ];
       then
@@ -14331,6 +14379,7 @@ EOF
         else
           TEMP_MSG+="$OK_TAG"
         fi
+        TEMP_MSG+=$'\n'
         TEMP_MSG+="$HALF_MINUS_LINE"
       fi
       # ----------------------------------------------------------
@@ -15650,7 +15699,7 @@ then
     e_and_l " Dateien nachträglich erneut manuell angepasst werden müssen. Mache daher nur"
     e_and_l " weiter, wenn Du Dich gut auskennst und diese Änderungen durchführen kannst!"
     GRUB_TARGET="/dev/$boot_device"
-    GRUB_TARGET="$(echo ${GRUB_TARGET} | sed -E "s/[0-9]*$//")"
+    GRUB_TARGET="$(echo ${GRUB_TARGET} | sed -E "s/p*[0-9]*$//")"
     ask_yes_or_no_plus "" " Jetzt den ${bold_yellow}GRUB-Bootloader${colors_off} auf ${bold_yellow}$GRUB_TARGET${colors_off} erneuern" "" "n"
     if [ $? -eq 1 ];
     then
@@ -15765,7 +15814,7 @@ then
             fi
           done
         fi
-        e_and_l "$HALF_LINE"
+        e_and_l "$HALF_MINUS_LINE"
       else
         e_and_l "$ACTION_MESSAGE  ... $NF_TAG"
       fi
@@ -15870,7 +15919,7 @@ then
     # -------------------------------
     # Fehlerhafte Einträge auflisten
     # -------------------------------
-    e_and_l "$HALF_LINE"
+    e_and_l "$HALF_MINUS_LINE"
     e_and_l " $WARN_TAG! Es wurden ungültige Verknüpfungen oder Benutzer-Ordner entdeckt:"
     while read broken_line;
     do
@@ -15936,7 +15985,7 @@ then
         fi
       done < "$BROKEN_LINKS_LIST"
     fi
-    e_and_l "$HALF_LINE"
+    e_and_l "$HALF_MINUS_LINE"
   else
     e_and_l " Reparatur ${light_cyan}ungültiger Benutzer-Ordner/Links${colors_off} ... $NF_TAG"
   fi
@@ -15949,7 +15998,7 @@ then
   ACTION_MESSAGE=" Benutzer-Ordner ${light_cyan}deutsch<>english${colors_off} verlinken"
   if [ $FOLDERS_LINKED -ne $FOLDERS_EXISTS ];
   then
-    if [ $FOLDERS_BROKEN -eq 0 ]; then e_and_l "$HALF_LINE"; fi
+    if [ $FOLDERS_BROKEN -eq 0 ]; then e_and_l "$HALF_MINUS_LINE"; fi
     e_and_l " Zur Verbesserung der Kompatibilität können Benutzer-Ordner in deutscher und"
     e_and_l " englischer Sprache gegenseitig mit einem symbolischen Link verknüpft werden."
     ask_yes_or_no_plus "desktop_link" "$ACTION_MESSAGE" "" "j"
@@ -15998,7 +16047,7 @@ then
         ((i+=1))
       done
     fi
-    e_and_l "$HALF_LINE"
+    e_and_l "$HALF_MINUS_LINE"
   else
     e_and_l "$ACTION_MESSAGE ... $NC_TAG"
   fi
