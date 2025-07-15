@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 14.07.2025
-VERSION="5.1.4"
+# Letzte Änderung: 15.07.2025
+VERSION="5.1.5"
 
 ################################################################################
 #                                                                              #
@@ -15688,16 +15688,15 @@ then
   # ============================================================================
   e_and_l " ${bold_blue}GRUB-Bootloader${colors_off}"
   e_and_l "$HALF_LINE"
-  ask_yes_or_no_plus "new_grub" " Neuen ${light_cyan}GRUB-Bootloader${colors_off} erstellen (mit Sicherheitsabfrage)" "" "n"
+  ask_yes_or_no_plus "new_grub" " Neuen ${light_cyan}GRUB-Bootloader${colors_off} mit neuen Starteinträgen erstellen" "" "n"
   if [ $? -eq 1 ];
   then
     e_and_l " Wenn sich auf dem Rechner befindliche Betriebssysteme beim Booten des Rechners"
     e_and_l " nicht auswählen oder starten lassen, kann jetzt versucht werden dies mit einer"
-    e_and_l " Erneuerung des GRUB-Bootloaders zu korrigieren."
+    e_and_l " Erneuerung des GRUB-Bootloaders und dessen Konfiguration zu korrigieren."
     e_and_l " $ACHTUNG_TAG: Dadurch wird die aktuelle Konfiguration des GRUB-Bootloaders"
-    e_and_l " überschrieben, was dazu führen kann, dass zuvor individuell angepasste"
-    e_and_l " Dateien nachträglich erneut manuell angepasst werden müssen. Mache daher nur"
-    e_and_l " weiter, wenn Du Dich gut auskennst und diese Änderungen durchführen kannst!"
+    e_and_l " vollständig überschrieben, was dazu führen kann, dass zuvor individuell"
+    e_and_l " angepasste Dateien nachträglich erneut manuell angepasst werden müssen!"
     GRUB_TARGET="/dev/$boot_device"
     GRUB_TARGET="$(echo ${GRUB_TARGET} | sed -E "s/p*[0-9]*$//")"
     ask_yes_or_no_plus "" " Jetzt den ${bold_yellow}GRUB-Bootloader${colors_off} auf ${bold_yellow}$GRUB_TARGET${colors_off} erneuern" "" "n"
@@ -16001,7 +16000,7 @@ then
     if [ $FOLDERS_BROKEN -eq 0 ]; then e_and_l "$HALF_MINUS_LINE"; fi
     e_and_l " Zur Verbesserung der Kompatibilität können Benutzer-Ordner in deutscher und"
     e_and_l " englischer Sprache gegenseitig mit einem symbolischen Link verknüpft werden."
-    ask_yes_or_no_plus "desktop_link" "$ACTION_MESSAGE" "" "j"
+    ask_yes_or_no_plus "desktop_link" "$ACTION_MESSAGE" "" "n"
     if [ $? -eq 1 ];
     then
       i=0
