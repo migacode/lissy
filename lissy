@@ -8743,7 +8743,7 @@ then
     then
       # show_headlines
       e_and_l " Version ${light_yellow}$NEW_VERSION${colors_off} ist verfügbar. Es wird empfohlen, die neue Version zu verwenden."
-      ask_yes_or_no_plus "" " Alte Version sichern und neue Version verwenden" "$LOCAL_DOWNLOAD_FILE" "j"
+      ask_yes_or_no_pure "" " Alte Version sichern und neue Version verwenden" "$LOCAL_DOWNLOAD_FILE" "j"
       if [ $? -eq 1 ];
       then
         mv -f "${0}" "${0}.bak" &>/dev/null
