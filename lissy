@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 15.07.2025
-VERSION="5.1.5"
+# Letzte Änderung: 16.07.2025
+VERSION="5.1.6"
 
 ################################################################################
 #                                                                              #
@@ -1297,13 +1297,13 @@ function copy_starter_to_desktop {
                     # von Telegram gibt, die warum auch immer ZWEI .desktop am Ende haben
                     # ------------------------------------------------------
                     FILE_PURE_NAME="$(echo ${FILE_BASE_NAME} | sed 's/.desktop//gi')"
-                    download_icon_file "$FILE_PURE_NAME"
+                    download_icon_file "$FILE_PURE_NAME" 0
                     # ------------------------------------------------------
                     # Icon mit identischem Namen des Pakets herunterladen
                     # ------------------------------------------------------
                     if [ "$FILE_PURE_NAME" != "$1" ];
                     then
-                      download_icon_file "$1"
+                      download_icon_file "$1" 0
                     fi
                     # --------------------------------------------------------
                     # Wenn das im Starter angegebene Icon nicht existiert,
@@ -1830,9 +1830,10 @@ function do_revive_items {
 #===============================================================================
 function download_icon_file {
   PKG_PICTURE_NAME="$1.png"
+  ICON_OVERRIDE=$2
   PKG_PICTURE_FILE="$PKG_IPIX_DIR/$PKG_PICTURE_NAME"
   if [ -d "$PKG_IPIX_DIR" ] &&
-     [ ! -s "$PKG_PICTURE_FILE" ];
+     [[ ! -s "$PKG_PICTURE_FILE" || $ICON_OVERRIDE -eq 1 ]];
   then
     PKG_PICTURE_URL="$RESSOURCE_SERVER_DIR/png/$PKG_PICTURE_NAME"
     LOCAL_DOWNLOAD_FILE="$DOWNLOAD_DIR/$PKG_PICTURE_NAME"
@@ -3976,7 +3977,7 @@ function install_pkg {
                      [ "$CURRENT_CATEGORY" != "x" ] &&
                      [ "$CURRENT_CATEGORY" != "xx" ];
                     then
-                      download_icon_file "$WPKG_CLEAN_NAME"
+                      download_icon_file "$WPKG_CLEAN_NAME" 0
                     fi
                   fi
 
@@ -4814,7 +4815,7 @@ function remove_snapshots {
             done
             e_and_l "$HALF_MINUS_LINE"
             e_and_l " Hast Du die Liste genau geprüft, so dass nichts ungewollt gelöscht wird?"
-            ask_yes_or_no_plus "" " Jetzt wirklich ${bold_red}alle${colors_off} Schnappschüsse löschen" "" "n"
+            ask_yes_or_no_plus "remove_snapshots" " Jetzt wirklich ${bold_red}alle${colors_off} Schnappschüsse löschen" "" "n"
             if [ $? -eq 0 ];
             then
               e_and_l " $USER_CHOICE_NO"
@@ -8467,7 +8468,7 @@ fi
 # ------------------------------------------
 # Aktuelles Icon für den Starter downloaden
 # ------------------------------------------
-download_icon_file "lissy"
+download_icon_file "lissy" 1
 
 # ==============================================================================
 # Laufzeit-Parameter ermitteln
@@ -8743,7 +8744,7 @@ then
     then
       # show_headlines
       e_and_l " Version ${light_yellow}$NEW_VERSION${colors_off} ist verfügbar. Es wird empfohlen, die neue Version zu verwenden."
-      ask_yes_or_no_pure "" " Alte Version sichern und neue Version verwenden" "$LOCAL_DOWNLOAD_FILE" "j"
+      ask_yes_or_no_pure " Alte Version sichern und neue Version verwenden" "$LOCAL_DOWNLOAD_FILE" "j"
       if [ $? -eq 1 ];
       then
         mv -f "${0}" "${0}.bak" &>/dev/null
@@ -10240,7 +10241,7 @@ then
        [ $(apt list "flatpak" 2>/dev/null | grep -i -c "flatpak") -gt 0 ];
     then
       e_and_l " $ACHTUNG_TAG: Die Flatpak-Paketverwaltung ist nicht installiert."
-      ask_yes_or_no_plus "install_flatpak" " Die Flatpak-Paketverwaltung jetzt installieren" "" "j"
+      ask_yes_or_no_plus "install_flatpak" " Die ${light_cyan}Flatpak-Paketverwaltung${colors_off} jetzt installieren" "" "j"
       if [ $? -eq 1 ];
       then
         e_and_l -n " Installiere die ${light_yellow}Flatpak-Paketverwaltung${colors_off}, bitte warten ... "
@@ -10264,7 +10265,7 @@ then
        [ $(apt list "snapd" 2>/dev/null | grep -i -c "snapd") -gt 0 ];
     then
       e_and_l " $ACHTUNG_TAG: Die Snap-Paketverwaltung ist nicht installiert."
-      ask_yes_or_no_plus "install_snap" " Die Snap-Paketverwaltung jetzt installieren" "" "n"
+      ask_yes_or_no_plus "install_snap" " ${light_cyan}Die Snap-Paketverwaltung${colors_off} jetzt installieren" "" "n"
       if [ $? -eq 1 ];
       then
         e_and_l -n " Installiere die ${light_yellow}Snap-Paketverwaltung${colors_off}, bitte warten ... "
@@ -12589,7 +12590,7 @@ then
   else
     if [ $(apt list "ufw" 2>/dev/null | grep -i -c -E "ufw") -gt 0 ];
     then
-      ask_yes_or_no_plus "ufw_install" " Soll die ${light_cyan}Firewall (ufw)${colors_off} installiert werden"
+      ask_yes_or_no_plus "ufw_install" " Soll die ${light_cyan}Firewall (ufw)${colors_off} installiert werden" "" ""
       if [ $? -eq 1 ];
       then
         e_and_l -n " Installiere ${light_yellow}Firewall (ufw)${colors_off}, bitte warten   ... "
@@ -12624,7 +12625,7 @@ then
     # ---------------------
     if [ $(LANG=en ufw status 2>/dev/null | grep -i -c -E "status\s*:\s*a") -eq 0 ];
     then
-      ask_yes_or_no_plus "ufw_activate" "$ACTION_MESSAGE"
+      ask_yes_or_no_plus "ufw_activate" "$ACTION_MESSAGE" "" ""
       if [ $? -eq 1 ];
       then
         e_and_l -n " Schalte die interne ${light_yellow}Firewall (ufw)${colors_off} ein     ... "
@@ -12652,7 +12653,7 @@ then
       if [ $(LANG=en ufw status verbose 2>/dev/null | grep -i -c -E "Proto.*\:\s*off$") -eq 0 ] &&
          [ $(LANG=en ufw status verbose 2>/dev/null | grep -i -c -E "Logging\s*\:\s*off$") -eq 0 ];
       then
-        ask_yes_or_no_plus "ufw_logging_off" "$ACTION_MESSAGE"
+        ask_yes_or_no_plus "ufw_logging_off" "$ACTION_MESSAGE" "" ""
         if [ $? -eq 1 ];
         then
           e_and_l -n " Schalte das ${light_yellow}Protokoll-Log der Firewall${colors_off} aus ... "
@@ -12694,7 +12695,7 @@ then
     then
       OPENSSH_INSTALL_STATUS=0
     else
-      ask_yes_or_no_plus "ssh_install" " Installation des ${light_cyan}OpenSSH-Servers${colors_off}"
+      ask_yes_or_no_plus "ssh_install" " Installation des ${light_cyan}OpenSSH-Servers${colors_off}" "" ""
       if [ $? -eq 1 ];
       then
         e_and_l -n " Installiere ${light_yellow}openssh-server${colors_off}, bitte warten   ... "
@@ -12738,7 +12739,7 @@ then
       then
         if [ $(LANG=en systemctl is-enabled ssh 2>/dev/null | grep -i -c -E "enabled") -eq 0 ];
         then
-          ask_yes_or_no_plus "ssh_activate" "$ACTION_MESSAGE"
+          ask_yes_or_no_plus "ssh_activate" "$ACTION_MESSAGE" "" ""
           if [ $? -eq 1 ];
           then
             e_and_l -n " Aktiviere den ${light_yellow}SSH-Server${colors_off} bei Systemstart   ... "
@@ -12796,7 +12797,7 @@ then
     e_and_l "$OK_TAG ${dark_grey}(Wert: $SWAP_VALUE%)${colors_off}"
   else
     e_and_l " Der ${light_cyan}Swapping-Wert${colors_off} liegt bei ${light_cyan}$SWAP_VALUE${colors_off}, für dieses System wird ${light_yellow}$BEST_SWAP_SIZE${colors_off} empfohlen."
-    ask_yes_or_no_plus "swap_change" " Einstellung des ${light_cyan}Swapping-Wertes${colors_off} jetzt ändern"
+    ask_yes_or_no_plus "swap_change" " Einstellung des ${light_cyan}Swapping-Wertes${colors_off} jetzt ändern" "" ""
     if [ $? -eq 1 ];
     then
       NEW_SWAPPING=0
@@ -12994,7 +12995,7 @@ then
             RAMDISK_SIZE=$(echo $RAMDISK_SIZE | sed 's/[^0-9]*//g')
             if [ "$RAMDISK_SIZE" == "" ]; then RAMDISK_SIZE=0; fi
           done
-          ask_yes_or_no_plus "" " Jetzt dynamische ${light_yellow}RAM Disk${colors_off} von ${light_yellow}max. $RAMDISK_SIZE MB${colors_off} anlegen"
+          ask_yes_or_no_plus "" " Jetzt dynamische ${light_yellow}RAM Disk${colors_off} von ${light_yellow}max. $RAMDISK_SIZE MB${colors_off} anlegen" "" ""
           if [ $? -eq 1 ];
           then
             if [ $(df | grep -i -c -E "$RAMDISK_MOUNTPOINT") -gt 0 ];
@@ -13481,7 +13482,7 @@ then
         done
       fi
       e_and_l " Die aktuellen ${light_cyan}Taktfrequenzen${colors_off} dieses Pi sind auf ${light_yellow}$CURRENT_PI_PERFNAME-Performance${colors_off} eingestellt"
-      ask_yes_or_no_plus "raspy_performance" " Sollen die Taktfreqenzen geändert werden"
+      ask_yes_or_no_plus "raspy_performance" " Sollen die Taktfreqenzen geändert werden" "" ""
       if [ $? -eq 1 ];
       then
         e_and_l " Bitte neues Performance-Profil auswählen"
@@ -13503,7 +13504,7 @@ then
           if [ "$NEW_PERF_MODE" == "" ]; then NEW_PERF_MODE=-1; fi
         done
         setterm -cursor on 2>/dev/null
-        ask_yes_or_no_plus "" " Taktfrequenzen auf das Profil ${light_yellow}${pi_perfname[$NEW_PERF_MODE]}${colors_off} umstellen"
+        ask_yes_or_no_plus "" " Taktfrequenzen auf das Profil ${light_yellow}${pi_perfname[$NEW_PERF_MODE]}${colors_off} umstellen" "" ""
         if [ $? -eq 1 ];
         then
           SED_ERROR_CODE_1=0
@@ -13611,7 +13612,7 @@ then
       then
         if [ $(grep -i -c -E "^\s*gpu_mem\s*=\s*$NEW_MEM_SIZE" "$PI_CONF_FILE") -eq 0 ];
         then
-          ask_yes_or_no_plus "raspy_gpu_mem" " Soll der ${light_cyan}GPU-Speicher${colors_off} optimiert werden"
+          ask_yes_or_no_plus "raspy_gpu_mem" " Soll der ${light_cyan}GPU-Speicher${colors_off} optimiert werden" "" ""
           if [ $? -eq 1 ];
           then
             create_backup_file "$PI_CONF_FILE"
@@ -13721,7 +13722,7 @@ then
     fi
     if [ -s "$PI_CONF_FILE" ];
     then
-      ask_yes_or_no_plus "" " Einstellung für ${light_cyan}Monitor-Overscan${colors_off} ändern"
+      ask_yes_or_no_plus "" " Einstellung für ${light_cyan}Monitor-Overscan${colors_off} ändern" "" ""
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m}  ... "
@@ -13782,7 +13783,7 @@ then
     fi
     if [ $CREATE_NEW_FILE -eq 1 ];
     then
-      ask_yes_or_no_plus "raspy_user_pi_passwd" " Für Benutzer pi ${light_cyan}sudo-Passwort${colors_off} aktivieren"
+      ask_yes_or_no_plus "raspy_user_pi_passwd" " Für Benutzer pi ${light_cyan}sudo-Passwort${colors_off} aktivieren" "" ""
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -13821,7 +13822,7 @@ then
         # Wenn der Eintrag aktiv ist, diesen auskommentieren
         if [ $(grep -i -c -E "^\s*deb\s\s*http\:\/\/archive\.raspberrypi\.org\/debian" ${RASPI_DEB_FILE}) -gt 0 ];
         then
-          ask_yes_or_no_plus "raspy_no_testing" "$ACTION_MESSAGE"
+          ask_yes_or_no_plus "raspy_no_testing" "$ACTION_MESSAGE" "" ""
           if [ $? -eq 1 ];
           then
             e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -13866,7 +13867,7 @@ then
       then
         if [ -s "$STANDARD_RC_CONFIG" ];
         then
-          ask_yes_or_no_plus "raspy_keyboard" "$ACTION_MESSAGE"
+          ask_yes_or_no_plus "raspy_keyboard" "$ACTION_MESSAGE" "" ""
           if [ $? -eq 1 ];
           then
             e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -13989,7 +13990,7 @@ EOF
     then
       if [ $IS_OK_USER_LIST_FOUND -ne $TOTAL_USER_LIST_FOUND ];
       then
-        ask_yes_or_no_plus "login_user_list" "$ACTION_MESSAGE"
+        ask_yes_or_no_plus "login_user_list" "$ACTION_MESSAGE" "" ""
         if [ $? -eq 1 ];
         then
           e_and_l -n "${ACTION_MESSAGE//96m/93m}  ... "
@@ -14094,7 +14095,7 @@ EOF
         e_and_l -n " ${light_cyan}$AUTO_LOGIN_USER_NAME${colors_off}"
       fi
       e_and_l " wird automatisch am System angemeldet!"
-      ask_yes_or_no_plus "login_deactivate_auto_login" " Soll die ${light_cyan}automatische Anmeldung${colors_off} deaktiviert werden"
+      ask_yes_or_no_plus "login_deactivate_auto_login" " Soll die ${light_cyan}automatische Anmeldung${colors_off} deaktiviert werden" "" ""
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -14153,7 +14154,7 @@ EOF
       THE_BAD_LINE=$(grep -i -E "$THE_GUESTUSER_LINE" "$LDM_CONF_FILE" 2>/dev/null)
       e_and_l "$HALF_MINUS_LINE"
       e_and_l " $WARN_TAG: Die Anmeldung enthält einen ${light_cyan}Gastzugang${colors_off}."
-      ask_yes_or_no_plus "login_no_guest" " Soll die ${light_cyan}Anmeldung als Gast${colors_off} deaktiviert werden"
+      ask_yes_or_no_plus "login_no_guest" " Soll die ${light_cyan}Anmeldung als Gast${colors_off} deaktiviert werden" "" ""
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -16175,7 +16176,7 @@ then
               echo -e "Categories=Wine;" >> "$WINE_STARTER_FILE" 2>/dev/null
               chown -R "root:root" "$WINE_STARTER_FILE" &>/dev/null
               chmod -R 0644 "$WINE_STARTER_FILE" &>/dev/null
-              download_icon_file "$ICON_NAME"
+              download_icon_file "$ICON_NAME" 0
               if [ ${OPTION_FLAG[addstart]} -ne 0 ];
               then
                 KAT_SHORT_NAME="${KATEGORIE_TEXT[w]}"
@@ -16411,7 +16412,7 @@ then
         fi
         if [ $KEY_RENEW -eq 0 ];
         then
-          ask_yes_or_no_plus "" "   Soll der Schlüssel ${light_yellow}gelöscht${colors_off} werden"
+          ask_yes_or_no_plus "" "   Soll der Schlüssel ${light_yellow}gelöscht${colors_off} werden" "" ""
           if [ $? -eq 1 ];
           then
             e_and_l -n "   Versuche den alten Schlüssel zu löschen  ... "
@@ -16934,7 +16935,7 @@ then
           e_and_l " dazu führen kann, dass sich das System nicht mehr starten lässt, bzw. einzelne"
           e_and_l " Dateien nachträglch manuell angepasst werden müssen. Mache daher nur weiter,"
           e_and_l " wenn Du Dich gut auskennst und diese Anpassungen durchführen kannst!"
-          ask_yes_or_no_plus "" " Jetzt wirklich ${bold_white}initramfs${colors_off} und ${bold_white}GRUB-Loader${colors_off} erneuern"
+          ask_yes_or_no_plus "" " Jetzt wirklich ${bold_white}initramfs${colors_off} und ${bold_white}GRUB-Loader${colors_off} erneuern" "" ""
           if [ $? -eq 1 ];
           then
             # ---------------------------------------------------------------
@@ -17690,7 +17691,7 @@ then
       if [ "$DESKTOP_ENVIRONMENT" == "MATE" ] ||
           [ "${USER_CONF_MAO[$IDX_NAME]}" != "true" ];
       then
-        ask_yes_or_no_plus "" " $SHOW_NAME"
+        ask_yes_or_no_plus "" " $SHOW_NAME" "" ""
         DO_THE_CONFIG=$?
         if [ $DO_THE_CONFIG -eq 1 ];
         then
@@ -17842,7 +17843,7 @@ then
         then
           FILE_DATE=$(date -r ${DCONF_USER_FILE} "+%d.%m.%Y %H:%M:%S")
           e_and_l " Es ist schon eine Sicherungsdatei vom ${bold_cyan}$FILE_DATE${colors_off} vorhanden!"
-          ask_yes_or_no_plus "" " Bestehende Sicherungsdatei überschreiben"
+          ask_yes_or_no_plus "" " Bestehende Sicherungsdatei überschreiben" "" ""
           DO_SAVE_FILE=$?
         fi
         if [ $DO_SAVE_FILE -eq 1 ];
@@ -17872,7 +17873,7 @@ then
         then
           FILE_DATE=$(date -r ${DCONF_USER_FILE} "+%d.%m.%Y %H:%M:%S")
           e_and_l " Die Sicherungsdatei hat das Datum ${bold_cyan}$FILE_DATE${colors_off}. Alle aktuellen"
-          ask_yes_or_no_plus "" " Einstellungen auf diesen Stand zurücksetzen" "$DCONF_USER_FILE"
+          ask_yes_or_no_plus "" " Einstellungen auf diesen Stand zurücksetzen" "$DCONF_USER_FILE" ""
           if [ $? -eq 1 ];
           then
             e_and_l -n " Sichere aktuelle Einstellungen in ${bold_yellow}${DCONF_USER_BACKUP##*/}${colors_off} ... "
@@ -18111,7 +18112,7 @@ then
         e_and_l "Abbruch"
       else
         e_and_l "$REMOVE_ACTION"
-        ask_yes_or_no_plus "" " Wirklich ${REMOVE_TEXT[$REMOVE_ACTION]}"
+        ask_yes_or_no_plus "" " Wirklich ${REMOVE_TEXT[$REMOVE_ACTION]}" "" ""
         if [ $? -eq 0 ];
         then
           REMOVE_ACTION=-1
@@ -18234,7 +18235,7 @@ then
       remove_file "$GUESS_INSTALL_LIST_WEB"
     fi
     e_and_l " Ein Paket ${bold_yellow}$REMOVE_PKG_NAME${colors_off} scheint nicht ordentlich installiert zu sein."
-    ask_yes_or_no_plus "" " Sollen hinterbliebene Daten von diesem Paket gesucht werden"
+    ask_yes_or_no_plus "" " Sollen hinterbliebene Daten von diesem Paket gesucht werden" "" ""
     if [ $? -eq 1 ];
     then
       REMOVE_ACTION=3
