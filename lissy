@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 16.07.2025
-VERSION="5.1.6"
+# Letzte Änderung: 17.07.2025
+VERSION="5.1.8"
 
 ################################################################################
 #                                                                              #
@@ -5791,21 +5791,32 @@ then
   #-----------
   # Prozessor
   #-----------
-  # Bezeichnung
-  CPU_MODEL=$(grep -i -E "^model\s*name*\s*\:" "/proc/cpuinfo" 2>/dev/null)
+  # Bezeichnung und Taktfrequenz
+  if lscpu --version &>/dev/null;
+  then
+    CPU_MODEL="$(LANG=en lscpu 2>/dev/null | grep -i -E "^\s*model\s*name\s*\:" | cut -d':' -f2 | xargs)"
+    CPU_MIN_CLOCK="$(LANG=en lscpu 2>/dev/null | grep -i -E "^\s*CPU min MHz\s*\:" | cut -d':' -f2 | cut -d',' -f1 | cut -d'.' -f1 | xargs)"
+    CPU_MAX_CLOCK="$(LANG=en lscpu 2>/dev/null | grep -i -E "^\s*CPU max MHz\s*\:" | cut -d':' -f2 | cut -d',' -f1 | cut -d'.' -f1 | xargs)"
+  else
+    CPU_MIN_CLOCK=""
+    CPU_MAX_CLOCK=""
+  fi
   if [ "$CPU_MODEL" == "" ];
   then
-    CPU_MODEL=$(grep -i -E "^model\s*\:" "/proc/cpuinfo" 2>/dev/null)
+    CPU_MODEL=$(grep -i -E "^\s*model\s*name*\s*\:" "/proc/cpuinfo" 2>/dev/null)
+  fi
+  if [ "$CPU_MODEL" == "" ];
+  then
+    CPU_MODEL=$(grep -i -E "^\s*model\s*\:" "/proc/cpuinfo" 2>/dev/null)
   fi
   CPU_MODEL=$(echo -n "${CPU_MODEL##*\:}" | xargs)
   # Anzahl Kerne
-  CPU_CORES=$(grep -i -c -E "^processor\s*\:" "/proc/cpuinfo" 2>/dev/null)
+  CPU_CORES=$(grep -i -c -E "^\s*processor\s*\:" "/proc/cpuinfo" 2>/dev/null)
   # CPU-Code
-  CPU_CODE=$(grep -i -E "^hardware\s*\:" "/proc/cpuinfo" 2>/dev/null)
+  CPU_CODE=$(grep -i -E "^\s*hardware\s*\:" "/proc/cpuinfo" 2>/dev/null)
   CPU_CODE=$(echo -n "${CPU_CODE##*\:}" | xargs)
-
   # Seriennummer
-  CPU_SERIAL=$(grep -i -E "^serial\s*\:" "/proc/cpuinfo" 2>/dev/null)
+  CPU_SERIAL=$(grep -i -E "^\s*serial\s*\:" "/proc/cpuinfo" 2>/dev/null)
   CPU_SERIAL=$(echo -n "${CPU_SERIAL##*\:}" | xargs)
 
   # ----------
@@ -6396,7 +6407,7 @@ OPTION_MENU[revive]=4
 OPTION_MENU[setutc]=0
 if timedatectl &>/dev/null;
 then
-  if [ $(timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -gt 0 ];
+  if [ $(LANG=en timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -gt 0 ];
   then
     OPTION_MENU[setutc]=4
   fi
@@ -9612,6 +9623,12 @@ then
   if [ $CPU_CORES -gt 0 ]; then SYS_INFO_TXT+=" ${bold_cyan}($CPU_CORES Kerne)"; fi
   SYS_INFO_TXT+="${colors_off}"$'\n'
 
+  if [ "$CPU_MIN_CLOCK" != "" ] &&
+     [ "$CPU_MAX_CLOCK" != "" ];
+  then
+    SYS_INFO_TXT+=" Taktfrequenz: ${bold_yellow}$CPU_MIN_CLOCK${colors_off} bis ${bold_yellow}$CPU_MAX_CLOCK${colors_off} MHz"$'\n'
+  fi
+
   if [ "$CPU_SERIAL" != "" ];
   then
     SYS_INFO_TXT+=" Seriennummer: ${bold_yellow}$CPU_SERIAL${colors_off}"$'\n'
@@ -12443,7 +12460,7 @@ then
     ACTION_MESSAGE=" Umstellung der ${light_cyan}Systemzeit auf UTC${colors_off}         "
     if timedatectl &>/dev/null;
     then
-      if [ $(timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -gt 0 ];
+      if [ $(LANG=en timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -gt 0 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
         timedatectl set-local-rtc 0 --adjust-system-clock 2>/dev/null
@@ -12511,7 +12528,7 @@ then
     then
       if timedatectl &>/dev/null;
       then
-        if [ $(timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -eq 0 ];
+        if [ $(LANG=en timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -eq 0 ];
         then
           e_and_l " Einige Betriebssysteme wie MS Windows verwenden für Datum und Uhrzeit das"
           e_and_l " RTC-Format (Real Time Clock) statt UTC-Format (Universal Time Coordinated),"
@@ -15270,6 +15287,10 @@ EOF
   # -------------------------
   # Liste der Disks erzeugen
   # -------------------------
+
+NTFS_COUNT=0
+declare -A NTFS_PARTITONS
+
   THE_DISK_LIST="$DOWNLOAD_DIR/disk-list"
   remove_file "$THE_DISK_LIST"
   LANG=en lsblk -d -o name,rota,type 2>/dev/null | grep -i disk 1>"$THE_DISK_LIST" 2>/dev/null
@@ -15482,7 +15503,8 @@ EOF
       # ------------------------------------------------------------------------
       # Partitionen
       # ------------------------------------------------------------------------
-      parted -s -m ${DEVICE_NAME} unit B print 2>/dev/null | awk 'NR>2' |
+      THE_PARTITION_LIST="$DOWNLOAD_DIR/partition_list.tmp"
+      parted -s -m ${DEVICE_NAME} unit B print 2>/dev/null | awk 'NR>2' > "$THE_PARTITION_LIST"
       while read partition;
       do
         PARTITION_NR=$(echo $partition | cut -d":" -f 1 | xargs)
@@ -15500,6 +15522,16 @@ EOF
           then
             PARTITION_TYPE="unknown"
           fi
+        fi
+        if [ $(echo "$partition" | grep -c -i -E "ntfs") -gt 0 ];
+        then
+          NTFS_PARTITONS[$NTFS_COUNT]="${DEVICE_NAME}"
+          if [ $(echo ${DEVICE_NAME} | grep -c -i -E "mmcblk") -gt 0 ];
+          then
+            NTFS_PARTITONS[$NTFS_COUNT]+="p"
+          fi
+          NTFS_PARTITONS[$NTFS_COUNT]+="$PARTITION_NR"
+          ((NTFS_COUNT+=1))
         fi
         e_and_l -n "${light_blue}$PARTITION_TYPE${colors_off}"
         ((ANZ_SPACES=10-${#PARTITION_TYPE}))
@@ -15546,7 +15578,8 @@ EOF
         # else
         #   e_and_l "nicht geprüft ${dark_grey}(keine SSD)${colors_off}"
         # fi
-      done
+      done < "$THE_PARTITION_LIST"
+      remove_file "$THE_PARTITION_LIST"
       # ------------------------------------------------------------------------
       # Laufzeit
       # ------------------------------------------------------------------------
@@ -15594,6 +15627,39 @@ EOF
       fi
       # ---------------------------------------
     done < "$THE_DISK_LIST"
+    # --------------------------------------------------------------------------
+    # NTFS-Dirty-Flags bereinigen (nur wenn NTFS-Partitionen vorhanden sind)
+    # --------------------------------------------------------------------------
+    e_and_l "$HALF_LINE"
+    ACTION_MESSAGE=" Lösche ${light_cyan}Dirty Flags${colors_off} von NTFS-Partitionen ..."
+    if [ $NTFS_COUNT -gt 0 ];
+    then
+      if ntfsfix --version &>/dev/null;
+      then
+        e_and_l " Es wurden ${bold_yellow}$NTFS_COUNT${colors_off} Partition(en) mit ${bold_white}NTFS${colors_off}-Dateisystem gefunden."
+        ask_yes_or_no_plus "" " Sollen deren ${light_cyan}Dirty Flags${colors_off} gelöscht werden" "" "n"
+        if [ $? -eq 1 ];
+        then
+          nc=0
+          while [ $nc -lt $NTFS_COUNT ];
+          do
+            e_and_l -n " Lösche Dirty Flag von ${light_yellow}${NTFS_PARTITONS[$nc]}${colors_off} ... "
+            ntfsfix -d "${NTFS_PARTITONS[$nc]}" &>/dev/null
+            if [ $? -eq 0 ];
+            then
+              e_and_l "$OK_TAG"
+            else
+              e_and_l "$ERROR_TAG"
+            fi
+            ((nc+=1))
+          done
+        fi
+      else
+        e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
+      fi
+    else
+      e_and_l "$ACTION_MESSAGE $NF_TAG"
+    fi
     # --------------------------------------------------------------------------
     # Weitere Aktionen nur wenn eine SSD vorhanden ist
     # --------------------------------------------------------------------------
