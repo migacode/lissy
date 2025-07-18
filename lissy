@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 17.07.2025
-VERSION="5.1.8"
+# Letzte Änderung: 18.07.2025
+VERSION="5.1.9"
 
 ################################################################################
 #                                                                              #
@@ -6527,7 +6527,7 @@ if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -eq 0 ]; then KATEGORI
 # ------------------------------------------------------------------------------
 # Spiele
 # ------------------------------------------------------------------------------
-KATEGORIE_PKGS[s]="0ad alienarena armagetronad atomix billard-gl biniax2 blockout2 briquolo brutalchess caveexpress code-the-classics criticalmass cuyo dreamchess endless-sky enigma extremetuxracer flightgear flobopuyo foobillardplus freedoom freedroidrpg freegish freetennis frogatto frozen-bubble fs-uae gbrainy gcompris gemdropx gnome-games gnome-mastermind gnubg gweled jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakouthd lix marsshooter megaglest morris naev neverball neverputt nexuiz numptyphysics oolite openarena openclonk open-invaders peg-e pinball pingus pokerth pybik quetoo rocksndiamonds sauerbraten sdl-ball speed_dreams steam stunt_rally supertux supertuxkart teeworlds tesseract torcs trigger-rally tuxmath ufoai wesnoth widelands xonotic ysoccer zaz"
+KATEGORIE_PKGS[s]="0ad alienarena armagetronad atomix billard-gl biniax2 blockout2 briquolo brutalchess caveexpress code-the-classics criticalmass cuyo dreamchess endless-sky enigma extremetuxracer flightgear flobopuyo foobillardplus freedoom freedroidrpg freegish freetennis frogatto frozen-bubble fs-uae gbrainy gcompris gemdropx gnome-games gnome-mastermind gnubg gweled jag kapman katomic kdiamond kmahjongg knights kpat kreversi ksudoku lbreakouthd lix marsshooter megaglest morris naev neverball neverputt nexuiz numptyphysics oolite openarena openclonk open-invaders peg-e pinball pingus pokerth pybik quetoo rocksndiamonds sauerbraten sdl-ball speed_dreams steam stunt_rally supertux supertuxkart teeworlds tesseract torcs trackballs trigger-rally tuxmath ufoai wesnoth widelands xonotic ysoccer zaz"
 # ------------------------------------------------------------------------------
 # Tonstudio
 # ------------------------------------------------------------------------------
@@ -8183,7 +8183,7 @@ GAME_DIR_SUB_NAME[emulator]="Emulatoren"
 GAME_DIR_SUB_LIST[emulator]="fs-uae"
 
 GAME_DIR_SUB_NAME[jumpnrun]="Laufen und Springen"
-GAME_DIR_SUB_LIST[jumpnrun]="caveexpress freedroidrpg freegish frogatto kapman lix neverball openclonk pingus rocksndiamonds supertux teeworlds"
+GAME_DIR_SUB_LIST[jumpnrun]="caveexpress freedroidrpg freegish frogatto kapman lix neverball openclonk pingus rocksndiamonds supertux teeworlds trackballs"
 
 GAME_DIR_SUB_NAME[logic]="Logik- und Denkspiele"
 GAME_DIR_SUB_LIST[logic]="atomix enigma gbrainy gcompris gcompris-qt gnome-mastermind katomic numptyphysics peg-e ksudoku pybik tuxmath"
@@ -8442,7 +8442,7 @@ then
       echo -e "Type=Application" >> "$STARTER_FILE" 2>/dev/null
       # echo -e "Name=Lissy\\\n(Terminal)" >> "$STARTER_FILE" 2>/dev/null
       echo -e "Name=Lissy" >> "$STARTER_FILE" 2>/dev/null
-      echo -e "Comment=Lissy im Terminal starten" >> "$STARTER_FILE" 2>/dev/null
+      echo -e "Comment=Linux System Setup Utility" >> "$STARTER_FILE" 2>/dev/null
       echo -e "Exec=bash -c 'cd $SCRIPT_PATH && sudo --preserve-env=XDG_SESSION_TYPE ./$SCRIPT_NAME;\$SHELL'" >> "$STARTER_FILE" 2>/dev/null
       echo -e "Icon=lissy" >> "$STARTER_FILE" 2>/dev/null
       echo -e "Categories=System;" >> "$STARTER_FILE" 2>/dev/null
