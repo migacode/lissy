@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 18.07.2025
-VERSION="5.1.9"
+# Letzte Änderung: 20.07.2025
+VERSION="5.2.0"
 
 ################################################################################
 #                                                                              #
@@ -5628,6 +5628,12 @@ fi
 #===============================================================================
 ORIGINAL_USER_PATH="$(sudo --user=${USER_USERNAME} bash -c 'echo $PATH' 2>/dev/null)"
 export PATH="$PATH:/usr/sbin:/usr/bin:/sbin:/bin"
+
+#===============================================================================
+# Dateien mit Konfigurationen des GRUB-Bootloaders
+#===============================================================================
+GRUB_DEFAULT_FILE="/etc/default/grub"    # Standards (Defaults)
+GRUB_CUSTOM_FILE="/boot/grub/custom.cfg" # Individueller Hintergrund und Farben
 
 #===============================================================================
 # Lokale Verzeichnisse für Konfiguration der Display-Manager
@@ -12562,16 +12568,15 @@ then
   # Aktivierung der Betriebssystem-Erkennung
   # =============================================================================
   ACTION_MESSAGE=" Aktivierung der ${light_cyan}Betriebssystem-Erkennung${colors_off}  "
-  GRUB_FILE="/etc/default/grub"
-  if [ -s "$GRUB_FILE" ];
+  if [ -s "$GRUB_DEFAULT_FILE" ];
   then
-    if [ $(grep -i -c -E "^\s*GRUB_DISABLE_OS_PROBER\s*=\s*\"*true\"*\s*" "$GRUB_FILE") -gt 0 ];
+    if [ $(grep -i -c -E "^\s*GRUB_DISABLE_OS_PROBER\s*=\s*\"*true\"*\s*" "$GRUB_DEFAULT_FILE") -gt 0 ];
     then
       ask_yes_or_no_plus "activate_os_prober" " Die Erkennung anderer ${light_cyan}Betriebssysteme${colors_off} aktivieren" "" "j"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
-        sed -i 's/^\s*GRUB_DISABLE_OS_PROBER\s*=\s*"*true"*/GRUB_DISABLE_OS_PROBER="false"/' "$GRUB_FILE" 2>/dev/null
+        sed -i 's/^\s*GRUB_DISABLE_OS_PROBER\s*=\s*"*true"*/GRUB_DISABLE_OS_PROBER="false"/' "$GRUB_DEFAULT_FILE" 2>/dev/null
         if [ $? -eq 0 ];
         then
           update-grub &>/dev/null
@@ -15753,41 +15758,226 @@ then
   # ============================================================================
   # Erneuerung des GRUB-Bootloaders
   # ============================================================================
+  GRUB_TARGET="/dev/$boot_device"
+  GRUB_TARGET="$(echo ${GRUB_TARGET} | sed -E "s/p*[0-9]*$//")"
   e_and_l " ${bold_blue}GRUB-Bootloader${colors_off}"
   e_and_l "$HALF_LINE"
+  e_and_l " Wenn sich auf dem Rechner Betriebs-Systeme befinden, die sich beim Booten des"
+  e_and_l " Rechners nicht auswählen oder starten lassen, kann versucht werden dies durch"
+  e_and_l " die Erneuerung des GRUB-Bootloaders und dessen Konfiguration zu korrigieren."
   ask_yes_or_no_plus "new_grub" " Neuen ${light_cyan}GRUB-Bootloader${colors_off} mit neuen Starteinträgen erstellen" "" "n"
   if [ $? -eq 1 ];
   then
-    e_and_l " Wenn sich auf dem Rechner befindliche Betriebssysteme beim Booten des Rechners"
-    e_and_l " nicht auswählen oder starten lassen, kann jetzt versucht werden dies mit einer"
-    e_and_l " Erneuerung des GRUB-Bootloaders und dessen Konfiguration zu korrigieren."
-    e_and_l " $ACHTUNG_TAG: Dadurch wird die aktuelle Konfiguration des GRUB-Bootloaders"
-    e_and_l " vollständig überschrieben, was dazu führen kann, dass zuvor individuell"
-    e_and_l " angepasste Dateien nachträglich erneut manuell angepasst werden müssen!"
-    GRUB_TARGET="/dev/$boot_device"
-    GRUB_TARGET="$(echo ${GRUB_TARGET} | sed -E "s/p*[0-9]*$//")"
-    ask_yes_or_no_plus "" " Jetzt den ${bold_yellow}GRUB-Bootloader${colors_off} auf ${bold_yellow}$GRUB_TARGET${colors_off} erneuern" "" "n"
+    # --------------------------------------------------------------------------
+    # Gewünschte Standard-Konfiguration (Defaults) von GRUB abfragen
+    # --------------------------------------------------------------------------
+    if [ -s "$GRUB_DEFAULT_FILE" ];
+    then
+      e_and_l " ${bold_white}Konfiguration${colors_off} von GRUB"
+      ask_yes_or_no_pure " Soll GRUB sich den ${light_yellow}zuletzt ausgewählten Eintrag${colors_off} merken"
+      if [ $? -eq 1 ];
+      then
+        GRUB_DEFAULT_ENTRY="GRUB_DEFAULT=saved"
+        GRUB_SAVEDEFAULT_ENTRY="GRUB_SAVEDEFAULT=true"
+        GRUB_TIMEOUT_ENTRY=""
+      else
+        GRUB_DEFAULT_ENTRY="GRUB_DEFAULT=0"
+        GRUB_SAVEDEFAULT_ENTRY=""
+      fi
+      e_and_l " Wie lange soll GRUB das ${light_yellow}Startmenü mit der System-Auswahl${colors_off} anzeigen?"
+      e_and_l " [${bold_yellow}0${colors_off}] 0 Sekunden (startet ausgewähltes System sofort ohne Anzeige des Menüs)"
+      e_and_l " [${bold_yellow}1${colors_off}] 10 Sekunden"
+      e_and_l " [${bold_yellow}2${colors_off}] 30 Sekunden"
+      user_choice_012
+      case $? in
+        0) GRUB_TIMEOUT_DURATION="0"  ;;
+        1) GRUB_TIMEOUT_DURATION="10" ;;
+        2) GRUB_TIMEOUT_DURATION="30" ;;
+      esac
+      e_and_l " ${bold_white}Ausgewählte Optionen${colors_off}"
+      e_and_l -n " Zuletzt ausgewählten Eintrag merken: ${bold_yellow}"
+      if [ $(echo "$GRUB_DEFAULT_ENTRY" | grep -c -i -E "saved") -gt 0 ]; then e_and_l -n "Ja"; else e_and_l -n "Nein"; fi
+      e_and_l "${colors_off}"
+      e_and_l " Anzeigedauer des Startmenüs: ${bold_yellow}$GRUB_TIMEOUT_DURATION${colors_off} Sekunden"
+    fi
+    # --------------------------------------------------------------------------
+    # Sicherheitsabfrage
+    # --------------------------------------------------------------------------
+    e_and_l " $ACHTUNG_TAG: Die aktuelle Konfiguration des GRUB-Bootloaders wird vollständig"
+    e_and_l " überschrieben, was dazu führen kann, dass eventuell individuell angepasste"
+    e_and_l " Dateien nachträglich erneut manuell angepasst werden müssen!"
+    ask_yes_or_no_plus "" " Jetzt wirklich den ${bold_yellow}GRUB-Bootloader${colors_off} auf ${bold_yellow}$GRUB_TARGET${colors_off} erneuern" "" "n"
     if [ $? -eq 1 ];
     then
-      # --------------------------------------
+      # ------------------------------------------------------------------------
       # Installation eines neuen GRUB-Loaders
-      # --------------------------------------
+      # ------------------------------------------------------------------------
       if grub-install --version &>/dev/null;
       then
-        e_and_l -n " Installiere einen neuen ${light_yellow}Bootloader (GRUB)${colors_off} ... "
+        e_and_l -n " Installiere neuen ${light_yellow}GRUB-Bootloader${colors_off} auf dem Ziel  ... "
+        # 1. Versuch normal
         grub-install "$GRUB_TARGET" &>"$LOG_TEMP"
         if [ $? -eq 0 ];
         then
           e_and_l "$OK_TAG"
         else
-          e_and_l "$ERROR_TAG"
+          # 2. Versuch ohne Bootsektor (Ubuntu meint normal wäre unzuverlässig)
+          grub-install --no-bootsector "$GRUB_TARGET" &>"$LOG_TEMP"
+          if [ $? -eq 0 ];
+          then
+            e_and_l "$OK_TAG"
+          else
+            e_and_l "$ERROR_TAG"
+          fi
         fi
         add_full_log
       fi
-      # --------------------------------------
+      # ------------------------------------------------------------------------
+      # Standard-Konfiguration (Defaults) von GRUB ändern
+      # ------------------------------------------------------------------------
+      if [ -s "$GRUB_DEFAULT_FILE" ];
+      then
+        create_backup_file "$GRUB_DEFAULT_FILE"
+        e_and_l -n " Aktualisiere ${light_yellow}Konfiguration${colors_off} des GRUB-Bootloader  ... "
+        # ----------------------------------------------------------------------
+        # 1. Einstellungen zur Vorauswahl des letzten ausgewählten Eintrags
+        # ----------------------------------------------------------------------
+        # 1.1 GRUB_DEFAULT: Letzten ausgewählten Eintrag vorauswählen (saved)
+        # --------------------------------------------------------------------
+        # Wenn es den Eintrag schon gibt, diesen ändern ...
+        # --------------------------------------------------
+        if [ $(cat "$GRUB_DEFAULT_FILE" 2>/dev/null | grep -c -i -E "^\s*\#*\s*GRUB_DEFAULT\s*\=") -gt 0 ];
+        then
+          sed -i -E "s/^\s*\#*\s*GRUB_DEFAULT\s*\=.*/$GRUB_DEFAULT_ENTRY/gi" "$GRUB_DEFAULT_FILE" 2>/dev/null
+          RESULT_ENTRY_1=$?
+        # ----------------------
+        # ... sonst neu anlegen
+        # ----------------------
+        else
+          echo -e "" >> "$GRUB_DEFAULT_FILE" 2>/dev/null
+          echo -e "$GRUB_DEFAULT_ENTRY" >> "$GRUB_DEFAULT_FILE" 2>/dev/null
+          RESULT_ENTRY_1=$?
+        fi
+        # --------------------------------------------------
+        # 1.2 GRUB_SAVEDEFAULT: Vorauswahl verwenden (true)
+        # --------------------------------------------------
+        # Wenn es den Eintrag schon gibt, diesen ändern ...
+        # --------------------------------------------------
+        if [ $(cat "$GRUB_DEFAULT_FILE" 2>/dev/null | grep -c -i -E "^\s*\#*\s*GRUB_SAVEDEFAULT\s*\=") -gt 0 ];
+        then
+          sed -i -E "s/^\s*\#*\s*GRUB_SAVEDEFAULT\s*\=.*/$GRUB_SAVEDEFAULT_ENTRY/gi" "$GRUB_DEFAULT_FILE" 2>/dev/null
+          RESULT_ENTRY_2=$?
+        # ----------------------
+        # ... sonst neu anlegen
+        # ----------------------
+        else
+          # ------------------------------------------------------
+          # SED-Option /a fügt eine Zeile hinter dem Match ein ;)
+          # ------------------------------------------------------
+          sed -i -E "/$GRUB_DEFAULT_ENTRY/a$GRUB_SAVEDEFAULT_ENTRY" "$GRUB_DEFAULT_FILE" 2>/dev/null
+          RESULT_ENTRY_2=$?
+        fi
+        # ----------------------------------------------------------------------
+        # 2. Einstellungen zur Anzeigedauer des Menüs und automatischen Auswahl
+        # ----------------------------------------------------------------------
+        # 2.1 GRUB_TIMEOUT: Anzeigedauer in Sekunden
+        # --------------------------------------------------
+        # Wenn es den Eintrag schon gibt, diesen ändern ...
+        # --------------------------------------------------
+        if [ $(cat "$GRUB_DEFAULT_FILE" 2>/dev/null | grep -c -i -E "^\s*\#*\s*GRUB_TIMEOUT\s*\=") -gt 0 ];
+        then
+          sed -i -E "s/^\s*\#*\s*GRUB_TIMEOUT\s*\=.*/GRUB_TIMEOUT=$GRUB_TIMEOUT_DURATION/gi" "$GRUB_DEFAULT_FILE" 2>/dev/null
+          RESULT_ENTRY_1=$?
+        # ----------------------
+        # ... sonst neu anlegen
+        # ----------------------
+        else
+          echo -e "" >> "$GRUB_DEFAULT_FILE" 2>/dev/null
+          echo -e "GRUB_TIMEOUT=$GRUB_TIMEOUT_DURATION" >> "$GRUB_DEFAULT_FILE" 2>/dev/null
+          RESULT_ENTRY_1=$?
+        fi
+        # -------------------------------------------------------------------
+        # 2.2 DURATION soll die Anzeigedauer, nicht die Vor-Verzögerung sein
+        # -------------------------------------------------------------------
+        # Wenn es den Eintrag schon gibt, diesen ändern ...
+        # (wenn es ihn nicht gibt, auch nicht neu anlegen, da ohne diesen das
+        # Verhalten von GRUB_TIMEOUT bereits die "Anzeigedauer" ist)
+        # --------------------------------------------------
+        if [ $(cat "$GRUB_DEFAULT_FILE" 2>/dev/null | grep -c -i -E "^\s*\#*\s*GRUB_TIMEOUT_STYLE\s*\=") -gt 0 ];
+        then
+          sed -i -E "s/^\s*\#*\s*GRUB_TIMEOUT_STYLE\s*\=.*/GRUB_TIMEOUT_STYLE=menu/gi" "$GRUB_DEFAULT_FILE" 2>/dev/null
+        fi
+        # ----------------------------------------------------------------------
+        remove_double_empty_lines "$GRUB_DEFAULT_FILE"
+        # ----------------------------------------------------------------------
+        # 3. Zusätzlich individuelle Einstellungen
+        # ----------------------------------------------------------------------
+        # 3.1 Farben
+        # --------------------------------------------------------------
+        # [light-|dark-] red, green, blue, cyan, magenta, yellow, brown
+        # white, black, light-gray, dark-gray
+        # --------------------------------------------------------------
+        if [ -s "$GRUB_CUSTOM_FILE" ];
+        then
+          create_backup_file "$GRUB_CUSTOM_FILE"
+        else
+          echo -e -n > "$GRUB_CUSTOM_FILE" 2>/dev/null
+        fi
+        declare -A GRUB_COLOR_NAMES
+        declare -A GRUB_COLOR_VALUE
+        GRUB_COLOR_NAMES[0]="color_normal"          # Outside menu
+        GRUB_COLOR_VALUE[0]="dark-gray/black"
+        GRUB_COLOR_NAMES[1]="menu_color_normal"     # Inside menu
+        GRUB_COLOR_VALUE[1]="white/black"
+        GRUB_COLOR_NAMES[2]="menu_color_highlight"  # Current line
+        GRUB_COLOR_VALUE[2]="yellow/black"
+        color_entries=${#GRUB_COLOR_NAMES[@]}
+        col_nr=0
+        while [ $col_nr -lt $color_entries ];
+        do
+          # --------------------------------------------------
+          # Wenn es den Eintrag schon gibt, diesen ändern ...
+          # --------------------------------------------------
+          THE_NEW_COLOR_LINE="set ${GRUB_COLOR_NAMES[$col_nr]}=${GRUB_COLOR_VALUE[$col_nr]}"
+          if [ $(cat "$GRUB_CUSTOM_FILE" 2>/dev/null | grep -c -i -E "^\s*\#*\s*set\s*${GRUB_COLOR_NAMES[$col_nr]}\s*\=") -gt 0 ];
+          then
+            THE_NEW_COLOR_LINE=$(echo -n "$THE_NEW_COLOR_LINE" | sed 's/\//\\\//g')
+            sed -i -E "s/^\s*\#*\s*set\s*${GRUB_COLOR_NAMES[$col_nr]}\s*\=.*/$THE_NEW_COLOR_LINE/gi" "$GRUB_CUSTOM_FILE" 2>/dev/null
+          # ----------------------
+          # ... sonst neu anlegen
+          # ----------------------
+          else
+            echo -e "" >> "$GRUB_CUSTOM_FILE" 2>/dev/null
+            echo -e "$THE_NEW_COLOR_LINE" >> "$GRUB_CUSTOM_FILE" 2>/dev/null
+          fi
+          # --------------------------------------------------
+          ((col_nr+=1))
+        done
+        # --------------------------------------------------------------------
+        # 3.2 Hintergrundbild (TODO)
+        # --------------------------------------------------------------------
+        # A) $GRUB_DEFAULT_FILE => GRUB_BACKGROUND=/pfad/datei.jpg
+        # ODER
+        # B) $GRUB_CUSTOM_FILE =>
+        # insmod png
+        # insmod jpeg
+        # background_image /pfad/datei.jpg
+        # --------------------------------------------------------------------
+        remove_double_empty_lines "$GRUB_CUSTOM_FILE"
+        # --------------------------------------------------------------------
+        if [ $RESULT_ENTRY_1 -eq 0 ] &&
+           [ $RESULT_ENTRY_2 -eq 0 ];
+        then
+          e_and_l "$OK_TAG"
+        else
+          e_and_l "$ERROR_TAG ($RESULT_ENTRY_1 $RESULT_ENTRY_2)"
+        fi
+        add_full_log
+      fi
+      # ------------------------------------------------------------------------
       # Aktualisierung der GRUB-Konfiguration
-      # --------------------------------------
-      e_and_l -n " Aktualisiere Einträge des ${light_yellow}GRUB-Bootloader${colors_off} ... "
+      # ------------------------------------------------------------------------
+      e_and_l -n " Aktualisiere ${light_yellow}Start-Einträge${colors_off} des GRUB-Bootloader ... "
       # -----------------------------------
       # Wenn update-grub vorhanden ist ...
       # -----------------------------------
