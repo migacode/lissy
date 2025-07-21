@@ -8244,13 +8244,13 @@ ADDITIONAL_STARTER[q]="org.gnome.Boxes"
 # Achtung: Nicht verwechseln mit KATEGORIE_PKGS[v],
 # welches alle Pakete der Systemverwaltung enthält
 # ------------------------------------------------------------------------------
-ADDITIONAL_STARTER[v]="ayatana-settings debian-xterm caja-file-management-properties ccsm htop lightdm-settings nvidia-settings software-properties-gtk software-properties-qt time-admin update-manager users-admin xarchiver xpra xscreensaver-properties xscreensaver-settings xterm"
+ADDITIONAL_STARTER[v]="ayatana-settings debian-xterm caja-file-management-properties ccsm htop lightdm-settings nvidia-settings software-properties-gtk software-properties-qt time-admin update-manager users users-admin xarchiver xpra-gui xscreensaver-properties xscreensaver-settings xterm"
 
 # ---------------------------------------------------
 # Starter nur zur Systemverwaltung von Cinnamon
 # ---------------------------------------------------
 # Achtung: Nicht verwechseln mit KATEGORIE_PKGS[ci],
-# welches alle Pakete der Cinnam on Tools enthält
+# welches alle Pakete der Cinnamon Tools enthält
 # ---------------------------------------------------
 ADDITIONAL_S_NAMES[vc]="cinnamon-menu-editor cinnamon-settings"
 ADDITIONAL_DIRNAME[vc]="Cinnamon"
