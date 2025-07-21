@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 20.07.2025
-VERSION="5.2.0"
+# Letzte Änderung: 21.07.2025
+VERSION="5.2.1"
 
 ################################################################################
 #                                                                              #
@@ -2042,7 +2042,7 @@ function get_install_status {
       THE_PKG_INST_DIR="/opt/$THE_PKG_TEST_NAME"
       if [ -d "$THE_PKG_INST_DIR" ];
       then
-        if [ $(find "$THE_PKG_INST_DIR" -maxdepth 1 -executable 2>/dev/null | wc -l) -gt 1 ];
+        if [ $(find "$THE_PKG_INST_DIR" -type f -executable 2>/dev/null | wc -l) -gt 0 ];
         then
           PKG_INSTALL_STATUS=3
           PKG_VERS_FILE="$THE_PKG_INST_DIR/.$1"
@@ -2068,7 +2068,7 @@ function get_install_status {
       THE_PKG_INST_DIR="$WEB_PKG_DIR/${WEB_PKG_NAME[$1]}"
       if [ -d "$THE_PKG_INST_DIR" ];
       then
-        if [ $(find "$THE_PKG_INST_DIR" -maxdepth 1 -executable 2>/dev/null | wc -l) -gt 1 ];
+        if [ $(find "$THE_PKG_INST_DIR" -type f -executable 2>/dev/null | wc -l) -gt 0 ];
         then
           PKG_INSTALL_STATUS=4
           PKG_VERS_FILE="$THE_PKG_INST_DIR/.$1"
@@ -2092,7 +2092,7 @@ function get_install_status {
       THE_PKG_INST_DIR="/usr/share/$1"
       if [ -d "$THE_PKG_INST_DIR" ];
       then
-        if [ $(find "$THE_PKG_INST_DIR" -maxdepth 1 -executable 2>/dev/null | wc -l) -gt 1 ];
+        if [ $(find "$THE_PKG_INST_DIR" -type f -executable 2>/dev/null | wc -l) -gt 0 ];
         then
           PKG_INSTALL_STATUS=5
           PKG_VERS_FILE="$THE_PKG_INST_DIR/.$1"
@@ -18476,7 +18476,7 @@ then
             for p in ${!WEB_PKG_NAME[@]};
             do
               if [ "${WEB_PKG_NAME[$p]}" == "$guess" ] &&
-                 [ $(find "$WEB_PKG_DIR/$guess" -maxdepth 1 -executable 2>/dev/null | wc -l) -gt 1 ];
+                 [ $(find "$WEB_PKG_DIR/$guess" -type f -executable 2>/dev/null | wc -l) -gt 0 ];
               then
                 e_and_l " - ${WEB_PKG_NAME[$p]} [$p] (${light_purple}WEB${colors_off})"
               fi
