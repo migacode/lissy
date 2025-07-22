@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 21.07.2025
-VERSION="5.2.1"
+# Letzte Änderung: 22.07.2025
+VERSION="5.2.2"
 
 ################################################################################
 #                                                                              #
@@ -5715,13 +5715,16 @@ do
 done
 
 # ==============================================================================
-# Status zu Flatpak und Snap ermitteln
+# Status zu Flatpak, Snap und Docker ermitteln
 # ==============================================================================
 FLATPAK_INSTALLED=$(LANG=en dpkg-query -W -f='${Status}' "flatpak" 2>/dev/null | grep -i -c -E "ok installed")
 THE_FLATPAK_REMOTE_LIST="$DOWNLOAD_DIR/flatpak_remote_list"
 THE_FLATPAK_INSTALLED_LIST="$DOWNLOAD_DIR/flatpak_installed_list"
 SNAP_INSTALLED=$(LANG=en dpkg-query -W -f='${Status}' "snapd" 2>/dev/null | grep -i -c -E "ok installed")
 SNAPSHOT_SNAPS_LIST="$DOWNLOAD_DIR/snap_snapshot.list"
+DOCKER_VERSION="$(docker --version 2>/dev/null | sed -E "s/.*version\s([0-9\.]*).*/\1/gi" | xargs 2>/dev/null)"
+DOCKER_INSTALLED=0
+if [ "$DOCKER_VERSION" != "" ]; then DOCKER_INSTALLED=1; fi
 # =============================================================================
 
 #===============================================================================
@@ -9742,6 +9745,11 @@ then
     SYS_INFO_TXT+=" Shell: ${bold_yellow}$SHELL_TEXT${colors_off}"$'\n'
   fi
 
+  if [ "$DOCKER_VERSION" != "" ];
+  then
+    SYS_INFO_TXT+=" Docker-Version: ${bold_yellow}$DOCKER_VERSION${colors_off}"$'\n'
+  fi
+
   if [ "$WINE_VERSION" != "" ];
   then
     SYS_INFO_TXT+=" Wine-Version: ${bold_yellow}$WINE_VERSION${colors_off}"$'\n'
@@ -9751,7 +9759,7 @@ then
 
   XTERM_NR="$(who | grep -E "\(\:" | head -n 1 | cut -d'(' -f 2 | cut -d')' -f 1)"
   if [ "$XTERM_NR" != "" ]; then XTERM_NR="["$XTERM_NR"]"; fi
-  SYS_INFO_TXT+=" Benutzer: ${bold_yellow}$USER_USERNAME${colors_off} ${light_yellow}(${USER_UID})${colors_off} at ${bold_cyan}$(tty) $XTERM_NR${colors_off}"
+  SYS_INFO_TXT+=" Benutzer: ${bold_yellow}$USER_USERNAME${colors_off} ${light_yellow}(id ${USER_UID})${colors_off} at ${bold_cyan}$(tty) $XTERM_NR${colors_off}"
 
   do_log "$FULL_LINE"
   e_and_l "$SYS_INFO_TXT"
