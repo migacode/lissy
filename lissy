@@ -11763,13 +11763,12 @@ then
               e_and_l "$NF_TAG"
             else
               e_and_l "$OK_TAG - siehe Hinweis"
-              e_and_l "ok - siehe Hinweis!"
             fi
           fi
           if [ "$NVIDIA_DRIVER_LIST" != "" ];
           then
-            e_and_l " $HINWEIS_TAG: Es stehen zusätzliche ${light_yellow}NVIDIA-Treiber${colors_off} zur Verfügung. Um die Stabilität"
-            e_and_l " des Systems nicht zu gefährden, wurden diese jedoch ${bold_white}nicht${colors_off} installiert."
+            e_and_l " $HINWEIS_TAG: Es stehen ${light_yellow}NVIDIA-Treiber${colors_off} zur Verfügung. Um die Stabilität dieses"
+            e_and_l " Systems nicht zu gefährden, wurden diese jedoch ${bold_white}nicht${colors_off} automatisch installiert."
           fi
         else
           e_and_l "$ERROR_TAG $LINENO"
