@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 22.07.2025
-VERSION="5.2.2"
+# Letzte Änderung: 30.07.2025
+VERSION="5.3.0"
 
 ################################################################################
 #                                                                              #
@@ -142,7 +142,7 @@ function ask_for_install_mode {
           if [ "$PKG_VERSION" != "" ] &&
              [ "$PKG_VERSION" != "0" ];
           then
-            e_and_l -n " ${light_purple}$PKG_VERSION${colors_off}"
+            e_and_l -n " ${light_magenta}$PKG_VERSION${colors_off}"
           fi
           e_and_l " ist bereits installiert!"
           ((SIMILAR_WARNING_SHOWN+=1))
@@ -238,7 +238,7 @@ function ask_yes_no_info {
               if [ "$PKG_VERSION" != "" ] &&
                  [ "$PKG_VERSION" != "0" ];
               then
-                e_and_l -n " ${light_purple}$PKG_VERSION${colors_off}"
+                e_and_l -n " ${light_magenta}$PKG_VERSION${colors_off}"
               fi
               e_and_l " ist bereits installiert!"
               copy_starter_to_desktop "$CHECK_SIM_PACK" "" 0
@@ -295,7 +295,7 @@ function ask_yes_no_info {
       then
         QUESTION_1+=" ${light_yellow}$TMP_PKG_VERSION${colors_off}"
       fi
-      QUESTION_1+=" (${light_purple}$TMP_PKG_TYPE${colors_off})"
+      QUESTION_1+=" (${light_magenta}$TMP_PKG_TYPE${colors_off})"
       QUESTION_1+="$TROTZDEM installieren?"
       QUESTION_2="[${bold_yellow}j${colors_off}]a [${bold_yellow}"
       if [ "$TROTZDEM" != "" ];
@@ -330,13 +330,13 @@ function ask_yes_no_info {
         ANSWER=$(echo ${AUTO_ANSWERS["pkg_$PACKAGE_NAME"]} | xargs)
         if [ "$ANSWER" == "j" ];
         then
-          e_and_l ${dark_grey}$ANSWER${colors_off}
+          e_and_l ${dark_gray}$ANSWER${colors_off}
           IYN_RESULT=1
           INPUT_OK=1
         fi
         if [ "$ANSWER" == "n" ];
         then
-          e_and_l ${dark_grey}$ANSWER${colors_off}
+          e_and_l ${dark_gray}$ANSWER${colors_off}
           IYN_RESULT=0
           INPUT_OK=1
         fi
@@ -419,7 +419,7 @@ function ask_yes_no_info {
     fi
     # --------------------------------------------------------------------------
   else
-    e_and_l " Programmpaket ${light_yellow}$PACKAGE_NAME${colors_off} installieren? [${bold_yellow}j${colors_off}]a oder [${bold_yellow}n${colors_off}]ein: ${light_purple}n${colors_off}"
+    e_and_l " Programmpaket ${light_yellow}$PACKAGE_NAME${colors_off} installieren? [${bold_yellow}j${colors_off}]a oder [${bold_yellow}n${colors_off}]ein: ${light_magenta}n${colors_off}"
     IYN_RESULT=0
   fi
   return $IYN_RESULT
@@ -515,13 +515,13 @@ function ask_yes_or_no_plus {
       ANSWER=$(echo ${AUTO_ANSWERS["$QUEST_ID"]} | xargs)
       if [ "$ANSWER" == "j" ];
       then
-        e_and_l ${dark_grey}$ANSWER${colors_off}
+        e_and_l ${dark_gray}$ANSWER${colors_off}
         IYN_RESULT=1
         INPUT_OK=1
       fi
       if [ "$ANSWER" == "n" ];
       then
-        e_and_l ${dark_grey}$ANSWER${colors_off}
+        e_and_l ${dark_gray}$ANSWER${colors_off}
         IYN_RESULT=0
         INPUT_OK=1
       fi
@@ -608,10 +608,64 @@ function ask_yes_or_no_plus {
     fi
     # --------------------------------------------------------------------------
   else
-    e_and_l "$2? [${bold_yellow}j${colors_off}]a oder [${bold_yellow}n${colors_off}]ein: ${light_purple}n${colors_off}"
+    e_and_l "$2? [${bold_yellow}j${colors_off}]a oder [${bold_yellow}n${colors_off}]ein: ${light_magenta}n${colors_off}"
     IYN_RESULT=0
   fi
   return $IYN_RESULT
+}
+
+#===============================================================================
+# Einträge für die EFI-System-Partition auf Fehler prüfen
+#===============================================================================
+function check_esp_errors {
+  get_esp_uuids
+  ESP_ERROR_LIST=""
+  # ---------------------------------------
+  # In der fstab ist keine ESP eingetragen
+  # ---------------------------------------
+  if [ "$uuid_efi_fstab" == "" ];
+  then
+    ESP_ERROR_LIST+="1"
+  fi
+  # ----------------------------------------------------------------
+  # Die in der fstab eingetragene UUID für die ESP ist nicht gleich
+  # der UUID der tatsächlich auf dem Laufwerk befindlichen ESP
+  # ----------------------------------------------------------------
+  if [ "$uuid_efi_fstab" != "" ] &&
+     [ "$uuid_efi_system" != "" ] &&
+     [ "$uuid_efi_fstab" != "$uuid_efi_system" ];
+  then
+    ESP_ERROR_LIST+="2"
+  fi
+  # --------------------------------------------------------------------
+  # Die ESP in der fstab mit Mountpunkt /boot/efi ist nicht eingehangen
+  # --------------------------------------------------------------------
+  if [ $(cat "$ETC_FSTAB" 2>/dev/null | grep -c -i -E "^\s*[^#]*\s*[a-z0-9\=\-]*(\s|\t)+/boot/efi") -gt 0 ] &&
+     [ $(mount 2>/dev/null | grep -c -i -E "$efi_system_partition.*/boot/efi") -eq 0 ];
+  then
+    ESP_ERROR_LIST+="3"
+  fi
+  # ------------------------------------------------------------------
+  # In der fstab ist eine andere UUID für die ESP eingetragen als die
+  # UUID der Partition, auf der aktuell tatsächlich /boot/efi liegt
+  # ------------------------------------------------------------------
+  if [ "$uuid_efi_mount" != "" ] &&
+     [ "$uuid_efi_fstab" != "" ] &&
+     [ "$uuid_efi_mount" != "$uuid_efi_fstab" ];
+  then
+    ESP_ERROR_LIST+="4"
+  fi
+  # ------------------------------------------------------------------
+  # Die UUID der Partition, auf der aktuell tatsächlich /boot/efi liegt
+  # ist nicht die UUID der auf dem System-Laufwerk befindlichen ESP
+  # ------------------------------------------------------------------
+  if [ "$uuid_efi_mount" != "" ] &&
+     [ "$uuid_efi_system" != "" ] &&
+     [ "$uuid_efi_mount" != "$uuid_efi_system" ];
+  then
+    ESP_ERROR_LIST+="5"
+  fi
+  echo -e -n "$ESP_ERROR_LIST"
 }
 
 #===============================================================================
@@ -808,6 +862,55 @@ function clear_text {
   NEW_TEXT=${NEW_TEXT// nicht / NICHT }
   NEW_TEXT=${NEW_TEXT//Warnung/WARNUNG}
   echo -e -n "$NEW_TEXT"
+}
+
+# ==============================================================================
+# Farb-Code zu einem Farb-Index erzeugen
+# ==============================================================================
+function color_idx_code {
+  col_idx=$1
+  # 0 .. 7 sind normal
+  if [ $col_idx -lt 8 ];
+  then
+    COLOR_CODE="3$col_idx"
+  # 8 .. 15 sind hell
+  else
+    COLOR_CODE="9$((col_idx-8))"
+  fi
+  echo -e -n '\033[0;'"$COLOR_CODE"'m'
+}
+
+# ==============================================================================
+# Farbe (Index) durch den Benutzer auswählen lassen
+# ==============================================================================
+function color_select {
+  COLOR_QUEST="$1"
+  echo -e "$HALF_MINUS_LINE"
+  echo -e " Farbe für ${light_yellow}$COLOR_QUEST${colors_off} auswählen,"
+  echo -e " folgende Farben stehen zur Verfügung:"
+  MAX_COL_IDX=${#ANSI_COLOR_NAMES[@]}
+  i=0
+  while [ $i -lt $MAX_COL_IDX ];
+  do
+    color_code="$(color_idx_code $i)"
+    echo -e -n " "
+    if [ $i -lt 10 ]; then echo -e -n " "; fi
+    echo -e "[${bold_yellow}$i${colors_off}] ${color_code}${ANSI_COLOR_NAMES[$i]}${colors_off}"
+    ((i+=1))
+  done
+  NEW_COLOR=-1
+  while [ $NEW_COLOR -lt 0 ] ||
+        [ $NEW_COLOR -ge $MAX_COL_IDX ];
+  do
+    echo -e -n " Bitte Farbcode [${bold_white}Nummer${colors_off}] eingeben: "
+    read -r NEW_COLOR
+    NEW_COLOR=$(echo ${NEW_COLOR} | sed -E "s/[^0-9]*//gi" | xargs 2>/dev/null)
+    if [ "$NEW_COLOR" == "" ];
+    then
+      NEW_COLOR=-1
+    fi
+  done
+  return $NEW_COLOR
 }
 
 #===============================================================================
@@ -1988,6 +2091,31 @@ function extend_repo_ppa {
 }
 
 #===============================================================================
+# UUIDs für die EFI-System-Partition (ESP) ermitteln
+#===============================================================================
+function get_esp_uuids {
+  # ---------------------------------------------------------------------------
+  # UUID der EFI-System-Partition des selben Laufwerks von dem gestartet wurde
+  # ---------------------------------------------------------------------------
+  efi_system_partition="$(fdisk -l -o device,type ${boot_device} | grep -i -E "^.*\s+efi" | awk '{print $1}' | head -n 1 | xargs 2>/dev/null)"
+  uuid_efi_system="$(blkid -s UUID -o value ${efi_system_partition} 2>/dev/null | xargs 2>/dev/null)"
+  # ---------------------------------------------------------------
+  # UUID der in der fstab als eingetragene Partition für /boot/efi
+  # ---------------------------------------------------------------
+  uuid_efi_fstab="$(grep -i -E "^\s*UUID\s*\=.*\/boot\/efi" "$ETC_FSTAB" 2>/dev/null | sed -E "s/^(.*)UUID\s*\=//i" | sed -E "s/(\s|\t)+.*//i" | head -n 1 | xargs 2>/dev/null)"
+  # -----------------------------------------------------------------------
+  # UUID der Partition auf der /boot/efi aktuell tatsächlich gemountet ist
+  # -----------------------------------------------------------------------
+  if [ -d "/boot/efi" ] &&
+     [ ! -L "/boot/efi" ];
+  then
+    uuid_efi_mount="$(lsblk -no UUID $(df -P "/boot/efi" 2>/dev/null | awk 'END{print $1}') | xargs 2>/dev/null)"
+  else
+    uuid_efi_mount=""
+  fi
+}
+
+#===============================================================================
 # Prüfung ob ein Paket schon installiert ist
 # Rückgaben: 0 = nicht installiert
 #            1 = installiert mit der normalen Paketverwaltung (apt/dpkg)
@@ -2330,7 +2458,7 @@ function get_pkg_snap_version {
     then
       THE_SNAP_PKG_VERSION+="${light_red}"
     else
-      THE_SNAP_PKG_VERSION+="${light_purple}"
+      THE_SNAP_PKG_VERSION+="${light_magenta}"
     fi
     THE_SNAP_PKG_VERSION+="$PKG_SNAP_CHANNEL${colors_off}"
   fi
@@ -2475,12 +2603,12 @@ function get_tmpfs_size {
   MOUNT_POINT="$1"
   # Größe nur berechnen, wenn das tmpfs in der fstab enthalten und aktiviert ist
   if [ "$MOUNT_POINT" != "" ] &&
-     [ $(grep -i -c -E "^\s*tmpfs\s*${MOUNT_POINT}\s" "/etc/fstab") -gt 0 ];
+     [ $(grep -i -c -E "^\s*tmpfs\s*${MOUNT_POINT}\s" "$ETC_FSTAB") -gt 0 ];
   then
     # Wenn die Größe explizit angegeben ist, diese auslesen und umwandeln ...
-    if [ $(grep -i -c -E "^\s*tmpfs\s*${MOUNT_POINT}\s.*size\s*=" "/etc/fstab") -gt 0 ];
+    if [ $(grep -i -c -E "^\s*tmpfs\s*${MOUNT_POINT}\s.*size\s*=" "$ETC_FSTAB") -gt 0 ];
     then
-      THE_RAMDISK_SIZE=$(grep -i -E "^\s*tmpfs\s*${MOUNT_POINT}" "/etc/fstab" | sed 's/.*size\s*=\s*//gi' | cut -d" " -f 1 | cut -d"," -f 1 | xargs)
+      THE_RAMDISK_SIZE=$(grep -i -E "^\s*tmpfs\s*${MOUNT_POINT}" "$ETC_FSTAB" | sed 's/.*size\s*=\s*//gi' | cut -d" " -f 1 | cut -d"," -f 1 | xargs)
       THE_RAMSIZE_UNIT=$(echo $THE_RAMDISK_SIZE | sed 's/[0-9]*//g')
       THE_RAMDISK_SIZE=$(echo $THE_RAMDISK_SIZE | sed 's/[^0-9]*//g')
       case $THE_RAMSIZE_UNIT in
@@ -2537,16 +2665,19 @@ function get_user_list {
 
 #===============================================================================
 # Versionsnummer der Form X.Y.Z in nummerischen Wert umwandeln
+# ---------------------------------------------------------------
+# HINWEIS: Führende Nullen interpretiert Bash als oktale Zahlen,
+# die Werte daher mit dem Prefix 10# versehen (Dezimal-Wert) ;)
 #===============================================================================
 function get_version_value {
   THE_VERSION=$(echo -n ${1} | sed "s/[^0-9\.]//g" | xargs)
   VERSION_PART_1=$(echo ${THE_VERSION} | cut -d '.' -f 1 | xargs)
-  if [ "$VERSION_PART_1" == "" ]; then VERSION_PART_1="00"; fi
+  if [ "$VERSION_PART_1" == "" ]; then VERSION_PART_1="000"; fi
   VERSION_PART_2=$(echo ${THE_VERSION} | cut -d '.' -f 2 | xargs)
-  if [ "$VERSION_PART_2" == "" ]; then VERSION_PART_2="00"; fi
+  if [ "$VERSION_PART_2" == "" ]; then VERSION_PART_2="000"; fi
   VERSION_PART_3=$(echo ${THE_VERSION} | cut -d '.' -f 3 | xargs)
-  if [ "$VERSION_PART_3" == "" ]; then VERSION_PART_3="00"; fi
-  VERSION_VALUE=$(((${VERSION_PART_1:0:2}*10000)+(${VERSION_PART_2:0:2}*100)+(${VERSION_PART_3:0:2})))
+  if [ "$VERSION_PART_3" == "" ]; then VERSION_PART_3="000"; fi
+  VERSION_VALUE=$(((10#${VERSION_PART_1:0:3}*1000000)+(10#${VERSION_PART_2:0:3}*1000)+(10#${VERSION_PART_3:0:3}*1)))
   echo -e -n "$VERSION_VALUE"
 }
 
@@ -3109,7 +3240,7 @@ function install_pkg {
       then
         if [ "$OTHER_ARCH_TEXT" != "" ];
         then
-          AVAIL_TEXT="nur verfügbar für ${bold_purple}$OTHER_ARCH_TEXT${colors_off}"
+          AVAIL_TEXT="nur verfügbar für ${bold_magenta}$OTHER_ARCH_TEXT${colors_off}"
         else
           AVAIL_TEXT="$NA_TXT"
         fi
@@ -3216,7 +3347,7 @@ function install_pkg {
                      [[ "$BASE_PKG_NAME" != "" && $(echo ${INST_MODE_LIST} | grep -c -i -E "\,$BASE_PKG_INST_STATUS") -eq 0 ]];
                   then
                     show_base_pkg $PAKET 0
-                    e_and_l " Das Paket ${light_yellow}$PAKET${colors_off} (${light_purple}$(inst_status_to_name $INSTALL_MODE)${colors_off}) wird daher ${bold_white}nicht${colors_off} installiert."
+                    e_and_l " Das Paket ${light_yellow}$PAKET${colors_off} (${light_magenta}$(inst_status_to_name $INSTALL_MODE)${colors_off}) wird daher ${bold_white}nicht${colors_off} installiert."
                     INSTALL_MODE=0
                     DO_ASK_FOR_INSTALL_MODE=0
                   fi
@@ -3288,7 +3419,7 @@ function install_pkg {
                 then
                   e_and_l -n " ${light_yellow}$PKG_VERSION${colors_off}"
                 fi
-                e_and_l -n " (${light_purple}$(inst_status_to_name $INSTALL_MODE)${colors_off}) ... "
+                e_and_l -n " (${light_magenta}$(inst_status_to_name $INSTALL_MODE)${colors_off}) ... "
                 if [ ${OPTION_FLAG[quiet]} -eq 0 ]; then e_and_l ""; fi
               fi
               FILL_WORD="wirklich"
@@ -3444,7 +3575,7 @@ function install_pkg {
               then
                 e_and_l -n " ${light_yellow}$PKG_VERSION${colors_off}"
               fi
-              e_and_l -n " (${light_purple}$(inst_status_to_name $INSTALL_MODE)${colors_off}) ... "
+              e_and_l -n " (${light_magenta}$(inst_status_to_name $INSTALL_MODE)${colors_off}) ... "
               if [ ${OPTION_FLAG[quiet]} -eq 0 ]; then e_and_l ""; fi
 
               # ----------------------------------------------------------------
@@ -4115,22 +4246,22 @@ function install_pkg {
           # dann diese Quelle auch benennen
           if [ ${#INST_MODE_LIST} -gt 3 ]; # "0,n" z.B. "0,2,4"
           then
-            IMODE_MSG+=" ${light_purple}mehrfach${colors_off}"
+            IMODE_MSG+=" ${light_magenta}mehrfach${colors_off}"
           else
             case "$INSTALL_MODE" in
               1) IMODE_MSG+="" ;;
-              2) IMODE_MSG+=" als ${light_purple}Snap${colors_off}" ;;
+              2) IMODE_MSG+=" als ${light_magenta}Snap${colors_off}" ;;
             3|4) if [ "$PKG_FOREIGN_ARCH" == "" ];
                 then
-                  # IMODE_MSG+=" als ${light_purple}Download ("
+                  # IMODE_MSG+=" als ${light_magenta}Download ("
                   # if [ $INSTALL_MODE -eq 3 ]; then IMODE_MSG+="DEB"; else IMODE_MSG+="WEB"; fi
                   # IMODE_MSG+=")${colors_off}"
-                  IMODE_MSG+=" von ${light_purple}extern${colors_off}"
+                  IMODE_MSG+=" von ${light_magenta}extern${colors_off}"
                 else
-                  IMODE_MSG+=" für ${light_purple}$PKG_FOREIGN_ARCH${colors_off}"
+                  IMODE_MSG+=" für ${light_magenta}$PKG_FOREIGN_ARCH${colors_off}"
                 fi
                 ;;
-              6) IMODE_MSG+=" als ${light_purple}Flatpak${colors_off}" ;;
+              6) IMODE_MSG+=" als ${light_magenta}Flatpak${colors_off}" ;;
             esac
           fi
           # -----------------------------------------
@@ -4174,10 +4305,10 @@ function install_pkg {
     IMODE_MSG+=" ist"
     case "$INST_RES" in
         1) if [ $IS_SIMILAR_PKG -eq 0 ]; then IMODE_MSG+=" bereits"; fi ;;
-        2) IMODE_MSG+=" als ${light_purple}Snap${colors_off}" ;;
-      3|4) IMODE_MSG+=" in ${light_purple}$THE_PKG_INST_DIR${colors_off}" ;;
-        5) IMODE_MSG+=" in ${light_purple}$THE_PKG_INST_DIR${colors_off}" ;;
-        6) IMODE_MSG+=" als ${light_purple}Flatpak${colors_off}" ;;
+        2) IMODE_MSG+=" als ${light_magenta}Snap${colors_off}" ;;
+      3|4) IMODE_MSG+=" in ${light_magenta}$THE_PKG_INST_DIR${colors_off}" ;;
+        5) IMODE_MSG+=" in ${light_magenta}$THE_PKG_INST_DIR${colors_off}" ;;
+        6) IMODE_MSG+=" als ${light_magenta}Flatpak${colors_off}" ;;
     esac
     e_and_l "$IMODE_MSG installiert"
 
@@ -4856,7 +4987,7 @@ function remove_snapshots {
             e_and_l "$HALF_MINUS_LINE"
           fi
         fi
-        e_and_l " $HINWEIS_TAG: Zum Löschen veralteter ${bold_white}Snap-Revisionen${colors_off} das Tool ${light_purple}snapco${colors_off} verwenden ;)"
+        e_and_l " $HINWEIS_TAG: Zum Löschen veralteter ${bold_white}Snap-Revisionen${colors_off} das Tool ${light_magenta}snapco${colors_off} verwenden ;)"
       fi # Keine Schnappschüsse in Liste enthalten
     fi # Keine Liste mit Schnappschüssen
     remove_file "$SNAPSHOT_SNAPS_LIST"
@@ -4964,7 +5095,7 @@ function show_base_pkg {
       SHOW_I_STATUS="nicht"
     else
       OTHER_SRC="$(inst_status_to_name $PRE_INST_PKG_INST_STATUS)"
-      SHOW_I_STATUS="aus anderer Quelle (${light_purple}$OTHER_SRC${colors_off})"
+      SHOW_I_STATUS="aus anderer Quelle (${light_magenta}$OTHER_SRC${colors_off})"
     fi
     # if [ $ASK_TO_CONTINUE -eq 0 ] ||
     #    [ ${OPTION_FLAG[esamesrc]} -eq 0 ];
@@ -5003,7 +5134,7 @@ function show_base_pkg {
       SHOW_I_STATUS="nicht"
     else
       OTHER_SRC="$(inst_status_to_name $BASE_PKG_INST_STATUS)"
-      SHOW_I_STATUS="aus anderer Quelle (${light_purple}$OTHER_SRC${colors_off})"
+      SHOW_I_STATUS="aus anderer Quelle (${light_magenta}$OTHER_SRC${colors_off})"
     fi
     # if [ $ASK_TO_CONTINUE -eq 0 ] ||
     #    [ ${OPTION_FLAG[esamesrc]} -eq 0 ];
@@ -5030,7 +5161,7 @@ function show_base_pkg {
 
   if [ $SHOW_SKIP_MESSAGE -eq 1 ];
   then
-    e_and_l " Das Paket ${light_yellow}$INFO_PAKET${colors_off} (${light_purple}$(inst_status_to_name $INSTALL_MODE)${colors_off}) wird daher ${bold_white}nicht${colors_off} installiert."
+    e_and_l " Das Paket ${light_yellow}$INFO_PAKET${colors_off} (${light_magenta}$(inst_status_to_name $INSTALL_MODE)${colors_off}) wird daher ${bold_white}nicht${colors_off} installiert."
   fi
 }
 
@@ -5222,8 +5353,8 @@ function show_similar_pkg {
           e_and_l -n " ist"
           case "$SIM_PACK_INST_MODE" in
               1|3|4|5) e_and_l -n " bereits" ;;
-                    2) e_and_l -n " als ${light_purple}Snap${colors_off}" ;;
-                    6) e_and_l -n " als ${light_purple}Flatpak${colors_off}" ;;
+                    2) e_and_l -n " als ${light_magenta}Snap${colors_off}" ;;
+                    6) e_and_l -n " als ${light_magenta}Flatpak${colors_off}" ;;
           esac
           e_and_l " installiert"
           ((PAKETS_EXIST+=1))
@@ -5261,7 +5392,7 @@ function skip_text {
   else
     THE_SKIP_TEXT+="wird übersprungen"
   fi
-  echo -e -n "${dark_grey}${THE_SKIP_TEXT}${colors_off}"
+  echo -e -n "${dark_gray}${THE_SKIP_TEXT}${colors_off}"
 }
 
 #===============================================================================
@@ -5319,7 +5450,7 @@ function update_flatpak_list {
 # Benutzer zwischen 0, 1 und 2 auswählen lassen
 #===============================================================================
 function user_choice_012 {
-  e_and_l -n " Bitte gewünschte Auswahl treffen: "
+  e_and_l -n " Bitte gewünschte Auswahl treffen (Enter-Taste = 0): "
   if [ ${OPTION_FLAG[notoall]} -eq 0 ];
   then
     THE_USERS_CHOICE=-1
@@ -5327,13 +5458,18 @@ function user_choice_012 {
           [ $THE_USERS_CHOICE -gt 2 ];
     do
       read -N 1 -r -s THE_USERS_CHOICE
-      THE_USERS_CHOICE=$(echo $THE_USERS_CHOICE | sed 's/[^0-9]*//g')
-      if [ "$THE_USERS_CHOICE" == "" ]; then THE_USERS_CHOICE=-1; fi
+      if [ "$THE_USERS_CHOICE" == $'\n' ];
+      then
+        THE_USERS_CHOICE=0
+      else
+        THE_USERS_CHOICE=$(echo $THE_USERS_CHOICE | sed 's/[^0-9]*//g')
+        if [ "$THE_USERS_CHOICE" == "" ]; then THE_USERS_CHOICE=-1; fi
+      fi
     done
     e_and_l "$THE_USERS_CHOICE"
   else
     THE_USERS_CHOICE=0
-    e_and_l "${light_purple}0${colors_off}"
+    e_and_l "${light_magenta}0${colors_off}"
   fi
   return $THE_USERS_CHOICE
 }
@@ -5388,60 +5524,112 @@ THIS_SCRIPT_URL="https://migano.de/download/lissy/lissy"
 THIS_SCRIPT_ICO="https://migano.de/download/lissy/png/lissy.png"
 
 #===============================================================================
-# Schriftfarben
-# --------------
+# Schrift- und Hintergrundfarben
+# -------------------------------
 # Bei Änderungen der Farbnamen auch die COL_VAR_LIST anpassen!
 # ACHTUNG: Die Farben für das Menü werden in dialogrc festgelegt
 #===============================================================================
+# ----------------------------
+# Farbenamen nach ANSI-Schema
+# ----------------------------
+# NR  FG  BG   Name
+#  0  30	40	 black
+#  1  31	41	 red
+#  2  32	42	 green
+#  3  33	43	 yellow
+#  4  34	44	 blue
+#  5  35	45	 magenta
+#  6  36	46	 cyan
+#  7  37	47	 white
+#  8  90	100	 bright black (dark-gray)
+#  9  91	101	 bright red
+# 10  92	102	 bright green
+# 11  93	103	 bright yellow
+# 12  94	104	 bright blue
+# 13  95	105	 bright magenta
+# 14  96	106	 bright cyan
+# 15  97	107	 bright white
+# ----------------------------
+declare -A ANSI_COLOR_NAMES
+ANSI_COLOR_NAMES[0]="black"
+ANSI_COLOR_NAMES[1]="red"
+ANSI_COLOR_NAMES[2]="green"
+ANSI_COLOR_NAMES[3]="brown"
+ANSI_COLOR_NAMES[4]="blue"
+ANSI_COLOR_NAMES[5]="magenta"
+ANSI_COLOR_NAMES[6]="cyan"
+ANSI_COLOR_NAMES[7]="light-gray"
+ANSI_COLOR_NAMES[8]="dark-gray"
+ANSI_COLOR_NAMES[9]="light-red"
+ANSI_COLOR_NAMES[10]="light-green"
+ANSI_COLOR_NAMES[11]="yellow"
+ANSI_COLOR_NAMES[12]="light-blue"
+ANSI_COLOR_NAMES[13]="light-magenta"
+ANSI_COLOR_NAMES[14]="light-cyan"
+ANSI_COLOR_NAMES[15]="white"
+# ------------
 # Text normal
+# ------------
 black='\033[0;30m'
 red='\033[0;31m'
 green='\033[0;32m'
 yellow='\033[0;33m'
 blue='\033[0;34m'
-purple='\033[0;35m'
+magenta='\033[0;35m'
 cyan='\033[0;36m'
 white='\033[0;97m'
+# ----------
 # Text hell
-dark_grey='\033[0;90m'
+# ----------
+dark_gray='\033[0;90m'
 light_red='\033[0;91m'
 light_green='\033[0;92m'
 light_yellow='\033[0;93m'
 light_blue='\033[0;94m'
-light_purple='\033[0;95m'
+light_magenta='\033[0;95m'
 light_cyan='\033[0;96m'
-light_grey='\033[0;37m'
+light_gray='\033[0;37m'
+# ----------
 # Text fett
+# ----------
 bold_black='\033[1;30m'
 bold_red='\033[1;31m'
 bold_green='\033[1;32m'
 bold_yellow='\033[1;33m'
 bold_blue='\033[1;34m'
-bold_purple='\033[1;35m'
+bold_magenta='\033[1;35m'
 bold_cyan='\033[1;36m'
 bold_white='\033[1;37m'
+# -------------------
 # Text unterstrichen
+# -------------------
 uline_black='\033[4;30m'
 uline_red='\033[4;31m'
 uline_green='\033[4;32m'
 uline_yellow='\033[4;33m'
 uline_blue='\033[4;34m'
-uline_purple='\033[4;35m'
+uline_magenta='\033[4;35m'
 uline_cyan='\033[4;36m'
 uline_white='\033[4;37m'
+# ------------
 # Hintergrund
+# ------------
 bg_black='\033[40m'
 bg_red='\033[41m'
 bg_green='\033[42m'
 bg_yellow='\033[43m'
 bg_blue='\033[44m'
-bg_purple='\033[45m'
+bg_magenta='\033[45m'
 bg_cyan='\033[46m'
 bg_white='\033[47m'
+# -------------
 # Keine Farben
+# -------------
 colors_off='\033[0m'
 colors_invers='\033[7m'
+# ------------
 # Linienfarbe
+# ------------
 full_line_color='\033[1;34m'
 half_line_color='\033[0;90m'
 if [ -x "/usr/bin/tput" ] && tput setaf 1 &>/dev/null;
@@ -5479,17 +5667,18 @@ NU_TXT="nur mit Ubuntu"
 NV_TXT="nicht vorhanden"
 RASPY_TXT="nur Raspberry Pi"
 PIOS_TXT="nur mit Pi OS"
-KF_TAG="${bold_green}ok${colors_off} ${dark_grey}(keine fehlenden gefunden)${colors_off}"
-NC_TAG="${bold_green}ok${colors_off} ${dark_grey}(keine Änderung)${colors_off}"
-ND_TAG="${bold_green}ok${colors_off} ${dark_grey}(keine Dateien gefunden)${colors_off}"
-NF_TAG="${bold_green}ok${colors_off} ${dark_grey}(keine gefunden)${colors_off}"
-OA_TAG="${bold_green}ok${colors_off} ${dark_grey}(Autostart aktiv)${colors_off}"
+KF_TAG="${bold_green}ok${colors_off} ${dark_gray}(keine fehlenden gefunden)${colors_off}"
+NC_TAG="${bold_green}ok${colors_off} ${dark_gray}(keine Änderung)${colors_off}"
+ND_TAG="${bold_green}ok${colors_off} ${dark_gray}(keine Dateien gefunden)${colors_off}"
+NF_TAG="${bold_green}ok${colors_off} ${dark_gray}(keine gefunden)${colors_off}"
+OA_TAG="${bold_green}ok${colors_off} ${dark_gray}(Autostart aktiv)${colors_off}"
 OK_TAG="${bold_green}ok${colors_off}"
 FERTIG_TAG="${bold_green}fertig${colors_off}"
 HINWEIS_TAG="${bold_yellow}Hinweis${colors_off}"
 WARN_TAG="${bold_yellow}Warnung${colors_off}"
 ACHTUNG_TAG="${bold_red}Achtung${colors_off}"
 ERROR_TAG="${bold_red}Fehler${colors_off}"
+NA_TAG="$ERROR_TAG - $NA_TXT"
 USER_CHOICE_YES="OK, Du hast es so gewollt ..."
 USER_CHOICE_NO="Sicherheit geht vor!"
 REBOOT_MSG=" $HINWEIS_TAG: Änderungen werden erst nach Neustart des Systems wirksam."
@@ -5628,6 +5817,11 @@ fi
 #===============================================================================
 ORIGINAL_USER_PATH="$(sudo --user=${USER_USERNAME} bash -c 'echo $PATH' 2>/dev/null)"
 export PATH="$PATH:/usr/sbin:/usr/bin:/sbin:/bin"
+
+#===============================================================================
+# Dateisystem-Tabelle
+#===============================================================================
+ETC_FSTAB="/etc/fstab"
 
 #===============================================================================
 # Dateien mit Konfigurationen des GRUB-Bootloaders
@@ -5922,21 +6116,11 @@ then
     MEMORY_AVAIL=0
   fi
 
-  # ---------------
-  # Kernel-Version
-  # ---------------
-  CURR_KERNEL_VERSION="$(uname -r | sed 's/-generic//i' | sed 's/-common//i' | sed 's/-amd64//i' | sed 's/-i386//i')"
-
-  #------------
-  # Boot-Modus
-  #------------
-  if [ $(dmesg 2>/dev/null | grep -c -i -E "\befi\b") -gt 0 ] &&
-     [ -d "/sys/firmware/efi" ];
-  then
-    BOOT_MODE="EFI"
-  else
-    BOOT_MODE="BIOS"
-  fi
+  # -------
+  # Kernel
+  # -------
+  CURRENT_KERNEL_NAME="$(uname -r)"
+  CURRENT_KERNEL_VERSION="$(echo ${CURRENT_KERNEL_NAME} | sed 's/-generic//i' | sed 's/-common//i' | sed 's/-amd64//i' | sed 's/-i386//i')"
 
   #----------------
   # Betriebssystem
@@ -6352,7 +6536,7 @@ OPTION_TEXT[prioflat]="Bei Verfügbarkeit automatisch Flatpak-Paket auswählen"
 OPTION_TEXT[priosnap]="Bei Verfügbarkeit automatisch SNAP-Paket auswählen"
 OPTION_TEXT[quiet]="DERZEIT NICHT VERWENDET!"
 OPTION_TEXT[remove]="Ein Programmpaket und zugehörige Daten löschen"
-OPTION_TEXT[repair]="Reparatur von Dateisystem, Bootloader und Paketlisten"
+OPTION_TEXT[repair]="Reparatur von Bootloader, Dateisystem und Paketverwaltung"
 OPTION_TEXT[reset]="Alle benutzerspezifischen Einstellungen löschen"
 OPTION_TEXT[revive]="Reaktivierung vormals deaktivierter Komponenten"
 OPTION_TEXT[saveconf]="Einstellungen für nächsten Aufruf speichern"
@@ -8415,6 +8599,29 @@ PAKETS_SKIP=0          # Übersprungene Pakete (weil Raspi oder Nein nach Abfrag
 #                                                                              #
 ################################################################################
 # ==============================================================================
+# Boot-Informationen ermitteln
+# ==============================================================================
+#------------
+# Boot-Modus
+#------------
+if [ $(dmesg 2>/dev/null | grep -c -i -E "\befi\b") -gt 0 ] &&
+   [ -d "/sys/firmware/efi" ];
+then
+  BOOT_MODE="EFI"
+else
+  BOOT_MODE="BIOS"
+fi
+#------------------
+# Boot-Partitionen
+#------------------
+root_partition="$(findmnt -n / 2>/dev/null | awk '{ print $2 }' | xargs 2>/dev/null)"
+boot_device="$(echo ${root_partition} | sed -E "s/p*[0-9]*$//" | xargs 2>/dev/null)"
+#----------------------
+# EFI-System-Partition
+#----------------------
+get_esp_uuids
+
+# ==============================================================================
 # Listen zur Auswahl der Kategorien und Optionen initialisieren
 # ==============================================================================
 reset_categories_selection
@@ -8764,13 +8971,13 @@ then
     then
       # show_headlines
       e_and_l " Version ${light_yellow}$NEW_VERSION${colors_off} ist verfügbar. Es wird empfohlen, die neue Version zu verwenden."
-      ask_yes_or_no_pure " Alte Version sichern und neue Version verwenden" "$LOCAL_DOWNLOAD_FILE" "j"
+      ask_yes_or_no_plus "" " Alte Version sichern und neue Version verwenden" "$LOCAL_DOWNLOAD_FILE" "j"
       if [ $? -eq 1 ];
       then
         mv -f "${0}" "${0}.bak" &>/dev/null
         if [ $? -eq 0 ];
         then
-          e_and_l " Alte Version gesichert als ${bold_purple}${0}.bak${colors_off}"
+          e_and_l " Alte Version gesichert als ${bold_magenta}${0}.bak${colors_off}"
           if [ -s "$USER_PAKET_LIST" ];
           then
             e_and_l " $ACHTUNG_TAG: Es sind individuell angepasste Paket-Listen/Kategorien gespeichert."
@@ -8782,7 +8989,7 @@ then
               mv -f "$USER_PAKET_LIST" "$USER_PAKET_LIST.bak" &>/dev/null
               if [ $? -eq 0 ];
               then
-                e_and_l " Alte Listen gesichert in ${bold_purple}$USER_PAKET_LIST.bak${colors_off}"
+                e_and_l " Alte Listen gesichert in ${bold_magenta}$USER_PAKET_LIST.bak${colors_off}"
               fi
             fi
           fi
@@ -9312,11 +9519,11 @@ create_command_line
 #===============================================================================
 if [ ${OPTION_FLAG[nocolor]} -eq 1 ];
 then
-  COL_VAR_LIST=(black red green yellow blue purple cyan white
-                dark_grey light_red light_green light_yellow light_blue light_purple light_cyan light_grey
-                bold_black bold_red bold_green bold_yellow bold_blue bold_purple bold_cyan bold_white
-                uline_black uline_red uline_green uline_yellow uline_blue uline_purple uline_cyan uline_white
-                bg_black bg_red bg_green bg_yellow bg_blue bg_purple bg_cyan bg_white
+  COL_VAR_LIST=(black red green yellow blue magenta cyan white
+                dark_gray light_red light_green light_yellow light_blue light_magenta light_cyan light_gray
+                bold_black bold_red bold_green bold_yellow bold_blue bold_magenta bold_cyan bold_white
+                uline_black uline_red uline_green uline_yellow uline_blue uline_magenta uline_cyan uline_white
+                bg_black bg_red bg_green bg_yellow bg_blue bg_magenta bg_cyan bg_white
                 colors_off colors_invers full_line_color half_line_color)
   for i in ${COL_VAR_LIST[@]};
   do
@@ -9661,8 +9868,7 @@ then
     SYS_INFO_TXT+=" Boot-Modus: ${bold_yellow}$BOOT_MODE${colors_off}"$'\n'
   fi
 
-  boot_device="$(findmnt -n / 2>/dev/null | awk '{ print $2 }' | sed -E "s/\/dev\///")" # util-linux
-  SYS_INFO_TXT+=" Systempartition: ${bold_yellow}$boot_device${colors_off}"$'\n'
+  SYS_INFO_TXT+=" Startpartition: ${bold_yellow}${root_partition/\/dev\//}${colors_off}"$'\n'
 
   if [ "$OPERATION_SYSTEM" != "" ];
   then
@@ -9670,7 +9876,7 @@ then
     if [ $(echo -n "$OPERATION_SYSTEM" | grep -c -i -E "ubuntu") -eq 0 ] &&
        [ "$UBUNTU_VERSION" != "" ];
     then
-      SYS_INFO_TXT+=" ${dark_grey}[Ubuntu $UBUNTU_VERSION]${colors_off}"
+      SYS_INFO_TXT+=" ${dark_gray}[Ubuntu $UBUNTU_VERSION]${colors_off}"
     fi
     if [ "$OS_BIT_WIDTH" != "" ];
     then
@@ -9879,7 +10085,7 @@ then
           id "$NEW_USERNAME" &>/dev/null
           if [ $? -ne 0 ];
           then
-            ask_yes_or_no_plus "" " Neuer Benutzername: ${bold_yellow}$NEW_USERNAME${colors_off} - OK"
+            ask_yes_or_no_pure " Neuer Benutzername: ${bold_yellow}$NEW_USERNAME${colors_off} - OK"
             if [ $? -eq 1 ];
             then
               e_and_l " Erstelle Superuser $NEW_USERNAME ... "
@@ -10064,7 +10270,7 @@ then
     APT_IS_BLOCKED=1
     e_and_l "$FULL_LINE"
     e_and_l " $ACHTUNG_TAG: ${bold_white}apt${colors_off} ist gerade durch einen anderen Prozess geblockt (Updates?)."
-    e_and_l " Die Sperre kann eventuell aufgehoben werden, dies wird jedoch nicht empfohlen!"
+    e_and_l " Die Sperre kann eventuell aufgehoben werden, dies wird jedoch ${bold_white}nicht empfohlen${colors_off}!"
     ask_yes_or_no_plus "" " Soll ich trotzdem versuchen die Sperre aufzuheben" "" "n"
     if [ $? -eq 1 ];
     then
@@ -10348,10 +10554,10 @@ then
     then
       repo_update "$REPO_UPDATE_TEXT, bitte warten ... "
     else
-      e_and_l "${dark_grey}$REPO_UPDATE_TEXT übersprungen  ... (nicht benötigt)${colors_off}"
+      e_and_l "${dark_gray}$REPO_UPDATE_TEXT übersprungen  ... (nicht benötigt)${colors_off}"
     fi
   else
-    e_and_l "${dark_grey}$REPO_UPDATE_TEXT übersprungen  ... (manuell abgewählt)${colors_off}"
+    e_and_l "${dark_gray}$REPO_UPDATE_TEXT übersprungen  ... (manuell abgewählt)${colors_off}"
   fi
 
   #=============================================================================
@@ -10408,8 +10614,8 @@ then
   OPTION_FLAG[status]=0
   # ----------------------------------------------------------------------------
   e_and_l "$FULL_LINE"
-  e_and_l -n " ${bold_blue}Updates für aus externen Quellen verfügbare Programme${colors_off} ${dark_grey}[exupdate]${colors_off}"
-  if [ ${OPTION_FLAG[exupdall]} -eq 1 ]; then e_and_l -n " ${dark_grey}[exupdall]${colors_off}"; fi
+  e_and_l -n " ${bold_blue}Updates für aus externen Quellen verfügbare Programme${colors_off} ${dark_gray}[exupdate]${colors_off}"
+  if [ ${OPTION_FLAG[exupdall]} -eq 1 ]; then e_and_l -n " ${dark_gray}[exupdall]${colors_off}"; fi
   e_and_l ""
   e_and_l "$FULL_LINE"
   exupdate_counter=0
@@ -10464,7 +10670,7 @@ then
         if [ "$PKG_VERSION" != "" ] &&
            [ "$PKG_VERSION" != "0" ];
         then
-          e_and_l -n " ${light_purple}$PKG_VERSION${colors_off}"
+          e_and_l -n " ${light_magenta}$PKG_VERSION${colors_off}"
         else
           if [ $INST_STATUS -gt 0 ]; then e_and_l -n " (Version unbekannt)"; fi
         fi
@@ -10488,7 +10694,7 @@ then
       OLD_PKG_SRC="$(inst_status_to_name $INST_STATUS)"
       if [ "$OLD_PKG_SRC" != "" ];
       then
-        e_and_l -n " ${dark_grey}($OLD_PKG_SRC)${colors_off}"
+        e_and_l -n " ${dark_gray}($OLD_PKG_SRC)${colors_off}"
       fi
       e_and_l " ist installiert."
     fi
@@ -10498,14 +10704,14 @@ then
     # ----------------------------------
     if [ $INST_STATUS -eq 2 ];
     then
-      e_and_l " $HINWEIS_TAG${dark_grey}: Dieses Programm wird über die${colors_off} ${light_purple}SNAP${colors_off}${dark_grey}-Paketverwaltung aktualisiert.${colors_off}"
+      e_and_l " $HINWEIS_TAG${dark_gray}: Dieses Programm wird über die${colors_off} ${light_magenta}SNAP${colors_off}${dark_gray}-Paketverwaltung aktualisiert.${colors_off}"
     fi
     # -------------------------------------
     # Hinweis wenn als Flatpak installiert
     # -------------------------------------
     if [ $INST_STATUS -eq 6 ];
     then
-      e_and_l " $HINWEIS_TAG${dark_grey}: Dieses Programm wird über die${colors_off} ${light_purple}Flatpak${colors_off}${dark_grey}-Paketverwaltung aktualisiert.${colors_off}"
+      e_and_l " $HINWEIS_TAG${dark_gray}: Dieses Programm wird über die${colors_off} ${light_magenta}Flatpak${colors_off}${dark_gray}-Paketverwaltung aktualisiert.${colors_off}"
     fi
 
     # -------------------------------------------------------------------
@@ -10548,7 +10754,7 @@ then
             # ------------------------------------------------------------
             if [ "$OLD_PKG_SRC" != "STD" ] || [ "$NEW_PKG_SRC" != "DEB" ];
             then
-              e_and_l -n " aus ${light_yellow}anderer Quelle${colors_off} ${dark_grey}($NEW_PKG_SRC)${colors_off}"
+              e_and_l -n " aus ${light_yellow}anderer Quelle${colors_off} ${dark_gray}($NEW_PKG_SRC)${colors_off}"
             fi
           fi
           e_and_l " zur Verfügung."
@@ -10595,10 +10801,10 @@ then
             # --------------------------------------
             # Vor Update zweimal bewusst bestätigen
             # --------------------------------------
-            ask_yes_or_no_plus "exupdate_$pkg_name" " ${light_cyan}$pkg_name${colors_off} $FILL_WORD auf Version ${light_yellow}$NEW_PKG_INST_VERS${colors_off} updaten"
+            ask_yes_or_no_plus "exupdate_$pkg_name" " ${light_cyan}$pkg_name${colors_off} $FILL_WORD auf Version ${light_yellow}$NEW_PKG_INST_VERS${colors_off} updaten" "" "n"
             if [ $? -eq 1 ];
             then
-              ask_yes_or_no_plus "" " Programm ${bold_yellow}$pkg_name $PKG_VERSION${colors_off} entfernen"
+              ask_yes_or_no_plus "" " Programm ${bold_yellow}$pkg_name $PKG_VERSION${colors_off} entfernen" "" "n"
               if [ $? -eq 1 ];
               then
                 e_and_l " $USER_CHOICE_YES"
@@ -10630,7 +10836,7 @@ then
                     if [ $? -eq 0 ];
                     then
                       chown -R "$USER_USERNAME:$USER_USERNAME" "$BACKUP_NAME" &>/dev/null
-                      e_and_l " ${bold_purple}Konfiguration${colors_off} gesichert in ${bold_purple}$BACKUP_NAME${colors_off}"
+                      e_and_l " ${bold_magenta}Konfiguration${colors_off} gesichert in ${bold_magenta}$BACKUP_NAME${colors_off}"
                     fi
                   fi
                   # -----------------
@@ -10643,7 +10849,7 @@ then
                     if [ $? -eq 0 ];
                     then
                       chown -R "$USER_USERNAME:$USER_USERNAME" "$BACKUP_NAME" &>/dev/null
-                      e_and_l " ${bold_purple}Konfiguration${colors_off} gesichert in ${bold_purple}$BACKUP_NAME${colors_off}"
+                      e_and_l " ${bold_magenta}Konfiguration${colors_off} gesichert in ${bold_magenta}$BACKUP_NAME${colors_off}"
                     fi
                   fi
                 done
@@ -10658,7 +10864,7 @@ then
                   if [ $? -eq 0 ];
                   then
                     chown -R "$USER_USERNAME:$USER_USERNAME" "$BACKUP_FILE" &>/dev/null
-                    e_and_l " ${bold_purple}Autostart${colors_off} gesichert in ${bold_purple}$BACKUP_FILE${colors_off}"
+                    e_and_l " ${bold_magenta}Autostart${colors_off} gesichert in ${bold_magenta}$BACKUP_FILE${colors_off}"
                   fi
                 fi
                 # ----------------------------------------------------------------
@@ -10698,7 +10904,7 @@ then
             fi
           fi
         else
-          e_and_l " ${dark_grey}Auf dem Lissy-Server steht keine neuere Version zur Verfügung ...${colors_off} $OK_TAG"
+          e_and_l " ${dark_gray}Auf dem Lissy-Server steht keine neuere Version zur Verfügung ...${colors_off} $OK_TAG"
         fi
 
       fi
@@ -10814,7 +11020,7 @@ then
   # START_MSG+=$'\n'
   if [ ${OPTION_FLAG[listonly]} -eq 1 ];
   then
-    START_MSG+=$'\n'" ${bold_blue}Hinweise:${colors_off}  ${light_purple}(Externe Paketquelle)${colors_off}  ${light_yellow}[Alternative Programmpakete]${colors_off}" # $'\n'
+    START_MSG+=$'\n'" ${bold_blue}Hinweise:${colors_off}  ${light_magenta}(Externe Paketquelle)${colors_off}  ${light_yellow}[Alternative Programmpakete]${colors_off}" # $'\n'
   fi
   # START_MSG+="$FULL_LINE"
   # START_MSG+=$'\n'
@@ -10838,7 +11044,7 @@ then
         CURRENT_CATEGORY=""
         KAT_SHORT_NAME=""
         create_cat_pkg_list
-        e_and_l " ${bold_blue}$KAT_SHORT_NAME${colors_off} ${dark_grey}[+$k]${colors_off}"
+        e_and_l " ${bold_blue}$KAT_SHORT_NAME${colors_off} ${dark_gray}[+$k]${colors_off}"
         e_and_l "$FULL_LINE"
         # --------------------------------------------
         # Alle Pakete innerhalb der Liste durchlaufen
@@ -10864,7 +11070,7 @@ then
               then
                 LIST_TXT+=" ${light_red}(Quellangaben unvollständig)${colors_off}"
               else
-                LIST_TXT+=" ${light_purple}($PACKAGE_TYPE)${colors_off}"
+                LIST_TXT+=" ${light_magenta}($PACKAGE_TYPE)${colors_off}"
               fi
             fi
             # ---------------------------------------
@@ -10937,7 +11143,7 @@ then
         CURRENT_CATEGORY=""
         KAT_SHORT_NAME=""
         create_cat_pkg_list
-        e_and_l " ${bold_blue}$KAT_SHORT_NAME${colors_off} ${dark_grey}[+$k]${colors_off}"
+        e_and_l " ${bold_blue}$KAT_SHORT_NAME${colors_off} ${dark_gray}[+$k]${colors_off}"
         # --------------------------------------------
         # Alle Pakete innerhalb der Liste durchlaufen
         # --------------------------------------------
@@ -10972,8 +11178,8 @@ then
     e_and_l "$FULL_LINE"
   fi
   e_and_l -n " ${bold_blue}Erstellung zusätzlicher Starter (Programm-Symbole)${colors_off}"
-  # if [ ${OPTION_FLAG[adcstart]} -eq 1 ]; then e_and_l -n " ${dark_grey}[adcstart]${colors_off}"; fi
-  if [ ${OPTION_FLAG[addstart]} -eq 1 ]; then e_and_l -n " ${dark_grey}[addstart]${colors_off}"; fi
+  # if [ ${OPTION_FLAG[adcstart]} -eq 1 ]; then e_and_l -n " ${dark_gray}[adcstart]${colors_off}"; fi
+  if [ ${OPTION_FLAG[addstart]} -eq 1 ]; then e_and_l -n " ${dark_gray}[addstart]${colors_off}"; fi
   e_and_l ""
   e_and_l "$FULL_LINE"
 
@@ -11442,7 +11648,7 @@ then
   then
 
     e_and_l "$FULL_LINE"
-    e_and_l " ${bold_blue}Treiber und weitere System-Komponenten${colors_off} ${dark_grey}[extras]${colors_off}"
+    e_and_l " ${bold_blue}Treiber und weitere System-Komponenten${colors_off} ${dark_gray}[extras]${colors_off}"
     e_and_l "$FULL_LINE"
     e_and_l " ${bold_blue}Firmware und Geräte-Treiber${colors_off}"
     e_and_l "$HALF_LINE"
@@ -11533,9 +11739,9 @@ then
         fi
         if [ $INSTALL_RESULT -eq 0 ];
         then
-          THE_TEMP_FILE="$DOWNLOAD_DIR/missing-driver-list"
-          MISSING_DRIVER_LIST=$(ubuntu-drivers list | grep -v "nvidia" 2>/dev/null)
-          NVIDIA_DRIVER_LIST=$(ubuntu-drivers list | grep -i -E "nvidia" 2>/dev/null)
+          THE_TEMP_FILE="$DOWNLOAD_DIR/missing-driver-list" # Nur zur Anzeige der Liste
+          MISSING_DRIVER_LIST=$(ubuntu-drivers list 2>/dev/null | grep -v "nvidia" | xargs 2>/dev/null)
+          NVIDIA_DRIVER_LIST=$(ubuntu-drivers list 2>/dev/null | grep -i -E "nvidia" | xargs 2>/dev/null)
           if [ "$MISSING_DRIVER_LIST" != "" ];
           then
             e_and_l "${bold_green}ok, Treiber gefunden${colors_off}"
@@ -11552,12 +11758,18 @@ then
             fi
             remove_file "$THE_TEMP_FILE"
           else
-            e_and_l "$NF_TAG"
+            if [ "$NVIDIA_DRIVER_LIST" == "" ];
+            then
+              e_and_l "$NF_TAG"
+            else
+              e_and_l "$OK_TAG - siehe Hinweis"
+              e_and_l "ok - siehe Hinweis!"
+            fi
           fi
           if [ "$NVIDIA_DRIVER_LIST" != "" ];
           then
             e_and_l " $HINWEIS_TAG: Es stehen zusätzliche ${light_yellow}NVIDIA-Treiber${colors_off} zur Verfügung. Um die Stabilität"
-            e_and_l " des Systems nicht zu gefährden, wurden diese ${bold_white}nicht${colors_off} automatisch installiert."
+            e_and_l " des Systems nicht zu gefährden, wurden diese jedoch ${bold_white}nicht${colors_off} installiert."
           fi
         else
           e_and_l "$ERROR_TAG $LINENO"
@@ -11624,7 +11836,7 @@ then
         if [ "$MISSING_LANGUAGE_SUPPORT" != "" ];
         then
           echo -e "$MISSING_LANGUAGE_SUPPORT" 2>/dev/null | tr ' ' '\n' | sed -E "s/^/ - /g" > "$MISSING_SUPPORT_LIST"
-          ask_yes_or_no_plus "language-support" "$ACTION_MESSAGE" "$MISSING_SUPPORT_LIST" "j"
+          ask_yes_or_no_plus "language-support" "$ACTION_MESSAGE" "$MISSING_SUPPORT_LIST" "n"
           if [ $? -eq 1 ];
           then
             e_and_l -n " Installiere zusätzliche ${light_yellow}Sprachpakete ($lang_code)${colors_off}, bitte warten ... "
@@ -11655,7 +11867,7 @@ then
     MEGA_FONT_DIR="$SYSTEM_FONT_DIR/MegaFontPack"
     if [ ! -d "$MEGA_FONT_DIR" ];
     then
-      ask_yes_or_no_plus "megafontpack" " Schriftarten ${light_cyan}MegaFontPack${colors_off} installieren" "" "j"
+      ask_yes_or_no_plus "megafontpack" " Schriftarten ${light_cyan}MegaFontPack${colors_off} installieren" "" "n"
       if [ $? -eq 1 ];
       then
         e_and_l -n " Installiere ${light_yellow}MegaFontPack${colors_off}, bitte warten     "
@@ -11729,7 +11941,7 @@ then
     then
       if [ ! -f "$USER_ICON_DIR/.CursorPack_ok" ];
       then
-        ask_yes_or_no_plus "cursorpack" "$ACTION_MESSAGE" "" "j"
+        ask_yes_or_no_plus "cursorpack" "$ACTION_MESSAGE" "" "n"
         if [ $? -eq 1 ];
         then
           e_and_l -n " Installiere ${light_yellow}CursorPack${colors_off}, bitte warten       "
@@ -12391,7 +12603,7 @@ if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
    [[ ${OPTION_FLAG[kuplock]} -eq 1 || ${OPTION_FLAG[kunlock]} -eq 1 ]];
 then
   e_and_l "$FULL_LINE"
-  e_and_l -n " ${bold_blue}Kernel-Update-Locking${colors_off} ${dark_grey}[ku"
+  e_and_l -n " ${bold_blue}Kernel-Update-Locking${colors_off} ${dark_gray}[ku"
   if [ ${OPTION_FLAG[kuplock]} -eq 1 ];
   then
     e_and_l -n "p"
@@ -12400,7 +12612,7 @@ then
   fi
   e_and_l "lock]${colors_off}"
   e_and_l "$FULL_LINE"
-  # e_and_l " Die aktuell verwendete Kernel-Version ist ${bold_white}$CURR_KERNEL_VERSION${colors_off}."
+  # e_and_l " Die aktuell verwendete Kernel-Version ist ${bold_white}$CURRENT_KERNEL_VERSION${colors_off}."
   if [ ${OPTION_FLAG[kuplock]} -eq 1 ];
   then
     e_and_l " Zur Stabilisierung des Systems können ${light_cyan}Updates des Kernels${colors_off} blockiert werden."
@@ -12455,8 +12667,8 @@ then
   then
     e_and_l "$FULL_LINE"
     e_and_l -n " ${bold_blue}Einrichtung und Optimierung von System-Einstellungen${colors_off}"
-    if [ ${OPTION_FLAG[setutc]} -eq 1 ]; then e_and_l -n " ${dark_grey}[setutc]${colors_off}"; fi
-    if [ ${OPTION_FLAG[optimize]} -eq 1 ]; then e_and_l -n " ${dark_grey}[optimize]${colors_off}"; fi
+    if [ ${OPTION_FLAG[setutc]} -eq 1 ]; then e_and_l -n " ${dark_gray}[setutc]${colors_off}"; fi
+    if [ ${OPTION_FLAG[optimize]} -eq 1 ]; then e_and_l -n " ${dark_gray}[optimize]${colors_off}"; fi
     e_and_l ""
     e_and_l "$FULL_LINE"
   fi
@@ -12510,32 +12722,6 @@ then
     # ==========================================================================
     # Umstellung der Systemzeit auf RTC wie bei Microsoft Windows (statt UTC)
     # ==========================================================================
-    #   IS_MULTI_BOOT=0
-    #   if [ -d "/boot/efi/EFI/Microsoft/Boot" ];
-    #   then
-    #     IS_MULTI_BOOT=1
-    #   else
-    #     grub_config="/boot/grub/grub.cfg"
-    #     if [ -f "$grub_config" ];
-    #     then
-    #       if [ $(grep -c -i -E "windows" "$grub_config" 2>/dev/null) -gt 0 ];
-    #       then
-    #         IS_MULTI_BOOT=1
-    #       else
-    #         # Wenn unser Linux nicht von den ersten beiden Partitionen gebootet
-    #         # wurde, wird es vermutlich nicht das einzige OS auf der Platte sein.
-    #         if [ $(echo $boot_device | grep -c -E "sd[a-z][3-9]") -gt 0 ];
-    #         then
-    #           IS_MULTI_BOOT=1
-    #         fi
-    #       fi
-    #     fi
-    #   fi
-    # --------------------------------------------------------------------------
-    # So schön die vorherige Prüfung auch ist, aber es kann ja auch sein, dass
-    # man Windows und Linux auf zwei physikalisch getrennten Laufwerken in dem
-    # selben System hat und per Hardware umschaltet - daher also immer anbieten
-    # ==========================================================================
     IS_MULTI_BOOT=1
     ACTION_MESSAGE=" Umstellung der ${light_cyan}Systemzeit auf RTC${colors_off} (MS Win)"
     if [ $IS_MULTI_BOOT -ne 0 ];
@@ -12548,7 +12734,7 @@ then
           e_and_l " RTC-Format (Real Time Clock) statt UTC-Format (Universal Time Coordinated),"
           e_and_l " was auf ${bold_white}Multi-Boot-Systemen${colors_off} zu unterschiedlichen Zeitangaben führen kann."
           e_and_l " Um die Angaben zu vereinheitlichen, kann Linux auf RTC umgestellt werden."
-          ask_yes_or_no_plus "utc_to_rtc" " Die ${light_cyan}Systemzeit auf RTC (Real Time Clock)${colors_off} umstellen"
+          ask_yes_or_no_plus "utc_to_rtc" " Die ${light_cyan}Systemzeit auf RTC (Real Time Clock)${colors_off} umstellen" "" "n"
           if [ $? -eq 1 ];
           then
             e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -12620,7 +12806,7 @@ then
   else
     if [ $(apt list "ufw" 2>/dev/null | grep -i -c -E "ufw") -gt 0 ];
     then
-      ask_yes_or_no_plus "ufw_install" " Soll die ${light_cyan}Firewall (ufw)${colors_off} installiert werden" "" ""
+      ask_yes_or_no_plus "ufw_install" " Soll die ${light_cyan}Firewall (ufw)${colors_off} installiert werden" "" "j"
       if [ $? -eq 1 ];
       then
         e_and_l -n " Installiere ${light_yellow}Firewall (ufw)${colors_off}, bitte warten   ... "
@@ -12655,7 +12841,7 @@ then
     # ---------------------
     if [ $(LANG=en ufw status 2>/dev/null | grep -i -c -E "status\s*:\s*a") -eq 0 ];
     then
-      ask_yes_or_no_plus "ufw_activate" "$ACTION_MESSAGE" "" ""
+      ask_yes_or_no_plus "ufw_activate" "$ACTION_MESSAGE" "" "n"
       if [ $? -eq 1 ];
       then
         e_and_l -n " Schalte die interne ${light_yellow}Firewall (ufw)${colors_off} ein     ... "
@@ -12683,7 +12869,7 @@ then
       if [ $(LANG=en ufw status verbose 2>/dev/null | grep -i -c -E "Proto.*\:\s*off$") -eq 0 ] &&
          [ $(LANG=en ufw status verbose 2>/dev/null | grep -i -c -E "Logging\s*\:\s*off$") -eq 0 ];
       then
-        ask_yes_or_no_plus "ufw_logging_off" "$ACTION_MESSAGE" "" ""
+        ask_yes_or_no_plus "ufw_logging_off" "$ACTION_MESSAGE" "" "n"
         if [ $? -eq 1 ];
         then
           e_and_l -n " Schalte das ${light_yellow}Protokoll-Log der Firewall${colors_off} aus ... "
@@ -12725,7 +12911,7 @@ then
     then
       OPENSSH_INSTALL_STATUS=0
     else
-      ask_yes_or_no_plus "ssh_install" " Installation des ${light_cyan}OpenSSH-Servers${colors_off}" "" ""
+      ask_yes_or_no_plus "ssh_install" " Installation des ${light_cyan}OpenSSH-Servers${colors_off}" "" "n"
       if [ $? -eq 1 ];
       then
         e_and_l -n " Installiere ${light_yellow}openssh-server${colors_off}, bitte warten   ... "
@@ -12769,7 +12955,7 @@ then
       then
         if [ $(LANG=en systemctl is-enabled ssh 2>/dev/null | grep -i -c -E "enabled") -eq 0 ];
         then
-          ask_yes_or_no_plus "ssh_activate" "$ACTION_MESSAGE" "" ""
+          ask_yes_or_no_plus "ssh_activate" "$ACTION_MESSAGE" "" "n"
           if [ $? -eq 1 ];
           then
             e_and_l -n " Aktiviere den ${light_yellow}SSH-Server${colors_off} bei Systemstart   ... "
@@ -12824,10 +13010,10 @@ then
      [ $(grep -i -c -E "$SEARCH_SWAP_STRING" "$SYSCTL_CONF" 2>/dev/null) -gt 0 ];
   then
     e_and_l -n "$ACTION_MESSAGE"
-    e_and_l "$OK_TAG ${dark_grey}(Wert: $SWAP_VALUE%)${colors_off}"
+    e_and_l "$OK_TAG ${dark_gray}(Wert: $SWAP_VALUE%)${colors_off}"
   else
     e_and_l " Der ${light_cyan}Swapping-Wert${colors_off} liegt bei ${light_cyan}$SWAP_VALUE${colors_off}, für dieses System wird ${light_yellow}$BEST_SWAP_SIZE${colors_off} empfohlen."
-    ask_yes_or_no_plus "swap_change" " Einstellung des ${light_cyan}Swapping-Wertes${colors_off} jetzt ändern" "" ""
+    ask_yes_or_no_plus "swap_change" " Einstellung des ${light_cyan}Swapping-Wertes${colors_off} jetzt ändern" "" "n"
     if [ $? -eq 1 ];
     then
       NEW_SWAPPING=0
@@ -12879,13 +13065,13 @@ then
   # Reduzierung unnötiger Schreibvorgänge auf Festplatten
   # =============================================================================
   ACTION_MESSAGE=" Reduzierung unnötiger ${light_cyan}Festplatten-Zugriffe${colors_off} ... "
-  if [ -s "/etc/fstab" ];
+  if [ -s "$ETC_FSTAB" ];
   then
-    FSTAB_EXT4_LINES=$(grep -i -c -E "\sext4\s" "/etc/fstab")
-    FSTAB_AUTO_LINES=$(grep -i -c -E "\sauto\s" "/etc/fstab")
+    FSTAB_EXT4_LINES=$(grep -i -c -E "\sext4\s" "$ETC_FSTAB")
+    FSTAB_AUTO_LINES=$(grep -i -c -E "\sauto\s" "$ETC_FSTAB")
     FSTAB_RELEVANT_LINES=$((FSTAB_EXT4_LINES+FSTAB_AUTO_LINES))
-    FSTAB_NOATIME_EXT4_LINES=$(grep -i -c -E "\sext4\s*.*noatime" "/etc/fstab")
-    FSTAB_NOATIME_AUTO_LINES=$(grep -i -c -E "\sauto\s*.*noatime" "/etc/fstab")
+    FSTAB_NOATIME_EXT4_LINES=$(grep -i -c -E "\sext4\s*.*noatime" "$ETC_FSTAB")
+    FSTAB_NOATIME_AUTO_LINES=$(grep -i -c -E "\sauto\s*.*noatime" "$ETC_FSTAB")
     FSTAB_OCCURES_LINES=$((FSTAB_NOATIME_EXT4_LINES+FSTAB_NOATIME_AUTO_LINES))
     if [ $FSTAB_RELEVANT_LINES -ne $FSTAB_OCCURES_LINES ];
     then
@@ -12893,14 +13079,14 @@ then
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m}"
-        create_backup_file "/etc/fstab"
+        create_backup_file "$ETC_FSTAB"
         # 1. "noatime" an allen relevanten Stellen hinzufügen. Dazu werden alle
         # Dateisysteme im Format "ext4" und "auto" als relevant angesehen
-        sed -i -E "s/(\s*\sext4\s\s*)/\1noatime,/gi" "/etc/fstab"
-        sed -i -E "s/(\s*\sauto\s\s*)/\1noatime,/gi" "/etc/fstab"
+        sed -i -E "s/(\s*\sext4\s\s*)/\1noatime,/gi" "$ETC_FSTAB"
+        sed -i -E "s/(\s*\sauto\s\s*)/\1noatime,/gi" "$ETC_FSTAB"
         # 2. Bestehende oder entstandene Mehrfacheinträge von "noatime" korrigieren
-        sed -i -E "s/(noatime.*),noatime/\1/gi" "/etc/fstab"
-        sed -i -E "s/noatime,(.*noatime)/\1/gi" "/etc/fstab"
+        sed -i -E "s/(noatime.*),noatime/\1/gi" "$ETC_FSTAB"
+        sed -i -E "s/noatime,(.*noatime)/\1/gi" "$ETC_FSTAB"
         if [ $? -eq 0 ];
         then
           e_and_l "$OK_TAG"
@@ -12926,14 +13112,14 @@ then
   # =============================================================================
   REDUCE_TMP_RAM=0
   ACTION_MESSAGE=" Ordner ${light_cyan}/tmp${colors_off} in den ${light_cyan}Hauptspeicher${colors_off} auslagern"
-  if [ -s "/etc/fstab" ];
+  if [ -s "$ETC_FSTAB" ];
   then
     HALF_TOTAL_MEMORY=$((MEMORY_TOTAL / 2))
     RAMDISK_ENABLED_SIZE=$(get_tmpfs_size "$RAMDISK_MOUNTPOINT")
     RAMDISK_ENABLED_SIZE=$((RAMDISK_ENABLED_SIZE * 1024 * 1024))
     FREE_FOR_TMP_DIR=$((MEMORY_TOTAL - MIN_LINUX_RAM - RAMDISK_ENABLED_SIZE))
     TEMP_MSG="$ACTION_MESSAGE ..."
-    if [ $(grep -i -c -E "^\s*tmpfs\s*\/tmp\s*tmpfs" "/etc/fstab") -gt 0 ];
+    if [ $(grep -i -c -E "^\s*tmpfs\s*\/tmp\s*tmpfs" "$ETC_FSTAB") -gt 0 ];
     then
       e_and_l "$TEMP_MSG $NC_TAG"
       REDUCE_TMP_RAM=1
@@ -12945,25 +13131,25 @@ then
       FREE_MEMORY=$(show_human_bytes ${MEMORY_AVAIL} "M")
       if [ $FREE_FOR_TMP_DIR -gt $HALF_TOTAL_MEMORY ];
       then
-        e_and_l " Es sind ${light_yellow}$FREE_MEMORY${colors_off} Hauptspeicher frei - Vorschläge zur Verwendung:"
-        ask_yes_or_no_plus "unused_memory_1" " $ACTION_MESSAGE" "" "n"
+        e_and_l " Es sind ${light_yellow}$FREE_MEMORY${colors_off} Hauptspeicher frei."
+        ask_yes_or_no_plus "unused_memory_1" "$ACTION_MESSAGE" "" "n"
         DO_MOVE_TMP=$?
       else # ... sonst fragen ob das trotzdem gewollt ist
         e_and_l " Es sind nur ${light_yellow}$FREE_MEMORY${colors_off} Hauptspeicher frei. Soll der Ordner ${light_cyan}/tmp${colors_off} trotzdem in den"
-        ask_yes_or_no_plus "unused_memory_2" " ${light_cyan}Hauptspeicher${colors_off} ausgelagert werden (NICHT empfohlen)" "" "n"
+        ask_yes_or_no_plus "unused_memory_2" " ${light_cyan}Hauptspeicher${colors_off} ausgelagert werden (${bold_white}nicht empfohlen${colors_off})" "" "n"
         DO_MOVE_TMP=$?
       fi
       # Auslagern -------------------------------------------------------------
       if [ $DO_MOVE_TMP -eq 1 ];
       then
         e_and_l -n " Verlagere Ordner ${light_yellow}/tmp${colors_off} in den ${light_yellow}Hauptspeicher${colors_off} ... "
-        create_backup_file "/etc/fstab"
+        create_backup_file "$ETC_FSTAB"
         # Wenn es den Eintrag schon gibt, diesen auskommentieren ...
-        if [ $(grep -i -c -E "^#\s*tmpfs\s\s*\/tmp\s\s*tmpfs\s\s*noatime,nosuid,mode=1777\s\s*0\s\s*0" "/etc/fstab") -gt 0 ];
+        if [ $(grep -i -c -E "^#\s*tmpfs\s\s*\/tmp\s\s*tmpfs\s\s*noatime,nosuid,mode=1777\s\s*0\s\s*0" "$ETC_FSTAB") -gt 0 ];
         then
-          sed -i -E "s/^#\s*tmpfs\s\s*\/tmp\s\s*tmpfs\s\s*noatime,nosuid,mode=1777\s\s*0\s\s*0/tmpfs  \/tmp  tmpfs  noatime,nosuid,mode=1777  0  0/gi" "/etc/fstab"
+          sed -i -E "s/^#\s*tmpfs\s\s*\/tmp\s\s*tmpfs\s\s*noatime,nosuid,mode=1777\s\s*0\s\s*0/tmpfs  \/tmp  tmpfs  noatime,nosuid,mode=1777  0  0/gi" "$ETC_FSTAB"
         else # ... sonst neu anlegen
-          echo -e "tmpfs  /tmp  tmpfs  noatime,nosuid,mode=1777  0  0" >> "/etc/fstab" 2>"$LOG_TEMP"
+          echo -e "tmpfs  /tmp  tmpfs  noatime,nosuid,mode=1777  0  0" >> "$ETC_FSTAB" 2>"$LOG_TEMP"
         fi
         if [ $? -eq 0 ];
         then
@@ -12972,7 +13158,7 @@ then
           CHANGES_MADE=1
           REDUCE_TMP_RAM=1
         else
-          restore_backup_file "/etc/fstab"
+          restore_backup_file "$ETC_FSTAB"
           e_and_l "$ERROR_TAG $LINENO"
           add_full_log
         fi
@@ -12998,13 +13184,13 @@ then
   FREE_FOR_RAMDISK=$((FREE_FOR_RAMDISK / 1024 / 1024))
   # ---------------------------------------------------------------------------
   ACTION_MESSAGE=" Permanente dynamische ${light_cyan}RAM Disk${colors_off} einrichten"
-  if [ -s "/etc/fstab" ];
+  if [ -s "$ETC_FSTAB" ];
   then
     TEMP_MSG="$ACTION_MESSAGE  ..."
     RAMDISK_ENABLED_SIZE=$(get_tmpfs_size "$RAMDISK_MOUNTPOINT")
     if [ $RAMDISK_ENABLED_SIZE -gt 0 ];
     then
-      e_and_l "$TEMP_MSG $OK_TAG ${dark_grey}(Wert: $RAMDISK_ENABLED_SIZE MB)${colors_off}"
+      e_and_l "$TEMP_MSG $OK_TAG ${dark_gray}(Wert: $RAMDISK_ENABLED_SIZE MB)${colors_off}"
     else
       if [ $FREE_FOR_RAMDISK -ge $RAMDISK_MIN_SIZE ];
       then
@@ -13025,7 +13211,7 @@ then
             RAMDISK_SIZE=$(echo $RAMDISK_SIZE | sed 's/[^0-9]*//g')
             if [ "$RAMDISK_SIZE" == "" ]; then RAMDISK_SIZE=0; fi
           done
-          ask_yes_or_no_plus "" " Jetzt dynamische ${light_yellow}RAM Disk${colors_off} von ${light_yellow}max. $RAMDISK_SIZE MB${colors_off} anlegen" "" ""
+          ask_yes_or_no_plus "" " Jetzt dynamische ${light_yellow}RAM Disk${colors_off} von ${light_yellow}max. $RAMDISK_SIZE MB${colors_off} anlegen" "" "n"
           if [ $? -eq 1 ];
           then
             if [ $(df | grep -i -c -E "$RAMDISK_MOUNTPOINT") -gt 0 ];
@@ -13052,14 +13238,14 @@ then
               if [ -d "$RAMDISK_MOUNTPOINT" ];
               then
                 chmod -R 0777 "$RAMDISK_MOUNTPOINT" &>/dev/null
-                create_backup_file "/etc/fstab"
-                echo -e "tmpfs  ${RAMDISK_MOUNTPOINT}  tmpfs  noatime,defaults,size=${RAMDISK_SIZE}M,x-gvfs-show,x-gvfs-name=RAM%20Disk  0  0" >> "/etc/fstab" 2>"$LOG_TEMP"
+                create_backup_file "$ETC_FSTAB"
+                echo -e "tmpfs  ${RAMDISK_MOUNTPOINT}  tmpfs  noatime,defaults,size=${RAMDISK_SIZE}M,x-gvfs-show,x-gvfs-name=RAM%20Disk  0  0" >> "$ETC_FSTAB" 2>"$LOG_TEMP"
                 if [ $? -eq 0 ];
                 then
                   mount "$RAMDISK_MOUNTPOINT" &>"$LOG_TEMP"
                   e_and_l "$OK_TAG (${light_yellow}$RAMDISK_MOUNTPOINT${colors_off})"
                 else
-                  restore_backup_file "/etc/fstab"
+                  restore_backup_file "$ETC_FSTAB"
                   e_and_l "$ERROR_TAG $LINENO"
                   add_full_log
                 fi
@@ -13074,7 +13260,7 @@ then
           e_and_l "$HALF_MINUS_LINE"
         fi
       else
-        e_and_l "$TEMP_MSG ${bold_yellow}besser nicht${colors_off} ${dark_grey}(zu wenig Memory)${colors_off}"
+        e_and_l "$TEMP_MSG ${bold_yellow}besser nicht${colors_off} ${dark_gray}(zu wenig Memory)${colors_off}"
       fi
     fi
   else
@@ -13100,7 +13286,7 @@ then
       CHECK_RAMDISK_SIZE=$(get_tmpfs_size "/media/ramdisk")
       if [ $CHECK_RAMDISK_SIZE -ge $BROWSER_CACHE_MIN_SIZE ];
       then
-        ask_yes_or_no_plus "browser-cache-to-ram" "$ACTION_MESSAGE" "" "j"
+        ask_yes_or_no_plus "browser-cache-to-ram" "$ACTION_MESSAGE" "" "n"
         if [ $? -eq 1 ];
         then
           e_and_l -n " Verlagere ${light_yellow}Browser-Caches${colors_off} auf die ${light_yellow}RAM Disk${colors_off}  ... "
@@ -13325,7 +13511,7 @@ then
           if [ $APPORT_FILE_STATUS -eq 0 ] ||
              [ $APPORT_SERVICE_STATUS -eq 0 ];
           then
-            ask_yes_or_no_plus "apport_deactivate" " Sendung der ${light_cyan}Fehlerberichte${colors_off} ausschalten" "" "j"
+            ask_yes_or_no_plus "apport_deactivate" " Sendung der ${light_cyan}Fehlerberichte${colors_off} ausschalten" "" "n"
             if [ $? -eq 1 ];
             then
               e_and_l -n "${ACTION_MESSAGE//96m/93m}"
@@ -13384,7 +13570,7 @@ then
        [ $(grep -i -c -E "^\s*SystemMaxFileSize\s*=\s*${MAX_LOG_SIZE}M" "$SYSLOG_CFG_FILE") -eq 0 ] ||
        [ $(grep -i -c -E "^\s*SystemMaxUse\s*=\s*${MAX_LOG_SIZE}M" "$SYSLOG_CFG_FILE") -eq 0 ];
     then
-      ask_yes_or_no_plus "system_log_limit" " Speicherplatz für ${light_cyan}System-Logdateien${colors_off} begrenzen" "" "j"
+      ask_yes_or_no_plus "system_log_limit" " Speicherplatz für ${light_cyan}System-Logdateien${colors_off} begrenzen" "" "n"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m}"
@@ -13409,7 +13595,7 @@ then
         e_and_l "$HALF_MINUS_LINE"
       fi
     else
-      e_and_l "$ACTION_MESSAGE$OK_TAG ${dark_grey}(Wert: $VALUE_MESSAGE)${colors_off}"
+      e_and_l "$ACTION_MESSAGE$OK_TAG ${dark_gray}(Wert: $VALUE_MESSAGE)${colors_off}"
     fi
   else
     e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
@@ -13429,7 +13615,7 @@ then
          [ "$IRFS_COMP" != "zstd" ];
       then
         e_and_l " Die aktuelle Kompressions-Methode des initramfs ist nur ${bold_white}$IRFS_COMP${colors_off}."
-        ask_yes_or_no_plus "compress_initramfs" " Soll die ${light_cyan}Kompressions-Rate${colors_off} mit Methode ${bold_white}xz${colors_off} erhöht werden" "" "j"
+        ask_yes_or_no_plus "compress_initramfs" " Soll die ${light_cyan}Kompressions-Rate${colors_off} mit Methode ${bold_white}xz${colors_off} erhöht werden" "" "n"
         if [ $? -eq 1 ];
         then
           e_and_l " $ACHTUNG_TAG: Dieser Vorgang verändert wichtige Boot-Dateien und sollte nur nach"
@@ -13512,7 +13698,7 @@ then
         done
       fi
       e_and_l " Die aktuellen ${light_cyan}Taktfrequenzen${colors_off} dieses Pi sind auf ${light_yellow}$CURRENT_PI_PERFNAME-Performance${colors_off} eingestellt"
-      ask_yes_or_no_plus "raspy_performance" " Sollen die Taktfreqenzen geändert werden" "" ""
+      ask_yes_or_no_plus "raspy_performance" " Sollen die Taktfreqenzen geändert werden" "" "n"
       if [ $? -eq 1 ];
       then
         e_and_l " Bitte neues Performance-Profil auswählen"
@@ -13534,7 +13720,7 @@ then
           if [ "$NEW_PERF_MODE" == "" ]; then NEW_PERF_MODE=-1; fi
         done
         setterm -cursor on 2>/dev/null
-        ask_yes_or_no_plus "" " Taktfrequenzen auf das Profil ${light_yellow}${pi_perfname[$NEW_PERF_MODE]}${colors_off} umstellen" "" ""
+        ask_yes_or_no_plus "" " Taktfrequenzen auf das Profil ${light_yellow}${pi_perfname[$NEW_PERF_MODE]}${colors_off} umstellen" "" "n"
         if [ $? -eq 1 ];
         then
           SED_ERROR_CODE_1=0
@@ -13642,7 +13828,7 @@ then
       then
         if [ $(grep -i -c -E "^\s*gpu_mem\s*=\s*$NEW_MEM_SIZE" "$PI_CONF_FILE") -eq 0 ];
         then
-          ask_yes_or_no_plus "raspy_gpu_mem" " Soll der ${light_cyan}GPU-Speicher${colors_off} optimiert werden" "" ""
+          ask_yes_or_no_plus "raspy_gpu_mem" " Soll der ${light_cyan}GPU-Speicher${colors_off} optimiert werden" "" "n"
           if [ $? -eq 1 ];
           then
             create_backup_file "$PI_CONF_FILE"
@@ -13674,7 +13860,7 @@ then
           fi
         else
           e_and_l -n "$ACTION_MESSAGE"
-          e_and_l "$OK_TAG ${dark_grey}(Wert: $NEW_MEM_SIZE MB)${colors_off}"
+          e_and_l "$OK_TAG ${dark_gray}(Wert: $NEW_MEM_SIZE MB)${colors_off}"
         fi
       else
         SHOW_SKIP_MESSAGE="erst ab 2GB RAM"
@@ -13752,7 +13938,7 @@ then
     fi
     if [ -s "$PI_CONF_FILE" ];
     then
-      ask_yes_or_no_plus "" " Einstellung für ${light_cyan}Monitor-Overscan${colors_off} ändern" "" ""
+      ask_yes_or_no_plus "" " Einstellung für ${light_cyan}Monitor-Overscan${colors_off} ändern" "" "n"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m}  ... "
@@ -13813,7 +13999,7 @@ then
     fi
     if [ $CREATE_NEW_FILE -eq 1 ];
     then
-      ask_yes_or_no_plus "raspy_user_pi_passwd" " Für Benutzer pi ${light_cyan}sudo-Passwort${colors_off} aktivieren" "" ""
+      ask_yes_or_no_plus "raspy_user_pi_passwd" " Für Benutzer pi ${light_cyan}sudo-Passwort${colors_off} aktivieren" "" "n"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -13852,7 +14038,7 @@ then
         # Wenn der Eintrag aktiv ist, diesen auskommentieren
         if [ $(grep -i -c -E "^\s*deb\s\s*http\:\/\/archive\.raspberrypi\.org\/debian" ${RASPI_DEB_FILE}) -gt 0 ];
         then
-          ask_yes_or_no_plus "raspy_no_testing" "$ACTION_MESSAGE" "" ""
+          ask_yes_or_no_plus "raspy_no_testing" "$ACTION_MESSAGE" "" "n"
           if [ $? -eq 1 ];
           then
             e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -13897,7 +14083,7 @@ then
       then
         if [ -s "$STANDARD_RC_CONFIG" ];
         then
-          ask_yes_or_no_plus "raspy_keyboard" "$ACTION_MESSAGE" "" ""
+          ask_yes_or_no_plus "raspy_keyboard" "$ACTION_MESSAGE" "" "n"
           if [ $? -eq 1 ];
           then
             e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -14020,7 +14206,7 @@ EOF
     then
       if [ $IS_OK_USER_LIST_FOUND -ne $TOTAL_USER_LIST_FOUND ];
       then
-        ask_yes_or_no_plus "login_user_list" "$ACTION_MESSAGE" "" ""
+        ask_yes_or_no_plus "login_user_list" "$ACTION_MESSAGE" "" "n"
         if [ $? -eq 1 ];
         then
           e_and_l -n "${ACTION_MESSAGE//96m/93m}  ... "
@@ -14125,7 +14311,7 @@ EOF
         e_and_l -n " ${light_cyan}$AUTO_LOGIN_USER_NAME${colors_off}"
       fi
       e_and_l " wird automatisch am System angemeldet!"
-      ask_yes_or_no_plus "login_deactivate_auto_login" " Soll die ${light_cyan}automatische Anmeldung${colors_off} deaktiviert werden" "" ""
+      ask_yes_or_no_plus "login_deactivate_auto_login" " Soll die ${light_cyan}automatische Anmeldung${colors_off} deaktiviert werden" "" "n"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -14184,7 +14370,7 @@ EOF
       THE_BAD_LINE=$(grep -i -E "$THE_GUESTUSER_LINE" "$LDM_CONF_FILE" 2>/dev/null)
       e_and_l "$HALF_MINUS_LINE"
       e_and_l " $WARN_TAG: Die Anmeldung enthält einen ${light_cyan}Gastzugang${colors_off}."
-      ask_yes_or_no_plus "login_no_guest" " Soll die ${light_cyan}Anmeldung als Gast${colors_off} deaktiviert werden" "" ""
+      ask_yes_or_no_plus "login_no_guest" " Soll die ${light_cyan}Anmeldung als Gast${colors_off} deaktiviert werden" "" "n"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -14211,7 +14397,7 @@ EOF
       e_and_l "$ACTION_MESSAGE ... $NC_TAG"
     fi
   else
-    e_and_l "$(skip_text "$ACTION_MESSAGE" "nur mit LDM")"
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "nur mit LightDM")"
   fi
 
   # ============================================================================
@@ -14230,7 +14416,7 @@ EOF
     then
       if [ $(LANG=en dpkg-query -W -f='${Status}' "numlockx" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
       then
-        ask_yes_or_no_plus "login_numlock" " Zur Aktivierung des Nummernblocks ${light_cyan}numlockx${colors_off} installieren" "" "j"
+        ask_yes_or_no_plus "login_numlock" " Zur Aktivierung des Nummernblocks ${light_cyan}numlockx${colors_off} installieren" "" "n"
         if [ $? -eq 1 ];
         then
           e_and_l -n " Installiere ${light_yellow}numlockx${colors_off}, bitte warten         "
@@ -14442,20 +14628,19 @@ EOF
         fi
       fi
       # --------------------------------------------------------------------------
-
       # In neueren Ubuntu-Versionen gibt es zudem folgende Einträge,
       # deren Wirkung jedoch noch nicht zuverlässig verifiziert ist:
       # gsettings_set "org.mate.peripherals-keyboard-xkb.kbd" "options" "['compat\tnumpad:mac']" 2>/dev/null
       # gsettings_set "org.gnome.libgnomekbd.keyboard" "options" "['compat\tnumpad:mac']" 2>/dev/null
       # gsettings_set "org.ArcticaProject.arctica-greeter" "activate-numlock" "true" 2>/dev/null
-
+      # --------------------------------------------------------------------------
     else # numlockx nicht installiert
       TEMP_MSG+="${bold_red}nicht${colors_off} eingerichtet"
     fi
   else
-    TEMP_MSG+="übersprungen (nur mit LDM)"
+    TEMP_MSG+="übersprungen (nur mit LightDM)"
     TEMP_MSG="$(clear_text "$TEMP_MSG")"
-    TEMP_MSG="${dark_grey}$TEMP_MSG${colors_off}"
+    TEMP_MSG="${dark_gray}$TEMP_MSG${colors_off}"
   fi
   if [ $ASKED_NUMLOCKX_INST_NO -eq 0 ];
   then
@@ -14515,7 +14700,7 @@ EOF
         # fi
         if [ "$CURRENT_LOGIN_BG" == "" ]; then CURRENT_LOGIN_BG="Standard"; fi
         e_and_l "$HALF_MINUS_LINE"
-        e_and_l " ${light_cyan}Hintergrundbild${colors_off}: ${dark_grey}$CURRENT_LOGIN_BG${colors_off}"
+        e_and_l " ${light_cyan}Hintergrundbild${colors_off}: ${dark_gray}$CURRENT_LOGIN_BG${colors_off}"
         # -------------------
         # Sicherheitsabfrage
         # -------------------
@@ -14631,7 +14816,7 @@ EOF
             # ------------------------------
             if [ $FOUND_AND_REPLACED -ne 0 ];
             then
-              e_and_l "$OK_TAG ${dark_grey}($FOUND_AND_REPLACED)$colors_off"
+              e_and_l "$OK_TAG ${dark_gray}($FOUND_AND_REPLACED)$colors_off"
               CHANGES_MADE=1
             else
               e_and_l "$ERROR_TAG"
@@ -14938,7 +15123,7 @@ EOF
     fi
     if [ $VALUES_DIFFERENT -eq 1 ];
     then
-      ask_yes_or_no_plus "thumbnail_cache_limit" " Speicherplatz für ${light_cyan}Thumbnail-Zwischenspeicher${colors_off} begrenzen" "" "j"
+      ask_yes_or_no_plus "thumbnail_cache_limit" " Speicherplatz für ${light_cyan}Thumbnail-Zwischenspeicher${colors_off} begrenzen" "" "n"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m}"
@@ -14991,7 +15176,7 @@ EOF
         # e_and_l "$HALF_MINUS_LINE"
       fi
     else
-      e_and_l "$ACTION_MESSAGE$OK_TAG ${dark_grey}(Wert: $VALUE_MESSAGE)${colors_off}"
+      e_and_l "$ACTION_MESSAGE$OK_TAG ${dark_gray}(Wert: $VALUE_MESSAGE)${colors_off}"
     fi
   else
     e_and_l "$(skip_text "$ACTION_MESSAGE" "$NF_TXT")"
@@ -15301,8 +15486,8 @@ EOF
   # Liste der Disks erzeugen
   # -------------------------
 
-NTFS_COUNT=0
-declare -A NTFS_PARTITONS
+  NTFS_COUNT=0
+  declare -A NTFS_PARTITONS
 
   THE_DISK_LIST="$DOWNLOAD_DIR/disk-list"
   remove_file "$THE_DISK_LIST"
@@ -15329,7 +15514,8 @@ declare -A NTFS_PARTITONS
       # Ausgeworfene Geräte neu verbinden um alle Informationen auslesen zu können
       #-----------------------------------------------------------------------------
       DEVICE_RECONNECTED=0
-      if [ "${DEVICE_NAME}" != "/dev/$boot_device" ] &&
+      # if [ "${DEVICE_NAME}" != "/dev/$root_partition" ] &&
+      if [ "${DEVICE_NAME}" != "$root_partition" ] &&
          [ $(ls -la ${DEVICE_NAME}* 2>/dev/null | wc -l ) -eq 1 ];
       then
         eject -t ${DEVICE_NAME} &>/dev/null
@@ -15589,7 +15775,7 @@ declare -A NTFS_PARTITONS
             e_and_l "${bold_yellow}$NE_TXT${colors_off}"
           fi
         # else
-        #   e_and_l "nicht geprüft ${dark_grey}(keine SSD)${colors_off}"
+        #   e_and_l "nicht geprüft ${dark_gray}(keine SSD)${colors_off}"
         # fi
       done < "$THE_PARTITION_LIST"
       remove_file "$THE_PARTITION_LIST"
@@ -15624,7 +15810,7 @@ declare -A NTFS_PARTITONS
       if [ "$DISK_POWER_ON" != "" ];
       then
         if [ "$DISK_TIMESTAMP" != "" ]; then e_and_l -n " / "; fi
-        e_and_l -n "${light_yellow}~ ${DISK_POWER_ON} Stunden${dark_grey}$POH_FROM_SMART${colors_off}"
+        e_and_l -n "${light_yellow}~ ${DISK_POWER_ON} Stunden${dark_gray}$POH_FROM_SMART${colors_off}"
       fi
       e_and_l ""
       # ------------------------------------------------------------------------
@@ -15734,7 +15920,7 @@ if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
    [ ${OPTION_FLAG[revive]} -eq 1 ];
 then
   e_and_l "$FULL_LINE"
-  e_and_l " ${bold_blue}Reaktivierung vormals deaktivierter Komponenten${colors_off} ${dark_grey}[revive]${colors_off}"
+  e_and_l " ${bold_blue}Reaktivierung vormals deaktivierter Komponenten${colors_off} ${dark_gray}[revive]${colors_off}"
   e_and_l "$FULL_LINE"
   e_and_l -n " Starte Suche deaktivierter Komponenten, bitte warten ... "
   NOTHING_FOUND_TEXT="Es wurden keine deaktivierten Komponenten gefunden"
@@ -15760,276 +15946,177 @@ if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
 then
 
   e_and_l "$FULL_LINE"
-  e_and_l " ${bold_blue}Reparaturen${colors_off} ${dark_grey}[repair]${colors_off}"
+  e_and_l " ${bold_blue}Reparaturen${colors_off} ${dark_gray}[repair]${colors_off}"
   e_and_l "$FULL_LINE"
 
   # ============================================================================
-  # Erneuerung des GRUB-Bootloaders
+  # Symbolische Links zu Kernel-Versionen aktualisieren
   # ============================================================================
-  GRUB_TARGET="/dev/$boot_device"
-  GRUB_TARGET="$(echo ${GRUB_TARGET} | sed -E "s/p*[0-9]*$//")"
-  e_and_l " ${bold_blue}GRUB-Bootloader${colors_off}"
+  e_and_l " ${bold_blue}Kernel${colors_off}"
   e_and_l "$HALF_LINE"
-  e_and_l " Wenn sich auf dem Rechner Betriebs-Systeme befinden, die sich beim Booten des"
-  e_and_l " Rechners nicht auswählen oder starten lassen, kann versucht werden dies durch"
-  e_and_l " die Erneuerung des GRUB-Bootloaders und dessen Konfiguration zu korrigieren."
-  ask_yes_or_no_plus "new_grub" " Neuen ${light_cyan}GRUB-Bootloader${colors_off} mit neuen Starteinträgen erstellen" "" "n"
-  if [ $? -eq 1 ];
+  LATEST_KERNEL_FILE="$(ls -1 /boot/vmlinuz-* | sort -V | tail -1)"
+  LATEST_KERNEL_NAME="$(echo ${LATEST_KERNEL_FILE} | sed -E "s/.*vmlinuz-(.*)/\1/")"
+  LATEST_KERNEL_VERSION="$(echo ${LATEST_KERNEL_NAME} | sed 's/-generic//i' | sed 's/-common//i' | sed 's/-amd64//i' | sed 's/-i386//i')"
+  if [ "$CURRENT_KERNEL_NAME" != "$LATEST_KERNEL_NAME" ];
   then
-    # --------------------------------------------------------------------------
-    # Gewünschte Standard-Konfiguration (Defaults) von GRUB abfragen
-    # --------------------------------------------------------------------------
-    if [ -s "$GRUB_DEFAULT_FILE" ];
+    if linux-update-symlinks --help &>/dev/null;
     then
-      e_and_l " ${bold_white}Konfiguration${colors_off} von GRUB"
-      ask_yes_or_no_pure " Soll GRUB sich den ${light_yellow}zuletzt ausgewählten Eintrag${colors_off} merken"
+      e_and_l " Die neuere Version ${bold_yellow}$LATEST_KERNEL_VERSION${colors_off} als die verwendete ${bold_white}$CURRENT_KERNEL_VERSION${colors_off} ist installiert."
+      ask_yes_or_no_plus "update_kernel_symlinks" " Soll ab nächstem Neustart der ${light_cyan}neuere Kernel${colors_off} verwendet werden" "" "n"
       if [ $? -eq 1 ];
       then
-        GRUB_DEFAULT_ENTRY="GRUB_DEFAULT=saved"
-        GRUB_SAVEDEFAULT_ENTRY="GRUB_SAVEDEFAULT=true"
-        GRUB_TIMEOUT_ENTRY=""
-      else
-        GRUB_DEFAULT_ENTRY="GRUB_DEFAULT=0"
-        GRUB_SAVEDEFAULT_ENTRY=""
-      fi
-      e_and_l " Wie lange soll GRUB das ${light_yellow}Startmenü mit der System-Auswahl${colors_off} anzeigen?"
-      e_and_l " [${bold_yellow}0${colors_off}] 0 Sekunden (startet ausgewähltes System sofort ohne Anzeige des Menüs)"
-      e_and_l " [${bold_yellow}1${colors_off}] 10 Sekunden"
-      e_and_l " [${bold_yellow}2${colors_off}] 30 Sekunden"
-      user_choice_012
-      case $? in
-        0) GRUB_TIMEOUT_DURATION="0"  ;;
-        1) GRUB_TIMEOUT_DURATION="10" ;;
-        2) GRUB_TIMEOUT_DURATION="30" ;;
-      esac
-      e_and_l " ${bold_white}Ausgewählte Optionen${colors_off}"
-      e_and_l -n " Zuletzt ausgewählten Eintrag merken: ${bold_yellow}"
-      if [ $(echo "$GRUB_DEFAULT_ENTRY" | grep -c -i -E "saved") -gt 0 ]; then e_and_l -n "Ja"; else e_and_l -n "Nein"; fi
-      e_and_l "${colors_off}"
-      e_and_l " Anzeigedauer des Startmenüs: ${bold_yellow}$GRUB_TIMEOUT_DURATION${colors_off} Sekunden"
-    fi
-    # --------------------------------------------------------------------------
-    # Sicherheitsabfrage
-    # --------------------------------------------------------------------------
-    e_and_l " $ACHTUNG_TAG: Die aktuelle Konfiguration des GRUB-Bootloaders wird vollständig"
-    e_and_l " überschrieben, was dazu führen kann, dass eventuell individuell angepasste"
-    e_and_l " Dateien nachträglich erneut manuell angepasst werden müssen!"
-    ask_yes_or_no_plus "" " Jetzt wirklich den ${bold_yellow}GRUB-Bootloader${colors_off} auf ${bold_yellow}$GRUB_TARGET${colors_off} erneuern" "" "n"
-    if [ $? -eq 1 ];
-    then
-      # ------------------------------------------------------------------------
-      # Installation eines neuen GRUB-Loaders
-      # ------------------------------------------------------------------------
-      if grub-install --version &>/dev/null;
-      then
-        e_and_l -n " Installiere neuen ${light_yellow}GRUB-Bootloader${colors_off} auf dem Ziel  ... "
-        # 1. Versuch normal
-        grub-install "$GRUB_TARGET" &>"$LOG_TEMP"
+        e_and_l -n " Erstelle ${light_yellow}symbolische Verknüpfungen${colors_off} zu neuesten Kernel-Dateien ... "
+        linux-update-symlinks upgrade "$LATEST_KERNEL_NAME" "$LATEST_KERNEL_FILE" &>"$LOG_TEMP"
         if [ $? -eq 0 ];
         then
           e_and_l "$OK_TAG"
-        else
-          # 2. Versuch ohne Bootsektor (Ubuntu meint normal wäre unzuverlässig)
-          grub-install --no-bootsector "$GRUB_TARGET" &>"$LOG_TEMP"
-          if [ $? -eq 0 ];
-          then
-            e_and_l "$OK_TAG"
-          else
-            e_and_l "$ERROR_TAG"
-          fi
-        fi
-        add_full_log
-      fi
-      # ------------------------------------------------------------------------
-      # Standard-Konfiguration (Defaults) von GRUB ändern
-      # ------------------------------------------------------------------------
-      if [ -s "$GRUB_DEFAULT_FILE" ];
-      then
-        create_backup_file "$GRUB_DEFAULT_FILE"
-        e_and_l -n " Aktualisiere ${light_yellow}Konfiguration${colors_off} des GRUB-Bootloader  ... "
-        # ----------------------------------------------------------------------
-        # 1. Einstellungen zur Vorauswahl des letzten ausgewählten Eintrags
-        # ----------------------------------------------------------------------
-        # 1.1 GRUB_DEFAULT: Letzten ausgewählten Eintrag vorauswählen (saved)
-        # --------------------------------------------------------------------
-        # Wenn es den Eintrag schon gibt, diesen ändern ...
-        # --------------------------------------------------
-        if [ $(cat "$GRUB_DEFAULT_FILE" 2>/dev/null | grep -c -i -E "^\s*\#*\s*GRUB_DEFAULT\s*\=") -gt 0 ];
-        then
-          sed -i -E "s/^\s*\#*\s*GRUB_DEFAULT\s*\=.*/$GRUB_DEFAULT_ENTRY/gi" "$GRUB_DEFAULT_FILE" 2>/dev/null
-          RESULT_ENTRY_1=$?
-        # ----------------------
-        # ... sonst neu anlegen
-        # ----------------------
-        else
-          echo -e "" >> "$GRUB_DEFAULT_FILE" 2>/dev/null
-          echo -e "$GRUB_DEFAULT_ENTRY" >> "$GRUB_DEFAULT_FILE" 2>/dev/null
-          RESULT_ENTRY_1=$?
-        fi
-        # --------------------------------------------------
-        # 1.2 GRUB_SAVEDEFAULT: Vorauswahl verwenden (true)
-        # --------------------------------------------------
-        # Wenn es den Eintrag schon gibt, diesen ändern ...
-        # --------------------------------------------------
-        if [ $(cat "$GRUB_DEFAULT_FILE" 2>/dev/null | grep -c -i -E "^\s*\#*\s*GRUB_SAVEDEFAULT\s*\=") -gt 0 ];
-        then
-          sed -i -E "s/^\s*\#*\s*GRUB_SAVEDEFAULT\s*\=.*/$GRUB_SAVEDEFAULT_ENTRY/gi" "$GRUB_DEFAULT_FILE" 2>/dev/null
-          RESULT_ENTRY_2=$?
-        # ----------------------
-        # ... sonst neu anlegen
-        # ----------------------
-        else
-          # ------------------------------------------------------
-          # SED-Option /a fügt eine Zeile hinter dem Match ein ;)
-          # ------------------------------------------------------
-          sed -i -E "/$GRUB_DEFAULT_ENTRY/a$GRUB_SAVEDEFAULT_ENTRY" "$GRUB_DEFAULT_FILE" 2>/dev/null
-          RESULT_ENTRY_2=$?
-        fi
-        # ----------------------------------------------------------------------
-        # 2. Einstellungen zur Anzeigedauer des Menüs und automatischen Auswahl
-        # ----------------------------------------------------------------------
-        # 2.1 GRUB_TIMEOUT: Anzeigedauer in Sekunden
-        # --------------------------------------------------
-        # Wenn es den Eintrag schon gibt, diesen ändern ...
-        # --------------------------------------------------
-        if [ $(cat "$GRUB_DEFAULT_FILE" 2>/dev/null | grep -c -i -E "^\s*\#*\s*GRUB_TIMEOUT\s*\=") -gt 0 ];
-        then
-          sed -i -E "s/^\s*\#*\s*GRUB_TIMEOUT\s*\=.*/GRUB_TIMEOUT=$GRUB_TIMEOUT_DURATION/gi" "$GRUB_DEFAULT_FILE" 2>/dev/null
-          RESULT_ENTRY_1=$?
-        # ----------------------
-        # ... sonst neu anlegen
-        # ----------------------
-        else
-          echo -e "" >> "$GRUB_DEFAULT_FILE" 2>/dev/null
-          echo -e "GRUB_TIMEOUT=$GRUB_TIMEOUT_DURATION" >> "$GRUB_DEFAULT_FILE" 2>/dev/null
-          RESULT_ENTRY_1=$?
-        fi
-        # -------------------------------------------------------------------
-        # 2.2 DURATION soll die Anzeigedauer, nicht die Vor-Verzögerung sein
-        # -------------------------------------------------------------------
-        # Wenn es den Eintrag schon gibt, diesen ändern ...
-        # (wenn es ihn nicht gibt, auch nicht neu anlegen, da ohne diesen das
-        # Verhalten von GRUB_TIMEOUT bereits die "Anzeigedauer" ist)
-        # --------------------------------------------------
-        if [ $(cat "$GRUB_DEFAULT_FILE" 2>/dev/null | grep -c -i -E "^\s*\#*\s*GRUB_TIMEOUT_STYLE\s*\=") -gt 0 ];
-        then
-          sed -i -E "s/^\s*\#*\s*GRUB_TIMEOUT_STYLE\s*\=.*/GRUB_TIMEOUT_STYLE=menu/gi" "$GRUB_DEFAULT_FILE" 2>/dev/null
-        fi
-        # ----------------------------------------------------------------------
-        remove_double_empty_lines "$GRUB_DEFAULT_FILE"
-        # ----------------------------------------------------------------------
-        # 3. Zusätzlich individuelle Einstellungen
-        # ----------------------------------------------------------------------
-        # 3.1 Farben
-        # --------------------------------------------------------------
-        # [light-|dark-] red, green, blue, cyan, magenta, yellow, brown
-        # white, black, light-gray, dark-gray
-        # --------------------------------------------------------------
-        if [ -s "$GRUB_CUSTOM_FILE" ];
-        then
-          create_backup_file "$GRUB_CUSTOM_FILE"
-        else
-          echo -e -n > "$GRUB_CUSTOM_FILE" 2>/dev/null
-        fi
-        declare -A GRUB_COLOR_NAMES
-        declare -A GRUB_COLOR_VALUE
-        GRUB_COLOR_NAMES[0]="color_normal"          # Outside menu
-        GRUB_COLOR_VALUE[0]="dark-gray/black"
-        GRUB_COLOR_NAMES[1]="menu_color_normal"     # Inside menu
-        GRUB_COLOR_VALUE[1]="white/black"
-        GRUB_COLOR_NAMES[2]="menu_color_highlight"  # Current line
-        GRUB_COLOR_VALUE[2]="yellow/black"
-        color_entries=${#GRUB_COLOR_NAMES[@]}
-        col_nr=0
-        while [ $col_nr -lt $color_entries ];
-        do
-          # --------------------------------------------------
-          # Wenn es den Eintrag schon gibt, diesen ändern ...
-          # --------------------------------------------------
-          THE_NEW_COLOR_LINE="set ${GRUB_COLOR_NAMES[$col_nr]}=${GRUB_COLOR_VALUE[$col_nr]}"
-          if [ $(cat "$GRUB_CUSTOM_FILE" 2>/dev/null | grep -c -i -E "^\s*\#*\s*set\s*${GRUB_COLOR_NAMES[$col_nr]}\s*\=") -gt 0 ];
-          then
-            THE_NEW_COLOR_LINE=$(echo -n "$THE_NEW_COLOR_LINE" | sed 's/\//\\\//g')
-            sed -i -E "s/^\s*\#*\s*set\s*${GRUB_COLOR_NAMES[$col_nr]}\s*\=.*/$THE_NEW_COLOR_LINE/gi" "$GRUB_CUSTOM_FILE" 2>/dev/null
-          # ----------------------
-          # ... sonst neu anlegen
-          # ----------------------
-          else
-            echo -e "" >> "$GRUB_CUSTOM_FILE" 2>/dev/null
-            echo -e "$THE_NEW_COLOR_LINE" >> "$GRUB_CUSTOM_FILE" 2>/dev/null
-          fi
-          # --------------------------------------------------
-          ((col_nr+=1))
-        done
-        # --------------------------------------------------------------------
-        # 3.2 Hintergrundbild (TODO)
-        # --------------------------------------------------------------------
-        # A) $GRUB_DEFAULT_FILE => GRUB_BACKGROUND=/pfad/datei.jpg
-        # ODER
-        # B) $GRUB_CUSTOM_FILE =>
-        # insmod png
-        # insmod jpeg
-        # background_image /pfad/datei.jpg
-        # --------------------------------------------------------------------
-        remove_double_empty_lines "$GRUB_CUSTOM_FILE"
-        # --------------------------------------------------------------------
-        if [ $RESULT_ENTRY_1 -eq 0 ] &&
-           [ $RESULT_ENTRY_2 -eq 0 ];
-        then
-          e_and_l "$OK_TAG"
-        else
-          e_and_l "$ERROR_TAG ($RESULT_ENTRY_1 $RESULT_ENTRY_2)"
-        fi
-        add_full_log
-      fi
-      # ------------------------------------------------------------------------
-      # Aktualisierung der GRUB-Konfiguration
-      # ------------------------------------------------------------------------
-      e_and_l -n " Aktualisiere ${light_yellow}Start-Einträge${colors_off} des GRUB-Bootloader ... "
-      # -----------------------------------
-      # Wenn update-grub vorhanden ist ...
-      # -----------------------------------
-      if update-grub --version &>/dev/null;
-      then
-        update-grub &>"$LOG_TEMP"
-        if [ $? -eq 0 ];
-        then
-          e_and_l "$OK_TAG"
+          e_and_l " $HINWEIS_TAG: Sofern ein Boot-Loader mit einer anderen Partition verwendet wird,"
+          e_and_l " kann es sein, dass die verwendete Kernel-Version in diesem fest eingetragen"
+          e_and_l " ist und dort - idealerweise mit Verwendung der symbolischen Verknüpfungen -"
+          e_and_l " zusätzlich angepasst werden muss, damit die Änderungen wirksam werden."
         else
           e_and_l "$ERROR_TAG"
         fi
         add_full_log
-      else
-        # --------------------------------------
-        # ... sonst mit grub-mkconfig versuchen
-        # --------------------------------------
-        if grub-mkconfig --version &>/dev/null;
-        then
-          grub-mkconfig -o /boot/grub/grub.cfg &>"$LOG_TEMP"
-          if [ $? -eq 0 ];
-          then
-            e_and_l "$OK_TAG"
-          else
-            e_and_l "$ERROR_TAG"
-          fi
-          add_full_log
-        fi
       fi
+    else # Kein Befehl zur Symlink-Anlage (könnten wir auch manuell machen)
+      e_and_l "$(skip_text " Erstellung neuer Symlinks zu Kernel-Dateien" "$NA_TXT")"
     fi
+  else # Neuester Kernel bereits in Verwendung
+    e_and_l " Prüfung auf installierte ${light_cyan}neuere Kernel-Version${colors_off} ... $NF_TAG"
   fi
 
+  # ============================================================================
+  # Reparatur von fehlerhaften EFI-System-Einträgen (/boot/efi) in der fstab
+  # ---------------------------------------------------------------------------
+  # Bspw. nach Kopieren einzelner System-Partitionen auf ein anderes Laufwerk
+  # ist es sehr wahrscheinlich, dass die UUID der EFI-System-Partition nicht
+  # mehr den Eintragungen in der/n fstab/s des anderen Laufwerks entspricht.
+  # ============================================================================
   e_and_l "$HALF_LINE"
-  e_and_l " ${bold_blue}Dateisystem${colors_off}"
+  e_and_l " ${bold_blue}Boot-Partition${colors_off}"
   e_and_l "$HALF_LINE"
+  ACTION_MESSAGE=" Prüfung auf ${light_cyan}fehlerhafte EFI-System-Einträge${colors_off}"
+  if [ "$BOOT_MODE" == "EFI" ] &&
+     [ "$uuid_efi_system" != "" ];
+  then
+    if [ -s "$ETC_FSTAB" ];
+    then
+      EFI_ENTRY_ERRORS="$(check_esp_errors)"
+      if [ "$EFI_ENTRY_ERRORS" != "" ];
+      then
+        e_and_l " $ACHTUNG_TAG: Es wurden ${light_cyan}fehlerhafte Einträge für EFI-System-Partitionen${colors_off} gefunden."
+        e_and_l " Diese können den Bootvorgang erheblich verzögern und sogar zu dessen Abbruch"
+        e_and_l " führen. Nachstehende Einträge wurden überprüft."
+        e_and_l "$HALF_MINUS_LINE"
+        e_and_l -n " ESP in der Dateisystem-Tabelle: "
+        if [ "$uuid_efi_fstab" != "" ];
+        then
+          e_and_l -n "UUID ${light_yellow}$uuid_efi_fstab"
+        else
+          e_and_l -n "${light_yellow}kein Eintrag gefunden!"
+        fi
+        e_and_l "${colors_off}"
+        e_and_l -n " ESP auf dem Laufwerk ${light_magenta}$boot_device${colors_off} : "
+        if [ "$uuid_efi_system" != "" ];
+        then
+          e_and_l -n "UUID ${light_yellow}$uuid_efi_system"
+        else
+          e_and_l -n "keine Partition gefunden!"
+        fi
+        e_and_l "${colors_off}"
+        e_and_l -n " Partition mit Ordner ${light_magenta}/boot/efi${colors_off}: "
+        if [ "$uuid_efi_mount" != "" ] &&
+           [ -d "/boot/efi" ];
+        then
+          e_and_l -n "UUID ${light_yellow}$uuid_efi_mount"
+        else
+          e_and_l -n "${light_yellow}Ordner exisitiert nicht!"
+        fi
+        e_and_l "${colors_off}"
+        e_and_l " Folgende Fehler wurden gefunden:"
+        if [ $(echo "$EFI_ENTRY_ERRORS" | grep -c "1") -gt 0 ];
+        then
+          e_and_l " - die EFI-System-Partition ist nicht in der Dateisystem-Tabelle eingetragen"
+        fi
+        if [ $(echo "$EFI_ENTRY_ERRORS" | grep -c "2") -gt 0 ];
+        then
+          e_and_l " - die in der Dateisystem-Tabelle eingetrage ESP ist nicht die dieses Laufwerks"
+        fi
+        if [ $(echo "$EFI_ENTRY_ERRORS" | grep -c "3") -gt 0 ];
+        then
+          e_and_l " - die in der Dateisystem-Tabelle eingetrage ESP ist nicht korrekt eingehangen"
+        fi
+        if [ $(echo "$EFI_ENTRY_ERRORS" | grep -c "4") -gt 0 ];
+        then
+          e_and_l " - Ordner /boot/efi liegt nicht auf der dafür in fstab eingetragenen Partition"
+        fi
+        if [ $(echo "$EFI_ENTRY_ERRORS" | grep -c "5") -gt 0 ];
+        then
+          e_and_l " - die Partition mit dem Ordner /boot/efi ist nicht die EFI-System-Partition"
+        fi
+        e_and_l "$HALF_MINUS_LINE"
+        ask_yes_or_no_plus "" " Sollen die ${light_cyan}fehlerhaften EFI-System-Einträge${colors_off} korrigiert werden" "" "n"
+        if [ $? -eq 1 ];
+        then
+          create_backup_file "$ETC_FSTAB"
+          e_and_l -n " Korrigiere ${light_yellow}fehlerhafte EFI-System-Einträge${colors_off} ... "
+          NEW_UUID_ENTRY="UUID=$uuid_efi_system /boot/efi vfat umask=0077 0 1"
+          ESP_REPAIR_ERRORS=0
+          # ----------------------------------------------------
+          # Wenn es schon einen Eintrag gibt, diesen ändern ...
+          # ----------------------------------------------------
+          if [ $(cat "$ETC_FSTAB" | grep -c -i -E "^\s*\#*\s*UUID\s*\=.*\/boot\/efi") -gt 0 ];
+          then
+            sed -i -E "s/^\s*\#*\s*UUID\s*\=.*\/boot\/efi.*/${NEW_UUID_ENTRY//\//\\\/}/gi" "$ETC_FSTAB"
+            ESP_REPAIR_ERRORS=$?
+          # -----------------------------------------
+          # ... sonst einen neuen Eintrag hinzufügen
+          # -----------------------------------------
+          else
+            echo -e "" >> "$ETC_FSTAB" 2>/dev/null
+            echo -e "$NEW_UUID_ENTRY" >> "$ETC_FSTAB" 2>/dev/null
+            ESP_REPAIR_ERRORS=$?
+          fi
+          if [ $ESP_REPAIR_ERRORS -eq 0 ];
+          then
+            # ----------------------------
+            # Doppelte Einträge entfernen
+            # ----------------------------
+            THE_TEMP_FILE="$DOWNLOAD_DIR/etc_fstab.tmp"
+            awk '!seen[$0]++' "$ETC_FSTAB" > "$THE_TEMP_FILE" 2>/dev/null
+            remove_file "$ETC_FSTAB"
+            mv -f "$THE_TEMP_FILE" "$ETC_FSTAB" &>/dev/null
+            # ----------------------------
+            e_and_l "$OK_TAG"
+            e_and_l "$REBOOT_MSG"
+          else
+            restore_backup_file "$ETC_FSTAB"
+            e_and_l "$ERROR_TAG"
+          fi
+        fi
+      else
+        e_and_l "$ACTION_MESSAGE ... $NF_TAG"
+      fi
+    else
+      e_and_l "$(skip_text "$ACTION_MESSAGE" "keine fstab!")"
+    fi
+  else
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "nur bei EFI-Boot")"
+  fi
+
   # ============================================================================
   # Deaktivierung verwaister Partitions-Einträge in der fstab
   # ============================================================================
-  ACTION_MESSAGE=" Deaktiviere ${light_cyan}verwaiste Partitions-Einträge${colors_off}"
-  if [ -s "/etc/fstab" ];
+  e_and_l "$HALF_LINE"
+  e_and_l " ${bold_blue}System-Partitionen${colors_off}"
+  e_and_l "$HALF_LINE"
+  ACTION_MESSAGE=" Prüfung auf ${light_cyan}verwaiste Partitions-Einträge${colors_off}"
+  if [ -s "$ETC_FSTAB" ];
   then
     DEVICE_UUID_LIST="$(ls -1 /dev/disk/by-uuid)"
     FSTAB_UUID_LIST="$DOWNLOAD_DIR/uuid_list.tmp"
-    cat /etc/fstab | grep -i -E "^\s*uuid\s*=" | cut -d"=" -f 2 | awk '{print $1" => "$2" ("$3")"}' 1>"$FSTAB_UUID_LIST" 2>/dev/null
+    cat "$ETC_FSTAB" | grep -i -E "^\s*uuid\s*=" | cut -d"=" -f 2 | awk '{print $1" => "$2" ("$3")"}' 1>"$FSTAB_UUID_LIST" 2>/dev/null
     if [ -s "$FSTAB_UUID_LIST" ];
     then
       MISSING_UUID_LIST=()
@@ -16051,7 +16138,7 @@ then
         ask_yes_or_no_plus "remove_orphan_uuid" " Sollen die verwaisten Einträge auswählbar deaktiviert werden" "" "j"
         if [ $? -eq 1 ];
         then
-          create_backup_file "/etc/fstab"
+          create_backup_file "$ETC_FSTAB"
           e_and_l " ${light_yellow}Deaktivierung von Partitions-Einträgen${colors_off} in der Dateisystem-Tabelle:"
           for uuid_part in "${MISSING_UUID_LIST[@]}";
           do
@@ -16059,36 +16146,478 @@ then
             then
               QUESTION=" ${light_yellow}"
               QUESTION+="$(echo ${uuid_part} | awk '{print $1}')"
-              QUESTION+="${colors_off}${dark_grey} => ${colors_off}${light_cyan}"
+              QUESTION+="${colors_off}${dark_gray} => ${colors_off}${light_cyan}"
               QUESTION+="$(echo ${uuid_part} | awk '{print $3}')"
               QUESTION+="${colors_off}"
-              ask_yes_or_no_pure "$QUESTION"
+              # ask_yes_or_no_pure "$QUESTION"
+              ask_yes_or_no_plus "" "$QUESTION" "" "n"
               if [ $? -eq 1 ];
               then
                 THE_PURE_UUID=$(echo $uuid_part | awk '{print $1}' | xargs 2>/dev/null)
                 e_and_l -n " Deaktiviere ${light_yellow}$THE_PURE_UUID${colors_off} ... "
-                sed -i -E "s/^\s*UUID\s*=\s*$THE_PURE_UUID/# UUID=$THE_PURE_UUID/gi" "/etc/fstab" 2>/dev/null
+                sed -i -E "s/^\s*UUID\s*=\s*$THE_PURE_UUID/# UUID=$THE_PURE_UUID/gi" "$ETC_FSTAB" 2>/dev/null
                 if [ $? -eq 0 ];
                 then
                   e_and_l "$OK_TAG"
                 else
+                  restore_backup_file "$ETC_FSTAB"
                   e_and_l "$ERROR_TAG"
                 fi
               fi
             fi
           done
         fi
-        e_and_l "$HALF_MINUS_LINE"
       else
-        e_and_l "$ACTION_MESSAGE  ... $NF_TAG"
+        e_and_l "$ACTION_MESSAGE ... $NF_TAG"
       fi
     else
-      e_and_l "$ACTION_MESSAGE  ... $NF_TAG"
+      e_and_l "$ACTION_MESSAGE ... $NF_TAG"
     fi
     remove_file "$FSTAB_UUID_LIST"
   else
     e_and_l "$(skip_text "$ACTION_MESSAGE " "keine fstab!")"
   fi
+
+  # ============================================================================
+  # Erneuerung des GRUB-Bootloaders
+  # ============================================================================
+  e_and_l "$HALF_LINE"
+  e_and_l " ${bold_blue}GRUB-Bootloader${colors_off}"
+  e_and_l "$HALF_LINE"
+  e_and_l " Wenn sich auf dem Rechner Betriebs-Systeme befinden, die sich beim Booten des"
+  e_and_l " Rechners nicht auswählen oder starten lassen, kann versucht werden dies durch"
+  e_and_l " die Erneuerung des GRUB-Bootloaders und dessen Konfiguration zu korrigieren."
+  EFI_ENTRY_ERRORS=""
+  if [ "$BOOT_MODE" == "EFI" ] &&
+     [ "$uuid_efi_system" != "" ];
+  then
+    # -------------------------------------------------------------------------
+    # Wenn es in der Dateisystem-Tabelle einen aktiven Eintrag für /boot/efi
+    # gibt und dieser nicht eingehangen ist (bspw. nach vorheriger Korrektur),
+    # dann die Partition mit /boot/efi einhängen (mounten)
+    # -------------------------------------------------------------------------
+    if [ $(cat "$ETC_FSTAB" 2>/dev/null | grep -c -i -E "^\s*[^#]*\s*[a-z0-9\=\-]*(\s|\t)+/boot/efi") -gt 0 ] &&
+       [ $(mount 2>/dev/null | grep -c -i -E "$efi_system_partition.*/boot/efi") -eq 0 ];
+    then
+      e_and_l "$HALF_MINUS_LINE"
+      e_and_l " $WARN_TAG: Die EFI-System-Partition ${light_magenta}$efi_system_partition${colors_off} ist nicht eingehangen."
+      e_and_l " Zur korrekten Erstellung eines neuen Bootloaders muss diese eingehangen sein."
+      ask_yes_or_no_plus "" " Jetzt die EFI-System-Partition auf ${light_cyan}/boot/efi${colors_off} einhängen" "" "j"
+      if [ $? -eq 1 ];
+      then
+        e_and_l -n " Hänge die EFI-System-Partition ${light_yellow}$efi_system_partition${colors_off} auf ${light_yellow}/boot/efi${colors_off} ein ... "
+        if [ ! -d /boot/efi ];
+        then
+          mkdir -p /boot/efi &>/dev/null
+        fi
+        mount "$efi_system_partition" /boot/efi &>/dev/null
+        if [ $? -eq 0 ];
+        then
+          e_and_l "$OK_TAG"
+        else
+          e_and_l "$ERROR_TAG"
+        fi
+      fi
+      e_and_l "$HALF_MINUS_LINE"
+    fi
+    # ----------------------------------------------------------------
+    # Wenn es jetzt immer noch Fehler gibt, dann Warnhinweis anzeigen
+    # ----------------------------------------------------------------
+    EFI_ENTRY_ERRORS="$(check_esp_errors)"
+    if [ "$EFI_ENTRY_ERRORS" != "" ];
+    then
+      e_and_l "$HALF_MINUS_LINE"
+      e_and_l " $WARN_TAG: Es wurden fehlerhafte Einträge für EFI-System-Partitionen gefunden."
+      e_and_l " Damit die Erstellung eines neuen Bootloaders korrekt durchgeführt werden kann,"
+      e_and_l " sollten diese Einträge erst korrigiert werden."
+    fi
+  fi
+  if [ "$EFI_ENTRY_ERRORS" == "" ];
+  then
+    GRUB_QUESTION="Neuen ${light_cyan}GRUB-Bootloader${colors_off} mit neuen Starteinträgen erstellen"
+  else
+    GRUB_QUESTION="Trotzdem ${light_cyan}GRUB-Bootloader${colors_off} neu erstellen (${bold_white}nicht empfohlen${colors_off})"
+  fi
+  ask_yes_or_no_plus "" " $GRUB_QUESTION" "" "n"
+  if [ $? -eq 1 ];
+  then
+    GRUB_ACTION=2
+    while [ $GRUB_ACTION -eq 2 ];
+    do
+      e_and_l "$HALF_MINUS_LINE"
+      e_and_l " ${bold_white}Konfiguration${colors_off} von GRUB"
+      # -----------------------------
+      # Option Letzte Auswahl merken
+      # -----------------------------
+      e_and_l "$HALF_MINUS_LINE"
+      ask_yes_or_no_plus "" " Soll GRUB sich den ${light_yellow}zuletzt ausgewählten Eintrag${colors_off} merken" "" "j"
+      if [ $? -eq 1 ];
+      then
+        GRUB_DEFAULT_ENTRY="GRUB_DEFAULT=saved"
+        GRUB_SAVEDEFAULT_ENTRY="GRUB_SAVEDEFAULT=true"
+        GRUB_TIMEOUT_ENTRY=""
+      else
+        GRUB_DEFAULT_ENTRY="GRUB_DEFAULT=0"
+        GRUB_SAVEDEFAULT_ENTRY=""
+      fi
+      # ------------------------------
+      # Option Anzeigedauer des Menüs
+      # ------------------------------
+      e_and_l "$HALF_MINUS_LINE"
+      e_and_l " Wie lange soll das ${light_yellow}Startmenü${colors_off} anzeigt werden, bevor der vorselektierte Eintrag"
+      e_and_l " automatisch ausgewählt wird (Zeit in Sekunden von 0 bis 60)?"
+      GRUB_TIMEOUT_DURATION=-1
+      while [ $GRUB_TIMEOUT_DURATION -lt 0 ] ||
+            [ $GRUB_TIMEOUT_DURATION -gt 60 ];
+      do
+        e_and_l -n " Bitte ${light_yellow}Anzeigedauer${colors_off} eingeben: "
+        read -r GRUB_TIMEOUT_DURATION
+        GRUB_TIMEOUT_DURATION=$(echo ${GRUB_TIMEOUT_DURATION} | sed -E "s/[^0-9]*//gi" | xargs 2>/dev/null)
+        if [ "$GRUB_TIMEOUT_DURATION" == "" ];
+        then
+          GRUB_TIMEOUT_DURATION=-1
+        fi
+      done
+      # -----------------------
+      # Option Hintergrundbild
+      # -----------------------
+      e_and_l "$HALF_MINUS_LINE"
+      e_and_l " Zur Anzeige eines ${light_yellow}Hintergrundbilds${colors_off} dessen vollständigen Dateipfad eingeben."
+      e_and_l " Eingabe leer lassen, um die Einstellung des Hintergrundbilds nicht zu ändern,"
+      e_and_l " oder zum Zurücksetzen des Bildes auf die Standard-Einstellung ${light_yellow}reset${colors_off} eingeben."
+      GRUB_BG_FILE="NONE"
+      while [ "$GRUB_BG_FILE" == "NONE" ];
+      do
+        e_and_l -n " Hintergrundbild: "
+        read -r GRUB_BG_FILE
+        if [ "$GRUB_BG_FILE" != "reset" ];
+        then
+          if [ "$GRUB_BG_FILE" != "" ] &&
+             [[ ! -s "$GRUB_BG_FILE" || -d "$GRUB_BG_FILE" ]];
+          then
+            GRUB_BG_FILE="NONE"
+          fi
+        fi
+      done
+      # --------------
+      # Option Farben
+      # --------------
+      color_select "Menü-Einträge und Rahmen"
+      GRUB_FG_COLOR_CODE=$?
+      GRUB_FG_COLOR_NAME="${ANSI_COLOR_NAMES[$GRUB_FG_COLOR_CODE]}"
+      color_select "Ausgewählter Menüeintrag"
+      GRUB_HL_COLOR_CODE=$?
+      GRUB_HL_COLOR_NAME="${ANSI_COLOR_NAMES[$GRUB_HL_COLOR_CODE]}"
+      color_select "Hintergrund der Auswahl ([0] black = transparent)"
+      GRUB_BG_COLOR_CODE=$?
+      GRUB_BG_COLOR_NAME="${ANSI_COLOR_NAMES[$GRUB_BG_COLOR_CODE]}"
+      color_select "Informationen neben Menü"
+      GRUB_OS_COLOR_CODE=$?
+      GRUB_OS_COLOR_NAME="${ANSI_COLOR_NAMES[$GRUB_OS_COLOR_CODE]}"
+      # ----------------
+      # Zusammenfassung
+      # ----------------
+      e_and_l "$HALF_MINUS_LINE"
+      e_and_l " ${bold_white}Zusammenfassung ausgewählter Optionen${colors_off}"
+      e_and_l "$HALF_MINUS_LINE"
+      e_and_l -n " Zuletzt ausgewählten Eintrag merken: ${light_yellow}"
+      if [ $(echo "$GRUB_DEFAULT_ENTRY" | grep -c -i -E "saved") -gt 0 ]; then e_and_l -n "Ja"; else e_and_l -n "Nein"; fi
+      e_and_l "${colors_off}"
+      e_and_l " Anzeigedauer des Startmenüs: ${light_yellow}$GRUB_TIMEOUT_DURATION${colors_off} Sekunden"
+      e_and_l -n " Hintergrundbild: ${light_yellow}"
+      if [ "$GRUB_BG_FILE" != "" ];
+      then
+        if [ "$GRUB_BG_FILE" == "reset" ];
+        then
+          e_and_l -n "wird auf Standard gesetzt"
+        else
+          e_and_l -n "$GRUB_BG_FILE"
+        fi
+      else
+        e_and_l -n "keine Änderung"
+      fi
+      e_and_l "${colors_off}"
+      fg_color_code="$(color_idx_code $GRUB_FG_COLOR_CODE)"
+      e_and_l " Menü-Einträge und Rahmen: ${fg_color_code}$GRUB_FG_COLOR_NAME${colors_off}"
+      hl_color_code="$(color_idx_code $GRUB_HL_COLOR_CODE)"
+      e_and_l " Ausgewählter Menüeintrag: ${hl_color_code}$GRUB_HL_COLOR_NAME${colors_off}"
+      bg_color_code="$(color_idx_code $GRUB_BG_COLOR_CODE)"
+      e_and_l -n " Hintergrund der Auswahl : "
+      if [ "$GRUB_BG_COLOR_NAME" != "black" ];
+      then
+        hl_bg_color="$(echo ${bg_color_code} | sed -E "s/\[0\;(3|9)/[4/gi")"
+        e_and_l "$GRUB_BG_COLOR_NAME"
+      else
+        hl_bg_color=""
+        e_and_l "transparent"
+      fi
+      os_color_code="$(color_idx_code $GRUB_OS_COLOR_CODE)"
+      e_and_l " Informationen neben Menü: ${os_color_code}$GRUB_OS_COLOR_NAME${colors_off}"
+      e_and_l " Vorschau (ohne Hintergrundbild):"
+      e_and_l " ${os_color_code}      GRUB Version${colors_off}"
+      e_and_l " ${fg_color_code}┏━━━━━━━━━━━━━━━━━━━━━━━${colors_off}"
+      e_and_l " ${fg_color_code}┃ Eintrag im Startmenü ${colors_off}"
+      e_and_l " ${fg_color_code}┃${colors_off}${hl_color_code}${hl_bg_color}*Ausgewählter Eintrag ${colors_off}"
+      # ------------------------------------------------------------------------
+      # 1. Sicherheitsabfrage
+      # ------------------------------------------------------------------------
+      e_and_l "$HALF_MINUS_LINE"
+      e_and_l " Soll der ${bold_yellow}GRUB-Bootloader${colors_off} mit diesen Einstellungen neu installiert werden?"
+      e_and_l " [${bold_yellow}0${colors_off}] Abbrechen, GRUB nicht neu installieren"
+      e_and_l " [${bold_yellow}1${colors_off}] Ja, neuen GRUB-Bootloader installieren"
+      e_and_l " [${bold_yellow}2${colors_off}] Nein, Konfiguration wiederholen"
+      user_choice_012
+      GRUB_ACTION=$?
+    done
+    # --------------------------------------------------------------------------
+    # 2. Sicherheitsabfrage
+    # --------------------------------------------------------------------------
+    if [ $GRUB_ACTION -eq 1 ];
+    then
+      e_and_l " $ACHTUNG_TAG: Die aktuelle Konfiguration des GRUB-Bootloaders wird vollständig"
+      e_and_l " überschrieben, was dazu führen kann, dass eventuell individuell angepasste"
+      e_and_l " Dateien nachträglich erneut manuell angepasst werden müssen!"
+      ask_yes_or_no_plus "" " Jetzt wirklich den ${bold_yellow}GRUB-Bootloader${colors_off} auf ${bold_yellow}$boot_device${colors_off} erneuern" "" "n"
+      if [ $? -eq 1 ];
+      then
+        e_and_l " $USER_CHOICE_YES"
+        # ----------------------------------------------------------------------
+        # Installation eines neuen GRUB-Loaders
+        # ----------------------------------------------------------------------
+        e_and_l -n " Installiere neuen ${light_yellow}GRUB-Bootloader${colors_off} auf dem Ziel, bitte warten   ... "
+        if grub-install --version &>/dev/null;
+        then
+          grub-install --boot-directory=/boot --efi-directory=/boot/efi --force "$boot_device" &>"$LOG_TEMP"
+          if [ $? -eq 0 ];
+          then
+            e_and_l "$OK_TAG"
+          else
+            e_and_l "$ERROR_TAG"
+          fi
+          add_full_log
+        else
+          e_and_l "$NA_TAG"
+        fi
+        # ----------------------------------------------------------------------
+        # Standard-Konfiguration (Defaults) von GRUB ändern
+        # ----------------------------------------------------------------------
+        e_and_l -n " Aktualisiere ${light_yellow}Konfiguration${colors_off} des GRUB-Bootloaders, bitte warten  ... "
+        if [ -s "$GRUB_DEFAULT_FILE" ];
+        then
+          create_backup_file "$GRUB_DEFAULT_FILE"
+          # --------------------------------------------------------------------
+          # 1. Einstellungen zur Vorauswahl des letzten ausgewählten Eintrags
+          # --------------------------------------------------------------------
+          # 1.1 GRUB_DEFAULT: Letzten ausgewählten Eintrag vorauswählen (saved)
+          # --------------------------------------------------------------------
+          # Wenn es den Eintrag schon gibt, diesen ändern ...
+          # --------------------------------------------------
+          if [ $(cat "$GRUB_DEFAULT_FILE" 2>/dev/null | grep -c -i -E "^\s*\#*\s*GRUB_DEFAULT\s*\=") -gt 0 ];
+          then
+            sed -i -E "s/^\s*\#*\s*GRUB_DEFAULT\s*\=.*/$GRUB_DEFAULT_ENTRY/gi" "$GRUB_DEFAULT_FILE" 2>/dev/null
+            RESULT_ENTRY_1=$?
+          # ----------------------
+          # ... sonst neu anlegen
+          # ----------------------
+          else
+            echo -e "" >> "$GRUB_DEFAULT_FILE" 2>/dev/null
+            echo -e "$GRUB_DEFAULT_ENTRY" >> "$GRUB_DEFAULT_FILE" 2>/dev/null
+            RESULT_ENTRY_1=$?
+          fi
+          # --------------------------------------------------
+          # 1.2 GRUB_SAVEDEFAULT: Vorauswahl verwenden (true)
+          # --------------------------------------------------
+          # Wenn es den Eintrag schon gibt, diesen ändern ...
+          # --------------------------------------------------
+          if [ $(cat "$GRUB_DEFAULT_FILE" 2>/dev/null | grep -c -i -E "^\s*\#*\s*GRUB_SAVEDEFAULT\s*\=") -gt 0 ];
+          then
+            sed -i -E "s/^\s*\#*\s*GRUB_SAVEDEFAULT\s*\=.*/$GRUB_SAVEDEFAULT_ENTRY/gi" "$GRUB_DEFAULT_FILE" 2>/dev/null
+            RESULT_ENTRY_2=$?
+          # ----------------------
+          # ... sonst neu anlegen
+          # ----------------------
+          else
+            # ------------------------------------------------------
+            # SED-Option /a fügt eine Zeile hinter dem Match ein ;)
+            # ------------------------------------------------------
+            sed -i -E "/$GRUB_DEFAULT_ENTRY/a$GRUB_SAVEDEFAULT_ENTRY" "$GRUB_DEFAULT_FILE" 2>/dev/null
+            RESULT_ENTRY_2=$?
+          fi
+          # -----------------------------------------------------------------
+          # 2. Einstellungen zur Menü-Anzeigedauer vor automatischer Auswahl
+          # -----------------------------------------------------------------
+          # 2.1 GRUB_TIMEOUT: Anzeigedauer in Sekunden
+          # --------------------------------------------------
+          # Wenn es den Eintrag schon gibt, diesen ändern ...
+          # --------------------------------------------------
+          if [ $(cat "$GRUB_DEFAULT_FILE" 2>/dev/null | grep -c -i -E "^\s*\#*\s*GRUB_TIMEOUT\s*\=") -gt 0 ];
+          then
+            sed -i -E "s/^\s*\#*\s*GRUB_TIMEOUT\s*\=.*/GRUB_TIMEOUT=$GRUB_TIMEOUT_DURATION/gi" "$GRUB_DEFAULT_FILE" 2>/dev/null
+            RESULT_ENTRY_1=$?
+          # ----------------------
+          # ... sonst neu anlegen
+          # ----------------------
+          else
+            echo -e "" >> "$GRUB_DEFAULT_FILE" 2>/dev/null
+            echo -e "GRUB_TIMEOUT=$GRUB_TIMEOUT_DURATION" >> "$GRUB_DEFAULT_FILE" 2>/dev/null
+            RESULT_ENTRY_1=$?
+          fi
+          # -------------------------------------------------------------------
+          # 2.2 DURATION soll die Anzeigedauer, nicht die Vor-Verzögerung sein
+          # -------------------------------------------------------------------
+          # Wenn es den Eintrag schon gibt, diesen ändern ...
+          # (wenn es ihn nicht gibt, auch nicht neu anlegen, da ohne diesen das
+          # Verhalten von GRUB_TIMEOUT bereits die "Anzeigedauer" ist)
+          # --------------------------------------------------
+          if [ $(cat "$GRUB_DEFAULT_FILE" 2>/dev/null | grep -c -i -E "^\s*\#*\s*GRUB_TIMEOUT_STYLE\s*\=") -gt 0 ];
+          then
+            sed -i -E "s/^\s*\#*\s*GRUB_TIMEOUT_STYLE\s*\=.*/GRUB_TIMEOUT_STYLE=menu/gi" "$GRUB_DEFAULT_FILE" 2>/dev/null
+          fi
+          # --------------------------------------------------------------------
+          remove_double_empty_lines "$GRUB_DEFAULT_FILE"
+          # --------------------------------------------------------------------
+          # 3. Zusätzlich individuelle Einstellungen zu Bild und Farben
+          # --------------------------------------------------------------------
+          # Individuelle Konfigurations-Datei anlegen
+          # ------------------------------------------
+          if [ -s "$GRUB_CUSTOM_FILE" ];
+          then
+            create_backup_file "$GRUB_CUSTOM_FILE"
+          else
+            echo -e -n > "$GRUB_CUSTOM_FILE" 2>/dev/null
+          fi
+          # --------------------
+          # 3.1 Hintergrundbild (TODO)
+          # --------------------
+          if [ "$GRUB_BG_FILE" != "" ];
+          then
+            # ---------------------------------------
+            # Hintergrundbild zurücksetzen (löschen)
+            # ---------------------------------------
+            if [ "$GRUB_BG_FILE" == "reset" ];
+            then
+              sed -i -E "s/^\s*\#*\s*insmod\s.*//gi" "$GRUB_CUSTOM_FILE" 2>/dev/null
+              sed -i -E "s/^\s*\#*\s*background_image\s.*//gi" "$GRUB_CUSTOM_FILE" 2>/dev/null
+            # -----------------------
+            # Hintergrundbild ändern
+            # -----------------------
+            else
+              # --------------------------------------------------
+              # Wenn es den Eintrag schon gibt, diesen ändern ...
+              # --------------------------------------------------
+              if [ $(cat "$GRUB_CUSTOM_FILE" 2>/dev/null | grep -c -i -E "^\s*\#*\s*background_image\s") -gt 0 ];
+              then
+                sed -i -E "s/^\s*\#*\s*insmod png/insmod png/gi" "$GRUB_CUSTOM_FILE" 2>/dev/null
+                sed -i -E "s/^\s*\#*\s*insmod jpeg/insmod jpeg/gi" "$GRUB_CUSTOM_FILE" 2>/dev/null
+                sed -i -E "s/^\s*\#*\s*background_image\s.*/background_image ${GRUB_BG_FILE//\//\\\/}/gi" "$GRUB_CUSTOM_FILE" 2>/dev/null
+              # --------------------------------------------------
+              # ... sonst neu anlegen
+              # --------------------------------------------------
+              else
+                echo -e "" >> "$GRUB_CUSTOM_FILE" 2>/dev/null
+                echo -e "insmod png" >> "$GRUB_CUSTOM_FILE" 2>/dev/null
+                echo -e "insmod jpeg" >> "$GRUB_CUSTOM_FILE" 2>/dev/null
+                echo -e "background_image $GRUB_BG_FILE" >> "$GRUB_CUSTOM_FILE" 2>/dev/null
+              fi
+            fi
+          fi
+          # -----------
+          # 3.2 Farben
+          # -----------
+          GRUB_COLOR_NAMES[0]="color_normal"
+          GRUB_COLOR_VALUE[0]="$GRUB_OS_COLOR_NAME/black"
+          GRUB_COLOR_NAMES[1]="menu_color_normal"
+          GRUB_COLOR_VALUE[1]="$GRUB_FG_COLOR_NAME/black"
+          GRUB_COLOR_NAMES[2]="menu_color_highlight"
+          GRUB_COLOR_VALUE[2]="$GRUB_HL_COLOR_NAME/$GRUB_BG_COLOR_NAME"
+          color_entries=${#GRUB_COLOR_NAMES[@]}
+          col_nr=0
+          while [ $col_nr -lt $color_entries ];
+          do
+            # --------------------------------------------------
+            # Wenn es den Eintrag schon gibt, diesen ändern ...
+            # --------------------------------------------------
+            THE_NEW_COLOR_LINE="set ${GRUB_COLOR_NAMES[$col_nr]}=${GRUB_COLOR_VALUE[$col_nr]}"
+            if [ $(cat "$GRUB_CUSTOM_FILE" 2>/dev/null | grep -c -i -E "^\s*\#*\s*set\s*${GRUB_COLOR_NAMES[$col_nr]}\s*\=") -gt 0 ];
+            then
+              THE_NEW_COLOR_LINE=$(echo -n "$THE_NEW_COLOR_LINE" | sed 's/\//\\\//g')
+              sed -i -E "s/^\s*\#*\s*set\s*${GRUB_COLOR_NAMES[$col_nr]}\s*\=.*/$THE_NEW_COLOR_LINE/gi" "$GRUB_CUSTOM_FILE" 2>/dev/null
+            # ----------------------
+            # ... sonst neu anlegen
+            # ----------------------
+            else
+              echo -e "" >> "$GRUB_CUSTOM_FILE" 2>/dev/null
+              echo -e "$THE_NEW_COLOR_LINE" >> "$GRUB_CUSTOM_FILE" 2>/dev/null
+            fi
+            # --------------------------------------------------
+            ((col_nr+=1))
+          done
+          # --------------------------------------------------------------------
+          remove_double_empty_lines "$GRUB_CUSTOM_FILE"
+          # --------------------------------------------------------------------
+          if [ $RESULT_ENTRY_1 -eq 0 ] &&
+             [ $RESULT_ENTRY_2 -eq 0 ];
+          then
+            e_and_l "$OK_TAG"
+          else
+            e_and_l "$ERROR_TAG ($RESULT_ENTRY_1 $RESULT_ENTRY_2)"
+            add_full_log
+          fi
+        else
+          e_and_l "$NA_TAG"
+        fi
+        # ----------------------------------------------------------------------
+        # Aktualisierung der GRUB-Konfiguration
+        # ----------------------------------------------------------------------
+        e_and_l -n " Aktualisiere ${light_yellow}Start-Einträge${colors_off} des GRUB-Bootloaders, bitte warten ... "
+        # -----------------------------------
+        # Wenn update-grub vorhanden ist ...
+        # -----------------------------------
+        if update-grub --version &>/dev/null;
+        then
+          update-grub &>"$LOG_TEMP"
+          if [ $? -eq 0 ];
+          then
+            e_and_l "$OK_TAG"
+          else
+            e_and_l "$ERROR_TAG"
+          fi
+          add_full_log
+        else
+          # --------------------------------------
+          # ... sonst mit grub-mkconfig versuchen
+          # --------------------------------------
+          if grub-mkconfig --version &>/dev/null;
+          then
+            grub-mkconfig -o /boot/grub/grub.cfg &>"$LOG_TEMP"
+            if [ $? -eq 0 ];
+            then
+              e_and_l "$OK_TAG"
+            else
+              e_and_l "$ERROR_TAG"
+            fi
+            add_full_log
+          else
+            e_and_l "$NA_TAG"
+          fi
+        fi
+        if [ -s "$GRUB_CUSTOM_FILE" ];
+        then
+          e_and_l " $HINWEIS_TAG: Die individuelle Konfiguration wurde ordnungsgemäß in den von GRUB"
+          e_and_l " dafür vorgesehenen Dateien gespeichert. Die Änderung von GRUB-Einstellungen"
+          e_and_l " in anderen Konfigurations-Dateien kann diese jedoch möglicherweise überlagern."
+          e_and_l " Zudem können sich die Farben im GRUB-Startmenü aufgrund einer verschiedenen"
+          e_and_l " RGB-Matrix eventuell leicht von den zuvor dargestellten Farben unterscheiden."
+        fi
+      else
+        e_and_l " $USER_CHOICE_NO"
+      fi
+    fi
+  fi
+
+  e_and_l "$HALF_LINE"
+  e_and_l " ${bold_blue}Dateisysteme${colors_off}"
+  e_and_l "$HALF_LINE"
 
   # ============================================================================
   # Überprüfung der Zugriffsrechte des Wurzelverzeichnis
@@ -17007,7 +17536,7 @@ then
               e_and_l -n "$OK_TAG"
               if [ $TARGET_REACHED -eq 2 ];
               then
-                e_and_l " ${dark_grey}(Domain)${colors_off}"
+                e_and_l " ${dark_gray}(Domain)${colors_off}"
               else
                 e_and_l ""
               fi
@@ -17091,7 +17620,7 @@ if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
 then
 
   e_and_l "$FULL_LINE"
-  e_and_l " ${bold_blue}Bereinigung des Systems${colors_off} ${dark_grey}[cleansys]${colors_off}"
+  e_and_l " ${bold_blue}Bereinigung des Systems${colors_off} ${dark_gray}[cleansys]${colors_off}"
   e_and_l "$FULL_LINE"
   e_and_l " ${bold_blue}Kernel${colors_off}"
   e_and_l "$HALF_LINE"
@@ -17110,7 +17639,7 @@ then
   do
     kernel_base_name="$(echo ${old_kernel} | sed 's/linux-image-//i' | sed 's/linux-headers-//i' | sed 's/-generic//i' | sed 's/-common//i' | sed 's/-amd64//i' | sed 's/-i386//i')"
     if [ "$kernel_base_name" != "" ] &&
-       [ "$kernel_base_name" != "$CURR_KERNEL_VERSION" ];
+       [ "$kernel_base_name" != "$CURRENT_KERNEL_VERSION" ];
     then
       if [ $(LANG=en dpkg-query -W -f='${Status}' "$old_kernel" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ] ||
          [ $(grep -i -r -l -E "$kernel_base_name" /boot/efi 2>/dev/null | wc -l) -ne 0 ] ||
@@ -17130,7 +17659,7 @@ then
      [ $REMOVE_KERNEL_IDX -gt 0 ];
   then
     e_and_l " Es wurden ${bold_yellow}$REMOVE_KERNEL_IDX${colors_off} Einträge von ${light_cyan}nicht verwendeten Kernel-Versionen${colors_off} gefunden."
-    e_and_l " Die aktuell verwendete Version ist: ${bold_white}$CURR_KERNEL_VERSION${colors_off}."
+    e_and_l " Die aktuell verwendete Version ist: ${bold_white}$CURRENT_KERNEL_VERSION${colors_off}."
     ask_yes_or_no_plus "remove_unused_kernels" " Nicht verwendete Versionen auswählbar löschen" "" "n"
     if [ $? -eq 1 ];
     then
@@ -17539,7 +18068,7 @@ then
           then
             THE_LINK_PATH="$(echo -e -n "$broken_line" | sed -E "s/'/\\\'/g" | cut -d'>' -f 1 | xargs 2>/dev/null)"
             THE_TARGET_PATH="$(echo -e -n "$broken_line" | sed -E "s/'/\\\'/g" | cut -d'>' -f 2 | xargs 2>/dev/null)"
-            e_and_l " $i. ${light_red}$THE_LINK_PATH${colors_off} -> ${light_purple}$THE_TARGET_PATH${colors_off}"
+            e_and_l " $i. ${light_red}$THE_LINK_PATH${colors_off} -> ${light_magenta}$THE_TARGET_PATH${colors_off}"
             e_and_l "$HALF_MINUS_LINE"
           fi
           ((i+=1))
@@ -17570,7 +18099,7 @@ then
             THE_TARGET_PATH="$(echo -e -n "$broken_line" | sed -E "s/'/\\\'/g" | cut -d'>' -f 2 | xargs 2>/dev/null)"
             if [ $LINK_ACTION -eq 1 ];
             then
-              e_and_l " ${light_cyan}$THE_LINK_PATH${colors_off} -> ${dark_grey}$THE_TARGET_PATH${colors_off}"
+              e_and_l " ${light_cyan}$THE_LINK_PATH${colors_off} -> ${dark_gray}$THE_TARGET_PATH${colors_off}"
               ask_yes_or_no_plus "" " Ungültige Verknüpfung löschen" "" "n"
               DO_REMOVE_LINK=$?
             fi
@@ -17614,7 +18143,7 @@ then
   then
     MAILS_ENTRIES=$(grep -c -i -E "from:" "$USER_MAIL_FILE")
     MAILS_TOTAL_BYTES=$(du -b -c -s ${USER_MAIL_FILE} 2>/dev/null | tail -1 | awk '{print $1}')
-    QUESTION_TEXT=" ${light_cyan}System-Benachrichtigungen${colors_off} löschen (${light_purple}$MAILS_ENTRIES Mails, "
+    QUESTION_TEXT=" ${light_cyan}System-Benachrichtigungen${colors_off} löschen (${light_magenta}$MAILS_ENTRIES Mails, "
     QUESTION_TEXT+=$(show_human_bytes "$MAILS_TOTAL_BYTES")
     QUESTION_TEXT+="${colors_off})"
     ask_yes_or_no_plus "delete_user_mails" "$QUESTION_TEXT" "" "n"
@@ -17662,7 +18191,7 @@ then
         OLD_LOGS_BYTES=0
       fi
       ((OLD_LOGS_FILES+=EMPTY_LOG_DIRS))
-      QUESTION_TEXT=" Veraltete ${light_cyan}System-Logs${colors_off} löschen (${light_purple}$OLD_LOGS_FILES Dateien, "
+      QUESTION_TEXT=" Veraltete ${light_cyan}System-Logs${colors_off} löschen (${light_magenta}$OLD_LOGS_FILES Dateien, "
       QUESTION_TEXT+=$(show_human_bytes "$OLD_LOGS_BYTES")
       QUESTION_TEXT+="${colors_off})"
       ask_yes_or_no_plus "delete_old_syslogs" "$QUESTION_TEXT" "" "n"
@@ -17707,7 +18236,7 @@ then
     THUMBS_TOTAL_FILES=$(find ${THUMBS_DIR} -type f 2>/dev/null | wc -l)
     if [ $THUMBS_TOTAL_FILES -gt 0 ];
     then
-      QUESTION_TEXT=" ${light_cyan}Thumbnail-Cache${colors_off} löschen (${light_purple}$THUMBS_TOTAL_FILES Dateien, "
+      QUESTION_TEXT=" ${light_cyan}Thumbnail-Cache${colors_off} löschen (${light_magenta}$THUMBS_TOTAL_FILES Dateien, "
       QUESTION_TEXT+=$(show_human_bytes "$THUMBS_TOTAL_BYTES")
       QUESTION_TEXT+="${colors_off})"
       ask_yes_or_no_plus "delete_thumb_cache" "$QUESTION_TEXT" "" "n"
@@ -17756,7 +18285,7 @@ then
   done
   if [ $FILES_FOUND_TOTAL_FILES -gt 0 ];
   then
-    QUESTION_TEXT=" ${light_cyan}Nutzungsdaten von Dateien${colors_off} löschen (${light_purple}$FILES_FOUND_TOTAL_FILES Dateien, "
+    QUESTION_TEXT=" ${light_cyan}Nutzungsdaten von Dateien${colors_off} löschen (${light_magenta}$FILES_FOUND_TOTAL_FILES Dateien, "
     QUESTION_TEXT+=$(show_human_bytes "$FILES_FOUND_TOTAL_BYTES")
     QUESTION_TEXT+="${colors_off})"
     ask_yes_or_no_plus "delete_user_temp" "$QUESTION_TEXT" "" "n"
@@ -17797,7 +18326,7 @@ if [ ${OPTION_FLAG[listonly]} -eq 0 ];
    [ ${OPTION_FLAG[personal]} -eq 1 ];
 then
   e_and_l "$FULL_LINE"
-  e_and_l " ${bold_blue}Einrichtung persönlicher System-Einstellungen${colors_off} ${dark_grey}[personal]${colors_off}"
+  e_and_l " ${bold_blue}Einrichtung persönlicher System-Einstellungen${colors_off} ${dark_gray}[personal]${colors_off}"
   e_and_l "$FULL_LINE"
   # -----------------------------------------------------------------------
   # Eingabe der Zugangsdaten zur Verifizierung auf dem Server
@@ -18107,7 +18636,7 @@ then
         then
           FILE_DATE=$(date -r ${DCONF_USER_FILE} "+%d.%m.%Y %H:%M:%S")
           e_and_l " Es ist schon eine Sicherungsdatei vom ${bold_cyan}$FILE_DATE${colors_off} vorhanden!"
-          ask_yes_or_no_plus "" " Bestehende Sicherungsdatei überschreiben" "" ""
+          ask_yes_or_no_plus "" " Bestehende Sicherungsdatei überschreiben" "" "n"
           DO_SAVE_FILE=$?
         fi
         if [ $DO_SAVE_FILE -eq 1 ];
@@ -18137,7 +18666,7 @@ then
         then
           FILE_DATE=$(date -r ${DCONF_USER_FILE} "+%d.%m.%Y %H:%M:%S")
           e_and_l " Die Sicherungsdatei hat das Datum ${bold_cyan}$FILE_DATE${colors_off}. Alle aktuellen"
-          ask_yes_or_no_plus "" " Einstellungen auf diesen Stand zurücksetzen" "$DCONF_USER_FILE" ""
+          ask_yes_or_no_plus "" " Einstellungen auf diesen Stand zurücksetzen" "$DCONF_USER_FILE" "n"
           if [ $? -eq 1 ];
           then
             e_and_l -n " Sichere aktuelle Einstellungen in ${bold_yellow}${DCONF_USER_BACKUP##*/}${colors_off} ... "
@@ -18354,7 +18883,7 @@ then
     # Auswahl der Optionen zur Entfernung des Paketes
     # --------------------------------------------------------------------------
     TMP_PKG_TYPE="$(inst_status_to_name $INST_STATUS)"
-    e_and_l " Optionen zur Entfernung von ${bold_yellow}$REMOVE_PKG_NAME${colors_off} (${bold_purple}$TMP_PKG_TYPE${colors_off}):"
+    e_and_l " Optionen zur Entfernung von ${bold_yellow}$REMOVE_PKG_NAME${colors_off} (${bold_magenta}$TMP_PKG_TYPE${colors_off}):"
     i=0
     while [ $i -lt 4 ];
     do
@@ -18376,7 +18905,7 @@ then
         e_and_l "Abbruch"
       else
         e_and_l "$REMOVE_ACTION"
-        ask_yes_or_no_plus "" " Wirklich ${REMOVE_TEXT[$REMOVE_ACTION]}" "" ""
+        ask_yes_or_no_plus "" " Wirklich ${REMOVE_TEXT[$REMOVE_ACTION]}" "" "n"
         if [ $? -eq 0 ];
         then
           REMOVE_ACTION=-1
@@ -18440,7 +18969,7 @@ then
           GUESS_PKG=${guess%%/*}
           if [ "$GUESS_PKG" != "" ];
           then
-            e_and_l " - $GUESS_PKG (${light_purple}STD${colors_off})"
+            e_and_l " - $GUESS_PKG (${light_magenta}STD${colors_off})"
           fi
         done < "$GUESS_INSTALL_LIST_APT"
       fi
@@ -18454,7 +18983,7 @@ then
           GUESS_PKG=$(echo ${guess} | grep -i -E "\..*$GUESS_NAME.*[\/\.]" | tail -n 1 | cut -f 1 | xargs | sed 's/ /_/g' | tr '[:upper:]' '[:lower:]')
           if [ "$GUESS_PKG" != "" ];
           then
-            e_and_l " - $GUESS_PKG (${light_purple}FLAT${colors_off})"
+            e_and_l " - $GUESS_PKG (${light_magenta}FLAT${colors_off})"
           fi
         done < "$GUESS_INSTALL_LIST_FLAT"
       fi
@@ -18468,7 +18997,7 @@ then
           GUESS_PKG=$(echo ${guess} | awk '{print $1}' | xargs)
           if [ "$GUESS_PKG" != "" ];
           then
-            e_and_l " - $GUESS_PKG (${light_purple}SNAP${colors_off})"
+            e_and_l " - $GUESS_PKG (${light_magenta}SNAP${colors_off})"
           fi
         done < "$GUESS_INSTALL_LIST_SNAP"
       fi
@@ -18486,7 +19015,7 @@ then
               if [ "${WEB_PKG_NAME[$p]}" == "$guess" ] &&
                  [ $(find "$WEB_PKG_DIR/$guess" -type f -executable 2>/dev/null | wc -l) -gt 0 ];
               then
-                e_and_l " - ${WEB_PKG_NAME[$p]} [$p] (${light_purple}WEB${colors_off})"
+                e_and_l " - ${WEB_PKG_NAME[$p]} [$p] (${light_magenta}WEB${colors_off})"
               fi
             done
           fi
@@ -18499,7 +19028,7 @@ then
       remove_file "$GUESS_INSTALL_LIST_WEB"
     fi
     e_and_l " Ein Paket ${bold_yellow}$REMOVE_PKG_NAME${colors_off} scheint nicht ordentlich installiert zu sein."
-    ask_yes_or_no_plus "" " Sollen hinterbliebene Daten von diesem Paket gesucht werden" "" ""
+    ask_yes_or_no_plus "" " Sollen hinterbliebene Daten von diesem Paket gesucht werden" "" "n"
     if [ $? -eq 1 ];
     then
       REMOVE_ACTION=3
@@ -18724,7 +19253,7 @@ then
     e_and_l "$HALF_LINE"
     e_and_l " $ACHTUNG_TAG: Es liegt ein Konfigurations-Backup für ${light_cyan}Desktop & diverse Tools${colors_off} vor."
     e_and_l " Zurücksetzen der Einstellungen auf diese Konfiguration (ohne sudo):"
-    e_and_l " ${light_purple}dconf load / < ${DCONF_USER_BACKUP}${colors_off}"
+    e_and_l " ${light_magenta}dconf load / < ${DCONF_USER_BACKUP}${colors_off}"
     ((anzahl_hinweise+=1))
   fi
 else
