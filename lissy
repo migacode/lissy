@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 30.07.2025
-VERSION="5.3.0"
+# Letzte Änderung: 16.08.2025
+VERSION="5.4.0"
 
 ################################################################################
 #                                                                              #
@@ -371,7 +371,15 @@ function ask_yes_no_info {
         then
           echo -e "${light_yellow}"
           if [ $INSTALL_MODE -eq 1 ]; then apt show "$PACKAGE_NAME" 2>/dev/null; fi
-          if [ $INSTALL_MODE -eq 2 ]; then snap info "$PACKAGE_NAME" 2>/dev/null; fi
+          if [ $INSTALL_MODE -eq 2 ];
+          then
+            if [ $SNAP_ACTIVE -gt 0 ];
+            then
+              snap info "$PACKAGE_NAME" 2>/dev/null
+            else
+              echo -e "$PRE_SPACE Die Snap-Paketverwaltung ist nicht aktiv."
+            fi
+          fi
           if [ $INSTALL_MODE -eq 3 ] ||
              [ $INSTALL_MODE -eq 4 ];
           then
@@ -668,6 +676,133 @@ function check_esp_errors {
   echo -e -n "$ESP_ERROR_LIST"
 }
 
+# ==============================================================================
+# Ausgewählte Optionen auf Konflikte prüfen
+# ==============================================================================
+function check_options {
+  MENU_INFO_TEXT=""
+  MENU_ERROR_TEXT=""
+  # -------------------------------
+  # Anzahl ausgewählter Kategorien
+  # -------------------------------
+  ANZ_KATEGORIES=0
+  for k in ${KAT_KEY_LIST[@]};
+  do
+    if [ ${KATEGORIE_FLAG[$k]} -eq 1 ];
+    then
+      ((ANZ_KATEGORIES+=1))
+    fi
+  done
+  # --------------------
+  # noinfo und infoonly
+  # --------------------
+  if [ ${OPTION_FLAG[infoonly]} -eq 1 ];
+  then
+    if [ ${OPTION_FLAG[noinfo]} -eq 1 ];
+    then
+      MENU_ERROR_TEXT="\Z1\ZbFEHLER!\Zn\nDie Optionen \Z1noinfo\Z0 und \Z1infoonly\Z0 können nicht gemeinsam angewendet werden."
+    else
+      MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nBei Verwendung der Option \Z4infoonly\Z0 werden keine weiteren Aktionen durchgeführt!"
+    fi
+  else
+    # ----------------
+    # dload und dsave
+    # ----------------
+    if [ ${OPTION_FLAG[dload]} -eq 1 ] &&
+       [ ${OPTION_FLAG[dsave]} -eq 1 ];
+    then
+      MENU_ERROR_TEXT="\Z1\ZbFEHLER!\Zn\nDie Aktionen \Z1dload\Z0 und \Z1dsave\Z0 können nicht gemeinsam durchgeführt werden."
+    fi
+    # --------------------------------
+    # snapcont, snapkill und snapstop
+    # --------------------------------
+    if [[ ${OPTION_FLAG[snapcont]} -eq 1 && ${OPTION_FLAG[snapkill]} -eq 1 ]] ||
+       [[ ${OPTION_FLAG[snapcont]} -eq 1 && ${OPTION_FLAG[snapstop]} -eq 1 ]] ||
+       [[ ${OPTION_FLAG[snapkill]} -eq 1 && ${OPTION_FLAG[snapstop]} -eq 1 ]];
+    then
+      MENU_ERROR_TEXT="\Z1\ZbFEHLER!\Zn\nDie Aktionen \Z1snapcont\Z0, \Z1snapkill\Z0 und \Z1snapstop\Z0 können nicht gemeinsam durchgeführt werden."
+    fi
+    # -------------------------
+    # listonly ohne Kategorien
+    # -------------------------
+    if [ ${OPTION_FLAG[listonly]} -eq 1 ];
+    then
+      if [ $ANZ_KATEGORIES -eq 0 ];
+      then
+        MENU_ERROR_TEXT="\Z1\ZbFEHLER!\Zn\nDie Option \Z1listonly\Z0 wurde ausgewählt, aber keine Pakete (Kategorie) zur Auflistung."
+      else
+        if [ ${OPTION_FLAG[status]} -eq 1 ];
+        then
+          MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nDurch die Option \Z4listonly\Z0 wird der Paketstatus (Option \Z4status\Z0) nicht angezeigt."
+        else
+          MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nBei Verwendung der Option \Z4listonly\Z0 werden keine weiteren Aktionen durchgeführt!"
+        fi
+      fi
+    else
+      # =========================================================
+      # Konflikte bei Einstellungen zur Installation von Paketen
+      # =========================================================
+      if [ ${OPTION_FLAG[status]} -eq 0 ];
+      then
+        # ------------------
+        # "Fremde" Desktops
+        # ------------------
+        if [[ ${KATEGORIE_FLAG[gx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "GNOME" ]] ||
+           [[ ${KATEGORIE_FLAG[lx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "LXDE" ]]  ||
+           [[ ${KATEGORIE_FLAG[mx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "MATE" ]]  ||
+           [[ ${KATEGORIE_FLAG[xf]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "XFCE" ]]  ||
+           [[ ${KATEGORIE_FLAG[mt]} -eq 1 && $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -eq 0 ]] ||
+           [[ ${KATEGORIE_FLAG[ci]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "Cinnamon" ]];
+        then
+          MENU_INFO_TEXT="\Z1\ZbWarnung\Zn\nEs wurden Tool-Pakete ausgewählt, die nicht für diesen Desktop vorgesehen sind."
+        fi
+        # -------------------------------
+        # Sich überlagernde Optionen
+        # (notoall -> autoyorn -> force)
+        # -------------------------------
+        if [ ${OPTION_FLAG[notoall]} -eq 1 ];
+        then
+          if [ ${OPTION_FLAG[autoyorn]} -eq 1 ];
+          then
+            MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nOption \Z4notoall\Z0 überlagert Option \Z4autoyorn\Z0,\nso dass alle Abfragen mit (N)ein beantwortet werden."
+          fi
+          if [ ${OPTION_FLAG[force]} -eq 1 ];
+          then
+            MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nOption \Z4notoall\Z0 überlagert Option \Z4force\Z0,\nso dass keine Pakete installiert werden."
+          fi
+        fi
+        if [ ${OPTION_FLAG[autoyorn]} -eq 1 ] &&
+           [ ${OPTION_FLAG[force]} -eq 1 ];
+        then
+          MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nOption \Z4autoyorn\Z0 überlagert Option \Z4force\Z0,\nso dass eventuell nicht alle Pakete installiert werden."
+        fi
+        # ----------------------------------------------------
+        # Ausgewählte aber nicht installierte Paketverwaltung
+        # ----------------------------------------------------
+        if [ ${OPTION_FLAG[priosnap]} -eq 1 ] &&
+           [ ${OPTION_FLAG[addsnap]} -eq 0 ];
+        then
+          MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nSnap-Pakete sollen bevorzugt werden, aber die Option \Z4addsnap\Z0 ist nicht ausgewählt.\nSo werden \Zbkeine\Z0 Snap-Pakete installiert!"
+        fi
+        if [ ${OPTION_FLAG[prioflat]} -eq 1 ] &&
+           [ ${OPTION_FLAG[addflat]} -eq 0 ];
+        then
+          MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nFlatpaks sollen bevorzugt werden, aber die Option \Z4addflat\Z0 ist nicht ausgewählt.\nSo werden \Zbkeine\Z0 Flatpak-Pakete installiert!"
+        fi
+        # ------------------------------------------------------
+        # Forcierte Installation von Paketen mit gleichzeitigem
+        # Ignorieren der ähnlichen und gleichen Pakete
+        # ------------------------------------------------------
+        if [ ${OPTION_FLAG[force]} -eq 1 ] &&
+            [ ${OPTION_FLAG[skipsims]} -eq 1 ];
+        then
+          MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nDurch die Kombination \Z4force\Z0 und \Z4skipsims\Z0 wird nicht auf ähnliche Pakete geprüft, was zu mehrfacher Installation gleicher Pakete aus verschiedenen Quellen führen kann."
+        fi
+      fi
+    fi # Ende listonly
+  fi # Ende infoonly
+}
+
 #===============================================================================
 # Prüfung, ob ein Programmpaket auf Raspberry oder Raspbian
 # übersprungen werden soll
@@ -782,7 +917,7 @@ function clean_on_exit {
     # --------------------------------------------------------
     if [ ${OPTION_FLAG[cleantmp]} -eq 1 ];
     then
-      find "$DOWNLOAD_DIR" -type f -not -name "${LOG_FILE##*/}" -and -not -iregex ".*\.list$" -delete 2>/dev/null
+      find "$DOWNLOAD_DIR" -type f -not -name "${LOG_FILE##*/}" -and -not -iregex ".*\.list$" -and -not -iregex ".*\.save$" -delete 2>/dev/null
     fi
     # -------------------------------------------------------
     # Alle verbliebenen Dateien dem Benutzer zu eigen machen
@@ -823,7 +958,7 @@ function clear_repo {
   # --------------------------
   # Durch uns angelegte Datei
   # --------------------------
-  LOCAL_REPO_FILE="$SOURCES_LIST_DIR/$REPO_FILE.list"
+  LOCAL_REPO_FILE="$APT_SOURCES_LIST_DIR/$REPO_FILE.list"
   remove_file "$LOCAL_REPO_FILE"
   # ------------------------------------------------------------
   # Soweit bekannt durch das Paket/PPA selbst angelegte Dateien
@@ -835,7 +970,7 @@ function clear_repo {
     # ACHTUNG: NICHT mit remove_file und OHNE Anführungszeichen,
     # damit mit * gelöscht werden kann
     # -----------------------------------------------------------
-    rm -f $SOURCES_LIST_DIR/$LOCAL_REPO_FILE &>/dev/null
+    rm -f $APT_SOURCES_LIST_DIR/$LOCAL_REPO_FILE &>/dev/null
   fi
 }
 
@@ -983,8 +1118,6 @@ function copy_starter_to_desktop {
   # --------------------------------------------------------------------------
   # Ohne Auswahl einer gültigen Option keinen Starter auf dem Desktop anlegen
   # --------------------------------------------------------------------------
-  # if [ ${OPTION_FLAG[adcstart]} -ne 1 ] &&
-  #    [ ${OPTION_FLAG[addstart]} -ne 1 ];
   if [ ${OPTION_FLAG[addstart]} -ne 1 ];
   then
     return 1
@@ -1588,22 +1721,22 @@ function create_cat_pkg_list {
 #===============================================================================
 function create_command_line {
   COMMAND_LINE_STRING=""
-  # ------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   # Individuelle Liste
-  # ------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   if [ $USE_ILIST_FILE -eq 1 ];
   then
     COMMAND_LINE_STRING+=" instlist \"$INST_LIST_FILE\""
   fi
-  # ------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   # Individuelles Paket
-  # ------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   if [ "$INST_ONLY_PKG" != "" ];
   then
     COMMAND_LINE_STRING+=" instonly $INST_ONLY_PKG"
-  # ------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   # Kategorien
-  # ------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   else
     # --------------------
     # Standard-Kategorien
@@ -1640,9 +1773,9 @@ function create_command_line {
       fi
     done
   fi
-  # ------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   # Optionen
-  # ------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   for i in ${OPTION_LIST[@]};
   do
     if [ ${OPTION_FLAG[$i]} -eq 1 ];
@@ -1650,9 +1783,9 @@ function create_command_line {
       COMMAND_LINE_STRING+=" $(echo ${i} | tr A-Z a-z)"
     fi
   done
-  # ------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   # Skip-Liste
-  # ------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   if [ ${#SKIP_LIST[@]} -ne 0 ];
   then
     i=0
@@ -1667,14 +1800,14 @@ function create_command_line {
       ((i+=1))
     done
   fi
-  # ------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   # Paket entfernen
-  # ------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   if [ "$REMOVE_PKG_NAME" != "" ];
   then
     COMMAND_LINE_STRING+=" remove $REMOVE_PKG_NAME"
   fi
-  # ------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   COMMAND_LINE_STRING="$(echo ${COMMAND_LINE_STRING} | xargs)"
 }
 
@@ -2004,7 +2137,7 @@ function extend_repo_erw {
   # ---------------------------------
   REPO_KEY_URL="${ERW_AUTH_KEY[$ERW_PAKET_NAME]}" # URL zum Download der Schlüssel-Datei
   LOCAL_KEY_FILE="/etc/apt/trusted.gpg.d/$ERW_PAKET_NAME" # Ziel-Datei mit Schlüssel für Quellangaben
-  LOCAL_REPO_FILE="$SOURCES_LIST_DIR/$ERW_PAKET_NAME.list" # Ziel-Datei für die Quellangaben
+  LOCAL_REPO_FILE="$APT_SOURCES_LIST_DIR/$ERW_PAKET_NAME.list" # Ziel-Datei für die Quellangaben
   REPO_SRC_TXT="${ERW_REPO_TXT[$ERW_PAKET_NAME]}" # Text zum Eintrag in die Datei mit den Quellangaben
   REPO_CMD="echo -e \"$REPO_SRC_TXT\" | tee \"$LOCAL_REPO_FILE\""
   # -----------------------------------------------------------------
@@ -2142,7 +2275,7 @@ function get_install_status {
   # ----------------------------------------
   # 2. Prüfen ob als Snap-Paket installiert
   # ----------------------------------------
-  if [ $PKG_INSTALL_STATUS -eq 0 ] && [ $SNAP_INSTALLED -ne 0 ];
+  if [ $PKG_INSTALL_STATUS -eq 0 ] && [ $SNAP_ACTIVE -gt 0 ];
   then
     if [ $(LANG=en snap info "$1" 2>/dev/null | grep -i -c -E "installed\:") -ne 0 ];
     then
@@ -2239,16 +2372,16 @@ function get_install_status {
   # 6. Prüfen ob als Flatpak-Paket installiert
   # -------------------------------------------
   if [ $PKG_INSTALL_STATUS -eq 0 ] &&
-     [ $FLATPAK_INSTALLED -ne 0 ] &&
-     [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
+     [ $FLATPAK_ACTIVE -eq 1 ] &&
+     [ -s "$FLATPAK_INSTALLED_PKG_LIST" ];
   then
     FLATPAK_NAME=$(echo "$1" | sed 's/[ -_]//g' | xargs)
-    if [ $(grep -c -i -E "\.$FLATPAK_NAME[0-9]*[\/\.]" ${THE_FLATPAK_INSTALLED_LIST}) -gt 0 ] ||
-       [ $(grep -c -i -E "^$FLATPAK_NAME[0-9]*\s+[0-9]" ${THE_FLATPAK_INSTALLED_LIST}) -gt 0 ];
+    if [ $(grep -c -i -E "\.$FLATPAK_NAME[0-9]*[\/\.]" ${FLATPAK_INSTALLED_PKG_LIST}) -gt 0 ] ||
+       [ $(grep -c -i -E "^$FLATPAK_NAME[0-9]*\s+[0-9]" ${FLATPAK_INSTALLED_PKG_LIST}) -gt 0 ];
     then
       PKG_INSTALL_STATUS=6
-      TMP_FLATPAK_VERSION=$(get_pkg_flatpak_version "$FLATPAK_NAME" 1)
-      PKG_VERSION=$(clean_pkg_version "$TMP_FLATPAK_VERSION")
+      PKG_FLATPAK_VERSION=$(get_pkg_flatpak_version "$FLATPAK_NAME" 1)
+      PKG_VERSION=$(clean_pkg_version "$PKG_FLATPAK_VERSION")
     fi
   fi
   # -----------------------------------------------------------------
@@ -2305,18 +2438,18 @@ function get_pkg_deb_version {
 function get_pkg_flatpak_version {
   FLATPAK_NAME=$(echo "$1" | sed 's/[ -_]//g' | xargs)
   INFO_TYPE=$2
-  TMP_FLATPAK_VERSION=""
+  PKG_FLATPAK_VERSION=""
   # -----------------------------
   # Verfügbare Version ermitteln
   # -----------------------------
   if [ $INFO_TYPE -eq 0 ];
   then
-    if [ -s "$THE_FLATPAK_REMOTE_LIST" ];
+    if [ -s "$FLATPAK_REMOTE_LIST" ];
     then
-      TMP_FLATPAK_VERSION=$(grep -i -E "\.$FLATPAK_NAME[0-9]*[\/\.]" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 2 | xargs 2>/dev/null)
-      if [ "$TMP_FLATPAK_VERSION" == "" ];
+      PKG_FLATPAK_VERSION=$(grep -i -E "\.$FLATPAK_NAME[0-9]*[\/\.]" ${FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 2 | xargs 2>/dev/null)
+      if [ "$PKG_FLATPAK_VERSION" == "" ];
       then
-        TMP_FLATPAK_VERSION=$(grep -i -E "^$FLATPAK_NAME[0-9]*\s+[0-9]" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 2 | xargs 2>/dev/null)
+        PKG_FLATPAK_VERSION=$(grep -i -E "^$FLATPAK_NAME[0-9]*\s+[0-9]" ${FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 2 | xargs 2>/dev/null)
       fi
     fi
   fi
@@ -2325,16 +2458,16 @@ function get_pkg_flatpak_version {
   # --------------------------------------
   if [ $INFO_TYPE -eq 1 ];
   then
-    if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
+    if [ -s "$FLATPAK_INSTALLED_PKG_LIST" ];
     then
-      TMP_FLATPAK_VERSION=$(grep -i -E "\.$FLATPAK_NAME[0-9]*[\/\.]" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 2 | xargs 2>/dev/null)
-      if [ "$TMP_FLATPAK_VERSION" == "" ];
+      PKG_FLATPAK_VERSION=$(grep -i -E "\.$FLATPAK_NAME[0-9]*[\/\.]" ${FLATPAK_INSTALLED_PKG_LIST} | tail -n 1 | cut -f 2 | xargs 2>/dev/null)
+      if [ "$PKG_FLATPAK_VERSION" == "" ];
       then
-        TMP_FLATPAK_VERSION=$(grep -i -E "^$FLATPAK_NAME[0-9]*\s+[0-9]" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 2 | xargs 2>/dev/null)
+        PKG_FLATPAK_VERSION=$(grep -i -E "^$FLATPAK_NAME[0-9]*\s+[0-9]" ${FLATPAK_INSTALLED_PKG_LIST} | tail -n 1 | cut -f 2 | xargs 2>/dev/null)
       fi
     fi
   fi
-  THE_FLAT_PKG_VERSION=$(clean_pkg_version "$TMP_FLATPAK_VERSION")
+  THE_FLAT_PKG_VERSION=$(clean_pkg_version "$PKG_FLATPAK_VERSION")
   if [ "$THE_FLAT_PKG_VERSION" != "" ];
   then
     echo -e -n "$THE_FLAT_PKG_VERSION"
@@ -2356,12 +2489,12 @@ function get_pkg_flatpak_reference {
   # -----------------------------------
   if [ $INFO_TYPE -eq 0 ];
   then
-    if [ -s "$THE_FLATPAK_REMOTE_LIST" ];
+    if [ -s "$FLATPAK_REMOTE_LIST" ];
     then
-      TMP_FLATPAK_REFERENCE=$(grep -i -E "\.$FLATPAK_NAME[0-9]*[\/\.]" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 3 | xargs 2>/dev/null)
+      TMP_FLATPAK_REFERENCE=$(grep -i -E "\.$FLATPAK_NAME[0-9]*[\/\.]" ${FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 3 | xargs 2>/dev/null)
       if [ "$TMP_FLATPAK_REFERENCE" == "" ];
       then
-        TMP_FLATPAK_REFERENCE=$(grep -i -E "^$FLATPAK_NAME[0-9]*\s+[0-9]" ${THE_FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 3 | xargs 2>/dev/null)
+        TMP_FLATPAK_REFERENCE=$(grep -i -E "^$FLATPAK_NAME[0-9]*\s+[0-9]" ${FLATPAK_REMOTE_LIST} | tail -n 1 | cut -f 3 | xargs 2>/dev/null)
       fi
     fi
   fi
@@ -2370,12 +2503,12 @@ function get_pkg_flatpak_reference {
   # --------------------------------------
   if [ $INFO_TYPE -eq 1 ];
   then
-    if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
+    if [ -s "$FLATPAK_INSTALLED_PKG_LIST" ];
     then
-      TMP_FLATPAK_REFERENCE=$(grep -i -E "\.$FLATPAK_NAME[0-9]*[\/\.]" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 3 | cut -d'/' -f 1 | xargs 2>/dev/null)
+      TMP_FLATPAK_REFERENCE=$(grep -i -E "\.$FLATPAK_NAME[0-9]*[\/\.]" ${FLATPAK_INSTALLED_PKG_LIST} | tail -n 1 | cut -f 3 | cut -d'/' -f 1 | xargs 2>/dev/null)
       if [ "$TMP_FLATPAK_REFERENCE" == "" ];
       then
-        TMP_FLATPAK_REFERENCE=$(grep -i -E "^$FLATPAK_NAME[0-9]*\s+[0-9]" ${THE_FLATPAK_INSTALLED_LIST} | tail -n 1 | cut -f 3 | cut -d'/' -f 1 | xargs 2>/dev/null)
+        TMP_FLATPAK_REFERENCE=$(grep -i -E "^$FLATPAK_NAME[0-9]*\s+[0-9]" ${FLATPAK_INSTALLED_PKG_LIST} | tail -n 1 | cut -f 3 | cut -d'/' -f 1 | xargs 2>/dev/null)
       fi
     fi
   fi
@@ -2391,82 +2524,87 @@ function get_pkg_flatpak_reference {
 function get_pkg_snap_version {
   INFO_TYPE=$2 # 0 = verfügbare Version, 1 = installierte Version ermitteln
   PKG_SNAP_CHANNEL="" # Leer = Standard (stable)
-  if [ $INFO_TYPE -eq 0 ];
+  if [ $SNAP_ACTIVE -gt 0 ];
   then
-    FULL_PKG_SNAP_INFO=$(LANG=en snap info "$1" 2>/dev/null | sed -E "s/^\s*(latest)\s*\/\s*//gi")
-    # Zuerst auf stable-Version prüfen
-    PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | \
-      grep -i -E "^\s*stable" | \
-      sed -E "s/^\s*stable\s*\:*\s*//")
-    # Wenn keine stable-Version gefunden, dann auf candidate prüfen
-    if [ $(echo "$PKG_SNAP_VERSION" | grep -c -E "[0-9]") -eq 0 ];
+    if [ $INFO_TYPE -eq 0 ];
     then
+      FULL_PKG_SNAP_INFO=$(LANG=en snap info "$1" 2>/dev/null | sed -E "s/^\s*(latest)\s*\/\s*//gi")
+      # Zuerst auf stable-Version prüfen
       PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | \
-        grep -i -E "^\s*candidate" | \
-        sed -E "s/^\s*candidate\s*\:*\s*//")
-      # Wenn keine candidate-Version gefunden, dann auf beta prüfen
-      if [ $(echo "$PKG_SNAP_VERSION" | grep -c -E "[0-9]") -gt 0 ];
+        grep -i -E "^\s*stable" | \
+        sed -E "s/^\s*stable\s*\:*\s*//")
+      # Wenn keine stable-Version gefunden, dann auf candidate prüfen
+      if [ $(echo "$PKG_SNAP_VERSION" | grep -c -E "[0-9]") -eq 0 ];
+      then
+        PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | \
+          grep -i -E "^\s*candidate" | \
+          sed -E "s/^\s*candidate\s*\:*\s*//")
+        # Wenn keine candidate-Version gefunden, dann auf beta prüfen
+        if [ $(echo "$PKG_SNAP_VERSION" | grep -c -E "[0-9]") -gt 0 ];
+        then
+          PKG_SNAP_CHANNEL="candidate"
+        else
+          PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | \
+            grep -i -E "^\s*beta" | \
+            sed -E "s/^\s*beta\s*\:*\s*//")
+          # Wenn keine beta-Version gefunden, dann auf edge prüfen
+          if [ $(echo "$PKG_SNAP_VERSION" | grep -c -E "[0-9]") -gt 0 ];
+          then
+            PKG_SNAP_CHANNEL="beta"
+          else
+            PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | \
+              grep -i -E "^\s*edge" | \
+              sed -E "s/^\s*edge\s*\:*\s*//")
+            if [ $(echo "$PKG_SNAP_VERSION" | grep -c -E "[0-9]") -gt 0 ];
+            then
+              PKG_SNAP_CHANNEL="edge"
+            fi
+          fi
+        fi
+      fi
+    else
+      FULL_PKG_SNAP_INFO=$(LANG=en snap list "$1" 2>/dev/null | awk 'NR>1' | head -n 1)
+      PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $2}' | sed -E "s/\-//g" | xargs)
+      # PKG_SNAP_REVISION=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $3}' | sed -E "s/\-//g" | xargs)
+      PKG_SNAP_TRACKING=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $4}' | sed -E "s/\-//g" | xargs)
+      if [ $(echo "$PKG_SNAP_TRACKING" | grep -i -c -E "candidate") -gt 0 ];
       then
         PKG_SNAP_CHANNEL="candidate"
       else
-        PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | \
-          grep -i -E "^\s*beta" | \
-          sed -E "s/^\s*beta\s*\:*\s*//")
-        # Wenn keine beta-Version gefunden, dann auf edge prüfen
-        if [ $(echo "$PKG_SNAP_VERSION" | grep -c -E "[0-9]") -gt 0 ];
+        if [ $(echo "$PKG_SNAP_TRACKING" | grep -i -c -E "beta") -gt 0 ];
         then
           PKG_SNAP_CHANNEL="beta"
         else
-          PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | \
-            grep -i -E "^\s*edge" | \
-            sed -E "s/^\s*edge\s*\:*\s*//")
-          if [ $(echo "$PKG_SNAP_VERSION" | grep -c -E "[0-9]") -gt 0 ];
+          if [ $(echo "$PKG_SNAP_TRACKING" | grep -i -c -E "edge") -gt 0 ];
           then
             PKG_SNAP_CHANNEL="edge"
           fi
         fi
       fi
+      PKG_SNAP_NOTES=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $6}' | sed -E "s/\-//g" | xargs)
+    fi
+    # Versionsnummer bereinigen
+    THE_SNAP_PKG_VERSION=$(clean_pkg_version "$PKG_SNAP_VERSION")
+    # Ggf. Zusatzinfos anhängen
+    if [ "$PKG_SNAP_CHANNEL" != "" ];
+    then
+      THE_SNAP_PKG_VERSION+=" "
+      if [ $INFO_TYPE -eq 0 ];
+      then
+        THE_SNAP_PKG_VERSION+="${light_red}"
+      else
+        THE_SNAP_PKG_VERSION+="${light_magenta}"
+      fi
+      THE_SNAP_PKG_VERSION+="$PKG_SNAP_CHANNEL${colors_off}"
+    fi
+    # Ggf. Hinweis auf Classic-Mode anhängen
+    if [ $(echo "$PKG_SNAP_VERSION" | grep -i -c -E " classic") -gt 0 ] || # aus snap info
+      [ $(echo "$PKG_SNAP_NOTES" | grep -i -c -E "classic") -gt 0 ];      # aus snap list
+    then
+      THE_SNAP_PKG_VERSION+=" ${light_red}classic${colors_off}"
     fi
   else
-    FULL_PKG_SNAP_INFO=$(LANG=en snap list "$1" 2>/dev/null | awk 'NR>1' | head -n 1)
-    PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $2}' | sed -E "s/\-//g" | xargs)
-    # PKG_SNAP_REVISION=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $3}' | sed -E "s/\-//g" | xargs)
-    PKG_SNAP_TRACKING=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $4}' | sed -E "s/\-//g" | xargs)
-    if [ $(echo "$PKG_SNAP_TRACKING" | grep -i -c -E "candidate") -gt 0 ];
-    then
-      PKG_SNAP_CHANNEL="candidate"
-    else
-      if [ $(echo "$PKG_SNAP_TRACKING" | grep -i -c -E "beta") -gt 0 ];
-      then
-        PKG_SNAP_CHANNEL="beta"
-      else
-        if [ $(echo "$PKG_SNAP_TRACKING" | grep -i -c -E "edge") -gt 0 ];
-        then
-          PKG_SNAP_CHANNEL="edge"
-        fi
-      fi
-    fi
-    PKG_SNAP_NOTES=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $6}' | sed -E "s/\-//g" | xargs)
-  fi
-  # Versionsnummer bereinigen
-  THE_SNAP_PKG_VERSION=$(clean_pkg_version "$PKG_SNAP_VERSION")
-  # Ggf. Zusatzinfos anhängen
-  if [ "$PKG_SNAP_CHANNEL" != "" ];
-  then
-    THE_SNAP_PKG_VERSION+=" "
-    if [ $INFO_TYPE -eq 0 ];
-    then
-      THE_SNAP_PKG_VERSION+="${light_red}"
-    else
-      THE_SNAP_PKG_VERSION+="${light_magenta}"
-    fi
-    THE_SNAP_PKG_VERSION+="$PKG_SNAP_CHANNEL${colors_off}"
-  fi
-  # Ggf. Hinweis auf Classic-Mode anhängen
-  if [ $(echo "$PKG_SNAP_VERSION" | grep -i -c -E " classic") -gt 0 ] || # aus snap info
-     [ $(echo "$PKG_SNAP_NOTES" | grep -i -c -E "classic") -gt 0 ];      # aus snap list
-  then
-    THE_SNAP_PKG_VERSION+=" ${light_red}classic${colors_off}"
+    THE_SNAP_PKG_VERSION=""
   fi
   echo -e -n "$THE_SNAP_PKG_VERSION"
 }
@@ -2731,17 +2869,26 @@ function gsettings_set {
 }
 
 #===============================================================================
-# Einfügung von Leerzeichen
-# --------------------------
+# Einfügung einer bestimmten Anzahl von (Leer-)Zeichen
+# -----------------------------------------------------
 # Parameter $1: Anzahl
+# Parameter $2: Füllzeichen (optional)
+# Parameter $3: Schriftfarbe (optional)
 #===============================================================================
 function insert_spaces {
+  FILL_CHAR=" "
+  CHR_COLOR=""
+  END_COLOR=""
+  if [ "$2" != "" ]; then FILL_CHAR="${2:0:1}"; fi
+  if [ "$3" != "" ]; then CHR_COLOR="${3}"; END_COLOR="${colors_off}"; fi
+  echo -e -n "$CHR_COLOR"
   i=1
   while [ $i -le $1 ];
   do
-    echo -e -n " "
+    echo -e -n "$FILL_CHAR"
     ((i+=1))
   done
+  echo -e -n "$END_COLOR"
 }
 
 #===============================================================================
@@ -2934,7 +3081,7 @@ function install_pkg {
       # ----------------------------------------------------------
       FORCE_THIS_SNAPPY=0
       if [ ${OPTION_FLAG[addsnap]} -eq 1 ] &&
-         [ $SNAP_INSTALLED -ne 0 ] &&
+         [ $SNAP_ACTIVE -gt 0 ] &&
          [ ${#FORCE_SNAPPY_LIST[@]} -ne 0 ];
       then
         for snap_this_pkg in ${FORCE_SNAPPY_LIST[@]};
@@ -2953,7 +3100,7 @@ function install_pkg {
       # ----------------------------------------------------------
       FORCE_THIS_FLATPAK=0
       if [ ${OPTION_FLAG[addflat]} -eq 1 ] &&
-         [ $FLATPAK_INSTALLED -ne 0 ] &&
+         [ $FLATPAK_ACTIVE -eq 1 ] &&
          [ ${#FORCE_FLATPAK_LIST[@]} -ne 0 ];
       then
         for flatpak_this_pkg in ${FORCE_FLATPAK_LIST[@]};
@@ -2994,8 +3141,12 @@ function install_pkg {
       then
         if [ $(apt list "$PAKET" -a 2>/dev/null | grep -i -E "$PAKET" | grep -i -c -E "$ARCHITECTURE_ALL") -gt 0 ];
         then
-          INST_MODE_LIST+=",1"
-          INSTALL_MODE=1
+          # Triggerung einer Snap-Installation durch "Depends: snapd" abfangen
+          if [ $(LANG=en apt show "$PAKET" -a 2>/dev/null | grep -i -E "depend.*\:" | grep -c -i -E "\bsnapd\b") -eq 0 ];
+          then
+            INST_MODE_LIST+=",1"
+            INSTALL_MODE=1
+          fi
         fi
       fi
 
@@ -3006,7 +3157,7 @@ function install_pkg {
       if [ ${OPTION_FLAG[addsnap]} -eq 1 ] &&
          [ $FORCE_THIS_FLATPAK -eq 0 ] &&
          [ $FORCE_THIS_EXTERN -eq 0 ] &&
-         [ $SNAP_INSTALLED -ne 0 ] &&
+         [ $SNAP_ACTIVE -gt 0 ] &&
          [ "$LAST_ERW_PACK" == "" ] &&
          [ "$LAST_PPA_PACK" == "" ];
       then
@@ -3025,13 +3176,13 @@ function install_pkg {
       if [ ${OPTION_FLAG[addflat]} -eq 1 ] &&
          [ $FORCE_THIS_SNAPPY -eq 0 ] &&
          [ $FORCE_THIS_EXTERN -eq 0 ] &&
-         [ $FLATPAK_INSTALLED -ne 0 ] &&
+         [ $FLATPAK_ACTIVE -eq 1 ] &&
          [ "$LAST_ERW_PACK" == "" ] &&
          [ "$LAST_PPA_PACK" == "" ];
       then
         FLATPAK_NAME=$(echo "$PAKET" | sed 's/[ -_]//g' | xargs)
-        if [ $(grep -c -i -E "\.$FLATPAK_NAME[0-9]*[\/\.]" ${THE_FLATPAK_REMOTE_LIST}) -gt 0 ] ||
-           [ $(grep -c -i -E "^$FLATPAK_NAME[0-9]*\s+[0-9]" ${THE_FLATPAK_REMOTE_LIST}) -gt 0 ];
+        if [ $(grep -c -i -E "\.$FLATPAK_NAME[0-9]*[\/\.]" ${FLATPAK_REMOTE_LIST}) -gt 0 ] ||
+           [ $(grep -c -i -E "^$FLATPAK_NAME[0-9]*\s+[0-9]" ${FLATPAK_REMOTE_LIST}) -gt 0 ];
         then
           INST_MODE_LIST+=",6"
           INSTALL_MODE=6
@@ -3226,8 +3377,12 @@ function install_pkg {
         then
           if [ $(apt list "$PAKET" -a 2>/dev/null | grep -i -E "$PAKET" | grep -i -c -E "$ARCHITECTURE_ALL") -gt 0 ];
           then
-            INST_MODE_LIST+=",1"
-            INSTALL_MODE=1
+            # Triggerung einer Snap-Installation durch "Depends: snapd" abfangen
+            if [ $(LANG=en apt show "$PAKET" -a 2>/dev/null | grep -i -E "depend.*\:" | grep -c -i -E "\bsnapd\b") -eq 0 ];
+            then
+              INST_MODE_LIST+=",1"
+              INSTALL_MODE=1
+            fi
           fi
         fi
       fi
@@ -4329,6 +4484,46 @@ function install_pkg {
 }
 
 #===============================================================================
+# Die Snap-Paketverwaltung installieren
+#===============================================================================
+function install_snap {
+  ask_yes_or_no_plus "" " Die ${light_cyan}Snap-Paketverwaltung${colors_off} jetzt installieren" "" "n"
+  if [ $? -eq 1 ];
+  then
+    e_and_l -n " Installiere die ${light_yellow}Snap-Paketverwaltung${colors_off}, bitte warten ... "
+    # -------------------------------------------------------
+    # Installations- und Update-Blockaden für snapd aufheben
+    # -------------------------------------------------------
+    SNAP_UNHOLD_RESULT=0
+    snap_unhold
+    # ------------------
+    # Snap installieren
+    # ------------------
+    apt install snapd -y &>"$LOG_TEMP"
+    if [ $? -eq 0 ];
+    then
+      SNAP_INSTALLED=1
+      SNAP_ACTIVE=$(LANG=en systemctl status snapd 2>/dev/null | grep -c -i -E "\:\s*\bactive\b")
+      if [ $SNAP_ACTIVE -gt 0 ];
+      then
+        SNAP_SYSTEM_VERSION="$(snap --version 2>/dev/null | grep -i -E "^\bsnap(d)*\b" | head -n 1 | awk '{print $2}' | xargs 2>/dev/null)"
+      else
+        SNAP_SYSTEM_VERSION=""
+      fi
+      if [ "$SNAP_SYSTEM_VERSION" != "" ];
+      then
+        e_and_l "$OK_TAG"
+      else
+        e_and_l "$ERROR_TAG"
+      fi
+    else
+      e_and_l "$ERROR_TAG"
+    fi
+    add_full_log
+  fi
+}
+
+#===============================================================================
 # Kurzbezeichnung eines Installations-Typs zurückgeben
 #===============================================================================
 function inst_status_to_name {
@@ -4445,7 +4640,6 @@ function ready_for_action {
   TOTAL_PACKS=${#ALL_PKG_LIST[@]}
   if [[ $TOTAL_PACKS             -eq 0 &&
         $USE_ILIST_FILE          -eq 0 &&
-        # ${OPTION_FLAG[adcstart]} -eq 0 &&
         ${OPTION_FLAG[cleansys]} -eq 0 &&
         ${OPTION_FLAG[dload]}    -eq 0 &&
         ${OPTION_FLAG[dsave]}    -eq 0 &&
@@ -4460,7 +4654,10 @@ function ready_for_action {
         ${OPTION_FLAG[repair]}   -eq 0 &&
         ${OPTION_FLAG[reset]}    -eq 0 &&
         ${OPTION_FLAG[revive]}   -eq 0 &&
-        ${OPTION_FLAG[setutc]}   -eq 0 ]];
+        ${OPTION_FLAG[setutc]}   -eq 0 &&
+        ${OPTION_FLAG[snapcont]} -eq 0 &&
+        ${OPTION_FLAG[snapkill]} -eq 0 &&
+        ${OPTION_FLAG[snapstop]} -eq 0 ]];
   then
     return 1
   else
@@ -4720,7 +4917,7 @@ function remove_pkg {
   if [ $PRE_CONF_RESULT -eq 0 ];
   then
     e_and_l ""
-    e_and_l -n " Löschen von ${bold_yellow}$THE_PKG_REAL_NAME${colors_off} ... "
+    e_and_l " Löschen von ${bold_yellow}$THE_PKG_REAL_NAME${colors_off} ... "
     # ----------------------------
     # Mit apt installierte Pakete
     # ----------------------------
@@ -4822,9 +5019,9 @@ function remove_pkg {
        [ $REMOVE_SHARE_RESULT -eq 0 ] &&
        [ $REMOVE_FLAT_RESULT -eq 0 ];
     then
-      e_and_l "$OK_TAG"
+      e_and_l " $OK_TAG"
     else
-      e_and_l "$ERROR_TAG"
+      e_and_l " $ERROR_TAG"
       REMOVE_RESULT=1
     fi
   fi
@@ -4834,13 +5031,15 @@ function remove_pkg {
 
 #===============================================================================
 # Löschen aller (verbliebenen) Schnappschüsse von Snap-Paketen
-# -----------------------------
+# -------------------------------------------------------------
 # Parameter:
 # $1: Paketname - wenn angegeben werden nur Snapschüsse dieses Pakets gelöscht
+# $2: Snapshots direkt löschen (1) oder vorher Aktions-Auswahl anzeigen (0)
 #===============================================================================
 function remove_snapshots {
   SNAP_REMOVE_SINGLE="$1"
-  if [ $SNAP_INSTALLED -ne 0 ];
+  SNAP_FORCE_REMOVE=$2
+  if [ $SNAP_ACTIVE -gt 0 ];
   then
     # -------------------------------------------------------------------------
     # Wenn nur die Schnappschüsse eines bestimmten Snap-Pakets entfernt werden
@@ -4848,16 +5047,16 @@ function remove_snapshots {
     # -------------------------------------------------------------------------
     if [ "$SNAP_REMOVE_SINGLE" != "" ];
     then
-      remove_file "$SNAPSHOT_SNAPS_LIST"
-      if [ $(snap saved 2>/dev/null | grep -i -c -E "\s$1\s") -gt 0 ];
+      remove_file "$SNAP_SNAPSHOT_LIST"
+      if [ $(snap saved 2>/dev/null | grep -i -c -E "\b$1\b") -gt 0 ];
       then
-        LANG=en_US.UTF-8 snap saved 2>/dev/null | grep -i -E "\s$1\s" | awk '{print $1, $2, "(A"$3")", "(V"$4")", "(R"$5")", "(S"$6")"}' > "$SNAPSHOT_SNAPS_LIST"
+        LANG=en_US.UTF-8 snap saved 2>/dev/null | grep -i -E "\b$1\b" | awk '{print $1, $2, "(A"$3")", "(V"$4")", "(R"$5")", "(S"$6")"}' > "$SNAP_SNAPSHOT_LIST"
       fi
     fi
     # --------------------------------------------------------------------
     # Nur weitermachen, wenn es Schnappschüsse (des Snap-Pakets) gibt ...
     # --------------------------------------------------------------------
-    if [ -s "$SNAPSHOT_SNAPS_LIST" ];
+    if [ -s "$SNAP_SNAPSHOT_LIST" ];
     then
       declare -A SNAP_SET_LIST
       declare -A SNAP_NAME_LIST
@@ -4866,7 +5065,7 @@ function remove_snapshots {
       declare -A SNAP_REVISION_LIST
       declare -A SNAP_SIZE_LIST
       i=0
-      while read snapset snapname snapage snapversion snaprevision snapsize
+      while read snapset snapname snapage snapversion snaprevision snapsize;
       do
         if [ "$snapset" != "" ] &&
            [ "$snapname" != "" ];
@@ -4879,89 +5078,97 @@ function remove_snapshots {
           SNAP_SIZE_LIST[$i]="$snapsize"
           ((i+=1))
         fi
-      done < "$SNAPSHOT_SNAPS_LIST"
+      done < "$SNAP_SNAPSHOT_LIST"
       ANZAHL_SNAPSHOTS=${#SNAP_SET_LIST[@]}
       if [ $ANZAHL_SNAPSHOTS -gt 0 ];
       then
-        e_and_l "$HALF_MINUS_LINE"
-        e_and_l " Es wurden ${bold_yellow}$ANZAHL_SNAPSHOTS${colors_off} ${light_cyan}veraltete Snap-Schnappschüsse${colors_off} gefunden."
-        e_and_l " Was soll ich tun?"
-        e_and_l " [${bold_yellow}0${colors_off}] Schritt überspringen, nichts löschen"
-        e_and_l " [${bold_yellow}1${colors_off}] Jeden Schnappschuss einzeln jeweils mit Abfrage löschen"
-        e_and_l " [${bold_yellow}2${colors_off}] Alle Schnappschüsse ohne einzelne Abfragen löschen"
-        user_choice_012
-        REMOVE_MODE=$?
+        if [ $SNAP_FORCE_REMOVE -ne 1 ];
+        then
+          e_and_l "$HALF_MINUS_LINE"
+          e_and_l " Es wurden ${bold_yellow}$ANZAHL_SNAPSHOTS${colors_off} ${light_cyan}veraltete Snap-Schnappschüsse${colors_off} gefunden."
+          e_and_l " Was soll ich tun?"
+          e_and_l " [${bold_yellow}0${colors_off}] Schritt überspringen, nichts löschen"
+          e_and_l " [${bold_yellow}1${colors_off}] Jeden Schnappschuss einzeln jeweils mit Abfrage löschen"
+          e_and_l " [${bold_yellow}2${colors_off}] Alle Schnappschüsse ohne einzelne Abfragen löschen"
+          user_choice_012
+          REMOVE_MODE=$?
+        else
+          REMOVE_MODE=2
+        fi
         if [ $REMOVE_MODE -gt 0 ];
         then
-          # ----------------------------------------------------
-          # Sicherheitsabfrage wenn alle gelöscht werden sollen
-          # ----------------------------------------------------
-          if [ $REMOVE_MODE -eq 2 ];
+          if [ $SNAP_FORCE_REMOVE -ne 1 ];
           then
-            e_and_l " Es wurden folgende ${light_cyan}Schnappschüsse${colors_off} gefunden:"
-            e_and_l " ${bold_white}Name                      Version                  Revision   Set    Größe${colors_off}"
-            ss=0
-            while [ $ss -lt $ANZAHL_SNAPSHOTS ];
-            do
-              # -----
-              # Name
-              # -----
-              SNAP_PKG_NAME="${SNAP_NAME_LIST[$ss]}"
-              e_and_l -n " ${light_yellow}${SNAP_PKG_NAME:0:25}${colors_off}"
-              ((ANZ_SPACES=25-${#SNAP_PKG_NAME}))
-              insert_spaces $ANZ_SPACES
-              # --------
-              # Version
-              # --------
-              SNAP_PKG_VERSION="${SNAP_VERSION_LIST[$ss]}"
-              SNAP_PKG_VERSION="${SNAP_PKG_VERSION/(V/}"
-              SNAP_PKG_VERSION="${SNAP_PKG_VERSION/)/}"
-              e_and_l -n " ${light_yellow}${SNAP_PKG_VERSION:0:25}${colors_off}"
-              ((ANZ_SPACES=25-${#SNAP_PKG_VERSION}))
-              insert_spaces $ANZ_SPACES
-              # ---------
-              # Revision
-              # ---------
-              SNAP_PKG_REVISION="${SNAP_REVISION_LIST[$ss]}"
-              SNAP_PKG_REVISION="${SNAP_PKG_REVISION/(R/}"
-              SNAP_PKG_REVISION="${SNAP_PKG_REVISION/)/}"
-              e_and_l -n "${SNAP_PKG_REVISION:0:11}"
-              ((ANZ_SPACES=11-${#SNAP_PKG_REVISION}))
-              insert_spaces $ANZ_SPACES
-              # ---------------------------------------------------------------
-              # Snap-Set (fortlaufende Nummer der Gruppe von gelöschten Snaps)
-              # ---------------------------------------------------------------
-              SNAP_PKG_SET="${SNAP_SET_LIST[$ss]}"
-              e_and_l -n "${SNAP_PKG_SET:0:7}"
-              ((ANZ_SPACES=6-${#snapset}))
-              insert_spaces $ANZ_SPACES
-              # ------
-              # Größe
-              # ------
-              SNAP_PKG_SIZE="${SNAP_SIZE_LIST[$ss]}"
-              SNAP_PKG_SIZE="${SNAP_PKG_SIZE/(S/}"
-              SNAP_PKG_SIZE="${SNAP_PKG_SIZE/)/}"
-              e_and_l "$SNAP_PKG_SIZE"
-              ((ss+=1))
-            done
-            e_and_l "$HALF_MINUS_LINE"
-            e_and_l " Hast Du die Liste genau geprüft, so dass nichts ungewollt gelöscht wird?"
-            ask_yes_or_no_plus "remove_snapshots" " Jetzt wirklich ${bold_red}alle${colors_off} Schnappschüsse löschen" "" "n"
-            if [ $? -eq 0 ];
+            # ----------------------------------------------------
+            # Sicherheitsabfrage wenn alle gelöscht werden sollen
+            # ----------------------------------------------------
+            if [ $REMOVE_MODE -eq 2 ];
             then
-              e_and_l " $USER_CHOICE_NO"
-              REMOVE_MODE=0
-            else
-              e_and_l " $USER_CHOICE_YES"
+              e_and_l " Es wurden folgende ${light_cyan}Schnappschüsse${colors_off} gefunden:"
+              e_and_l " ${bold_white}Name                      Version                  Revision   Set    Größe${colors_off}"
+              ss=0
+              while [ $ss -lt $ANZAHL_SNAPSHOTS ];
+              do
+                # -----
+                # Name
+                # -----
+                SNAP_PKG_NAME="${SNAP_NAME_LIST[$ss]}"
+                e_and_l -n " ${light_yellow}${SNAP_PKG_NAME:0:25}${colors_off}"
+                ((ANZ_SPACES=25-${#SNAP_PKG_NAME}))
+                insert_spaces $ANZ_SPACES
+                # --------
+                # Version
+                # --------
+                SNAP_PKG_VERSION="${SNAP_VERSION_LIST[$ss]}"
+                SNAP_PKG_VERSION="${SNAP_PKG_VERSION/(V/}"
+                SNAP_PKG_VERSION="${SNAP_PKG_VERSION/)/}"
+                e_and_l -n " ${light_yellow}${SNAP_PKG_VERSION:0:25}${colors_off}"
+                ((ANZ_SPACES=25-${#SNAP_PKG_VERSION}))
+                insert_spaces $ANZ_SPACES
+                # ---------
+                # Revision
+                # ---------
+                SNAP_PKG_REVISION="${SNAP_REVISION_LIST[$ss]}"
+                SNAP_PKG_REVISION="${SNAP_PKG_REVISION/(R/}"
+                SNAP_PKG_REVISION="${SNAP_PKG_REVISION/)/}"
+                e_and_l -n "${SNAP_PKG_REVISION:0:11}"
+                ((ANZ_SPACES=11-${#SNAP_PKG_REVISION}))
+                insert_spaces $ANZ_SPACES
+                # ---------------------------------------------------------------
+                # Snap-Set (fortlaufende Nummer der Gruppe von gelöschten Snaps)
+                # ---------------------------------------------------------------
+                SNAP_PKG_SET="${SNAP_SET_LIST[$ss]}"
+                e_and_l -n "${SNAP_PKG_SET:0:7}"
+                ((ANZ_SPACES=6-${#snapset}))
+                insert_spaces $ANZ_SPACES
+                # ------
+                # Größe
+                # ------
+                SNAP_PKG_SIZE="${SNAP_SIZE_LIST[$ss]}"
+                SNAP_PKG_SIZE="${SNAP_PKG_SIZE/(S/}"
+                SNAP_PKG_SIZE="${SNAP_PKG_SIZE/)/}"
+                e_and_l "$SNAP_PKG_SIZE"
+                ((ss+=1))
+              done
+              e_and_l "$HALF_MINUS_LINE"
+              e_and_l " Hast Du die Liste genau geprüft, so dass nichts ungewollt gelöscht wird?"
+              ask_yes_or_no_plus "remove_snapshots" " Jetzt wirklich ${bold_red}alle${colors_off} Schnappschüsse löschen" "" "n"
+              if [ $? -eq 0 ];
+              then
+                e_and_l " $USER_CHOICE_NO"
+                REMOVE_MODE=0
+              else
+                e_and_l " $USER_CHOICE_YES"
+              fi
             fi
+            # ----------------------------------------------------
           fi
-          # ----------------------------------------------------
           if [ $REMOVE_MODE -gt 0 ];
           then
             ss=0
             while [ $ss -lt $ANZAHL_SNAPSHOTS ];
             do
-              e_and_l "$HALF_MINUS_LINE"
+              if [ $SNAP_FORCE_REMOVE -ne 1 ]; then e_and_l "$HALF_MINUS_LINE"; fi
               THE_SNAP_TEXT="${SNAP_NAME_LIST[$ss]} ${SNAP_VERSION_LIST[$ss]/(V/}"
               THE_SNAP_TEXT="${THE_SNAP_TEXT/)/} (Set ${SNAP_SET_LIST[$ss]})"
               DO_REMOVE_THIS=1
@@ -4973,7 +5180,7 @@ function remove_snapshots {
               fi
               if [ $DO_REMOVE_THIS -eq 1 ];
               then
-                e_and_l -n " Lösche ${light_yellow}$THE_SNAP_TEXT${colors_off} ... "
+                e_and_l -n " Lösche Schnappschuss ${light_yellow}$THE_SNAP_TEXT${colors_off} ... "
                 snap forget "${SNAP_SET_LIST[$ss]}" "${SNAP_NAME_LIST[$ss]}" &>/dev/null
                 if [ $? -eq 0 ];
                 then
@@ -4984,13 +5191,16 @@ function remove_snapshots {
               fi
               ((ss+=1))
             done
-            e_and_l "$HALF_MINUS_LINE"
+            if [ $SNAP_FORCE_REMOVE -ne 1 ]; then e_and_l "$HALF_MINUS_LINE"; fi
           fi
         fi
-        e_and_l " $HINWEIS_TAG: Zum Löschen veralteter ${bold_white}Snap-Revisionen${colors_off} das Tool ${light_magenta}snapco${colors_off} verwenden ;)"
+        if [ $SNAP_FORCE_REMOVE -ne 1 ];
+        then
+          e_and_l " $HINWEIS_TAG: Zum Löschen veralteter ${bold_white}Snap-Revisionen${colors_off} das Tool ${light_magenta}snapco${colors_off} verwenden ;)"
+        fi
       fi # Keine Schnappschüsse in Liste enthalten
     fi # Keine Liste mit Schnappschüssen
-    remove_file "$SNAPSHOT_SNAPS_LIST"
+    remove_file "$SNAP_SNAPSHOT_LIST"
   fi # Kein Snap
 }
 
@@ -5396,6 +5606,86 @@ function skip_text {
 }
 
 #===============================================================================
+# Installation und Updates von Snap blockieren und
+# verbliebene (temporäre) Snap-Dateien löschen
+# ---------------------------------------------
+# Parameter $1: apt-mark hold setzen (1) oder nicht (0)
+#===============================================================================
+function snap_hold_and_clean {
+  DO_MARK_HOLD=$1
+  # ----------------------------------------------------------------------------
+  # Installation und Updates von Snap blockieren
+  # ----------------------------------------------------------------------------
+  e_and_l -n " - Blockiere die Aktualisierung des Snap-Systems, bitte warten ... "
+  # ---------------------
+  # Konfigurations-Datei
+  # ---------------------
+  if [ ! -d "$APT_PREFERENCES_DIR" ];
+  then
+    mkdir -p "$APT_PREFERENCES_DIR" &>/dev/null
+  fi
+  echo -e "" > "$SNAP_BLOCKING_FILE" 2>/dev/null
+  if [ $? -eq 0 ];
+  then
+    echo -e "Package: snapd"    >> "$SNAP_BLOCKING_FILE" 2>/dev/null
+    echo -e "Pin: release a=*"  >> "$SNAP_BLOCKING_FILE" 2>/dev/null
+    echo -e "Pin-Priority: -10" >> "$SNAP_BLOCKING_FILE" 2>/dev/null
+  else
+    ((SNAP_HOLD_RESULT+=1))
+  fi
+  # ---------
+  # apt-mark
+  # ---------
+  if [ $DO_MARK_HOLD -eq 1 ];
+  then
+    apt-mark hold snapd &>/dev/null
+    if [ $? -ne 0 ]; then ((SNAP_HOLD_RESULT+=1)); fi
+  fi
+  # ---------
+  if [ $SNAP_HOLD_RESULT -eq 0 ];
+  then
+    e_and_l "$OK_TAG"
+  else
+    e_and_l "$ERROR_TAG"
+  fi
+  # ----------------------------------------------------------------------------
+  # Verbliebene (temporäre) Snap-Dateien löschen
+  # ----------------------------------------------------------------------------
+  e_and_l -n " - Lösche verbliebene Daten von Snap und Paketen, bitte warten ... "
+  if [ -d /var/cache/snapd ];
+  then
+    rm -f -r /var/cache/snapd &>/dev/null
+    if [ $? -ne 0 ]; then ((SNAP_RMDIR_RESULT+=1)); fi
+  fi
+  if [ $SNAP_RMDIR_RESULT -eq 0 ];
+  then
+    e_and_l "$OK_TAG"
+  else
+    e_and_l "$ERROR_TAG"
+  fi
+}
+
+#===============================================================================
+# Installations- und Update-Blockaden für snapd aufheben
+#===============================================================================
+function snap_unhold {
+  # ---------------------
+  # Konfigurations-Datei
+  # ---------------------
+  if [ -s "$SNAP_BLOCKING_FILE" ];
+  then
+    mv -f "$SNAP_BLOCKING_FILE" "$SNAP_BLOCKING_FILE.bak" &>/dev/null
+    if [ $? -ne 0 ]; then ((SNAP_UNHOLD_RESULT+=1)); fi
+  fi
+  # ---------
+  # apt-mark
+  # ---------
+  apt-mark unhold snapd &>/dev/null
+  if [ $? -ne 0 ]; then ((SNAP_UNHOLD_RESULT+=1)); fi
+  # ---------
+}
+
+#===============================================================================
 # Umwandlung eines Zeitstempels (Sekunden) in einen lesbaren Text
 # ----------------------------------------------------------------
 # Parameter $1: Sekunden
@@ -5443,14 +5733,34 @@ function time_to_string {
 # Hinweis: Nur Anwendungen, keine Systemkomponenten (Treiber etc.)
 #===============================================================================
 function update_flatpak_list {
-  flatpak list --app --columns=name,version,ref > "$THE_FLATPAK_INSTALLED_LIST" 2>/dev/null
+  flatpak list --app --columns=name,version,ref > "$FLATPAK_INSTALLED_PKG_LIST" 2>/dev/null
+}
+
+#===============================================================================
+# Liste der installierten Snap-Pakete erstellen
+# Hinweis: Nur Anwendungen, keine Systemkomponenten (Treiber etc.)
+#===============================================================================
+function update_snap_list {
+  LIST_FILE_NAME="$1"
+  # ls -1 /snap/bin | grep -i -v snap > "$SNAP_INSTALLED_PKG_LIST" 2>/dev/null
+  snap list 2>/dev/null | \
+       grep -i -v -E "\bbase\b" | \
+       grep -i -v -E "core" | \
+       grep -i -v -E "^mesa" | \
+       grep -i -v -E "^snap" | \
+       grep -i -v -E "^gnome-[0-9]+" | \
+       grep -i -v -E "themes" | \
+       awk '{print $1}' | \
+       awk 'NR>1' > "$LIST_FILE_NAME"
 }
 
 #===============================================================================
 # Benutzer zwischen 0, 1 und 2 auswählen lassen
 #===============================================================================
 function user_choice_012 {
-  e_and_l -n " Bitte gewünschte Auswahl treffen (Enter-Taste = 0): "
+  DEFAULT_CHOICE=0
+  if [ "$1" != "" ]; then DEFAULT_CHOICE=$1; fi
+  e_and_l -n " Bitte gewünschte Auswahl treffen (Enter-Taste = $DEFAULT_CHOICE): "
   if [ ${OPTION_FLAG[notoall]} -eq 0 ];
   then
     THE_USERS_CHOICE=-1
@@ -5460,7 +5770,7 @@ function user_choice_012 {
       read -N 1 -r -s THE_USERS_CHOICE
       if [ "$THE_USERS_CHOICE" == $'\n' ];
       then
-        THE_USERS_CHOICE=0
+        THE_USERS_CHOICE=$DEFAULT_CHOICE
       else
         THE_USERS_CHOICE=$(echo $THE_USERS_CHOICE | sed 's/[^0-9]*//g')
         if [ "$THE_USERS_CHOICE" == "" ]; then THE_USERS_CHOICE=-1; fi
@@ -5749,9 +6059,11 @@ STARTMENU_DIR="$USER_HOME_DIR/.local/share/applications"
 # Quell-Angaben der Paketverwaltung (OHNE / am Ende!)
 #===============================================================================
 # Datei mit Quell-Angaben
-SOURCES_LIST_FILE="/etc/apt/sources.list"
+APT_SOURCES_LIST_FILE="/etc/apt/sources.list"
 # Ordner mit Dateien, die weitere Quell-Angaben beinhalten
-SOURCES_LIST_DIR="/etc/apt/sources.list.d"
+APT_SOURCES_LIST_DIR="/etc/apt/sources.list.d"
+# Ordner mit Dateien, die individuelle Konfigurationen für apt enthalten
+APT_PREFERENCES_DIR="/etc/apt/preferences.d"
 
 #===============================================================================
 # Dateien zur Speicherung von temporären Daten
@@ -5910,16 +6222,44 @@ done
 
 # ==============================================================================
 # Status zu Flatpak, Snap und Docker ermitteln
+# ---------------------------------------------
+# Achtung: Es wird unterschieden zwischen installiert (_INSTALLED) und
+# aktiv (_ACTIVE), um eventuell deaktivierte Subsysteme erkennen zu können
 # ==============================================================================
+# --------
+# Flatpak
+# --------
 FLATPAK_INSTALLED=$(LANG=en dpkg-query -W -f='${Status}' "flatpak" 2>/dev/null | grep -i -c -E "ok installed")
-THE_FLATPAK_REMOTE_LIST="$DOWNLOAD_DIR/flatpak_remote_list"
-THE_FLATPAK_INSTALLED_LIST="$DOWNLOAD_DIR/flatpak_installed_list"
+FLATPAK_ACTIVE=0
+FLATPAK_SYSTEM_VERSION="$(flatpak --version 2>/dev/null | awk '{print $2}' | xargs 2>/dev/null)"
+if [ "$FLATPAK_SYSTEM_VERSION" != "" ]; then FLATPAK_ACTIVE=1; fi
+FLATPAK_INSTALLED_PKG_LIST="$DOWNLOAD_DIR/flatpak_installed_pkg.list"
+FLATPAK_REMOTE_LIST="$DOWNLOAD_DIR/flatpak_remote_list"
+# -----
+# Snap
+# -----
+# Über den "Umweg" mit systemctl, weil snapd installiert und nur deaktiviert
+# sein kann, wobei snap --version dann auch trotz Deaktivierung aufrufbar ist
+# -----
+SNAP_SYS_COMPONENTS=('snapd.socket' 'snapd.seeded.service' 'snapd.service' 'snapd')
 SNAP_INSTALLED=$(LANG=en dpkg-query -W -f='${Status}' "snapd" 2>/dev/null | grep -i -c -E "ok installed")
-SNAPSHOT_SNAPS_LIST="$DOWNLOAD_DIR/snap_snapshot.list"
-DOCKER_VERSION="$(docker --version 2>/dev/null | sed -E "s/.*version\s([0-9\.]*).*/\1/gi" | xargs 2>/dev/null)"
-DOCKER_INSTALLED=0
-if [ "$DOCKER_VERSION" != "" ]; then DOCKER_INSTALLED=1; fi
-# =============================================================================
+SNAP_ACTIVE=$(LANG=en systemctl status snapd 2>/dev/null | grep -c -i -E "\:\s*\bactive\b")
+if [ $SNAP_ACTIVE -gt 0 ];
+then
+  SNAP_SYSTEM_VERSION="$(snap --version 2>/dev/null | grep -i -E "^\bsnap(d)*\b" | head -n 1 | awk '{print $2}' | xargs 2>/dev/null)"
+else
+  SNAP_SYSTEM_VERSION=""
+fi
+SNAP_INSTALLED_PKG_LIST="$DOWNLOAD_DIR/snap_installed_pkg.list"
+SNAP_SNAPSHOT_LIST="$DOWNLOAD_DIR/snap_snapshot.list"
+SNAP_BLOCKING_FILE="$APT_PREFERENCES_DIR/nosnap.pref"
+# -------
+# Docker
+# -------
+DOCKER_INSTALLED=$(LANG=en dpkg-query -W -f='${Status}' "docker.io" 2>/dev/null | grep -i -c -E "ok installed")
+DOCKER_ACTIVE=0
+DOCKER_SYSTEM_VERSION="$(docker --version 2>/dev/null | sed -E "s/.*version\s([0-9\.]*).*/\1/gi" | xargs 2>/dev/null)"
+if [ "$DOCKER_SYSTEM_VERSION" != "" ]; then DOCKER_ACTIVE=1; fi
 
 #===============================================================================
 # Systemarchitektur ermitteln
@@ -5932,22 +6272,22 @@ then
   echo -e -n " Initialisierung, bitte warten ... "
 
   ANZ_SOURCE_ENTRIES=0
-  if [ -s "$SOURCES_LIST_FILE" ];
+  if [ -s "$APT_SOURCES_LIST_FILE" ];
   then
     # --------------------------------------------------------------------------
     # Ermittlung der Anzahl von Paket-Quellen in der Datei sources.list
     # --------------------------------------------------------------------------
-    ANZ_SOURCE_ENTRIES=$(grep -i -E "^\s*deb\s" "$SOURCES_LIST_FILE" 2>/dev/null | grep -i -v "security" | wc -l)
+    ANZ_SOURCE_ENTRIES=$(grep -i -E "^\s*deb\s" "$APT_SOURCES_LIST_FILE" 2>/dev/null | grep -i -v "security" | wc -l)
     # --------------------------------------------------------------------------
     # Deaktivieren von CD/DVD als Haupt-Paketquelle (alle zu installierenden
     # Pakete werden ausschließlich immer aktuell aus dem Internet geladen!)
     # --------------------------------------------------------------------------
-    if [ $(grep -i -c -E "^\s*deb\s\s*cdrom" "$SOURCES_LIST_FILE" 2>/dev/null) -gt 0 ];
+    if [ $(grep -i -c -E "^\s*deb\s\s*cdrom" "$APT_SOURCES_LIST_FILE" 2>/dev/null) -gt 0 ];
     then
       echo -e ""
       echo -e -n " Deaktiviere CD/DVD als Paketquelle ... "
-      create_backup_file "$SOURCES_LIST_FILE"
-      sed -i -E "s/^\s*deb\s\s*cdrom/# deb cdrom/gi" "$SOURCES_LIST_FILE"
+      create_backup_file "$APT_SOURCES_LIST_FILE"
+      sed -i -E "s/^\s*deb\s\s*cdrom/# deb cdrom/gi" "$APT_SOURCES_LIST_FILE"
       if [ $? -eq 0 ];
       then
         echo -e "$OK_TAG"
@@ -5960,9 +6300,9 @@ then
   # Ermittlung der Anzahl von Paket-Quellen in dem Ordner sources.list.d
   # ----------------------------------------------------------------------------
   ANZ_SOURCE_FILES=0
-  if [ -d "$SOURCES_LIST_DIR" ];
+  if [ -d "$APT_SOURCES_LIST_DIR" ];
   then
-    ANZ_SOURCE_FILES=$(ls -A "$SOURCES_LIST_DIR" 2>/dev/null | grep -i -v "readme" | wc -w)
+    ANZ_SOURCE_FILES=$(ls -A "$APT_SOURCES_LIST_DIR" 2>/dev/null | grep -i -v "readme" | wc -w)
   fi
   # ----------------------------------------------------------------------------
   # Skript beenden, wenn keine sinnvollen Paketquellen gefunden wurden
@@ -6403,7 +6743,7 @@ then
       WINE_VERSION+="$WINE_VERSION_APT (STD)"
     fi
   fi
-  if [ $FLATPAK_INSTALLED -ne 0 ];
+  if [ $FLATPAK_ACTIVE -eq 1 ];
   then
     WINE_VERSION_FLAT="$(flatpak list --columns=name,version,ref | grep -i -E "^Wine[0-9]*\s+[0-9]" | tail -n 1 | cut -f 2 | xargs 2>/dev/null)"
     if [ "$WINE_VERSION_FLAT" != "" ];
@@ -6496,11 +6836,11 @@ declare -A OPTION_TEXT # Angezeigte Bezeichnung der Option
 declare -A OPTION_MENU # Index des Menüpunktes, in dem die Option erscheint
 
 OPTION_LIST=()
-OPTION_LIST+=(extends addflat addsnap external prioflat priosnap skipsims esamesrc foreign force quiet status listonly addstart csubdirs) # Menu 2
-OPTION_LIST+=(exupdate extras kuplock kunlock setutc optimize revive repair cleansys personal adcstart dsave dload) # Menu 4
+OPTION_LIST+=(extends addflat addsnap external prioflat priosnap skipsims esamesrc foreign force status listonly addstart csubdirs) # Menu 2
+OPTION_LIST+=(exupdate extras kuplock kunlock setutc optimize snapcont snapkill snapstop revive repair cleansys personal) # Menu 4
 OPTION_LIST+=(noupdate norepo autoyorn notoall skipmesg exupdall infoonly noinfo log logfull nocolor saveconf reset cleantmp) # Menu 5
+OPTION_LIST+=(dsave dload quiet instonly instlist remove) # Im Menü nicht angezeigt aber zu initialisieren
 
-OPTION_TEXT[adcstart]="Cinnamon-spezifische Starter auf dem Desktop anlegen"
 OPTION_TEXT[addflat]="Flatpak-Pakete auswählbar und installierbar machen"
 OPTION_TEXT[addsnap]="Snap-Pakete auswählbar und installierbar machen"
 OPTION_TEXT[addstart]="Starter (Desktop-Symbole) für Paketauswahl erstellen"
@@ -6543,12 +6883,14 @@ OPTION_TEXT[saveconf]="Einstellungen für nächsten Aufruf speichern"
 OPTION_TEXT[setutc]="Systemzeit auf Universal Time Coordinated umstellen"
 OPTION_TEXT[skipmesg]="Bei wichtigen Hinweisen nicht auf Bestätigung warten"
 OPTION_TEXT[skipsims]="Alternative Pakete nicht anzeigen und installieren"
+OPTION_TEXT[snapcont]="Die Snap-Paketverwaltung wieder reaktivieren"
+OPTION_TEXT[snapkill]="Die Snap-Paketverwaltung deaktivieren oder entfernen"
+OPTION_TEXT[snapstop]="DERZEIT NICHT IM MENÜ, WIRD MIT snapkill ANGESTEUERT"
 OPTION_TEXT[status]="Nur Status der Pakete anzeigen (nicht installieren)"
 
-OPTION_MENU[quiet]=0 # Wird im Menü nicht angezeigt
-
+OPTION_MENU[quiet]=0    # Wird im Menü nicht angezeigt
 OPTION_MENU[instonly]=1 # Nur zur Anzeige im Menü, Prüfung erfolgt auf INST_ONLY_PKG
-# OPTION_MENU[instlist]=0 # Wird nicht verwendet, Prüfung erfolgt auf INST_LIST_FILE
+OPTION_MENU[instlist]=0 # Wird nicht verwendet, Prüfung erfolgt auf INST_LIST_FILE
 
 OPTION_MENU[addstart]=2
 if [ "$DESKTOP_ENVIRONMENT" == "GNOME" ];
@@ -6571,14 +6913,6 @@ OPTION_MENU[skipsims]=2
 OPTION_MENU[status]=2
 
 OPTION_MENU[remove]=3 # Wird nicht tatsächlich verwendet, Prüfung erfolgt auf REMOVE_PKG_NAME
-
-# if [ "$DESKTOP_ENVIRONMENT" == "Cinnamon" ];
-# then
-#   OPTION_MENU[adcstart]=4
-# else
-#   OPTION_MENU[adcstart]=0
-# fi
-OPTION_MENU[adcstart]=0
 
 OPTION_MENU[cleansys]=4
 OPTION_MENU[dload]=0 # Derzeit nicht im Menü angeboten
@@ -6605,6 +6939,28 @@ then
     OPTION_MENU[setutc]=4
   fi
 fi
+
+# ----------------------------------------------------------------
+# Optionen zur Snap-Paketverwaltung je nach deren Status anzeigen
+# ----------------------------------------------------------------
+OPTION_MENU[snapcont]=0
+OPTION_MENU[snapkill]=0
+OPTION_MENU[snapstop]=0
+# Wenn Snap AKTIV ist, dann Optionen zur Deaktivierung und Entfernung anbieten
+# (wird gemeinsam über snapkill angesteuert und erst später als Auswahl beider
+# Optionen angeboten, so dass snapstop hier im Menü nicht angezeigt wird).
+# Wenn Snap INAKTIV ist, dann nur Optionen zur Reaktivierung anbieten.
+if [ $SNAP_INSTALLED -gt 0 ];
+then
+  if [ $SNAP_ACTIVE -gt 0 ];
+  then
+    OPTION_MENU[snapkill]=4
+  else
+    OPTION_MENU[snapcont]=4
+  fi
+fi
+# ----------------------------------------------------------------
+
 if [ ${#AUTO_ANSWERS[@]} -gt 0 ];
 then
   OPTION_MENU[autoyorn]=5
@@ -6774,7 +7130,7 @@ fi
 # Ggf. Flatpak-Tools hinzufügen
 # (s.a. AUTO_ADD_PKGS mit flatpak-Erweiterungen für bestimmte Pakete)
 # --------------------------------------------------------------------
-if [ $FLATPAK_INSTALLED -ne 0 ];
+if [ $FLATPAK_ACTIVE -eq 1 ];
 then
   KATEGORIE_PKGS[v]+=" flatseal"
 fi
@@ -6820,9 +7176,8 @@ KATEGORIE_PKGS[xx]="alien apt-file apt-rdepends apt-show-versions arping arp-sca
 # ------------------------------------------------------------------------------
 # Zubehör
 # ------------------------------------------------------------------------------
-KATEGORIE_PKGS[z]="balena-etcher barrier clamav clamtk copyq doublecmd electrum engrampa file-roller freefilesync galculator gedit gnome-weather gucharmap kdeconnect keepass2 kfind klavaro ksnip ktouch magnus mousepad onboard plank pluma redshift rpi-imager sardu unetbootin usb-creator-common veracrypt xournal"
+KATEGORIE_PKGS[z]="balena-etcher barrier bitwarden clamav copyq doublecmd electrum engrampa file-roller freefilesync galculator gedit gnome-weather gucharmap kdeconnect keepass2 kfind klavaro ksnip ktouch magnus mousepad onboard plank pluma redshift rpi-imager sardu unetbootin usb-creator-common veracrypt xournal"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[z]+=" sticky xed"; fi
-
 
 # ------------------------------------------------------------------------------
 # Cinnamon Tools
@@ -6941,6 +7296,8 @@ then
   done
 fi
 
+AUTO_ADD_PKGS[clamav]="clamav-freshclam clamdscan clamtk"
+
 AUTO_ADD_PKGS[doublecmd-common]="doublecmd-gtk"
 # AUTO_ADD_PKGS[frogatto]="frogatto-data" # Derzeit besser als Flatpak
 # AUTO_ADD_PKGS[fs-uae]="fs-uae-launcher" # Derzeit nicht im Angebot, da auf
@@ -7034,7 +7391,7 @@ AUTO_ADD_PKGS[yt-dlp]="youtube-dl youtubedl-gui"
 # -----------------------------------------------------------
 # Ggf. Flatpak-Erweiterungen für bestimmte Pakete hinzufügen
 # -----------------------------------------------------------
-if [ $FLATPAK_INSTALLED -ne 0 ];
+if [ $FLATPAK_ACTIVE -eq 1 ];
 then
   AUTO_ADD_PKGS[gnome-software]="gnome-software-plugin-flatpak"
   AUTO_ADD_PKGS[plasma-discover]="plasma-discover-backend-flatpak"
@@ -8270,8 +8627,8 @@ POST_INST_CONF[iptvnator]="$RESSOURCE_SERVER_DIR/scripts/iptvnator_post_inst"
 POST_INST_CONF[keepass2]="$RESSOURCE_SERVER_DIR/scripts/keepass2_post_inst"
 POST_INST_CONF[libdvd-pkg]="dpkg-reconfigure libdvd-pkg"
 POST_INST_CONF[makemkv-bin]="$RESSOURCE_SERVER_DIR/scripts/makemkv-bin_post_inst"
-POST_INST_CONF[microsoft-edge-stable]="rm -f $SOURCES_LIST_DIR/microsoft-edge-stable.list"
-POST_INST_CONF[microsoft-edge-dev]="rm -f $SOURCES_LIST_DIR/microsoft-edge-dev.list"
+POST_INST_CONF[microsoft-edge-stable]="rm -f $APT_SOURCES_LIST_DIR/microsoft-edge-stable.list"
+POST_INST_CONF[microsoft-edge-dev]="rm -f $APT_SOURCES_LIST_DIR/microsoft-edge-dev.list"
 POST_INST_CONF[nextcloud-desktop]="$RESSOURCE_SERVER_DIR/scripts/nextcloud_post_inst"
 POST_INST_CONF[oolite]="$RESSOURCE_SERVER_DIR/scripts/oolite_post_inst"
 POST_INST_CONF[openssh-server]="echo -n Starte SSH-Dienste ... && service ssh restart &>/dev/null && systemctl enable ssh &>/dev/null && echo ok"
@@ -8615,6 +8972,8 @@ fi
 # Boot-Partitionen
 #------------------
 root_partition="$(findmnt -n / 2>/dev/null | awk '{ print $2 }' | xargs 2>/dev/null)"
+root_partition_name=$(lsblk -l -n -o label ${root_partition} | xargs 2>/dev/null)
+root_partition_label=$(lsblk -l -n -o partlabel ${root_partition} | xargs 2>/dev/null)
 boot_device="$(echo ${root_partition} | sed -E "s/p*[0-9]*$//" | xargs 2>/dev/null)"
 #----------------------
 # EFI-System-Partition
@@ -9019,6 +9378,8 @@ fi # Ende [noupdate]
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 3. Auswahlmenü anzeigen
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+MENU_INFO_TEXT=""
+MENU_ERROR_TEXT=""
 if [ $SHOW_HELP -eq 0 ] &&
    [ $NO_MENU -eq 0 ];
 then
@@ -9346,116 +9707,7 @@ EOF
       # ------------------------------------------------------------------------
       # Auswahl auf Konflikte prüfen
       # ------------------------------------------------------------------------
-      ANZ_KATEGORIES=0
-      for k in ${KAT_KEY_LIST[@]};
-      do
-        if [ ${KATEGORIE_FLAG[$k]} -eq 1 ];
-        then
-          ((ANZ_KATEGORIES+=1))
-        fi
-      done
-      MENU_INFO_TEXT=""
-      MENU_ERROR_TEXT=""
-      # --------------------
-      # noinfo und infoonly
-      # --------------------
-      if [ ${OPTION_FLAG[infoonly]} -eq 1 ];
-      then
-        if [ ${OPTION_FLAG[noinfo]} -eq 1 ];
-        then
-          MENU_ERROR_TEXT="\Z1\ZbFEHLER!\Zn\nDie Optionen \Z1noinfo\Z0 und \Z1infoonly\Z0 können nicht gemeinsam angewendet werden."
-        else
-          MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nBei Verwendung der Option \Z4infoonly\Z0 werden keine weiteren Aktionen durchgeführt!"
-        fi
-      else
-        # ----------------
-        # dload und dsave
-        # ----------------
-        if [ ${OPTION_FLAG[dload]} -eq 1 ] &&
-           [ ${OPTION_FLAG[dsave]} -eq 1 ];
-        then
-          MENU_ERROR_TEXT="\Z1\ZbFEHLER!\Zn\nDie Aktionen \Z1dload\Z0 und \Z1dsave\Z0 können nicht gemeinsam durchgeführt werden."
-        fi
-        # -------------------------
-        # listonly ohne Kategorien
-        # -------------------------
-        if [ ${OPTION_FLAG[listonly]} -eq 1 ];
-        then
-          if [ $ANZ_KATEGORIES -eq 0 ];
-          then
-            MENU_ERROR_TEXT="\Z1\ZbFEHLER!\Zn\nDie Option \Z4listonly\Z0 wurde ausgewählt, aber keine Pakete (Kategorie) zur Auflistung."
-          else
-            if [ ${OPTION_FLAG[status]} -eq 1 ];
-            then
-              MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nDurch die Option \Z4listonly\Z0 wird der Paketstatus (Option \Z4status\Z0) nicht angezeigt."
-            else
-              MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nBei Verwendung der Option \Z4listonly\Z0 werden keine weiteren Aktionen durchgeführt!"
-            fi
-          fi
-        else
-          # =========================================================
-          # Konflikte bei Einstellungen zur Installation von Paketen
-          # =========================================================
-          if [ ${OPTION_FLAG[status]} -eq 0 ];
-          then
-            # ------------------
-            # "Fremde" Desktops
-            # ------------------
-            if [[ ${KATEGORIE_FLAG[gx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "GNOME" ]] ||
-               [[ ${KATEGORIE_FLAG[lx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "LXDE" ]]  ||
-               [[ ${KATEGORIE_FLAG[mx]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "MATE" ]]  ||
-               [[ ${KATEGORIE_FLAG[xf]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "XFCE" ]]  ||
-               [[ ${KATEGORIE_FLAG[mt]} -eq 1 && $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -eq 0 ]] ||
-               # [[ ${OPTION_FLAG[adcstart]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "Cinnamon" ]];
-               [[ ${KATEGORIE_FLAG[ci]} -eq 1 && "$DESKTOP_ENVIRONMENT" != "Cinnamon" ]];
-            then
-              MENU_INFO_TEXT="\Z1\ZbWarnung\Zn\nEs wurden Tool-Pakete ausgewählt, die nicht für diesen Desktop vorgesehen sind."
-            fi
-            # -------------------------------
-            # Sich überlagernde Optionen
-            # (notoall -> autoyorn -> force)
-            # -------------------------------
-            if [ ${OPTION_FLAG[notoall]} -eq 1 ];
-            then
-              if [ ${OPTION_FLAG[autoyorn]} -eq 1 ];
-              then
-                MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nOption \Z4notoall\Z0 überlagert Option \Z4autoyorn\Z0,\nso dass alle Abfragen mit (N)ein beantwortet werden."
-              fi
-              if [ ${OPTION_FLAG[force]} -eq 1 ];
-              then
-                MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nOption \Z4notoall\Z0 überlagert Option \Z4force\Z0,\nso dass keine Pakete installiert werden."
-              fi
-            fi
-            if [ ${OPTION_FLAG[autoyorn]} -eq 1 ] &&
-               [ ${OPTION_FLAG[force]} -eq 1 ];
-            then
-              MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nOption \Z4autoyorn\Z0 überlagert Option \Z4force\Z0,\nso dass eventuell nicht alle Pakete installiert werden."
-            fi
-            # ----------------------------------------------------
-            # Ausgewählte aber nicht installierte Paketverwaltung
-            # ----------------------------------------------------
-            if [ ${OPTION_FLAG[priosnap]} -eq 1 ] &&
-               [ ${OPTION_FLAG[addsnap]} -eq 0 ];
-            then
-              MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nSnap-Pakete sollen bevorzugt werden, aber die Option \Z4addsnap\Z0 ist nicht ausgewählt.\nSo werden \Zbkeine\Z0 Snap-Pakete installiert!"
-            fi
-            if [ ${OPTION_FLAG[prioflat]} -eq 1 ] &&
-               [ ${OPTION_FLAG[addflat]} -eq 0 ];
-            then
-              MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nFlatpaks sollen bevorzugt werden, aber die Option \Z4addflat\Z0 ist nicht ausgewählt.\nSo werden \Zbkeine\Z0 Flatpak-Pakete installiert!"
-            fi
-            # ------------------------------------------------------
-            # Forcierte Installation von Paketen mit gleichzeitigem
-            # Ignorieren der ähnlichen und gleichen Pakete
-            # ------------------------------------------------------
-            if [ ${OPTION_FLAG[force]} -eq 1 ] &&
-               [ ${OPTION_FLAG[skipsims]} -eq 1 ];
-            then
-              MENU_INFO_TEXT="\Z5\ZbAchtung\Zn\nDurch die Kombination \Z4force\Z0 und \Z4skipsims\Z0 wird nicht auf ähnliche Pakete geprüft, was zu mehrfacher Installation gleicher Pakete aus verschiedenen Quellen führen kann."
-            fi
-          fi
-        fi # Ende listonly
-      fi # Ende infoonly
+      check_options
       # ----------------
       # "nichts zu tun"
       # ----------------
@@ -9560,6 +9812,38 @@ if [ $SHOW_HELP -eq 0 ] &&
    [ $NO_MENU -eq 0 ];
 then
   show_headlines
+else
+  # -------------------------------------------------------------------
+  # Wenn das Menü nicht angezeigt wurde, dann die angegebenen Optionen
+  # auf Konflikte prüfen (erfolgt sonst auch im Menü)
+  # -------------------------------------------------------------------
+  check_options
+  if [ "$MENU_ERROR_TEXT" != "" ];
+  then
+    ERROR_TEXT="$(echo -e -n ${MENU_ERROR_TEXT} | tr '\n' ' ')"
+    ERROR_TEXT="$(echo -e -n ${ERROR_TEXT} | sed -E 's/\\Zb//g')"
+    ERROR_TEXT="$(echo -e -n ${ERROR_TEXT} | sed -E 's/\\Zn/\\033[0m/g')"
+    ERROR_TEXT="$(echo -e -n ${ERROR_TEXT} | sed -E 's/\\Z0/\\033[0m/g')"
+    ERROR_TEXT="$(echo -e -n ${ERROR_TEXT} | sed -E 's/\\Z([1-9])/\\033[1;3\1m/g')"
+    e_and_l " $ERROR_TEXT"
+    e_and_l ""
+    e_and_l -n " Drücke Taste ${bold_yellow}H${colors_off} für Hilfe oder andere Taste zum Beenden: "
+    read -N 1 -r -s ANSWER
+    e_and_l ""
+    if [[ "$ANSWER" != "h" && "$ANSWER" != "H" ]]; then exit 0; fi
+    e_and_l ""
+  fi
+fi
+if [ ${OPTION_FLAG[infoonly]} -eq 0 ] &&
+   [ "$MENU_INFO_TEXT" != "" ];
+then
+  INFO_TEXT="$(echo -e -n ${MENU_INFO_TEXT} | tr '\n' ' ')"
+  INFO_TEXT="$(echo -e -n ${INFO_TEXT} | sed -E 's/\\Zb//g')"
+  INFO_TEXT="$(echo -e -n ${INFO_TEXT} | sed -E 's/\\Zn/\\033[0m/g')"
+  INFO_TEXT="$(echo -e -n ${INFO_TEXT} | sed -E 's/\\Z0/\\033[0m/g')"
+  INFO_TEXT="$(echo -e -n ${INFO_TEXT} | sed -E 's/\\Z([1-9])/\\033[1;3\1m/g')"
+  e_and_l " $INFO_TEXT"
+  e_and_l ""
 fi
 
 #===============================================================================
@@ -9567,6 +9851,7 @@ fi
 # oder die Hilfe explizit angefordert wurde, dann Programm-Syntax anzeigen
 #===============================================================================
 if ! ready_for_action ||
+   [ "$MENU_ERROR_TEXT" != "" ] ||
    [ $SHOW_HELP -eq 1 ];
 then
   e_and_l " Aufruf: $SCRIPT_NAME [Kategorien] [Optionen]"
@@ -9607,9 +9892,6 @@ then
   e_and_l " $HALF_LINE"
   e_and_l ""
   # --- OPTIONS START ---
-#   e_and_l "  adcstart  Auf dem Cinnamon-Desktop automatisch für diesen Desktop"
-#   e_and_l "            spezifische Starter anlegen."
-#   e_and_l ""
   e_and_l "   addflat  Erlaubt die Auswahl und Installation von Flatpak-Paketen."
   e_and_l ""
   e_and_l "   addsnap  Erlaubt die Auswahl und Installation von Snap-Paketen."
@@ -9781,6 +10063,14 @@ then
   e_and_l "  skipsims  Unterdrückt die Anzeige und Installation vordefinierter"
   e_and_l "            alternativer (ähnlicher) Programme."
   e_and_l ""
+  e_and_l "  snapcont  Reaktiviert eine deaktivierte Snap-Paketverwaltung."
+  e_and_l ""
+  e_and_l "  snapkill  Entfernt die Snap-Paketverwaltung und alle als Snap"
+  e_and_l "            installierten Programme vollständig von diesem System."
+  e_and_l ""
+  e_and_l "  snapstop  Deaktiviert die Snap-Paketverwaltung wahlweise mit"
+  e_and_l "            Beibehaltung der als Snap installierten Programme."
+  e_and_l ""
   e_and_l "    status  Zeigt den Status der ausgewählten Programmpakete an."
   e_and_l "            Sofern die Option extends angegeben ist, werden dabei ggf."
   e_and_l "            auch Paketquellen für individuelle Programmpakete ergänzt,"
@@ -9868,7 +10158,23 @@ then
     SYS_INFO_TXT+=" Boot-Modus: ${bold_yellow}$BOOT_MODE${colors_off}"$'\n'
   fi
 
-  SYS_INFO_TXT+=" Startpartition: ${bold_yellow}${root_partition/\/dev\//}${colors_off}"$'\n'
+  SYS_INFO_TXT+=" Startpartition: ${bold_yellow}${root_partition/\/dev\//}${colors_off}"
+  if [ "$root_partition_name" != "" ] ||
+     [ "$root_partition_label" != "" ];
+  then
+    SYS_INFO_TXT+=" ${bold_cyan}("
+    if [ "$root_partition_name" != "" ];
+    then
+      SYS_INFO_TXT+="$root_partition_name"
+    fi
+    if [ "$root_partition_label" != "" ];
+    then
+      if [ "$root_partition_name" != "" ]; then SYS_INFO_TXT+=", "; fi
+      SYS_INFO_TXT+="$root_partition_label"
+    fi
+    SYS_INFO_TXT+=")${colors_off}"
+  fi
+  SYS_INFO_TXT+=$'\n'
 
   if [ "$OPERATION_SYSTEM" != "" ];
   then
@@ -9887,7 +10193,7 @@ then
 
   if [ "$DEBIAN_VERSION" != "" ];
   then
-    SYS_INFO_TXT+=" Debian-Version: ${bold_yellow}$DEBIAN_VERSION ($DEBIAN_CODE)${colors_off}"$'\n'
+    SYS_INFO_TXT+=" Debian-Version: ${bold_yellow}$DEBIAN_VERSION${colors_off} ${bold_cyan}($DEBIAN_CODE)${colors_off}"$'\n'
   fi
 
   SYS_INFO_TXT+=" Kernel-Version: ${bold_yellow}$(uname -r)${colors_off}"$'\n'
@@ -9951,15 +10257,47 @@ then
     SYS_INFO_TXT+=" Shell: ${bold_yellow}$SHELL_TEXT${colors_off}"$'\n'
   fi
 
-  if [ "$DOCKER_VERSION" != "" ];
+  SYS_INFO_TXT+=" Flatpak-Version: ${bold_yellow}"
+  if [ "$FLATPAK_SYSTEM_VERSION" != "" ];
   then
-    SYS_INFO_TXT+=" Docker-Version: ${bold_yellow}$DOCKER_VERSION${colors_off}"$'\n'
+    SYS_INFO_TXT+="$FLATPAK_SYSTEM_VERSION"
+  else
+    SYS_INFO_TXT+="-"
   fi
+  SYS_INFO_TXT+="${colors_off}"$'\n'
 
+  SYS_INFO_TXT+=" Docker-Version: ${bold_yellow}"
+  if [ "$DOCKER_SYSTEM_VERSION" != "" ];
+  then
+    SYS_INFO_TXT+="$DOCKER_SYSTEM_VERSION"
+  else
+    SYS_INFO_TXT+="-"
+  fi
+  SYS_INFO_TXT+="${colors_off}"$'\n'
+
+  SYS_INFO_TXT+=" Snap-Version: ${bold_yellow}"
+  if [ "$SNAP_SYSTEM_VERSION" != "" ];
+  then
+    SYS_INFO_TXT+="$SNAP_SYSTEM_VERSION"
+  else
+    if [ $SNAP_INSTALLED -gt 0 ] &&
+       [ $SNAP_ACTIVE -eq 0 ];
+    then
+      SYS_INFO_TXT+="deaktiviert"
+    else
+      SYS_INFO_TXT+="-"
+    fi
+  fi
+  SYS_INFO_TXT+="${colors_off}"$'\n'
+
+  SYS_INFO_TXT+=" Wine-Version: ${bold_yellow}"
   if [ "$WINE_VERSION" != "" ];
   then
-    SYS_INFO_TXT+=" Wine-Version: ${bold_yellow}$WINE_VERSION${colors_off}"$'\n'
+    SYS_INFO_TXT+="$WINE_VERSION"
+  else
+    SYS_INFO_TXT+="-"
   fi
+  SYS_INFO_TXT+="${colors_off}"$'\n'
 
   SYS_INFO_TXT+=" Hostname: ${bold_yellow}$(hostname)${colors_off}"$'\n'
 
@@ -10256,8 +10594,21 @@ fi # Ende Neue Einstellungen speichern
 #===============================================================================
 if [ $TOTAL_PACKS -gt 0 ] ||
    [ $USE_ILIST_FILE -eq 1 ] ||
+   [ ${OPTION_FLAG[extends]} -eq 1 ] ||
+   [ ${OPTION_FLAG[external]} -eq 1 ] ||
+   [ ${OPTION_FLAG[extras]} -eq 1 ] ||
    [ ${OPTION_FLAG[exupdate]} -eq 1 ] ||
-   [ ${OPTION_FLAG[remove]} -eq 1 ];
+   [ ${OPTION_FLAG[instlist]} -eq 1 ] ||
+   [ ${OPTION_FLAG[instonly]} -eq 1 ] ||
+   [ ${OPTION_FLAG[kuplock]} -eq 1 ] ||
+   [ ${OPTION_FLAG[kunlock]} -eq 1 ] ||
+   [ ${OPTION_FLAG[optimize]} -eq 1 ] ||
+   [ ${OPTION_FLAG[remove]} -eq 1 ] ||
+   [ ${OPTION_FLAG[repair]} -eq 1 ] ||
+   [ ${OPTION_FLAG[snapcont]} -eq 1 ] ||
+   [ ${OPTION_FLAG[snapkill]} -eq 1 ] ||
+   [ ${OPTION_FLAG[snapstop]} -eq 1 ] ||
+   [ ${OPTION_FLAG[status]} -eq 1 ];
 then
   # ----------------------------------------------------------------------------
   # apt-Sperre prüfen
@@ -10270,7 +10621,7 @@ then
     APT_IS_BLOCKED=1
     e_and_l "$FULL_LINE"
     e_and_l " $ACHTUNG_TAG: ${bold_white}apt${colors_off} ist gerade durch einen anderen Prozess geblockt (Updates?)."
-    e_and_l " Die Sperre kann eventuell aufgehoben werden, dies wird jedoch ${bold_white}nicht empfohlen${colors_off}!"
+    e_and_l " Die Sperre kann eventuell aufgehoben werden, dies wird jedoch ${bold_yellow}nicht empfohlen${colors_off}!"
     ask_yes_or_no_plus "" " Soll ich trotzdem versuchen die Sperre aufzuheben" "" "n"
     if [ $? -eq 1 ];
     then
@@ -10383,8 +10734,8 @@ then
   # ----------------------------------------------------------------------------
   if [ $ALL_COMPONENTS_INSTALLED -eq 1 ];
   then
-    if [[ ${OPTION_FLAG[addflat]} -eq 0 || $FLATPAK_INSTALLED -eq 1 ]] &&
-       [[ ${OPTION_FLAG[addsnap]} -eq 0 || $SNAP_INSTALLED -eq 1 ]];
+    if [[ ${OPTION_FLAG[addflat]} -eq 0 || $FLATPAK_ACTIVE -eq 1 ]] &&
+       [[ ${OPTION_FLAG[addsnap]} -eq 0 || $SNAP_ACTIVE -gt 0 ]];
     then
       e_and_l " Alle benötigten Komponenten sind installiert ... $OK_TAG"
     fi
@@ -10486,7 +10837,14 @@ then
         if [ $? -eq 0 ];
         then
           FLATPAK_INSTALLED=1
-          e_and_l "$OK_TAG"
+          FLATPAK_SYSTEM_VERSION="$(flatpak --version 2>/dev/null | awk '{print $2}' | xargs 2>/dev/null)"
+          if [ "$FLATPAK_SYSTEM_VERSION" != "" ];
+          then
+            FLATPAK_ACTIVE=1
+            e_and_l "$OK_TAG"
+          else
+            e_and_l "$ERROR_TAG"
+          fi
         else
           e_and_l "$ERROR_TAG"
         fi
@@ -10495,34 +10853,33 @@ then
       e_and_l ""
     fi
     # --------------------------------------------------------------------------
-    # SNAP
+    # SNAP (sinnvollerweise nur wenn Snap nicht deaktiviert werden soll)
     # --------------------------------------------------------------------------
-    if [ ${OPTION_FLAG[addsnap]} -eq 1 ] &&
-       [ $SNAP_INSTALLED -eq 0 ] &&
-       [ $(apt list "snapd" 2>/dev/null | grep -i -c "snapd") -gt 0 ];
+    if [[ ${OPTION_FLAG[snapkill]} -eq 0 || ${OPTION_FLAG[snapstop]} -eq 0 ]] &&
+       [ ${OPTION_FLAG[addsnap]} -eq 1 ];
     then
-      e_and_l " $ACHTUNG_TAG: Die Snap-Paketverwaltung ist nicht installiert."
-      ask_yes_or_no_plus "install_snap" " ${light_cyan}Die Snap-Paketverwaltung${colors_off} jetzt installieren" "" "n"
-      if [ $? -eq 1 ];
+      # --------------------------------------------------------------
+      # Wenn Snap nicht installiert ist aber installiert werden kann,
+      # dann zur Installation anbieten
+      # --------------------------------------------------------------
+      if [ $SNAP_INSTALLED -eq 0 ] &&
+         [ $(apt list "snapd" 2>/dev/null | grep -i -c "snapd") -gt 0 ];
       then
-        e_and_l -n " Installiere die ${light_yellow}Snap-Paketverwaltung${colors_off}, bitte warten ... "
-        # Installations-Blockade für Snap von Linux Mint aufheben
-        SNAP_BLOCKING_FILE="/etc/apt/preferences.d/nosnap.pref"
-        if [ -s "$SNAP_BLOCKING_FILE" ];
-        then
-          mv -f "$SNAP_BLOCKING_FILE" "$SNAP_BLOCKING_FILE.bak" &>/dev/null
-        fi
-        # Snap installieren
-        apt install snapd -y &>"$LOG_TEMP"
-        if [ $? -eq 0 ];
-        then
-          SNAP_INSTALLED=1
-          e_and_l "$OK_TAG"
-        else
-          e_and_l "$ERROR_TAG"
-        fi
-        add_full_log
+        e_and_l " $ACHTUNG_TAG: Die Snap-Paketverwaltung ist nicht installiert."
+        install_snap
       fi
+      # ---------------------------------------------------------
+      # Wenn Snap zwar installiert aber deaktiviert ist und auch
+      # nicht aktiviert werden soll, dann Hinweis dazu anzeigen
+      # ---------------------------------------------------------
+      if [ $SNAP_INSTALLED -gt 0 ] &&
+         [ $SNAP_ACTIVE -eq 0 ] &&
+         [ ${OPTION_FLAG[snapcont]} -eq 0 ];
+      then
+        e_and_l " $ACHTUNG_TAG: Die Snap-Paketverwaltung ist deaktiviert. Um Programmpakete als Snap"
+        e_and_l " installieren zu können, muss zuerst die Snap-Paketverwaltung aktiviert werden."
+      fi
+      # ------------------------------------------------
     fi
   fi
 fi # Ende Flatpak- und Snap-Verwaltung installieren
@@ -10534,7 +10891,7 @@ if [ ${OPTION_FLAG[listonly]} -eq 0 ];
 then
 
   if [ ${OPTION_FLAG[norepo]} -eq 0 ] ||
-     [ $FLATPAK_INSTALLED -ne 0 ];
+     [ $FLATPAK_ACTIVE -eq 1 ];
   then
     e_and_l "$FULL_LINE"
     e_and_l " ${bold_blue}Aktualisierung der Paketlisten${colors_off}"
@@ -10563,7 +10920,7 @@ then
   #=============================================================================
   # Das Flatpak-Repo und die Flatpak-Listen aktualisieren
   #=============================================================================
-  if [ $FLATPAK_INSTALLED -ne 0 ];
+  if [ $FLATPAK_ACTIVE -eq 1 ];
   then
     # --------------------------------------------------------------------------
     # Standard-Flatpak-Repo (Flathub) hinzufügen
@@ -10580,12 +10937,12 @@ then
       then
         echo -e $(date) > "$DOWNLOAD_DIR/flatpak_appstream_update_blocker" 2>/dev/null
         flatpak update --appstream flathub 2>/dev/null
-        remove_file "$THE_FLATPAK_REMOTE_LIST"
+        remove_file "$FLATPAK_REMOTE_LIST"
       fi
       # Liste der verfügbaren Flatpaks erstellen
-      if [ ! -s "$THE_FLATPAK_REMOTE_LIST" ];
+      if [ ! -s "$FLATPAK_REMOTE_LIST" ];
       then
-        flatpak remote-ls --app --columns=name,version,ref > "$THE_FLATPAK_REMOTE_LIST" 2>/dev/null
+        flatpak remote-ls --app --columns=name,version,ref > "$FLATPAK_REMOTE_LIST" 2>/dev/null
       fi
       e_and_l "$OK_TAG"
     fi
@@ -10594,6 +10951,546 @@ then
     e_and_l "$OK_TAG"
   fi # Ende Flatpak-Repo und die Flatpak-Listen aktualisieren
 
+fi
+
+# ==============================================================================
+# Deaktivierung und Entfernung der Snap-Paketverwaltung
+# ==============================================================================
+# ------------------------------------------------------------------------------
+# Abfrage ob Deaktivierung oder Entfernung gewünscht wird
+# ------------------------------------------------------------------------------
+if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
+   [[ ${OPTION_FLAG[snapkill]} -eq 1 || ${OPTION_FLAG[snapstop]} -eq 1 ]];
+then
+  e_and_l "$FULL_LINE"
+  if [ ${OPTION_FLAG[snapkill]} -eq 1 ];
+  then
+    e_and_l " ${bold_blue}Entfernung der Snap-Paketverwaltung${colors_off} ${dark_gray}[snapkill]${colors_off}"
+  else
+    e_and_l " ${bold_blue}Deaktivierung der Snap-Paketverwaltung${colors_off} ${dark_gray}[snapstop]${colors_off}"
+  fi
+  e_and_l "$FULL_LINE"
+
+  SNAP_STOP_SUCCESS=0
+  SNAP_STOP_ACTION_TEXT_1=""
+  SNAP_STOP_ACTION_TEXT_2=""
+
+  if [ $SNAP_INSTALLED -gt 0 ];
+  then
+
+    SNAP_REMOVE_TEXT=" Bei der ${bold_yellow}Entfernung${colors_off} der Snap-Paketverwaltung werden sämtliche dazu gehörigen"$'\n'
+    SNAP_REMOVE_TEXT+=" Komponenten und als Snap installierten Programme sowie deren Benutzer-Daten"$'\n'
+    SNAP_REMOVE_TEXT+=" vollständig gelöscht. Dieser Vorgang kann nicht rückgängig gemacht werden,"$'\n'
+    SNAP_REMOVE_TEXT+=" das Snap-System und alle Snaps müssten bei Bedarf neu installiert werden."
+
+    # --------------------------------------------------------------------
+    # Wenn Snap aktiv ist, dann Deaktivierung und Entfernung anbieten ...
+    # --------------------------------------------------------------------
+    if [ $SNAP_ACTIVE -gt 0 ];
+    then
+      e_and_l " Die ${bold_white}Snap-Paketverwaltung${colors_off} führt aufgrund ihrer Architektur schnell zu sehr"
+      e_and_l " großen Mengen redundanter Daten und Einschränkungen der freien Paket-Auswahl,"
+      e_and_l " sowie zu ganz erheblichen Performance-Einbußen beim Starten von Anwendungen."
+      create_backup_file "$SNAP_INSTALLED_PKG_LIST"
+      update_snap_list "$SNAP_INSTALLED_PKG_LIST"
+      declare -A SNAP_PKG_LIST
+      if [ -s "$SNAP_INSTALLED_PKG_LIST" ];
+      then
+        e_and_l " Folgende ${bold_white}Anwendungen${colors_off} sind derzeit als ${bold_white}Snap${colors_off} installiert:"
+        e_and_l "$HALF_MINUS_LINE"
+        i=0
+        while read snap_name;
+        do
+          if [ "$snap_name" != "" ];
+          then
+            e_and_l " - $snap_name"
+            SNAP_PKG_LIST[$i]="$snap_name"
+            ((i+=1))
+          fi
+        done < "$SNAP_INSTALLED_PKG_LIST"
+        e_and_l "$HALF_MINUS_LINE"
+      fi
+      e_and_l " Die Snap-Paketverwaltung kann einschließlich sämtlicher als Snap installierten"
+      e_and_l " Anwendungen (Snaps) vollständig entfernt oder optional nur deaktiviert werden."
+      e_and_l " Sämtliche Snaps können danach als reguläre Programmpakete aus anderen Quellen"
+      e_and_l " bezogen und installiert werden."
+      e_and_l ""
+      e_and_l " Bei der ${bold_yellow}Deaktivierung${colors_off} der Snap-Paketverwaltung werden sämtliche Komponenten"
+      e_and_l " dieser deaktiviert und können ebenso schnell wieder aktiviert werden. Die als"
+      e_and_l " Snap installierten Programme können dabei funktionslos erhalten werden, oder "
+      e_and_l " zur Vermeidung von Konflikten auch individuell gelöscht werden."
+      e_and_l ""
+      e_and_l "$SNAP_REMOVE_TEXT"
+      e_and_l ""
+      e_and_l " $HINWEIS_TAG: Selbstverständlich sollte in jedem Fall vorher eine ${bold_white}Vollsicherung${colors_off} des"
+      e_and_l " gesamten Systems gemacht worden sein!"
+      e_and_l ""
+      e_and_l " Was soll ich jetzt tun?"
+      e_and_l " [${bold_yellow}0${colors_off}] Abbrechen, die Snap-Paketverwaltung nicht entfernen oder deaktivieren"
+      e_and_l " [${bold_yellow}1${colors_off}] Die Snap-Paketverwaltung nur ${light_yellow}deaktivieren${colors_off} und wahlweise Snaps löschen"
+      e_and_l " [${bold_yellow}2${colors_off}] Die Snap-Paketverwaltung und alle Snaps ${light_yellow}vollständig entfernen${colors_off}"
+      user_choice_012
+      SNAP_DEACTIVATE_MODE=$?
+      OPTION_FLAG[snapkill]=0
+      OPTION_FLAG[snapstop]=0
+      if [ $SNAP_DEACTIVATE_MODE -eq 1 ]; then OPTION_FLAG[snapstop]=1; fi
+      if [ $SNAP_DEACTIVATE_MODE -eq 2 ]; then OPTION_FLAG[snapkill]=1;  fi
+    # --------------------------------------------------------------------
+    # ... sonst, wenn Snap installiert, aber inaktiv ist ...
+    # --------------------------------------------------------------------
+    else
+      # Wenn Snap entfernt werden soll, dann Sicherheitsabfrage durchführen
+      if [ ${OPTION_FLAG[snapkill]} -eq 1 ];
+      then
+        e_and_l "$SNAP_REMOVE_TEXT"
+        ask_yes_or_no_plus "" " Die ${light_cyan}Snap-Paketverwaltung${colors_off} vollständig entfernen" "" "n"
+        OPTION_FLAG[snapkill]=$?
+        OPTION_FLAG[snapstop]=0
+      fi
+      # Wenn Snap deaktiviert werden soll, dann Hinweis darauf anzeigen,
+      # dass es das schon ist und Fortführung blockieren
+      if [ ${OPTION_FLAG[snapstop]} -eq 1 ];
+      then
+        e_and_l " ${bold_green}Glückwunsch${colors_off}, die ${light_cyan}Snap-Paketverwaltung${colors_off} scheint nicht aktiv zu sein ... $OK_TAG"
+        # OPTION_FLAG[snapcont]=0
+        OPTION_FLAG[snapkill]=0
+        OPTION_FLAG[snapstop]=0
+      fi
+    fi
+    # --------------------------------------------------------------------
+  else
+    e_and_l " ${bold_green}Glückwunsch${colors_off}, die ${light_cyan}Snap-Paketverwaltung${colors_off} scheint nicht installiert zu sein ... $OK_TAG"
+    # OPTION_FLAG[snapcont]=0
+    OPTION_FLAG[snapkill]=0
+    OPTION_FLAG[snapstop]=0
+  fi
+fi
+
+# ------------------------------------------------------------------------------
+# Deaktivierung der Snap-Paketverwaltung
+# ---------------------------------------
+# ACHTUNG: Reihenfolge mit vorgeschalteter Abfrage (s.o.) nicht ändern!
+# ------------------------------------------------------------------------------
+if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
+   [ ${OPTION_FLAG[snapstop]} -eq 1 ];
+then
+  e_and_l "$HALF_MINUS_LINE"
+  e_and_l " ${bold_white}Deaktivierung der Snap-Paketverwaltung${colors_off}"
+  e_and_l " Im nächsten Schritt können wahlweise alle Anwendungen vollständig gelöscht"
+  e_and_l " werden, welche als Snap installiert sind, sowie die Snap-Paketverwaltung"
+  e_and_l " selbst deaktiviert und deren automatischer Neustart verhindert werden."
+  ask_yes_or_no_plus "" " Snaps wahlweise entfernen und ${light_cyan}Snap-Verwaltung deaktivieren${colors_off}" "" "n"
+  if [ $? -eq 1 ];
+  then
+    e_and_l "$HALF_MINUS_LINE"
+    # --------------------------------------------------------------------
+    # 1. Installierte Snaps (Anwendungen) deinstallieren
+    # --------------------------------------------------------------------
+    e_and_l " ${bold_white}Schritt 1${colors_off} - Installierte Snaps (Anwendungen) deinstallieren"
+    SNAP_REMOVE_RESULT=0
+    ANZAHL_SNAPS=${#SNAP_PKG_LIST[@]}
+    if [ $ANZAHL_SNAPS -gt 0 ];
+    then
+      e_and_l " Es wird dringend empfohlen, vor der Deaktivierung der Snap-Paketverwaltung"
+      e_and_l " alle als Snap installierten Anwendungen zu deinstallieren, zumal diese danach"
+      e_and_l " ohnehin nicht mehr ausführbar sind, um eventuell Konfigurations-Konflikte mit"
+      e_and_l " den später aus anderer Quelle installierten gleichen Anwendungen zu vermeiden!"
+      e_and_l " Zur Deinstallation stehen folgende Optionen zur Verfügung:"
+      e_and_l " [${bold_yellow}0${colors_off}] Schritt überspringen, keine Snaps löschen"
+      e_and_l " [${bold_yellow}1${colors_off}] Jedes Snap einzeln jeweils mit Abfrage Löschen"
+      e_and_l " [${bold_yellow}2${colors_off}] Alle Snaps ohne einzelne Abfragen löschen"
+      user_choice_012 2
+      SNAP_PURGE_ACTION=$?
+      # ----------------------------------------------
+      # Sicherheitsabfrage zur Auswahl aller Elemente
+      # ----------------------------------------------
+      if [ $SNAP_PURGE_ACTION -eq 2 ];
+      then
+        e_and_l " Hast Du die Liste ganz genau geprüft, so dass nichts ungewollt gelöscht wird?"
+        ask_yes_or_no_plus "" " Wirklich ${bold_red}alle${colors_off} vorstehenden Snaps löschen" "" "n"
+        if [ $? -eq 0 ]; then SNAP_PURGE_ACTION=0; fi
+      fi
+      # ----------------------------------------------
+      if [ $SNAP_PURGE_ACTION -gt 0 ];
+      then
+        echo -e -n "" > "$LOG_TEMP"
+        i=0
+        while [ $i -lt $ANZAHL_SNAPS ];
+        do
+          DO_PURGE_SNAP=1
+          snap_name="${SNAP_PKG_LIST[$i]}"
+          if [ $(LANG=en snap info "$snap_name" 2>/dev/null | grep -i -c -E "installed\:") -ne 0 ];
+          then
+            if [ $SNAP_PURGE_ACTION -eq 1 ];
+            then
+              e_and_l "$HALF_MINUS_LINE"
+              ask_yes_or_no_plus "" " Snap ${light_cyan}$snap_name${colors_off} entfernen" "" "j"
+              if [ $? -eq 0 ]; then DO_PURGE_SNAP=0; fi
+            fi
+            # ----------------
+            # Element Löschen
+            # ----------------
+            if [ $DO_PURGE_SNAP -eq 1 ];
+            then
+              INST_STATUS=2
+              e_and_l -n " Deinstalliere ${light_yellow}$snap_name${colors_off}, bitte warten ... "
+              snap remove --purge "$snap_name" &>/dev/null
+              if [ $? -eq 0 ];
+              then
+                remove_starter "$snap_name"
+                e_and_l "$OK_TAG"
+                remove_snapshots "$snap_name" 1
+                if [ -d "$USER_HOME_DIR/snap/$snap_name" ];
+                then
+                  e_and_l -n " Lösche Ordner ${light_yellow}$USER_HOME_DIR/snap/$snap_name${colors_off}, bitte warten ... "
+                  rm -f -r "$USER_HOME_DIR/snap/$snap_name" &>/dev/null
+                  if [ $? -eq 0 ];
+                  then
+                    e_and_l "$OK_TAG"
+                  else
+                    ((SNAP_REMOVE_RESULT+=1))
+                    e_and_l "$ERROR_TAG"
+                  fi
+                fi
+              else
+                ((SNAP_REMOVE_RESULT+=1))
+                e_and_l "$ERROR_TAG"
+              fi
+            fi
+          fi
+          ((i+=1))
+        done
+      fi
+      e_and_l "$HALF_MINUS_LINE"
+      e_and_l " $HINWEIS_TAG: Die Liste der zuvor installierten Snaps ist gespeichert in:"
+      e_and_l " ${light_yellow}$SNAP_INSTALLED_PKG_LIST${colors_off}"
+    else
+      e_and_l " ${bold_green}Perfekt${colors_off}, es scheinen keine ${bold_white}Anwendungen${colors_off} als Snap installiert zu sein ... $OK_TAG"
+    fi
+    e_and_l "$HALF_MINUS_LINE"
+    # --------------------------------------------------------------------
+    # 2. Snap-System vollständig deaktivieren (nicht deinstallieren)
+    # --------------------------------------------------------------------
+    e_and_l " ${bold_white}Schritt 2${colors_off} - Deaktivierung der Snap-Paketverwaltung"
+    DO_DEACTIVATE_SNAP=1
+    # ----------------------------------------------------------------
+    # Falls noch Snaps installiert sind, noch eine Sicherheitsabfrage
+    # ----------------------------------------------------------------
+    SNAP_INST_PKG_LIST_2="${SNAP_INSTALLED_PKG_LIST/list/tmp}"
+    update_snap_list "$SNAP_INST_PKG_LIST_2"
+    if [ -s "$SNAP_INST_PKG_LIST_2" ];
+    then
+      e_and_l " $ACHTUNG_TAG, folgende Anwendungen sind noch als Snap installiert:"
+      e_and_l "$HALF_MINUS_LINE"
+      while read snap_name;
+      do
+        if [ "$snap_name" != "" ];
+        then
+          e_and_l " - $snap_name"
+        fi
+      done < "$SNAP_INST_PKG_LIST_2"
+      remove_file "$SNAP_INST_PKG_LIST_2"
+      e_and_l "$HALF_MINUS_LINE"
+      e_and_l " ${light_yellow}Diese Anwendungen sind nach der Deaktivierung der Snap-Paketverwaltung nicht"
+      e_and_l " mehr als Snap aufrufbar und werden somit auch nicht mehr funktionieren!${colors_off}"
+      ask_yes_or_no_plus "" " Die ${light_cyan}Snap-Paketverwaltung${colors_off} jetzt trotzdem deaktivieren" "" "n"
+      DO_DEACTIVATE_SNAP=$?
+      e_and_l "$HALF_MINUS_LINE"
+    fi
+    # ----------------------------------------------------------------
+    if [ $DO_DEACTIVATE_SNAP -eq 1 ];
+    then
+      # ---------------------------------
+      # 2.1 Snap-System-Dienste anhalten
+      # ---------------------------------
+      e_and_l -n " - Stoppe Snap-Prozesse und Snap-System-Dienste, bitte warten  ... "
+      SNAP_STOP_RESULT=0
+      for snap_component in ${SNAP_SYS_COMPONENTS[@]};
+      do
+        systemctl stop $snap_component &>/dev/null
+        if [ $? -ne 0 ]; then ((SNAP_STOP_RESULT+=1)); fi
+      done
+      if [ $SNAP_STOP_RESULT -eq 0 ];
+      then
+        e_and_l "$OK_TAG"
+      else
+        e_and_l "$ERROR_TAG ($SNAP_STOP_RESULT)"
+      fi
+      # -------------------------------------
+      # 2.2 Snap-System-Dienste deaktivieren
+      # -------------------------------------
+      e_and_l -n " - Blockiere Neu-Start aller Snap-System-Dienste, bitte warten ... "
+      SNAP_DISABLE_RESULT=0
+      for snap_component in ${SNAP_SYS_COMPONENTS[@]};
+      do
+        systemctl disable $snap_component &>/dev/null
+        if [ $? -ne 0 ]; then ((SNAP_DISABLE_RESULT+=1)); fi
+        systemctl mask --now $snap_component &>/dev/null
+        if [ $? -ne 0 ]; then ((SNAP_DISABLE_RESULT+=1)); fi
+      done
+      if [ $SNAP_DISABLE_RESULT -eq 0 ];
+      then
+        e_and_l "$OK_TAG"
+      else
+        e_and_l "$ERROR_TAG ($SNAP_DISABLE_RESULT)"
+      fi
+      # -------------------------------------------------------
+      # 2.3 Installation und Updates von Snap blockieren sowie
+      #     verbliebene (temporäre) Snap-Dateien löschen
+      # -------------------------------------------------------
+      SNAP_HOLD_RESULT=0
+      SNAP_RMDIR_RESULT=0
+      snap_hold_and_clean 1
+
+      # ----------------------------
+      # Ergebnisanzeige vorbereiten
+      # ----------------------------
+      SNAP_STOP_ACTION_TEXT_1="deaktiviert"
+      SNAP_STOP_ACTION_TEXT_2="Deaktivierung"
+      if [ $SNAP_STOP_RESULT -eq 0 ] &&
+         [ $SNAP_DISABLE_RESULT -eq 0 ] &&
+         [ $SNAP_HOLD_RESULT -eq 0 ] &&
+         [ $SNAP_RMDIR_RESULT -eq 0 ];
+      then
+        SNAP_STOP_SUCCESS=1
+      fi
+    else
+      e_and_l " $USER_CHOICE_NO"
+    fi
+  else
+    e_and_l " $USER_CHOICE_NO"
+  fi
+fi
+
+# ------------------------------------------------------------------------------
+# Entfernung der Snap-Paketverwaltung
+# ------------------------------------
+# ACHTUNG: Reihenfolge mit vorgeschalteter Abfrage sowie Routine zur
+# Deaktivierung der Snap-Paketverwaltung (s.o.) nicht ändern!
+# ------------------------------------------------------------------------------
+if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
+   [ ${OPTION_FLAG[snapkill]} -eq 1 ];
+then
+  e_and_l "$HALF_MINUS_LINE"
+  e_and_l " ${bold_white}Entfernung der Snap-Paketverwaltung${colors_off}"
+  e_and_l " $ACHTUNG_TAG: Die Snap-Paketverwaltung und alle als Snap installierten Programme"
+  e_and_l " sowie deren Benutzer-Daten werden vollständig gelöscht, und es können danach"
+  e_and_l " auch keine Programme mehr als Snap installiert werden."
+  ask_yes_or_no_plus "" " Die ${light_cyan}Snap-Paketverwaltung und alle Snaps${colors_off} vollständig entfernen" "" "n"
+  if [ $? -eq 1 ];
+  then
+    e_and_l "$HALF_MINUS_LINE"
+    # ------------------------------------------------------------------
+    # 1. Snaps und alle als Snap installierten Programmpakete entfernen
+    # ------------------------------------------------------------------
+    e_and_l -n " - Entferne Snap-System, das dauert etwas länger, bitte warten ... "
+    # -------------------------------------------------------
+    # Installations- und Update-Blockaden für snapd aufheben
+    # -------------------------------------------------------
+    SNAP_UNHOLD_RESULT=0
+    snap_unhold
+    # ----------------------------------
+    # Mit Ausgabe sämtlicher Meldungen:
+    # { apt purge snapd -y 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; } | tee "$LOG_TEMP"
+    # PURGE_SNAP_RESULT=$(cat "$LAST_EXIT_CODE")
+    # add_full_log
+    # remove_file "$LAST_EXIT_CODE"
+    # ----------------------------------
+    apt-get purge snapd -y &>"$LOG_TEMP" # Ohne Ausgabe von Meldungen
+    PURGE_SNAP_RESULT=$?
+    if [ $PURGE_SNAP_RESULT -eq 0 ];
+    then
+      e_and_l "$OK_TAG"
+    else
+      e_and_l "$ERROR_TAG"
+      add_full_log
+    fi
+    # ------------------------------------------------------
+    # 2. Installation und Updates von Snap blockieren sowie
+    #    verbliebene (temporäre) Snap-Dateien löschen
+    # ------------------------------------------------------
+    SNAP_HOLD_RESULT=0
+    SNAP_RMDIR_RESULT=0
+    snap_hold_and_clean 0 # Ohne apt-mark hold, weil es hier kein snap mehr gibt
+    # ----------------------------
+    # Ergebnisanzeige vorbereiten
+    # ----------------------------
+    SNAP_STOP_ACTION_TEXT_1="entfernt"
+    SNAP_STOP_ACTION_TEXT_2="Entfernung"
+    if [ $PURGE_SNAP_RESULT -eq 0 ] &&
+       [ $SNAP_HOLD_RESULT -eq 0 ] &&
+       [ $SNAP_RMDIR_RESULT -eq 0 ];
+    then
+      SNAP_STOP_SUCCESS=1
+    fi
+  else
+    e_and_l " $USER_CHOICE_NO"
+  fi
+fi
+
+# ------------------------------------------------------------------------------
+# Ergebnisanzeige zur Deaktivierung oder Entfernung der Snap-Paketverwaltung
+# ---------------------------------------------------------------------------
+# ACHTUNG: Reihenfolge mit vorgeschalteter Abfrage sowie Routinen zur
+# Deaktivierung oder Entfernung der Snap-Paketverwaltung (s.o.) nicht ändern!
+# ------------------------------------------------------------------------------
+if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
+   [[ ${OPTION_FLAG[snapkill]} -eq 1 || ${OPTION_FLAG[snapstop]} -eq 1 ]];
+then
+  if [ $SNAP_STOP_SUCCESS -eq 1 ];
+  then
+    e_and_l " ${bold_green}Glückwunsch${colors_off}, die Snap-Paketverwaltung wurde erfolgreich $SNAP_STOP_ACTION_TEXT_1."
+    if [ -s "$SNAP_INSTALLED_PKG_LIST" ];
+    then
+      e_and_l "$HALF_MINUS_LINE"
+      e_and_l " ${bold_green}Tipp${colors_off}: Um alle vorher als Snap installierten und entfernte Anwendungen wieder"
+      e_and_l " neu aus anderer Quelle zu installieren, kann einfach die dabei erstellte Liste"
+      e_and_l " verwendet werden. Dazu Lissy später wie folgt aufrufen:"
+      e_and_l " ${light_yellow}${0} instlist \"$SNAP_INSTALLED_PKG_LIST\"${colors_off}"
+      e_and_l " und je nach Wunsch die Optionen ${light_yellow}addflat${colors_off}, ${light_yellow}extends${colors_off} und ${light_yellow}external${colors_off} hinzufügen."
+    fi
+    e_and_l "$HALF_MINUS_LINE"
+    repo_update " Aktualisiere das Repository, bitte warten ... "
+    e_and_l "$HALF_MINUS_LINE"
+    e_and_l " $HINWEIS_TAG: Zur Vermeidung von Konflikten durch eventuell noch im Hauptspeicher"
+    e_and_l " verbliebene Teile der Snap-Paketverwaltung sollte das gesamte System vor der"
+    e_and_l " Installation neuer Anwendungen neu gestartet werden."
+  else
+    if [ "$SNAP_STOP_ACTION_TEXT_2" != "" ];
+    then
+      e_and_l " $WARN_TAG: Bei $SNAP_STOP_ACTION_TEXT_2 der Snap-Paketverwaltung sind Fehler aufgetreten."
+    fi
+  fi
+fi
+
+# ------------------------------------------------------------------------------
+# Re-Aktivierung der Snap-Paketverwaltung
+# ----------------------------------------
+# ACHTUNG: Reihenfolge mit vorgeschalteter Abfrage sowie Routinen zur
+# Deaktivierung oder Entfernung der Snap-Paketverwaltung (s.o.) nicht ändern!
+# ------------------------------------------------------------------------------
+if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
+   [ ${OPTION_FLAG[snapcont]} -eq 1 ];
+then
+  e_and_l "$FULL_LINE"
+  e_and_l " ${bold_blue}Re-Aktivierung der Snap-Paketverwaltung${colors_off} ${dark_gray}[snapcont]${colors_off}"
+  e_and_l "$FULL_LINE"
+  if [ $SNAP_INSTALLED -gt 0 ];
+  then
+    if [ $SNAP_ACTIVE -eq 0 ];
+    then
+      e_and_l " Die ${bold_white}Snap-Paketverwaltung${colors_off} ist installiert, scheint aber nicht aktiv zu sein."
+      ask_yes_or_no_plus "snap_reactivate" " Soll die ${light_cyan}Snap-Paketverwaltung${colors_off} jetzt reaktiviert werden" "" "n"
+      if [ $? -eq 1 ];
+      then
+        # ----------------------------------------------------------------------
+        # 1. Snap-System-Dienste (re)aktivieren
+        # ----------------------------------------------------------------------
+        e_and_l "$HALF_MINUS_LINE"
+        e_and_l -n " - Reaktiviere deaktivierte Snap-System-Dienste, bitte warten ... "
+        SNAP_ENABLE_RESULT=0
+        for snap_component in ${SNAP_SYS_COMPONENTS[@]};
+        do
+          systemctl unmask $snap_component &>/dev/null
+          if [ $? -ne 0 ]; then ((SNAP_ENABLE_RESULT+=1)); fi
+          systemctl enable $snap_component &>/dev/null
+          if [ $? -ne 0 ]; then ((SNAP_ENABLE_RESULT+=1)); fi
+        done
+        if [ $SNAP_ENABLE_RESULT -eq 0 ];
+        then
+          e_and_l "$OK_TAG"
+        else
+          e_and_l "$ERROR_TAG ($SNAP_ENABLE_RESULT)"
+        fi
+        # ----------------------------------------------------------------------
+        # 2. Snap-System-Dienste starten
+        # ----------------------------------------------------------------------
+        e_and_l -n " - Starte Snap-Prozesse und Snap-System-Dienste, bitte warten ... "
+        SNAP_START_RESULT=0
+        for snap_component in ${SNAP_SYS_COMPONENTS[@]};
+        do
+          systemctl start $snap_component &>/dev/null
+          if [ $? -ne 0 ]; then ((SNAP_START_RESULT+=1)); fi
+        done
+        if [ $SNAP_START_RESULT -eq 0 ];
+        then
+          SNAP_ACTIVE=$(LANG=en systemctl status snapd 2>/dev/null | grep -c -i -E "\:\s*\bactive\b")
+          if [ $SNAP_ACTIVE -gt 0 ];
+          then
+            SNAP_SYSTEM_VERSION="$(snap --version 2>/dev/null | grep -i -E "^\bsnap(d)*\b" | head -n 1 | awk '{print $2}' | xargs 2>/dev/null)"
+          else
+            SNAP_SYSTEM_VERSION=""
+          fi
+          if [ "$SNAP_SYSTEM_VERSION" != "" ];
+          then
+            e_and_l "$OK_TAG"
+          else
+            e_and_l "$ERROR_TAG ($SNAP_START_RESULT)"
+          fi
+        else
+          e_and_l "$ERROR_TAG ($SNAP_START_RESULT)"
+        fi
+        # ----------------------------------------------------------------------
+        # 3. Installations- und Update-Blockaden für snapd aufheben
+        # ----------------------------------------------------------------------
+        e_and_l -n " - Hebe Aktualisierungs-Blockade für Snapd auf, bitte warten  ... "
+        SNAP_UNHOLD_RESULT=0
+        snap_unhold
+        if [ $SNAP_UNHOLD_RESULT -eq 0 ];
+        then
+          e_and_l "$OK_TAG"
+        else
+          e_and_l "$ERROR_TAG"
+        fi
+        # ----------------------------------------------------------------------
+        # 4. Temporären Ordner für Snap wieder anlegen
+        # ----------------------------------------------------------------------
+        e_and_l -n " - Lege temporären Ordner für Snapd wieder an, bitte warten   ... "
+        SNAP_MKDIR_RESULT=0
+        if [ ! -d /var/cache/snapd ];
+        then
+          mkdir -p /var/cache/snapd &>/dev/null
+          SNAP_MKDIR_RESULT=$?
+        fi
+        if [ $SNAP_MKDIR_RESULT -eq 0 ];
+        then
+          e_and_l "$OK_TAG"
+        else
+          e_and_l "$ERROR_TAG"
+        fi
+        # ----------------------------------------------------------------------
+        # Ergebnis anzeigen (nur für Re-Aktivierung)
+        # ----------------------------------------------------------------------
+        if [ $SNAP_ENABLE_RESULT -eq 0 ] &&
+           [ "$SNAP_SYSTEM_VERSION" != "" ] &&
+           [ $SNAP_UNHOLD_RESULT -eq 0 ] &&
+           [ $SNAP_MKDIR_RESULT -eq 0 ];
+        then
+          e_and_l " ${bold_green}Alles klar${colors_off}, die Snap-Paketverwaltung wurde erfolgreich reaktiviert."
+          e_and_l "$HALF_MINUS_LINE"
+          repo_update " Aktualisiere das Repository, bitte warten ... "
+          e_and_l "$HALF_MINUS_LINE"
+          e_and_l " $HINWEIS_TAG: Damit das Snap-System von laufenden Prozessen sicher als wieder aktiv"
+          e_and_l " erkannt wird, sollte das gesamte System vor der Installation neuer Anwendungen"
+          e_and_l " neu gestartet werden."
+        else
+          e_and_l " $WARN_TAG: Bei Reaktivierung der Snap-Paketverwaltung sind Fehler aufgetreten."
+        fi
+      fi
+    else
+      e_and_l " Die ${light_cyan}Snap-Paketverwaltung${colors_off} ist bereits aktiv ... $OK_TAG"
+    fi
+  else
+    e_and_l " Die ${bold_white}Snap-Paketverwaltung${colors_off} ist nicht installiert und kann daher auch nicht"
+    e_and_l -n " reaktiviert werden, "
+    if [ $(apt list "snapd" 2>/dev/null | grep -i -c "snapd") -gt 0 ];
+    then
+      e_and_l "ist jedoch verfügbar und kann neu installiert werden."
+      install_snap
+    else
+      e_and_l "ferner ist sie auf diesem Systen auch nicht verfügbar."
+    fi
+  fi
 fi
 
 #===============================================================================
@@ -10830,7 +11727,7 @@ then
                   # Ordner
                   # -------
                   if [ -d "$config_name" ] &&
-                    [ ! -d "$BACKUP_NAME" ];
+                     [ ! -d "$BACKUP_NAME" ];
                   then
                     cp -r -u --no-dereference "$config_name" "$BACKUP_NAME" &>/dev/null
                     if [ $? -eq 0 ];
@@ -10843,7 +11740,7 @@ then
                   # Einzelne Dateien
                   # -----------------
                   if [ -f "$config_name" ] &&
-                    [ ! -s "$BACKUP_NAME" ];
+                     [ ! -s "$BACKUP_NAME" ];
                   then
                     cp -u --no-dereference "$config_name" "$BACKUP_NAME" &>/dev/null
                     if [ $? -eq 0 ];
@@ -11168,7 +12065,6 @@ fi # Ende Hauptschleife zur Installation/Anzeige (wenn Pakete ausgewählt wurden
 # Zusätzliche Starter erstellen
 #===============================================================================
 if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
-   # [[ ${OPTION_FLAG[adcstart]} -eq 1 || ${OPTION_FLAG[addstart]} -eq 1 ]];
    [ ${OPTION_FLAG[addstart]} -eq 1 ];
 then
 
@@ -11178,7 +12074,6 @@ then
     e_and_l "$FULL_LINE"
   fi
   e_and_l -n " ${bold_blue}Erstellung zusätzlicher Starter (Programm-Symbole)${colors_off}"
-  # if [ ${OPTION_FLAG[adcstart]} -eq 1 ]; then e_and_l -n " ${dark_gray}[adcstart]${colors_off}"; fi
   if [ ${OPTION_FLAG[addstart]} -eq 1 ]; then e_and_l -n " ${dark_gray}[addstart]${colors_off}"; fi
   e_and_l ""
   e_and_l "$FULL_LINE"
@@ -11218,7 +12113,6 @@ then
 # ----------------------------------------------------------------------------
 # Cinnamon Tools Starter (wenn ausgewählt)
 # ----------------------------------------------------------------------------
-# if [ ${OPTION_FLAG[adcstart]} -eq 1 ];
 if [ ${KATEGORIE_FLAG[ci]} -eq 1 ];
 then
   NEW_STARTER_COUNTER=0
@@ -11403,7 +12297,6 @@ fi
          [ ${KATEGORIE_FLAG[mx]} -eq 1 ] ||
          [ ${KATEGORIE_FLAG[mt]} -eq 1 ] ||
          [ ${KATEGORIE_FLAG[xf]} -eq 1 ] ||
-         # [ ${OPTION_FLAG[adcstart]} -eq 1 ];
          [ ${KATEGORIE_FLAG[ci]} -eq 1 ];
       then
         # ----------------------------------------------------------
@@ -12763,13 +13656,22 @@ then
   ACTION_MESSAGE=" Aktivierung der ${light_cyan}Betriebssystem-Erkennung${colors_off}  "
   if [ -s "$GRUB_DEFAULT_FILE" ];
   then
-    if [ $(grep -i -c -E "^\s*GRUB_DISABLE_OS_PROBER\s*=\s*\"*true\"*\s*" "$GRUB_DEFAULT_FILE") -gt 0 ];
+    # ------------------------------------------------------------------------
+    # Nur ändern, wenn die Erkennung warum auch immer zuvor deaktiviert wurde
+    # ------------------------------------------------------------------------
+    if [ $(grep -i -c -E "^\s*GRUB_DISABLE_OS_PROBER\s*=\s*\"*true" "$GRUB_DEFAULT_FILE") -gt 0 ];
     then
       ask_yes_or_no_plus "activate_os_prober" " Die Erkennung anderer ${light_cyan}Betriebssysteme${colors_off} aktivieren" "" "j"
       if [ $? -eq 1 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
-        sed -i 's/^\s*GRUB_DISABLE_OS_PROBER\s*=\s*"*true"*/GRUB_DISABLE_OS_PROBER="false"/' "$GRUB_DEFAULT_FILE" 2>/dev/null
+        if [ $(grep -i -c -E "^\s*\#*\s*GRUB_DISABLE_OS_PROBER" "$GRUB_DEFAULT_FILE") -gt 0 ];
+        then
+          sed -i 's/^\s*\#*\s*GRUB_DISABLE_OS_PROBER.*/GRUB_DISABLE_OS_PROBER=false/gi' "$GRUB_DEFAULT_FILE" 2>/dev/null
+        else
+          echo -e "" >> "$GRUB_DEFAULT_FILE" 2>/dev/null
+          echo -e "GRUB_DISABLE_OS_PROBER=false" >> "$GRUB_DEFAULT_FILE" 2>/dev/null
+        fi
         if [ $? -eq 0 ];
         then
           update-grub &>/dev/null
@@ -12784,7 +13686,14 @@ then
         fi
       fi
     else
-      e_and_l "$ACTION_MESSAGE ... $NC_TAG"
+      e_and_l -n "$ACTION_MESSAGE ... $OK_TAG ${dark_gray}"
+      if [ $(grep -i -c -E "^\s*GRUB_DISABLE_OS_PROBER\s*\=\s*\"*false" "$GRUB_DEFAULT_FILE") -gt 0 ];
+      then
+        e_and_l -n "(explizit aktiviert)"
+      else
+        e_and_l -n "(nicht deaktiviert)"
+      fi
+      e_and_l "${colors_off}"
     fi
   else
     e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
@@ -14027,7 +14936,7 @@ then
   ACTION_MESSAGE=" Test-Kanal von ${light_cyan}Pi OS Upgrades${colors_off} ausschließen"
   if [ $RASPBIAN -ne 0 ];
   then
-    RASPI_DEB_FILE="$SOURCES_LIST_DIR/raspi.list"
+    RASPI_DEB_FILE="$APT_SOURCES_LIST_DIR/raspi.list"
     # Nur weitermachen, wenn es die Datei gibt
     if [ -s "$RASPI_DEB_FILE" ];
     then
@@ -15648,9 +16557,141 @@ EOF
       if [ "$DISK_SERIAL" != "" ]; then e_and_l " Seriennummer: ${light_yellow}$DISK_SERIAL${colors_off}"; fi
       if [ "$DISK_SIZE"   != "" ]; then e_and_l " Kapazität:    ${light_yellow}$DISK_SIZE${colors_off}"; fi
       # ------------------------------------------------------------------------
+      # Partitionen
+      # ------------------------------------------------------------------------
+      THE_PARTITION_LIST="$DOWNLOAD_DIR/partition_list.tmp"
+      parted -s -m ${DEVICE_NAME} unit B print 2>/dev/null | awk 'NR>2' > "$THE_PARTITION_LIST"
+      if [ -s "$THE_PARTITION_LIST" ];
+      then
+        e_and_l " Partitionen:"
+        e_and_l " ${dark_gray}Nr  Größe     Typ         Mark  Name                Bezeichnung         Align${colors_off}"
+        while read partition;
+        do
+          # ---------------------------------------------------------------------
+          # Leere Einträge (::) erweitern, damit "cut" und "awk" richtig trennen
+          # ---------------------------------------------------------------------
+          partition=${partition/::/:_:}
+          # -------
+          # Nummer
+          # -------
+          PARTITION_NR=$(echo $partition | cut -d":" -f 1 | xargs 2>/dev/null)
+          if [ $PARTITION_NR -lt 10 ]; then e_and_l -n " "; fi
+          e_and_l -n " ${light_cyan}$PARTITION_NR${colors_off}"
+          # ------------------------------------
+          # Vollständigen Gerätenamen ermitteln
+          # ------------------------------------
+          FULL_DEVICE_NAME="${DEVICE_NAME}"
+          if [ $(echo ${DEVICE_NAME} | grep -c -i -E "mmcblk") -gt 0 ];
+          then
+            FULL_DEVICE_NAME+="p"
+          fi
+          FULL_DEVICE_NAME+="$PARTITION_NR"
+          # ------------------------
+          # NTFS-Partitionen merken
+          # ------------------------
+          if [ $(echo "$partition" | grep -c -i -E "ntfs") -gt 0 ];
+          then
+            NTFS_PARTITONS[$NTFS_COUNT]="$FULL_DEVICE_NAME"
+            ((NTFS_COUNT+=1))
+          fi
+          # ------
+          # Größe
+          # ------
+          PART_SIZE_CHARS=8
+          PARTITION_SIZE=$(echo $partition | cut -d":" -f 4 | xargs 2>/dev/null)
+          PARTITION_SIZE=${PARTITION_SIZE//B/}
+          PARTITION_SIZE=$(show_human_bytes ${PARTITION_SIZE})
+          PARTITION_SIZE=${PARTITION_SIZE:0:$PART_SIZE_CHARS}
+          e_and_l -n "  ${light_yellow}$PARTITION_SIZE${colors_off}"
+          ((ANZ_SPACES=$PART_SIZE_CHARS-${#PARTITION_SIZE}))
+          insert_spaces $ANZ_SPACES
+          # ----
+          # Typ
+          # ----
+          PART_TYPE_CHARS=10
+          PARTITION_TYPE=$(echo $partition | cut -d":" -f 5 | xargs 2>/dev/null)
+          if [ "$PARTITION_TYPE" == "_" ] ||
+            [ "$PARTITION_TYPE" == "primary" ];
+          then
+            PARTITION_TYPE="unknown"
+          fi
+          PARTITION_TYPE=${PARTITION_TYPE:0:$PART_TYPE_CHARS}
+          e_and_l -n "  ${light_blue}$PARTITION_TYPE${colors_off}"
+          ((ANZ_SPACES=$PART_TYPE_CHARS-${#PARTITION_TYPE}))
+          insert_spaces $ANZ_SPACES "." "${dark_gray}"
+          # -----------
+          # Markierung
+          # -----------
+          PART_MARK_CHARS=4
+          PARTITION_MARK=$(echo $partition | cut -d":" -f 7 | sed -E "s/_//gi" | sed -E "s/;//gi" | xargs 2>/dev/null)
+          PARTITION_MARK=${PARTITION_MARK:0:$PART_MARK_CHARS}
+          e_and_l -n "  ${light_blue}$PARTITION_MARK${colors_off}"
+          ((ANZ_SPACES=$PART_MARK_CHARS-${#PARTITION_MARK}))
+          insert_spaces $ANZ_SPACES "." "${dark_gray}"
+          # -----
+          # Name
+          # -----
+          PART_NAME_CHARS=18
+          PARTITION_NAME=$(echo $partition | cut -d":" -f 6 | sed -E "s/_//gi" | xargs 2>/dev/null)
+          PARTITION_NAME=${PARTITION_NAME:0:$PART_NAME_CHARS}
+          e_and_l -n "  ${light_blue}$PARTITION_NAME${colors_off}"
+          ((ANZ_SPACES=$PART_NAME_CHARS-${#PARTITION_NAME}))
+          insert_spaces $ANZ_SPACES "." "${dark_gray}"
+          # ------------
+          # Bezeichnung
+          # ------------
+          PART_LABEL_CHARS=18
+          PARTITION_LABEL=$(lsblk -l -n -o label ${FULL_DEVICE_NAME} | xargs 2>/dev/null)
+          PARTITION_LABEL=${PARTITION_LABEL:0:$PART_LABEL_CHARS}
+          e_and_l -n "  ${light_blue}$PARTITION_LABEL${colors_off}"
+          ((ANZ_SPACES=$PART_LABEL_CHARS-${#PARTITION_LABEL}))
+          insert_spaces $ANZ_SPACES "." "${dark_gray}"
+          # ------------
+          # Ausrichtung
+          # ------------
+          # if [ $disk_rota -eq 0 ];
+          # then
+            e_and_l -n "  "
+            if [ "$PARTITION_TYPE" != "unknown" ] &&
+              [ "$PARTITION_TYPE" != "extended" ];
+            then
+              PARTITION_DEVICE="${DEVICE_NAME}${PARTITION_NR}"
+              if [ ! -e "$PARTITION_DEVICE" ];
+              then
+                PARTITION_DEVICE="${DEVICE_NAME}p${PARTITION_NR}"
+              fi
+              if [ -e "$PARTITION_DEVICE" ];
+              then
+                PARTITION_ALIGNMENT=$(parted ${PARTITION_DEVICE} align-check opt 1 2>"$LOG_TEMP" | awk '{print $1}' | xargs)
+                if [ "$PARTITION_ALIGNMENT" != "" ];
+                then
+                  if [ $PARTITION_ALIGNMENT -eq 1 ];
+                  then
+                    e_and_l "$OK_TAG"
+                  else
+                    e_and_l "$ERROR_TAG"
+                    add_full_log
+                  fi
+                else
+                  e_and_l "${light_yellow}n.e.${colors_off}"
+                fi
+              else
+                e_and_l "${light_yellow}n.e.${colors_off}"
+              fi
+            else
+              e_and_l "${light_yellow}n.e.${colors_off}"
+            fi
+          # else
+          #   e_and_l "nicht geprüft ${dark_gray}(keine SSD)${colors_off}"
+          # fi
+        done < "$THE_PARTITION_LIST"
+      fi
+      remove_file "$THE_PARTITION_LIST"
+      e_and_l " Sonstige Parameter:"
+      # ------------------------------------------------------------------------
       # S.M.A.R.T
       # ------------------------------------------------------------------------
-      e_and_l -n " - Einstellung der ${light_cyan}SMART-Überwachung${colors_off} ... Überwachung "
+      e_and_l -n " Einstellung der ${light_cyan}SMART-Überwachung${colors_off} ... Überwachung "
       if [ $(LANG=en smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i support | grep -i -c " available") -gt 0 ];
       then
         # ---------------------
@@ -15672,7 +16713,7 @@ EOF
         # --------------------------
         # S.M.A.R.T Fehler auslesen
         # --------------------------
-        e_and_l -n " - Status des ${light_cyan}SMART-Fehlerprotokolls${colors_off} ... Fehlerliste "
+        e_and_l -n " Status des ${light_cyan}SMART-Fehlerprotokolls${colors_off} ... Fehlerliste "
         ERROR_LIST=$(LANG=en smartctl -d sat,auto --quietmode=errorsonly --all ${DEVICE_NAME} 2>"$LOG_TEMP")
         if [ "$ERROR_LIST" == "" ];
         then
@@ -15690,7 +16731,7 @@ EOF
       # ------------------------------------------------------------------------
       if [ -f "/sys/block/${disk_name}/queue/scheduler" ];
       then
-        e_and_l -n " - Einstellung des ${light_cyan}I/O-Schedulers${colors_off}    ... "
+        e_and_l -n " Einstellung des ${light_cyan}I/O-Schedulers${colors_off}    ... "
         if [ $(grep -i -E "mq-deadline" "/sys/block/${disk_name}/queue/scheduler" | grep -i -c -E "none") -gt 0 ];
         then
           e_and_l "QueueConfig $OK_TAG"
@@ -15699,90 +16740,10 @@ EOF
         fi
       fi
       # ------------------------------------------------------------------------
-      # Partitionen
-      # ------------------------------------------------------------------------
-      THE_PARTITION_LIST="$DOWNLOAD_DIR/partition_list.tmp"
-      parted -s -m ${DEVICE_NAME} unit B print 2>/dev/null | awk 'NR>2' > "$THE_PARTITION_LIST"
-      while read partition;
-      do
-        PARTITION_NR=$(echo $partition | cut -d":" -f 1 | xargs)
-        e_and_l -n " - Partition "
-        if [ $PARTITION_NR -lt 10 ]; then e_and_l -n " "; fi
-        e_and_l -n "${light_cyan}$PARTITION_NR${colors_off}: "
-        PARTITION_TYPE=$(echo $partition | cut -d":" -f 5 | xargs)
-        PARTITION_TYPE=${PARTITION_TYPE:0:6}
-        if [ "$PARTITION_TYPE" == "" ];
-        then
-          PARTITION_TYPE=$(LANG=en parted ${DEVICE_NAME} print 2>/dev/null | grep -i -E "^\s*${PARTITION_NR}\s" | awk '{print $5}' | xargs)
-          PARTITION_TYPE=${PARTITION_TYPE:0:8}
-          if [ "$PARTITION_TYPE" == "" ] ||
-             [ "$PARTITION_TYPE" == "primary" ];
-          then
-            PARTITION_TYPE="unknown"
-          fi
-        fi
-        if [ $(echo "$partition" | grep -c -i -E "ntfs") -gt 0 ];
-        then
-          NTFS_PARTITONS[$NTFS_COUNT]="${DEVICE_NAME}"
-          if [ $(echo ${DEVICE_NAME} | grep -c -i -E "mmcblk") -gt 0 ];
-          then
-            NTFS_PARTITONS[$NTFS_COUNT]+="p"
-          fi
-          NTFS_PARTITONS[$NTFS_COUNT]+="$PARTITION_NR"
-          ((NTFS_COUNT+=1))
-        fi
-        e_and_l -n "${light_blue}$PARTITION_TYPE${colors_off}"
-        ((ANZ_SPACES=10-${#PARTITION_TYPE}))
-        insert_spaces $ANZ_SPACES
-        PARTITION_SIZE=$(echo $partition | cut -d":" -f 4 | xargs)
-        PARTITION_SIZE=${PARTITION_SIZE//B/}
-        PARTITION_SIZE=$(show_human_bytes ${PARTITION_SIZE})
-        PARTITION_SIZE=${PARTITION_SIZE:0:10}
-        e_and_l -n "${light_yellow}$PARTITION_SIZE${colors_off}"
-        ((ANZ_SPACES=10-${#PARTITION_SIZE}))
-        insert_spaces $ANZ_SPACES
-        e_and_l -n "... Ausrichtung "
-        # if [ $disk_rota -eq 0 ];
-        # then
-          if [ "$PARTITION_TYPE" != "unknown" ] &&
-             [ "$PARTITION_TYPE" != "extended" ];
-          then
-            PARTITION_NAME="${DEVICE_NAME}${PARTITION_NR}"
-            if [ ! -e "$PARTITION_NAME" ];
-            then
-              PARTITION_NAME="${DEVICE_NAME}p${PARTITION_NR}"
-            fi
-            if [ -e "$PARTITION_NAME" ];
-            then
-              PARTITION_ALIGNMENT=$(parted ${PARTITION_NAME} align-check opt 1 2>"$LOG_TEMP" | awk '{print $1}' | xargs)
-              if [ "$PARTITION_ALIGNMENT" != "" ];
-              then
-                if [ $PARTITION_ALIGNMENT -eq 1 ];
-                then
-                  e_and_l "$OK_TAG"
-                else
-                  e_and_l "$ERROR_TAG"
-                  add_full_log
-                fi
-              else
-                e_and_l "${bold_yellow}$NE_TXT${colors_off}"
-              fi
-            else
-              e_and_l "${bold_yellow}$NE_TXT${colors_off}"
-            fi
-          else
-            e_and_l "${bold_yellow}$NE_TXT${colors_off}"
-          fi
-        # else
-        #   e_and_l "nicht geprüft ${dark_gray}(keine SSD)${colors_off}"
-        # fi
-      done < "$THE_PARTITION_LIST"
-      remove_file "$THE_PARTITION_LIST"
-      # ------------------------------------------------------------------------
       # Laufzeit
       # ------------------------------------------------------------------------
       POH_FROM_SMART=""
-      e_and_l -n " - Angabe der ${light_cyan}Summe der Laufzeit${colors_off}     ... "
+      e_and_l -n " Angabe der ${light_cyan}Summe der Laufzeit${colors_off}     ... "
       # 1. Angabe aus dem GP-Logs auslesen
       DISK_POWER_ON=$(LANG=en smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -E "0x01\s*0x010\s*4" | awk '{print $4}' | xargs)
       # Wenn nicht im GP-Log gefunden den SMART-Wert einlesen
@@ -15818,7 +16779,7 @@ EOF
       DISK_TOTAL_LBA=$(LANG=en smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i lbas_wr | awk '{print $8}' | xargs)
       if [ "$DISK_TOTAL_LBA" != "" ];
       then
-        e_and_l -n " - Anzahl der ${light_cyan}geschriebenen Bytes${colors_off}    ... "
+        e_and_l -n " Anzahl der ${light_cyan}geschriebenen Bytes${colors_off}    ... "
         TOTAL_BYTES_WRITTEN=$((DISK_TOTAL_LBA * 512))
         TOTAL_BYTES_WRITTEN=$(show_human_bytes ${TOTAL_BYTES_WRITTEN} "M")
         e_and_l "${light_yellow}$TOTAL_BYTES_WRITTEN${colors_off}"
@@ -15913,7 +16874,7 @@ EOF
 fi
 
 #===============================================================================
-# Ermittlung vormals deaktivierter Komponenten
+# Ermittlung vormals deaktivierter Komponenten (ohne Snap)
 #===============================================================================
 if [ ${OPTION_FLAG[listonly]} -eq 0 ] &&
    [ ${OPTION_FLAG[revive]} -eq 1 ];
@@ -15921,6 +16882,12 @@ then
   e_and_l "$FULL_LINE"
   e_and_l " ${bold_blue}Reaktivierung vormals deaktivierter Komponenten${colors_off} ${dark_gray}[revive]${colors_off}"
   e_and_l "$FULL_LINE"
+  if [ $SNAP_INSTALLED -gt 0 ] &&
+     [ $SNAP_ACTIVE -eq 0 ];
+  then
+    e_and_l " $HINWEIS_TAG: Dies betrifft nicht die Snap-Paketverwaltung - um diese wieder zu"
+    e_and_l " reaktivieren, muss die Option \"snapcont\" verwendet werden."
+  fi
   e_and_l -n " Starte Suche deaktivierter Komponenten, bitte warten ... "
   NOTHING_FOUND_TEXT="Es wurden keine deaktivierten Komponenten gefunden"
   echo -e -n "" > "$DEACTIVATED_ITEMS_LIST"
@@ -16186,6 +17153,9 @@ then
   e_and_l " Wenn sich auf dem Rechner Betriebs-Systeme befinden, die sich beim Booten des"
   e_and_l " Rechners nicht auswählen oder starten lassen, kann versucht werden dies durch"
   e_and_l " die Erneuerung des GRUB-Bootloaders und dessen Konfiguration zu korrigieren."
+  # ----------------------------------------------------------------------------
+  # Auf EFI-Systemen zusätzliche Voraussetzungen prüfen
+  # ----------------------------------------------------------------------------
   EFI_ENTRY_ERRORS=""
   if [ "$BOOT_MODE" == "EFI" ] &&
      [ "$uuid_efi_system" != "" ];
@@ -16231,6 +17201,7 @@ then
       e_and_l " sollten diese Einträge erst korrigiert werden."
     fi
   fi
+  # ----------------------------------------------------------------------------
   if [ "$EFI_ENTRY_ERRORS" == "" ];
   then
     GRUB_QUESTION="Neuen ${light_cyan}GRUB-Bootloader${colors_off} mit neuen Starteinträgen erstellen"
@@ -16386,7 +17357,19 @@ then
         e_and_l -n " Installiere neuen ${light_yellow}GRUB-Bootloader${colors_off} auf dem Ziel, bitte warten   ... "
         if grub-install --version &>/dev/null;
         then
-          grub-install --boot-directory=/boot --efi-directory=/boot/efi --force "$boot_device" &>"$LOG_TEMP"
+          # ---------------------------------
+          # Bei EFI-Systemen Pfad hinzufügen
+          # ---------------------------------
+          if [ "$BOOT_MODE" == "EFI" ] &&
+             [ "$uuid_efi_system" != "" ] &&
+             [ -d /boot/efi ];
+          then
+            BOOT_EFI_OPTION="--efi-directory=/boot/efi"
+          else
+            BOOT_EFI_OPTION=""
+          fi
+          # ---------------------------------
+          grub-install --boot-directory=/boot ${BOOT_EFI_OPTION} --force ${boot_device} &>"$LOG_TEMP"
           if [ $? -eq 0 ];
           then
             e_and_l "$OK_TAG"
@@ -16486,7 +17469,7 @@ then
             echo -e -n > "$GRUB_CUSTOM_FILE" 2>/dev/null
           fi
           # --------------------
-          # 3.1 Hintergrundbild (TODO)
+          # 3.1 Hintergrundbild
           # --------------------
           if [ "$GRUB_BG_FILE" != "" ];
           then
@@ -16574,6 +17557,20 @@ then
         # -----------------------------------
         if update-grub --version &>/dev/null;
         then
+          # -------------------------------------------
+          # Immer nach anderen Betriebssystemen suchen
+          # -------------------------------------------
+          if [ -s "$GRUB_DEFAULT_FILE" ];
+          then
+            if [ $(grep -i -c -E "^\s*\#*\s*GRUB_DISABLE_OS_PROBER" "$GRUB_DEFAULT_FILE") -gt 0 ];
+            then
+              sed -i 's/^\s*\#*\s*GRUB_DISABLE_OS_PROBER.*/GRUB_DISABLE_OS_PROBER=false/gi' "$GRUB_DEFAULT_FILE" 2>/dev/null
+            else
+              echo -e "" >> "$GRUB_DEFAULT_FILE" 2>/dev/null
+              echo -e "GRUB_DISABLE_OS_PROBER=false" >> "$GRUB_DEFAULT_FILE" 2>/dev/null
+            fi
+          fi
+          # -------------------------------------------
           update-grub &>"$LOG_TEMP"
           if [ $? -eq 0 ];
           then
@@ -16612,6 +17609,55 @@ then
         e_and_l " $USER_CHOICE_NO"
       fi
     fi
+  fi
+
+  e_and_l "$HALF_LINE"
+  e_and_l " ${bold_blue}System-Dienste${colors_off}"
+  e_and_l "$HALF_LINE"
+  FAILED_SERVICES_LIST="$DOWNLOAD_DIR/failed_services.list"
+  LANG=en systemctl 2>/dev/null | grep -E "\bfailed\b" | awk '{print $2}' 1>"$FAILED_SERVICES_LIST" 2>/dev/null
+  declare -A FAILED_SERVICE
+  FAILED_SERVICE_IDX=0
+  while read failed_service;
+  do
+    if [ "$failed_service" != "" ];
+    then
+      if [ $(LANG=en systemctl status $failed_service 2>/dev/null | grep -c -i -E "\bdisabled\b") -eq 0 ];
+      then
+        FAILED_SERVICE[$FAILED_SERVICE_IDX]="$failed_service"
+        ((FAILED_SERVICE_IDX+=1))
+      fi
+    fi
+  done < "$FAILED_SERVICES_LIST"
+  if [ $FAILED_SERVICE_IDX -gt 0 ];
+  then
+    e_and_l " Es wurden ${bold_yellow}$FAILED_SERVICE_IDX${colors_off} fehlerhafte System-Dienste gefunden. Dies kann zu erheblichen"
+    e_and_l " Verzögerungen beim System-Start und sogar zu dessen Abbruch führen."
+    ask_yes_or_no_plus "disable_failed_services" " Sollen die ${light_cyan}fehlerhaften System-Dienste${colors_off} deaktiviert werden" "" "j"
+    if [ $? -eq 1 ];
+    then
+      for failed_service in ${FAILED_SERVICE[@]};
+      do
+        e_and_l "$HALF_MINUS_LINE"
+        ask_yes_or_no_plus "" " Dienst ${light_cyan}$failed_service${colors_off} deaktivieren" "" "n"
+        if [ $? -eq 1 ];
+        then
+          e_and_l -n " - Deaktiviere ${light_yellow}$failed_service${colors_off} ... "
+          systemctl disable "$failed_service" &>/dev/null
+          if [ $? -eq 0 ];
+          then
+            e_and_l "$OK_TAG"
+          else
+            e_and_l "$ERROR_TAG"
+          fi
+        fi
+      done
+    fi
+    e_and_l "$HALF_MINUS_LINE"
+    e_and_l " $HINWEIS_TAG: Die Liste der fehlerhaften System-Dienste ist gespeichert in:"
+    e_and_l " ${light_yellow}$FAILED_SERVICES_LIST${colors_off}"
+  else
+    e_and_l " Prüfung auf ${light_cyan}fehlerhafte System-Dienste${colors_off} ... $NF_TAG"
   fi
 
   e_and_l "$HALF_LINE"
@@ -17346,13 +18392,13 @@ then
   # ============================================================================
   # Liste aller Dateien mit Quell-Angaben erstellen
   # ============================================================================
-  if [ -s "$SOURCES_LIST_FILE" ];
+  if [ -s "$APT_SOURCES_LIST_FILE" ];
   then
-    echo "$SOURCES_LIST_FILE" > "$ALL_SOURCE_FILES"
+    echo "$APT_SOURCES_LIST_FILE" > "$ALL_SOURCE_FILES"
   fi
-  if [ -d "$SOURCES_LIST_DIR" ];
+  if [ -d "$APT_SOURCES_LIST_DIR" ];
   then
-    find "$SOURCES_LIST_DIR" -type f -not -iname '*.bak' -and -not -iname '*.dpkg-old' -and -not -iname '*.orig' -and -not -iname '*.save' >> "$ALL_SOURCE_FILES" 2>/dev/null
+    find "$APT_SOURCES_LIST_DIR" -type f -not -iname '*.bak' -and -not -iname '*.dpkg-old' -and -not -iname '*.orig' -and -not -iname '*.save' >> "$ALL_SOURCE_FILES" 2>/dev/null
   fi
 
   # ============================================================================
@@ -17838,12 +18884,18 @@ then
           if [ $DO_REMOVE_THIS -eq 1 ];
           then
             e_and_l -n " Lösche ${light_yellow}$pkg${colors_off} ... "
-            apt purge "$pkg" -y &>/dev/null
-            if [ $? -eq 0 ];
+            # { apt purge "$pkg" -y 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; } | tee "$LOG_TEMP"
+            # PURGE_PKG_RESULT=$(cat "$LAST_EXIT_CODE")
+            # add_full_log
+            # remove_file "$LAST_EXIT_CODE"
+            apt-get purge "$pkg" -y &>"$LOG_TEMP"
+            PURGE_PKG_RESULT=$?
+            if [ $PURGE_PKG_RESULT -eq 0 ];
             then
               e_and_l "$OK_TAG"
             else
               e_and_l "$ERROR_TAG"
+              add_full_log
             fi
           fi
           e_and_l "$HALF_MINUS_LINE"
@@ -17921,12 +18973,17 @@ then
           if [ $DO_REMOVE_THIS -eq 1 ];
           then
             e_and_l -n " Lösche Konfiguration von ${light_yellow}$pkg${colors_off} ... "
-            apt purge "$pkg" -y &>/dev/null
-            if [ $? -eq 0 ];
+            # { apt purge "$pkg" -y 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; } | tee "$LOG_TEMP"
+            # PURGE_PKG_RESULT=$(cat "$LAST_EXIT_CODE")
+            # remove_file "$LAST_EXIT_CODE"
+            apt-get purge "$pkg" -y &>"$LOG_TEMP"
+            PURGE_PKG_RESULT=$?
+            if [ $PURGE_PKG_RESULT -eq 0 ];
             then
               e_and_l "$OK_TAG"
             else
               e_and_l "$ERROR_TAG"
+              add_full_log
             fi
           fi
           e_and_l "$HALF_MINUS_LINE"
@@ -17948,7 +19005,7 @@ then
   # Löschen verwaister Flatpak-Pakete (aktuell nur finden, löschen noch ToDo)
   # ============================================================================
   ACTION_MESSAGE=" Löschen von ${light_cyan}verwaisten Flatpak-Komponenten${colors_off} ... "
-  if [ $FLATPAK_INSTALLED -ne 0 ];
+  if [ $FLATPAK_ACTIVE -eq 1 ];
   then
     THE_FLATPAK_INST_ALL_LIST="$DOWNLOAD_DIR/the_flatpak_inst_all_list"
     # --------------------------------------------------------------------------
@@ -17959,7 +19016,7 @@ then
     # Wenn die App-Liste leer ist (keine Apps installiert), die komplette Liste
     # aber Einträge enthält, werden Letztere vermutlich nicht mehr benötigt
     # --------------------------------------------------------------------------
-    if [ ! -s $THE_FLATPAK_INSTALLED_LIST ] &&
+    if [ ! -s $FLATPAK_INSTALLED_PKG_LIST ] &&
        [ -s $THE_FLATPAK_INST_ALL_LIST ];
     then
       e_and_l " Es wurden ${light_cyan}verwaiste Flatpak-Komponenten${colors_off} gefunden."
@@ -17984,16 +19041,16 @@ then
   # Löschen veralteter Snap-Snapschüsse
   # ============================================================================
   ACTION_MESSAGE=" Löschen von ${light_cyan}veralteten Snap-Snapschüssen${colors_off}   ... "
-  if [ $SNAP_INSTALLED -ne 0 ];
+  if [ $SNAP_ACTIVE -gt 0 ];
   then
-    remove_file "$SNAPSHOT_SNAPS_LIST"
-    LANG=en_US.UTF-8 snap saved 2>/dev/null | tail --lines=+2 | awk '{print $1, $2, "(A"$3")", "(V"$4")", "(R"$5")", "(S"$6")"}' > "$SNAPSHOT_SNAPS_LIST"
-    if [ -s "$SNAPSHOT_SNAPS_LIST" ];
+    remove_file "$SNAP_SNAPSHOT_LIST"
+    LANG=en_US.UTF-8 snap saved 2>/dev/null | tail --lines=+2 | awk '{print $1, $2, "(A"$3")", "(V"$4")", "(R"$5")", "(S"$6")"}' > "$SNAP_SNAPSHOT_LIST"
+    if [ -s "$SNAP_SNAPSHOT_LIST" ];
     then
-      remove_snapshots
+      remove_snapshots "" 0
     else
       e_and_l "$ACTION_MESSAGE$NF_TAG"
-      remove_file "$SNAPSHOT_SNAPS_LIST"
+      remove_file "$SNAP_SNAPSHOT_LIST"
     fi
   else
     e_and_l "$(skip_text "$ACTION_MESSAGE" "kein SNAP")"
@@ -18732,7 +19789,7 @@ then
     # -----
     # SNAP
     # -----
-    if [ $SNAP_INSTALLED -ne 0 ];
+    if [ $SNAP_ACTIVE -gt 0 ];
     then
       if [ $(LANG=en snap info "$REMOVE_PKG_NAME" 2>/dev/null | grep -i -c -E "installed\:") -ne 0 ];
       then
@@ -18770,12 +19827,12 @@ then
     # -----
     # FLAT
     # -----
-    if [ $FLATPAK_INSTALLED -ne 0 ] &&
-       [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
+    if [ $FLATPAK_ACTIVE -eq 1 ] &&
+       [ -s "$FLATPAK_INSTALLED_PKG_LIST" ];
     then
       FLATPAK_RNAM=$(echo "$REMOVE_PKG_NAME" | sed 's/[ -_]//g' | xargs)
-      if [ $(grep -c -i -E "\.$FLATPAK_RNAM[0-9]*[\/\.]" ${THE_FLATPAK_INSTALLED_LIST}) -gt 0 ]
-         [ $(grep -c -i -E "^$FLATPAK_RNAM[0-9]*\s+[0-9]" ${THE_FLATPAK_INSTALLED_LIST}) -gt 0 ];
+      if [ $(grep -c -i -E "\.$FLATPAK_RNAM[0-9]*[\/\.]" ${FLATPAK_INSTALLED_PKG_LIST}) -gt 0 ]
+         [ $(grep -c -i -E "^$FLATPAK_RNAM[0-9]*\s+[0-9]" ${FLATPAK_INSTALLED_PKG_LIST}) -gt 0 ];
       then
         INST_MODE_LIST+=",6"
       fi
@@ -18928,17 +19985,17 @@ then
     # -----
     # FLAT
     # -----
-    if [ -s "$THE_FLATPAK_INSTALLED_LIST" ];
+    if [ -s "$FLATPAK_INSTALLED_PKG_LIST" ];
     then
       # ------------------------------------------------------------------
       # Sicherheitshalber nur installierte "Anwendungen" (--app) anzeigen
       # ------------------------------------------------------------------
-      cat "$THE_FLATPAK_INSTALLED_LIST" | grep -i ${GUESS_NAME} 1>"$GUESS_INSTALL_LIST_FLAT" 2>/dev/null
+      cat "$FLATPAK_INSTALLED_PKG_LIST" | grep -i ${GUESS_NAME} 1>"$GUESS_INSTALL_LIST_FLAT" 2>/dev/null
     fi
     # -----
     # SNAP
     # -----
-    if [ $SNAP_INSTALLED -ne 0 ];
+    if [ $SNAP_ACTIVE -gt 0 ];
     then
       snap list 2>/dev/null | grep -i ${GUESS_NAME} 1>"$GUESS_INSTALL_LIST_SNAP" 2>/dev/null
     fi
@@ -19062,7 +20119,7 @@ then
       fi
       remove_file "$TMP_PURGE_OUT"
       remove_file "$LAST_EXIT_CODE"
-      remove_snapshots "$REMOVE_PKG_NAME"
+      remove_snapshots "$REMOVE_PKG_NAME" 1
       remove_starter "$REMOVE_PKG_NAME"
       remove_cfg "$REMOVE_PKG_NAME" 1
       remove_dat "$REMOVE_PKG_NAME"
@@ -19087,7 +20144,7 @@ then
       # -------------------------------------------
       if [ $INST_STATUS -eq 2 ];
       then
-        remove_snapshots "$REMOVE_PKG_NAME"
+        remove_snapshots "$REMOVE_PKG_NAME" 1
       fi
       if [ $REMOVE_RESULT -eq 0 ];
       then
@@ -19295,6 +20352,7 @@ do
   if [ "$ACTION" == "" ]; then ACTION=-1; fi
 done
 e_and_l "$ACTION"
+
 case $ACTION in
   1) ${0} $COMMAND_LINE_STRING nomenu recall ;;
   2) ${0} $COMMAND_LINE_STRING recall ;;
