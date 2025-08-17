@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 16.08.2025
-VERSION="5.4.0"
+# Letzte Änderung: 17.08.2025
+VERSION="5.4.1"
 
 ################################################################################
 #                                                                              #
@@ -917,6 +917,9 @@ function clean_on_exit {
     # --------------------------------------------------------
     if [ ${OPTION_FLAG[cleantmp]} -eq 1 ];
     then
+      remove_file "$FLATPAK_INSTALLED_PKG_LIST"
+      remove_file "$SNAP_INSTALLED_PKG_LIST"
+      remove_file "$SNAP_SNAPSHOT_LIST"
       find "$DOWNLOAD_DIR" -type f -not -name "${LOG_FILE##*/}" -and -not -iregex ".*\.list$" -and -not -iregex ".*\.save$" -delete 2>/dev/null
     fi
     # -------------------------------------------------------
@@ -6096,6 +6099,8 @@ CONFIG_REST_LIST="$DOWNLOAD_DIR/config_rest.list"
 DEACTIVATED_ITEMS_LIST="$DOWNLOAD_DIR/deactivated_items.list"
 # Liste abgelaufener APT-Key-Signaturen
 EXPIRED_APT_KEYS_LIST="$DOWNLOAD_DIR/expired_apt_keys.list"
+# Liste mit fehlerhaften System-Diensten
+FAILED_SERVICES_LIST="$DOWNLOAD_DIR/failed_services.list"
 # Liste fehlerhafter Paket-Abhängigkeiten
 PKG_BROKEN_LIST="$DOWNLOAD_DIR/pkg_broken.list"
 # Liste nicht mehr benötigter Pakete und Komponenten
@@ -9355,7 +9360,12 @@ then
           mv -f "$LOCAL_DOWNLOAD_FILE" "${0}"
           if [ $? -eq 0 ];
           then
-            e_and_l " ${bold_white}$SCRIPT_NAME${colors_off} wurde aktualisiert und beendet - bitte jetzt neu aufrufen ... $OK_TAG"
+            # e_and_l " ${bold_white}$SCRIPT_NAME${colors_off} wurde aktualisiert und beendet - bitte jetzt neu aufrufen ... $OK_TAG"
+            e_and_l " ${bold_white}$SCRIPT_NAME${colors_off} wurde erfolgreich aktualisiert ... $OK_TAG"
+            e_and_l -n " Bitte eine beliebige Taste drücken zum Neustart von $SCRIPT_NAME."
+            read -N 1 -r -s ANSWER
+            sudo -kK
+            sudo --preserve-env=XDG_SESSION_TYPE "$0" "$@"
           else
             e_and_l " $ERROR_TAG: Die Aktualisierung konnte leider ${bold_red}nicht${colors_off} korrekt durchgeführt werden."
             e_and_l " Zum Überspringen der Aktualisierung bitte die Option ${light_cyan}noupdate${colors_off} verwenden."
@@ -16817,7 +16827,7 @@ EOF
         e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
       fi
     else
-      e_and_l "$ACTION_MESSAGE $NF_TAG"
+      e_and_l "$(skip_text "$ACTION_MESSAGE " "$NV_TXT")"
     fi
     # --------------------------------------------------------------------------
     # Weitere Aktionen nur wenn eine SSD vorhanden ist
@@ -17145,14 +17155,23 @@ then
   fi
 
   # ============================================================================
-  # Erneuerung des GRUB-Bootloaders
+  # Erneuerung / Installation des GRUB-Bootloaders
   # ============================================================================
   e_and_l "$HALF_LINE"
   e_and_l " ${bold_blue}GRUB-Bootloader${colors_off}"
   e_and_l "$HALF_LINE"
-  e_and_l " Wenn sich auf dem Rechner Betriebs-Systeme befinden, die sich beim Booten des"
-  e_and_l " Rechners nicht auswählen oder starten lassen, kann versucht werden dies durch"
-  e_and_l " die Erneuerung des GRUB-Bootloaders und dessen Konfiguration zu korrigieren."
+  if [ -d /boot/grub ];
+  then
+    e_and_l " Wenn sich auf dem Rechner Betriebs-Systeme befinden, die sich beim Booten des"
+    e_and_l " Rechners nicht auswählen oder starten lassen, kann versucht werden dies durch"
+    e_and_l " die Erneuerung des ${bold_white}GRUB-Bootloaders${colors_off} und dessen Konfiguration zu korrigieren."
+    e_and_l " Darüber hinaus kann damit auch das Aussehen des Boot-Menüs geändert werden."
+  else
+    e_and_l " $HINWEIS_TAG: Auf diesem System scheint kein ${bold_white}GRUB-Bootloader${colors_off} installiert zu sein."
+    e_and_l " Wenn ein anderer Bootloader vorhanden ist, wird dieser durch die Installation"
+    e_and_l " des GRUB-Bootloaders überschrieben. Der ${bold_white}GRUB-Bootloader${colors_off} sollte daher nur bei"
+    e_and_l " Boot-Problemen des Systems neu installiert werden."
+  fi
   # ----------------------------------------------------------------------------
   # Auf EFI-Systemen zusätzliche Voraussetzungen prüfen
   # ----------------------------------------------------------------------------
@@ -17202,7 +17221,8 @@ then
     fi
   fi
   # ----------------------------------------------------------------------------
-  if [ "$EFI_ENTRY_ERRORS" == "" ];
+  if [ -d /boot/grub ] &&
+     [ "$EFI_ENTRY_ERRORS" == "" ];
   then
     GRUB_QUESTION="Neuen ${light_cyan}GRUB-Bootloader${colors_off} mit neuen Starteinträgen erstellen"
   else
@@ -17614,8 +17634,7 @@ then
   e_and_l "$HALF_LINE"
   e_and_l " ${bold_blue}System-Dienste${colors_off}"
   e_and_l "$HALF_LINE"
-  FAILED_SERVICES_LIST="$DOWNLOAD_DIR/failed_services.list"
-  LANG=en systemctl 2>/dev/null | grep -E "\bfailed\b" | awk '{print $2}' 1>"$FAILED_SERVICES_LIST" 2>/dev/null
+  LANG=en systemctl 2>/dev/null | grep -E "\.service.*\bfailed\b" | awk '{print $2}' 1>"$FAILED_SERVICES_LIST" 2>/dev/null
   declare -A FAILED_SERVICE
   FAILED_SERVICE_IDX=0
   while read failed_service;
