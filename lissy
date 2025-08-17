@@ -40,7 +40,7 @@
 #                                                                              #
 ################################################################################
 # Letzte Änderung: 17.08.2025
-VERSION="5.4.1"
+VERSION="5.4.3"
 
 ################################################################################
 #                                                                              #
@@ -9130,8 +9130,8 @@ do
   ((ARG_POS+=1))
   if [ "$arg" == "instonly" ];
   then
-    # Hinweis: Leerzeichen in regulärem Ausdruck für sed nicht
-    # ans Ende setzen, da sed dieses sonst übersieht!
+    # Hinweis: In regulärem Ausdruck für sed die Leerzeichen NICHT ans Ende und
+    # - (minus) IMMER ans Ende setzen, da sed diese sonst falsch interpretiert!
     INST_ONLY_PKG=$(echo "${!ARG_POS}" | tr A-Z a-z | sed -E "s/[^a-z0-9 \.\_\-]//gi" | sed -E "s/ /\_/g" | xargs)
     break
   fi
@@ -9148,8 +9148,8 @@ do
   ((ARG_POS+=1))
   if [ "$arg" == "remove" ];
   then
-    # Hinweis: Leerzeichen in regulärem Ausdruck für sed nicht
-    # ans Ende setzen, da sed dieses sonst übersieht!
+    # Hinweis: In regulärem Ausdruck für sed die Leerzeichen NICHT ans Ende und
+    # - (minus) IMMER ans Ende setzen, da sed diese sonst falsch interpretiert!
     REMOVE_PKG_NAME=$(echo "${!ARG_POS}" | tr A-Z a-z | sed -E "s/[^a-z0-9 \.\_\-]//gi" | sed -E "s/ /\_/g" | xargs)
     if [ "$REMOVE_PKG_NAME" != "" ];
     then
@@ -9361,11 +9361,10 @@ then
           if [ $? -eq 0 ];
           then
             # e_and_l " ${bold_white}$SCRIPT_NAME${colors_off} wurde aktualisiert und beendet - bitte jetzt neu aufrufen ... $OK_TAG"
-            e_and_l " ${bold_white}$SCRIPT_NAME${colors_off} wurde erfolgreich aktualisiert ... $OK_TAG"
-            e_and_l -n " Bitte eine beliebige Taste drücken zum Neustart von $SCRIPT_NAME."
+            e_and_l " ${bold_white}Lissy${colors_off} wurde erfolgreich aktualisiert ... $OK_TAG"
+            e_and_l -n " Bitte eine beliebige Taste drücken zum Neustart von Lissy ... "
             read -N 1 -r -s ANSWER
-            sudo -kK
-            sudo --preserve-env=XDG_SESSION_TYPE "$0" "$@"
+            $0 "$@"
           else
             e_and_l " $ERROR_TAG: Die Aktualisierung konnte leider ${bold_red}nicht${colors_off} korrekt durchgeführt werden."
             e_and_l " Zum Überspringen der Aktualisierung bitte die Option ${light_cyan}noupdate${colors_off} verwenden."
@@ -9559,8 +9558,8 @@ EOF
           then
             # Flatpak-Paketnamen können Leerzeichen enthalten,
             # Leerzeichen daher als Eingabe erlauben und maskieren
-            # Hinweis: Leerzeichen in regulärem Ausdruck für sed nicht
-            # ans Ende setzen, da sed dieses sonst übersieht!
+            # Hinweis: In regulärem Ausdruck für sed die Leerzeichen NICHT ans Ende und
+            # - (minus) IMMER ans Ende setzen, da sed diese sonst falsch interpretiert!
             INST_ONLY_PKG=$(echo "$NEW_INST_ONLY" | tr A-Z a-z | sed -E "s/[^a-z0-9 \.\_\-]//gi" | sed -E "s/ /\_/g" | xargs)
             if [ "$INST_ONLY_PKG" != "" ];
             then
@@ -9638,8 +9637,8 @@ EOF
           NEW_REMOVE_PKG=$(dialog --backtitle "$MENU_TITLE" --no-mouse --no-lines --no-shadow --colors --inputbox "Name des zu löschenden Pakets:" 8 50 "$REMOVE_PKG_NAME" 3>&1 1>&2 2>&3)
           if [ $? -eq 0 ];
           then
-            # Hinweis: Leerzeichen in regulärem Ausdruck für sed nicht
-            # ans Ende setzen, da sed dieses sonst übersieht!
+            # Hinweis: In regulärem Ausdruck für sed die Leerzeichen NICHT ans Ende und
+            # - (minus) IMMER ans Ende setzen, da sed diese sonst falsch interpretiert!
             REMOVE_PKG_NAME=$(echo "$NEW_REMOVE_PKG" | tr A-Z a-z | sed -E "s/[^a-z0-9 \.\_\-]//gi" | sed -E "s/ /\_/g" | xargs)
             if [ "$REMOVE_PKG_NAME" != "" ];
             then
@@ -11890,8 +11889,8 @@ then
     KATEGORIE_PKGS[individual]=""
     while read the_pkg_name;
     do
-      # Hinweis: Leerzeichen in regulärem Ausdruck für sed nicht
-      # ans Ende setzen, da sed dieses sonst übersieht!
+      # Hinweis: In regulärem Ausdruck für sed die Leerzeichen NICHT ans Ende und
+      # - (minus) IMMER ans Ende setzen, da sed diese sonst falsch interpretiert!
       the_pkg_name=$(echo "${the_pkg_name}" | tr A-Z a-z | sed -E "s/[^a-z0-9 \.\_\-]//gi" | sed -E "s/ /\_/g" | xargs)
       if [ "$the_pkg_name" != "" ];
       then
@@ -13660,9 +13659,9 @@ then
     fi
   fi
 
-  # =============================================================================
+  # ============================================================================
   # Aktivierung der Betriebssystem-Erkennung
-  # =============================================================================
+  # ============================================================================
   ACTION_MESSAGE=" Aktivierung der ${light_cyan}Betriebssystem-Erkennung${colors_off}  "
   if [ -s "$GRUB_DEFAULT_FILE" ];
   then
@@ -13713,9 +13712,9 @@ then
   e_and_l " ${bold_blue}Betriebssystem${colors_off}"
   e_and_l "$HALF_LINE"
 
-  # =============================================================================
+  # ============================================================================
   # Einschalten der internen Firewall (ufw) und auschalten der UFW-Protokolle
-  # =============================================================================
+  # ============================================================================
   ASKED_UFW_INST_NO=0
   ACTION_MESSAGE=" Einschalten der internen ${light_cyan}Firewall (ufw)${colors_off}"
   if [ $(LANG=en dpkg-query -W -f='${Status}' "ufw" 2>/dev/null | grep -i -c -E "ok installed") -gt 0 ];
@@ -13818,10 +13817,10 @@ then
     fi
   fi
 
-  # =============================================================================
+  # ============================================================================
   # Aktivierung des SSH-Server bei Systemstart
   # (einschließlich Installation von openssh-server und sshguard)
-  # =============================================================================
+  # ============================================================================
   if [ $(apt list "openssh-server" 2>/dev/null | grep -i -c -E "openssh-server") -gt 0 ];
   then
     ASKED_SSH_INST_NO=0
@@ -13900,12 +13899,12 @@ then
     e_and_l "$(skip_text " Installation u. Einrichtung des SSH-Server" "$NA_TXT")"
   fi
 
-  # =============================================================================
+  # ============================================================================
   # Reduzierung des Swappings
   # Werte von 0 (wenig) bis 100 (viel)
   # ACHTUNG: 0 = kein Swapping => nur verwenden, wenn soviel Hauptspeicher
   # vorhanden ist, dass Swapping durch das System ausgeschlossen werden kann!
-  # =============================================================================
+  # ============================================================================
   # Schwellwert (verbleibender freier Hauptspeicher in MB), ab welchem das
   # Betriebssystem anfängt Hauptspeicher auf Festplatten auszulagern (swappen)
   START_SWAP_FREE=512
@@ -13979,9 +13978,9 @@ then
     fi
   fi
 
-  # =============================================================================
+  # ============================================================================
   # Reduzierung unnötiger Schreibvorgänge auf Festplatten
-  # =============================================================================
+  # ============================================================================
   ACTION_MESSAGE=" Reduzierung unnötiger ${light_cyan}Festplatten-Zugriffe${colors_off} ... "
   if [ -s "$ETC_FSTAB" ];
   then
@@ -14021,13 +14020,13 @@ then
     e_and_l "$(skip_text "$ACTION_MESSAGE" "keine fstab!")"
   fi
 
-  # =============================================================================
+  # ============================================================================
   # Temporäre System-Ordner ins RAM verlagern (NICHT eigene RAM Disk - s.u.)
   # Das erstellte Laufwerk (tmpfs) ist dynamisch und belegt nur soviel Memory
   # wie es braucht, maximal 50% des zur Verfügung stehenden Hauptspeichers
   # ACHTUNG: Diesen Teil immer VOR der Erstellung der permanenten dynamischen
   #          RAM Disk lassen, weil hier REDUCE_TMP_RAM ermittelt wird!
-  # =============================================================================
+  # ============================================================================
   REDUCE_TMP_RAM=0
   ACTION_MESSAGE=" Ordner ${light_cyan}/tmp${colors_off} in den ${light_cyan}Hauptspeicher${colors_off} auslagern"
   if [ -s "$ETC_FSTAB" ];
@@ -14087,13 +14086,13 @@ then
     e_and_l "$(skip_text "$ACTION_MESSAGE" "keine fstab!")"
   fi
 
-  # =============================================================================
+  # ============================================================================
   # Permanente dynamische RAM Disk einrichten (NICHT /tmp verlagern - s.o.)
   # Das erstellte Laufwerk (tmpfs) ist dynamisch und belegt nur soviel Memory
   # wie es braucht, maximal soviel Platz wie in der Eingabe angegeben wird
   # ACHTUNG: Diesen Teil immer HINTER der Verlagerung des temporären System-
   #          Ordners ins RAM lassen, weil dort REDUCE_TMP_RAM ermittelt wird!
-  # =============================================================================
+  # ============================================================================
   RAMDISK_MOUNTPOINT="/media/ramdisk"
   # Platz für ggf. ausgelagerten Ordner /tmp freilassen (s.o.)
   REDUCE_TMP_RAM=$((REDUCE_TMP_RAM * MEMORY_TOTAL / 2))
@@ -14185,14 +14184,14 @@ then
     e_and_l "$(skip_text "$ACTION_MESSAGE " "keine fstab!")"
   fi
 
-  # =============================================================================
+  # ============================================================================
   # Verlagerung der Browser-Caches in den Hauptspeicher (RAM Disk)
   # ---------------------------------------------------------------------------
   # Dazu wird ein Autostart-Eintrag angelegt, welcher mittels eines Skripts
   # "browser-cache-to-ram" bei der Anmeldung des Benutzers für jeden Browser
   # einen Unterordner auf einer dynamischen RAM Disk (sofern diese angelegt
   # ist) erstellt, sowie die Cache-Ordner dorthin umlenkt.
-  # =============================================================================
+  # ============================================================================
   THE_BCD_SCRIPT_NAME="browser-cache-to-ram"
   THE_BCD_SCRIPT_DIR="$USER_HOME_DIR/.local/bin"
   THE_BCD_SCRIPT_FILE="$THE_BCD_SCRIPT_DIR/$THE_BCD_SCRIPT_NAME"
@@ -14279,9 +14278,9 @@ then
     e_and_l "$(skip_text "$ACTION_MESSAGE" "$NR_TXT")"
   fi
 
-  # =============================================================================
+  # ============================================================================
   # WiFi-Geschwindigkeit für Intel-Chipsatz erhöhen
-  # =============================================================================
+  # ============================================================================
   ACTION_MESSAGE=" Erhöhung des ${light_cyan}WiFi-Datendurchsatzes${colors_off} (Intel)"
   if [ $(lsmod | grep -i -c -E "^iwlwifi") -ne 0 ];
   then
@@ -14317,9 +14316,9 @@ then
     e_and_l "$(skip_text "$ACTION_MESSAGE" "$NV_TXT")"
   fi
 
-  # =============================================================================
+  # ============================================================================
   # Stabilisierung des WLAN-Durchsatzes durch Ausschalten des Power-Management
-  # =============================================================================
+  # ============================================================================
   ACTION_MESSAGE=" Stabilisierung des ${light_cyan}WiFi-Datendurchsatzes${colors_off}"
   WLAN_CONF_FILE="/etc/NetworkManager/conf.d/default-wifi-powersave-on.conf"
   if [ -s "$WLAN_CONF_FILE" ];
@@ -14348,9 +14347,9 @@ then
     e_and_l "$(skip_text "$ACTION_MESSAGE  " "$NA_TXT")"
   fi
 
-  # =============================================================================
+  # ============================================================================
   # Flackern der WiFi-LED bei Netzwerk-Traffik ausschalten
-  # =============================================================================
+  # ============================================================================
   ACTION_MESSAGE=" Traffikflackern der ${light_cyan}WiFi-LED${colors_off} ausschalten"
   if [ $(lsmod | grep -i -c -E "^iwlwifi") -ne 0 ];
   then
@@ -14386,9 +14385,9 @@ then
     e_and_l "$(skip_text "$ACTION_MESSAGE  " "$NV_TXT")"
   fi
 
-  # =============================================================================
+  # ============================================================================
   # Fehlerberichte deaktivieren
-  # =============================================================================
+  # ============================================================================
   ACTION_MESSAGE=" Deaktivierung der ${light_cyan}Fehlerbericht-Erstellung${colors_off}"
   # Wenn es apport oder whoopsie gibt
   if [ $(apt list "apport" 2>/dev/null | grep -i -c -E "apport") -gt 0 ] ||
@@ -14473,9 +14472,9 @@ then
     e_and_l "$(skip_text "$ACTION_MESSAGE" "$NV_TXT")"
   fi
 
-  # =============================================================================
+  # ============================================================================
   # Anzahl und Größe der System-Log-Dateien begrenzen
-  # =============================================================================
+  # ============================================================================
   ANZ_LOG_DAYS=5   # Tage
   MAX_LOG_SIZE=100 # MB
   # ----------------------
@@ -14578,10 +14577,10 @@ then
   e_and_l " ${bold_blue}Raspberry Pi${colors_off}"
   e_and_l "$HALF_LINE"
 
-  # =============================================================================
+  # ============================================================================
   # Taktfrequenzen des Raspberry Pi 4 einstellen
-  # =============================================================================
-  SHOW_SKIP_MESSAGE=""
+  # ============================================================================
+  ACTION_MESSAGE=" Taktfrequenzen des Raspberry Pi einstellen"
   if [ $RASPBERRY -ne 0 ];
   then
     PI_CONF_FILE="/boot/config.txt" # Pi OS
@@ -14710,23 +14709,18 @@ then
         e_and_l "$HALF_MINUS_LINE"
       fi
     else # Keine config.txt
-      SHOW_SKIP_MESSAGE="$PIOS_TXT"
+      e_and_l "$(skip_text "$ACTION_MESSAGE" "$PIOS_TXT")"
     fi
   else # Kein Raspberry
-    SHOW_SKIP_MESSAGE="$RASPY_TXT"
-  fi
-  if [ "$SHOW_SKIP_MESSAGE" != "" ];
-  then
-    e_and_l "$(skip_text " Taktfrequenzen des Raspberry Pi einstellen" "$SHOW_SKIP_MESSAGE")"
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "$RASPY_TXT")"
   fi
 
-  # =============================================================================
+  # ============================================================================
   # Optimierung des Raspberry Pi GPU-Speichers
-  # =============================================================================
-  # <2GB MEM => gpu_mem=128
-  # >2GB MEM => gpu_mem=256
+  # ============================================================================
+  # >2GB MEM => gpu_mem=128
+  # >4GB MEM => gpu_mem=256
   ACTION_MESSAGE=" Optimierung des Raspberry Pi ${light_cyan}GPU-Speichers${colors_off} ... "
-  SHOW_SKIP_MESSAGE=""
   if [ $RASPBERRY -ne 0 ];
   then
     PI_CONF_FILE="/boot/config.txt" # Pi OS
@@ -14781,26 +14775,70 @@ then
           e_and_l "$OK_TAG ${dark_gray}(Wert: $NEW_MEM_SIZE MB)${colors_off}"
         fi
       else
-        SHOW_SKIP_MESSAGE="erst ab 2GB RAM"
+        e_and_l "$(skip_text "$ACTION_MESSAGE" "erst über 2GB RAM")"
       fi
     else # Keine config.txt
-      SHOW_SKIP_MESSAGE="$PIOS_TXT"
+      e_and_l "$(skip_text "$ACTION_MESSAGE" "$PIOS_TXT")"
     fi
   else # Kein Raspberry
-    SHOW_SKIP_MESSAGE="$RASPY_TXT"
-  fi
-  if [ "$SHOW_SKIP_MESSAGE" != "" ];
-  then
-    e_and_l "$(skip_text "$ACTION_MESSAGE" "$SHOW_SKIP_MESSAGE")"
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "$RASPY_TXT")"
   fi
 
-  # =============================================================================
-  # Deaktivierung des internen Screen Blanking
-  # =============================================================================
-  SHOW_SKIP_MESSAGE=""
+  # ============================================================================
+  # Einstellung einer sicheren Boot-Screen-Auflösung (1024x768)
+  # ============================================================================
+  ACTION_MESSAGE=" Einstellung ${light_cyan}sicherer Boot-Screen-Auflösung${colors_off}"
   if [ $RASPBERRY -ne 0 ];
   then
-    e_and_l -n " Deaktivierung des internen ${light_cyan}Screen Blanking${colors_off} ... "
+    PI_CMD_FILE="/boot/firmware/cmdline.txt"
+    if [ -s "$PI_CMD_FILE" ];
+    then
+      SECURE_VIDEO_PART="video=HDMI-A-1:1024x768@60D"
+      if [ $(grep -i -c -E "$SECURE_VIDEO_PART" "$PI_CMD_FILE" 2>/dev/null) -eq 0 ];
+      then
+        ask_yes_or_no_plus "" " Sichere ${light_cyan}Auflösung für Boot-Screen${colors_off} einstellen" "" "n"
+        if [ $? -eq 1 ];
+        then
+          e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
+          create_backup_file "$PI_CMD_FILE"
+          # Wenn ein aktiver Eintrag vorhanden ist, diesen ändern ...
+          # Achtung: "-" zum Schluss, da sed sonst
+          if [ $(grep -i -c -E "\svideo=[A-Z0-9\:\x\@\-]*" "$PI_CMD_FILE" 2>/dev/null) -gt 0 ];
+          then
+            sed -i -E "s/\svideo=[A-Z0-9\:\x\@\-]*/ $SECURE_VIDEO_PART/gi" "$PI_CMD_FILE" &>/dev/null
+            CMD_RESULT=$?
+          # ... sonst hinzufügen ...
+          else
+            echo -n $(cat "$PI_CMD_FILE" | tr -d '\n') > "$PI_CMD_FILE.tmp" 2>/dev/null
+            echo " $SECURE_VIDEO_PART" >> "$PI_CMD_FILE.tmp" 2>/dev/null
+            mv -f "$PI_CMD_FILE.tmp" "$PI_CMD_FILE" 2>/dev/null
+            CMD_RESULT=$?
+          fi
+          if [ $CMD_RESULT -eq 0 ];
+          then
+            e_and_l "$OK_TAG"
+            CHANGES_MADE=1
+          else
+            e_and_l "$ERROR_TAG"
+          fi
+        fi
+      else
+        e_and_l "$ACTION_MESSAGE ... $NC_TAG"
+      fi
+    else
+      e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
+    fi
+  else # Kein Raspberry
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "$RASPY_TXT")"
+  fi
+
+  # ============================================================================
+  # Deaktivierung des internen Screen Blanking
+  # ============================================================================
+  ACTION_MESSAGE=" Deaktivierung des internen ${light_cyan}Screen Blanking${colors_off}"
+  if [ $RASPBERRY -ne 0 ];
+  then
+    e_and_l -n "$ACTION_MESSAGE ... "
     PI_X_CONF_DIR="/etc/X11/xorg.conf.d"
     PI_X_CONF_FILE="$PI_X_CONF_DIR/10-blanking.conf"
     # Wenn es die X-Konfig-Datei noch nicht gibt, dann diese neu anlegen
@@ -14836,16 +14874,12 @@ then
       fi
     fi
   else # Kein Raspberry
-    SHOW_SKIP_MESSAGE="$RASPY_TXT"
-  fi
-  if [ "$SHOW_SKIP_MESSAGE" != "" ];
-  then
-    e_and_l "$(skip_text " Deaktivierung des internen Screen Blanking" "$SHOW_SKIP_MESSAGE")"
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "$RASPY_TXT")"
   fi
 
-  # =============================================================================
+  # ============================================================================
   # Änderung der Monitor-Overscan-Einstellung
-  # =============================================================================
+  # ============================================================================
   ACTION_MESSAGE=" Änderung der Einstellung ${light_cyan}Monitor-Overscan${colors_off}"
   if [ $RASPBERRY -ne 0 ];
   then
@@ -14900,9 +14934,9 @@ then
     e_and_l "$(skip_text "$ACTION_MESSAGE " "$RASPY_TXT")"
   fi
 
-  # =============================================================================
+  # ============================================================================
   # Aktivierung der Sudo-Passworteingabe von Standard-Benutzer pi
-  # =============================================================================
+  # ============================================================================
   ACTION_MESSAGE=" Aktivierung ${light_cyan}sudo-Passwort${colors_off} für Benutzer pi "
   if [ $RASPBIAN -ne 0 ];
   then
