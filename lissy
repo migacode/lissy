@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 17.08.2025
-VERSION="5.4.3"
+# Letzte Änderung: 22.08.2025
+VERSION="5.4.4"
 
 ################################################################################
 #                                                                              #
@@ -153,8 +153,8 @@ function ask_for_install_mode {
     done
   fi
   # ----------------------------------------------------------------------------
-  e_and_l "$PRE_SPACE Bitte auswählen, welche Version installiert werden soll,"
-  e_and_l -n "$PRE_SPACE oder ${bold_yellow}0${colors_off} eingeben um die Installation zu überspringen: "
+  e_and_l "$PRE_SPACE Bitte auswählen, welche Version davon installiert werden soll,"
+  e_and_l -n "$PRE_SPACE oder ${bold_yellow}0${colors_off} (oder N) eingeben um die Installation zu überspringen: "
   if [ ${OPTION_FLAG[notoall]} -eq 0 ];
   then
     NEW_INST_MODE=""
@@ -162,7 +162,12 @@ function ask_for_install_mode {
           [ $(echo "$INST_MODES" | grep -c -E "$NEW_INST_MODE") -eq 0 ];
     do
       read -N 1 -r -s NEW_INST_MODE
-      NEW_INST_MODE=$(echo $NEW_INST_MODE | sed 's/[^0-9]*//g')
+      NEW_INST_MODE=$(echo $NEW_INST_MODE | sed 's/[^0-9nN]*//gi')
+      if [ "$NEW_INST_MODE" == "n" ] ||
+         [ "$NEW_INST_MODE" == "N" ];
+         then
+           NEW_INST_MODE="0"
+         fi
     done
   else
     NEW_INST_MODE="0"
@@ -370,7 +375,16 @@ function ask_yes_no_info {
            [ "$ANSWER" == "i" ];
         then
           echo -e "${light_yellow}"
-          if [ $INSTALL_MODE -eq 1 ]; then apt show "$PACKAGE_NAME" 2>/dev/null; fi
+          if [ $INSTALL_MODE -eq 1 ];
+          then
+            if [ "$APT_PKG_EXTENDED_NAME" != "" ];
+            then
+              PKG_TO_SHOW="$APT_PKG_EXTENDED_NAME"
+            else
+              PKG_TO_SHOW="$PACKAGE_NAME"
+            fi
+            apt show "$PKG_TO_SHOW" 2>/dev/null
+          fi
           if [ $INSTALL_MODE -eq 2 ];
           then
             if [ $SNAP_ACTIVE -gt 0 ];
@@ -921,6 +935,7 @@ function clean_on_exit {
       remove_file "$SNAP_INSTALLED_PKG_LIST"
       remove_file "$SNAP_SNAPSHOT_LIST"
       find "$DOWNLOAD_DIR" -type f -not -name "${LOG_FILE##*/}" -and -not -iregex ".*\.list$" -and -not -iregex ".*\.save$" -delete 2>/dev/null
+      find "$DOWNLOAD_DIR" -type f -size 0 -delete 2>/dev/null
     fi
     # -------------------------------------------------------
     # Alle verbliebenen Dateien dem Benutzer zu eigen machen
@@ -978,23 +993,16 @@ function clear_repo {
 }
 
 #===============================================================================
-# Bereinigt einen Text um seine Farbcodes
+# Bereinigt einen Text von Steuerzeichen und sonstigen nicht druckbaren Zeichen
 #===============================================================================
 function clear_text {
-  NEW_TEXT="$1"
-  # -------------------------------------------------------
-  # Zur Ausgabe in eine Textdatei alle Farbcodes entfernen
-  # -------------------------------------------------------
-  NEW_TEXT=${NEW_TEXT//\\033\[0m/}
-  NEW_TEXT=${NEW_TEXT//\\033\[[0-9][0-9]m/}
-  NEW_TEXT=${NEW_TEXT//\\033\[[0-9]\;[0-9][0-9]m/}
-  NEW_TEXT=${NEW_TEXT//[1m/}
-  NEW_TEXT=${NEW_TEXT//(B[m/}
-  NEW_TEXT=${NEW_TEXT//[0;90m/}
-  NEW_TEXT=${NEW_TEXT//[0m/}
-  # ----------------------------------------------------
-  # Nicht installierte Programme und Fehler hervorheben
-  # ----------------------------------------------------
+  # -------------------------------------------
+  # Alle Steuerzeichen und Farbcodes entfernen
+  # -------------------------------------------
+  NEW_TEXT="$(echo -e "$1" | tr -dc '[:print:][:space:]\n\säöüÄÖÜß' | sed -E "s/\[[0-9]+;[0-9]+m//gi" | sed -E "s/\[0m//gi")"
+  # ---------------------------------
+  # Fehler und Warnungen hervorheben
+  # ---------------------------------
   NEW_TEXT=${NEW_TEXT//error/ERROR}
   NEW_TEXT=${NEW_TEXT//Fehler/FEHLER}
   NEW_TEXT=${NEW_TEXT// nicht / NICHT }
@@ -1781,7 +1789,11 @@ function create_command_line {
   # ----------------------------------------------------------------------------
   for i in ${OPTION_LIST[@]};
   do
-    if [ ${OPTION_FLAG[$i]} -eq 1 ];
+    if [ ${OPTION_FLAG[$i]} -eq 1 ] &&
+       [ "$i" != "instlist" ] &&
+       [ "$i" != "instonly" ] &&
+       [ "$i" != "skippkgs" ] &&
+       [ "$i" != "remove" ];
     then
       COMMAND_LINE_STRING+=" $(echo ${i} | tr A-Z a-z)"
     fi
@@ -2179,7 +2191,6 @@ function extend_repo_erw {
       # ------------------------------------
       # 2. Datei mit Quellangaben erstellen
       # ------------------------------------
-      # Wenn es die Quellen-Datei, aber noch kein Backup gibt, Backup erstellen
       create_backup_file "$LOCAL_REPO_FILE"
       # Quellen-Datei erstellen und Repository aktualisieren
       eval " $REPO_CMD" &>"$LOG_TEMP"
@@ -2399,7 +2410,13 @@ function get_pkg_apt_version {
   INFO_TYPE=$2 # 0 = verfügbare Version, 1 = installierte Version ermitteln
   if [ $INFO_TYPE -eq 0 ];
   then
-    PKG_APT_VERSION=$(LANG=en apt show "$1" 2>/dev/null | \
+    if [ "$APT_PKG_EXTENDED_NAME" != "" ];
+    then
+      PKG_TO_CHECK="$APT_PKG_EXTENDED_NAME"
+    else
+      PKG_TO_CHECK="$1"
+    fi
+    PKG_APT_VERSION=$(LANG=en apt show "$PKG_TO_CHECK" 2>/dev/null | \
       grep -i -E "^\s*Version" | \
       sed -E "s/^\s*version\s*:\s*//i")
   else
@@ -2899,6 +2916,7 @@ function insert_spaces {
 #===============================================================================
 function install_pkg {
   PAKET=$1
+  APT_PKG_EXTENDED_NAME=""
   INSTALL_TRY=$2
   IS_SIMILAR_PKG=$3
   IS_UPDATE=$4
@@ -3142,10 +3160,11 @@ function install_pkg {
          [ $FORCE_THIS_FLATPAK -eq 0 ] &&
          [ $FORCE_THIS_EXTERN -eq 0 ];
       then
-        if [ $(apt list "$PAKET" -a 2>/dev/null | grep -i -E "$PAKET" | grep -i -c -E "$ARCHITECTURE_ALL") -gt 0 ];
+        if [ $(apt list "$PAKET" -a 2>/dev/null | grep -i -E "$PAKET" | grep -i -v -E "[0-9]snap" | grep -i -c -E "$ARCHITECTURE_ALL") -gt 0 ];
         then
-          # Triggerung einer Snap-Installation durch "Depends: snapd" abfangen
-          if [ $(LANG=en apt show "$PAKET" -a 2>/dev/null | grep -i -E "depend.*\:" | grep -c -i -E "\bsnapd\b") -eq 0 ];
+          APT_PKG_EXTENDED_NAME="$(apt list "$PAKET" -a 2>/dev/null | grep -i -E "$PAKET" | grep -i -v -E "[0-9]snap" | grep -i -E "$ARCHITECTURE_ALL" | head -n 1 | awk '{print $1}')"
+          # Zur Sicherheit Triggerung einer Snap-Installation durch "Depends: snapd" nochmals abfangen
+          if [ $(LANG=en apt show "$APT_PKG_EXTENDED_NAME" -a 2>/dev/null | grep -i -E "depend.*\:" | grep -c -i -E "\bsnapd\b") -eq 0 ];
           then
             INST_MODE_LIST+=",1"
             INSTALL_MODE=1
@@ -3160,9 +3179,10 @@ function install_pkg {
       if [ ${OPTION_FLAG[addsnap]} -eq 1 ] &&
          [ $FORCE_THIS_FLATPAK -eq 0 ] &&
          [ $FORCE_THIS_EXTERN -eq 0 ] &&
-         [ $SNAP_ACTIVE -gt 0 ] &&
-         [ "$LAST_ERW_PACK" == "" ] &&
-         [ "$LAST_PPA_PACK" == "" ];
+         [ $SNAP_ACTIVE -gt 0 ];
+# TODO: Testen, ob diese Prüfungen tatsächlich ausgelassen werden können
+# [ "$LAST_ERW_PACK" == "" ] &&
+# [ "$LAST_PPA_PACK" == "" ];
       then
         snap info "$PAKET" &>/dev/null
         if [ $? -eq 0 ];
@@ -3179,9 +3199,10 @@ function install_pkg {
       if [ ${OPTION_FLAG[addflat]} -eq 1 ] &&
          [ $FORCE_THIS_SNAPPY -eq 0 ] &&
          [ $FORCE_THIS_EXTERN -eq 0 ] &&
-         [ $FLATPAK_ACTIVE -eq 1 ] &&
-         [ "$LAST_ERW_PACK" == "" ] &&
-         [ "$LAST_PPA_PACK" == "" ];
+         [ $FLATPAK_ACTIVE -eq 1 ];
+# TODO: Testen, ob diese Prüfungen tatsächlich ausgelassen werden können
+# [ "$LAST_ERW_PACK" == "" ] &&
+# [ "$LAST_PPA_PACK" == "" ];
       then
         FLATPAK_NAME=$(echo "$PAKET" | sed 's/[ -_]//g' | xargs)
         if [ $(grep -c -i -E "\.$FLATPAK_NAME[0-9]*[\/\.]" ${FLATPAK_REMOTE_LIST}) -gt 0 ] ||
@@ -3378,10 +3399,11 @@ function install_pkg {
            [ $FORCE_THIS_FLATPAK -ne 0 ] ||
            [ $FORCE_THIS_EXTERN -ne 0 ];
         then
-          if [ $(apt list "$PAKET" -a 2>/dev/null | grep -i -E "$PAKET" | grep -i -c -E "$ARCHITECTURE_ALL") -gt 0 ];
+          if [ $(apt list "$PAKET" -a 2>/dev/null | grep -i -E "$PAKET" | grep -i -v -E "[0-9]snap" | grep -i -c -E "$ARCHITECTURE_ALL") -gt 0 ];
           then
-            # Triggerung einer Snap-Installation durch "Depends: snapd" abfangen
-            if [ $(LANG=en apt show "$PAKET" -a 2>/dev/null | grep -i -E "depend.*\:" | grep -c -i -E "\bsnapd\b") -eq 0 ];
+            APT_PKG_EXTENDED_NAME="$(apt list "$PAKET" -a 2>/dev/null | grep -i -E "$PAKET" | grep -i -v -E "[0-9]snap" | grep -i -E "$ARCHITECTURE_ALL" | head -n 1 | awk '{print $1}')"
+            # Zur Sicherheit Triggerung einer Snap-Installation durch "Depends: snapd" nochmals abfangen
+            if [ $(LANG=en apt show "$APT_PKG_EXTENDED_NAME" -a 2>/dev/null | grep -i -E "depend.*\:" | grep -c -i -E "\bsnapd\b") -eq 0 ];
             then
               INST_MODE_LIST+=",1"
               INSTALL_MODE=1
@@ -3738,15 +3760,22 @@ function install_pkg {
 
               # ----------------------------------------------------------------
               # Installation mit apt
+              # ---------------------
+              # Hinweis: Statt dem reinen Paketnamen wird zudem auch die Version
+              # bzw. Quelle mit angegeben (dazu wird APT_PKG_EXTENDED_NAME in
+              # der Funktioon install_pkg ermittelt), um eine eindeutige Auswahl
+              # zu treffen und nicht "versehentlich" wieder automatisch ein vom
+              # System "bevorzugtes" Snap zu installieren!
               # ----------------------------------------------------------------
-              if [ $INSTALL_MODE -eq 1 ];
+              if [ $INSTALL_MODE -eq 1 ] &&
+                 [ "$APT_PKG_EXTENDED_NAME" != "" ];
               then
                 if [ ${OPTION_FLAG[quiet]} -eq 1 ];
                 then
-                  echo -n '\n\n\n' | apt install "$PAKET" -y &>"$LOG_TEMP"
+                  echo -n '\n\n\n' | apt install "$APT_PKG_EXTENDED_NAME" -y &>"$LOG_TEMP"
                   INSTALL_RESULT=$?
                 else
-                  { apt install "$PAKET" -y 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; } | tee "$LOG_TEMP"
+                  { apt install "$APT_PKG_EXTENDED_NAME" -y 2>&1; echo -e -n "$?" > "$LAST_EXIT_CODE"; } | tee "$LOG_TEMP"
                   INSTALL_RESULT=$(cat "$LAST_EXIT_CODE")
                   remove_file "$LAST_EXIT_CODE"
                 fi
@@ -4660,7 +4689,8 @@ function ready_for_action {
         ${OPTION_FLAG[setutc]}   -eq 0 &&
         ${OPTION_FLAG[snapcont]} -eq 0 &&
         ${OPTION_FLAG[snapkill]} -eq 0 &&
-        ${OPTION_FLAG[snapstop]} -eq 0 ]];
+        ${OPTION_FLAG[snapstop]} -eq 0 &&
+        ${OPTION_FLAG[sysbench]} -eq 0 ]];
   then
     return 1
   else
@@ -5620,9 +5650,9 @@ function snap_hold_and_clean {
   # Installation und Updates von Snap blockieren
   # ----------------------------------------------------------------------------
   e_and_l -n " - Blockiere die Aktualisierung des Snap-Systems, bitte warten ... "
-  # ---------------------
-  # Konfigurations-Datei
-  # ---------------------
+  # ----------------------------------
+  # "Pinnen" mit Konfigurations-Datei
+  # ----------------------------------
   if [ ! -d "$APT_PREFERENCES_DIR" ];
   then
     mkdir -p "$APT_PREFERENCES_DIR" &>/dev/null
@@ -5630,15 +5660,15 @@ function snap_hold_and_clean {
   echo -e "" > "$SNAP_BLOCKING_FILE" 2>/dev/null
   if [ $? -eq 0 ];
   then
-    echo -e "Package: snapd"    >> "$SNAP_BLOCKING_FILE" 2>/dev/null
+    echo -e "Package: snapd" >> "$SNAP_BLOCKING_FILE" 2>/dev/null
     echo -e "Pin: release a=*"  >> "$SNAP_BLOCKING_FILE" 2>/dev/null
     echo -e "Pin-Priority: -10" >> "$SNAP_BLOCKING_FILE" 2>/dev/null
   else
     ((SNAP_HOLD_RESULT+=1))
   fi
-  # ---------
-  # apt-mark
-  # ---------
+  # ----------------------
+  # "Halten" mit apt-mark
+  # ----------------------
   if [ $DO_MARK_HOLD -eq 1 ];
   then
     apt-mark hold snapd &>/dev/null
@@ -5672,20 +5702,219 @@ function snap_hold_and_clean {
 # Installations- und Update-Blockaden für snapd aufheben
 #===============================================================================
 function snap_unhold {
-  # ---------------------
-  # Konfigurations-Datei
-  # ---------------------
+  # ----------------------------------
+  # "Pinnen" mit Konfigurations-Datei
+  # ----------------------------------
   if [ -s "$SNAP_BLOCKING_FILE" ];
   then
     mv -f "$SNAP_BLOCKING_FILE" "$SNAP_BLOCKING_FILE.bak" &>/dev/null
     if [ $? -ne 0 ]; then ((SNAP_UNHOLD_RESULT+=1)); fi
   fi
-  # ---------
-  # apt-mark
-  # ---------
+  # ----------------------
+  # "Halten" mit apt-mark
+  # ----------------------
   apt-mark unhold snapd &>/dev/null
   if [ $? -ne 0 ]; then ((SNAP_UNHOLD_RESULT+=1)); fi
   # ---------
+}
+
+#===============================================================================
+# Zusammenfassung der System-Informationen erstellen
+#===============================================================================
+function system_info_summary {
+
+  SYS_INFO_TXT=""
+  if [ "$MACHINE_MODEL" != "" ];
+  then
+    SYS_INFO_TXT+=" Modell: ${bold_yellow}$MACHINE_MODEL${colors_off}"$'\n'
+  fi
+
+  SYS_INFO_TXT+=" Prozessor:${bold_yellow}"
+  if [ "$CPU_MODEL" != "" ] &&
+     [ "$CPU_MODEL" != "$MACHINE_MODEL" ];
+  then
+    SYS_INFO_TXT+=" $CPU_MODEL"
+  fi
+  if [ "$CPU_CODE" != "" ]; then SYS_INFO_TXT+=" $CPU_CODE"; fi
+  if [ $CPU_CORES -gt 0 ]; then SYS_INFO_TXT+=" ${bold_cyan}($CPU_CORES Kerne)"; fi
+  SYS_INFO_TXT+="${colors_off}"$'\n'
+
+  if [ "$CPU_MIN_CLOCK" != "" ] &&
+     [ "$CPU_MAX_CLOCK" != "" ];
+  then
+    SYS_INFO_TXT+=" Taktfrequenz: ${bold_yellow}$CPU_MIN_CLOCK${colors_off} bis ${bold_yellow}$CPU_MAX_CLOCK${colors_off} MHz"$'\n'
+  fi
+
+  if [ "$CPU_SERIAL" != "" ];
+  then
+    SYS_INFO_TXT+=" Seriennummer: ${bold_yellow}$CPU_SERIAL${colors_off}"$'\n'
+  fi
+
+  if [ "$MEMORY_AVAIL" != "" ] &&
+     [ "$MEMORY_TOTAL" != "" ];
+  then
+    MEMORY_HUMAN_AVAIL=$(show_human_bytes ${MEMORY_AVAIL} "M")
+    MEMORY_HUMAN_TOTAL=$(show_human_bytes ${MEMORY_TOTAL} "M")
+    SYS_INFO_TXT+=" Speicher: ${bold_yellow}$MEMORY_HUMAN_AVAIL${colors_off} verfügbar / ${bold_yellow}$MEMORY_HUMAN_TOTAL${colors_off} total"$'\n'
+  fi
+
+  if [ "$GPU_MODEL" != "" ];
+  then
+    SYS_INFO_TXT+=" Grafik: ${bold_yellow}$GPU_MODEL${colors_off}"$'\n'
+  fi
+
+  if [ "$BOOT_MODE" != "" ];
+  then
+    SYS_INFO_TXT+=" Boot-Modus: ${bold_yellow}$BOOT_MODE${colors_off}"$'\n'
+  fi
+
+  SYS_INFO_TXT+=" Startpartition: ${bold_yellow}${root_partition/\/dev\//}${colors_off}"
+  if [ "$root_partition_name" != "" ] ||
+     [ "$root_partition_label" != "" ];
+  then
+    SYS_INFO_TXT+=" ${bold_cyan}("
+    if [ "$root_partition_name" != "" ];
+    then
+      SYS_INFO_TXT+="$root_partition_name"
+    fi
+    if [ "$root_partition_label" != "" ];
+    then
+      if [ "$root_partition_name" != "" ]; then SYS_INFO_TXT+=", "; fi
+      SYS_INFO_TXT+="$root_partition_label"
+    fi
+    SYS_INFO_TXT+=")${colors_off}"
+  fi
+  SYS_INFO_TXT+=$'\n'
+
+  if [ "$OPERATION_SYSTEM" != "" ];
+  then
+    SYS_INFO_TXT+=" Betriebssystem: ${bold_yellow}$OPERATION_SYSTEM${colors_off}"
+    if [ $(echo -n "$OPERATION_SYSTEM" | grep -c -i -E "ubuntu") -eq 0 ] &&
+       [ "$UBUNTU_VERSION" != "" ];
+    then
+      SYS_INFO_TXT+=" ${dark_gray}[Ubuntu $UBUNTU_VERSION]${colors_off}"
+    fi
+    if [ "$OS_BIT_WIDTH" != "" ];
+    then
+      SYS_INFO_TXT+=" ${bold_cyan}($OS_BIT_WIDTH bit)${colors_off}"
+    fi
+    SYS_INFO_TXT+=$'\n'
+  fi
+
+  if [ "$DEBIAN_VERSION" != "" ];
+  then
+    SYS_INFO_TXT+=" Debian-Version: ${bold_yellow}$DEBIAN_VERSION${colors_off} ${bold_cyan}($DEBIAN_CODE)${colors_off}"$'\n'
+  fi
+
+  SYS_INFO_TXT+=" Kernel-Version: ${bold_yellow}$(uname -r)${colors_off}"$'\n'
+
+  if [ "$ARCHITECTURE_MAIN" != "" ] ||
+     [ "$ARCHITECTURE_OTHER" != "" ];
+  then
+    SYS_INFO_TXT+=" System-Architektur: ${bold_yellow}$ARCHITECTURE_MAIN${colors_off}"
+    SYS_INFO_TXT+=" ${bold_cyan}($(uname -m))${colors_off}"
+    if [ "${ARCHITECTURE_OTHER}" != "" ];
+    then
+      SYS_INFO_TXT+=" ${bold_yellow}[+${ARCHITECTURE_OTHER[@]}]${colors_off}"
+    fi
+    SYS_INFO_TXT+=$'\n'
+  fi
+
+  if [ "$CUR_SYS_LANG" != "" ];
+  then
+    SYS_INFO_TXT+=" Sprachumgebung: ${bold_yellow}$CUR_SYS_LANG${colors_off}"
+    if [ "$CUR_LANG_NAME" != "" ]; then SYS_INFO_TXT+=" ${bold_cyan}($CUR_LANG_NAME)${colors_off}"; fi
+    SYS_INFO_TXT+=$'\n'
+  fi
+
+  if [ "$DISPLAY_MANAGER" != "" ];
+  then
+    SYS_INFO_TXT+=" Display-Manager: ${bold_yellow}$DISPLAY_MANAGER${colors_off}"$'\n'
+  fi
+
+  if [ "$DISPLAY_SERVER" != "" ];
+  then
+    SYS_INFO_TXT+=" Display-Server: ${bold_yellow}$DISPLAY_SERVER${colors_off}"$'\n'
+  fi
+
+  if [ "$DESKTOP_ENVIRONMENT" != "" ];
+  then
+    SYS_INFO_TXT+=" Desktop-Environment: ${bold_yellow}$DESKTOP_ENVIRONMENT $GNOME_VERSION${colors_off}"$'\n'
+  fi
+
+  if [ "$WINDOW_MANAGER" != "" ];
+  then
+    SYS_INFO_TXT+=" Window-Manager: ${bold_yellow}$WINDOW_MANAGER${colors_off}"$'\n'
+  fi
+
+  if [ "$WINDOW_THEME" != "" ];
+  then
+    SYS_INFO_TXT+=" Window-Thema: ${bold_yellow}$WINDOW_THEME${colors_off}"$'\n'
+  fi
+
+  if [ "$SYMBOL_THEME" != "" ];
+  then
+    SYS_INFO_TXT+=" Symbol-Thema: ${bold_yellow}$SYMBOL_THEME${colors_off}"$'\n'
+  fi
+
+  if [ "$FILE_MANAGER" != "" ];
+  then
+    SYS_INFO_TXT+=" Dateimanager: ${bold_yellow}$FILE_MANAGER${colors_off}"$'\n'
+  fi
+
+  if [ "$SHELL_TEXT" != "" ];
+  then
+    SYS_INFO_TXT+=" Shell: ${bold_yellow}$SHELL_TEXT${colors_off}"$'\n'
+  fi
+
+  SYS_INFO_TXT+=" Flatpak-Version: ${bold_yellow}"
+  if [ "$FLATPAK_SYSTEM_VERSION" != "" ];
+  then
+    SYS_INFO_TXT+="$FLATPAK_SYSTEM_VERSION"
+  else
+    SYS_INFO_TXT+="-"
+  fi
+  SYS_INFO_TXT+="${colors_off}"$'\n'
+
+  SYS_INFO_TXT+=" Docker-Version: ${bold_yellow}"
+  if [ "$DOCKER_SYSTEM_VERSION" != "" ];
+  then
+    SYS_INFO_TXT+="$DOCKER_SYSTEM_VERSION"
+  else
+    SYS_INFO_TXT+="-"
+  fi
+  SYS_INFO_TXT+="${colors_off}"$'\n'
+
+  SYS_INFO_TXT+=" Snap-Version: ${bold_yellow}"
+  if [ "$SNAP_SYSTEM_VERSION" != "" ];
+  then
+    SYS_INFO_TXT+="$SNAP_SYSTEM_VERSION"
+  else
+    if [ $SNAP_INSTALLED -gt 0 ] &&
+       [ $SNAP_ACTIVE -eq 0 ];
+    then
+      SYS_INFO_TXT+="deaktiviert"
+    else
+      SYS_INFO_TXT+="-"
+    fi
+  fi
+  SYS_INFO_TXT+="${colors_off}"$'\n'
+
+  SYS_INFO_TXT+=" Wine-Version: ${bold_yellow}"
+  if [ "$WINE_VERSION" != "" ];
+  then
+    SYS_INFO_TXT+="$WINE_VERSION"
+  else
+    SYS_INFO_TXT+="-"
+  fi
+  SYS_INFO_TXT+="${colors_off}"$'\n'
+
+  SYS_INFO_TXT+=" Hostname: ${bold_yellow}$(hostname)${colors_off}"$'\n'
+
+  XTERM_NR="$(who | grep -E "\(\:" | head -n 1 | cut -d'(' -f 2 | cut -d')' -f 1)"
+  if [ "$XTERM_NR" != "" ]; then XTERM_NR="["$XTERM_NR"]"; fi
+  SYS_INFO_TXT+=" Benutzer: ${bold_yellow}$USER_USERNAME${colors_off} ${light_yellow}(id ${USER_UID})${colors_off} at ${bold_cyan}$(tty) $XTERM_NR${colors_off}"
+  echo -e "$SYS_INFO_TXT"
 }
 
 #===============================================================================
@@ -6842,7 +7071,7 @@ declare -A OPTION_MENU # Index des Menüpunktes, in dem die Option erscheint
 
 OPTION_LIST=()
 OPTION_LIST+=(extends addflat addsnap external prioflat priosnap skipsims esamesrc foreign force status listonly addstart csubdirs) # Menu 2
-OPTION_LIST+=(exupdate extras kuplock kunlock setutc optimize snapcont snapkill snapstop revive repair cleansys personal) # Menu 4
+OPTION_LIST+=(exupdate extras kuplock kunlock setutc optimize snapcont snapkill snapstop revive repair cleansys personal sysbench) # Menu 4
 OPTION_LIST+=(noupdate norepo autoyorn notoall skipmesg exupdall infoonly noinfo log logfull nocolor saveconf reset cleantmp) # Menu 5
 OPTION_LIST+=(dsave dload quiet instonly instlist remove) # Im Menü nicht angezeigt aber zu initialisieren
 
@@ -6892,6 +7121,7 @@ OPTION_TEXT[snapcont]="Die Snap-Paketverwaltung wieder reaktivieren"
 OPTION_TEXT[snapkill]="Die Snap-Paketverwaltung deaktivieren oder entfernen"
 OPTION_TEXT[snapstop]="DERZEIT NICHT IM MENÜ, WIRD MIT snapkill ANGESTEUERT"
 OPTION_TEXT[status]="Nur Status der Pakete anzeigen (nicht installieren)"
+OPTION_TEXT[sysbench]="Referenzwerte dieses Systems erstellen (Benchmarking)"
 
 OPTION_MENU[quiet]=0    # Wird im Menü nicht angezeigt
 OPTION_MENU[instonly]=1 # Nur zur Anzeige im Menü, Prüfung erfolgt auf INST_ONLY_PKG
@@ -6944,6 +7174,7 @@ then
     OPTION_MENU[setutc]=4
   fi
 fi
+OPTION_MENU[sysbench]=4
 
 # ----------------------------------------------------------------
 # Optionen zur Snap-Paketverwaltung je nach deren Status anzeigen
@@ -7524,6 +7755,12 @@ fi
 # ERW_REPO_TXT[element-desktop]="deb [signed-by=/etc/apt/trusted.gpg.d/element-desktop.gpg] https://packages.element.io/debian/ default main"
 # ------------------------------------------------------------------------------
 
+ERW_AUTH_KEY[firefox]="https://packages.mozilla.org/apt/repo-signing-key.gpg"
+ERW_REPO_TXT[firefox]="deb [signed-by=/etc/apt/trusted.gpg.d/firefox.asc] https://packages.mozilla.org/apt mozilla main"
+
+ERW_AUTH_KEY[gerbera]="https://pkg.gerbera.io/public.asc"
+ERW_REPO_TXT[gerbera]="deb [signed-by=/etc/apt/trusted.gpg.d/gerbera.asc] https://pkg.gerbera.io/debian/ $OS_V_CODENAME main"
+
 # ------------------------------------------------------------------------------
 # Opera-Stable derzeit nicht auf diesem Weg anbieten, da dies leider zu
 # Signatur-Fehlern führen kann und das Paket dann nicht mehr updatebar ist
@@ -7543,7 +7780,7 @@ ERW_REPO_TXT[microsoft-edge-dev]="deb [arch=amd64] https://packages.microsoft.co
 # Steam-Launcher bei der Installation seine eigenen Repo-Erweiterungen anlegt
 # ------------------------------------------------------------------------------
 # ERW_AUTH_KEY[steam-launcher]="https://repo.steampowered.com/steam/archive/stable/steam.gpg"
-# ERW_REPO_TXT[steam-launcher]="deb [arch=amd64,i386 signed-by=/usr/share/keyrings/steam.gpg] https://repo.steampowered.com/steam/ stable steam"
+# ERW_REPO_TXT[steam-launcher]="deb [arch=amd64,i386 signed-by=/etc/apt/trusted.gpg.d/steam.gpg] https://repo.steampowered.com/steam/ stable steam"
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
@@ -10085,6 +10322,9 @@ then
   e_and_l "            auch Paketquellen für individuelle Programmpakete ergänzt,"
   e_and_l "            jedoch ohne irgendwelche Programmpakete zu installieren."
   e_and_l ""
+  e_and_l "  sysbench  Erstellt Referenzwerte für die Performance dieses Systems,"
+  e_and_l "            die zum Benchmarking / Vergleich verwendet werden können."
+  e_and_l ""
   # --- OPTIONS END ---
   e_and_l ""
   e_and_l " $HALF_LINE"
@@ -10121,202 +10361,8 @@ fi
 #===============================================================================
 if [ ${OPTION_FLAG[noinfo]} -eq 0 ];
 then
-
-  SYS_INFO_TXT=""
-  if [ "$MACHINE_MODEL" != "" ];
-  then
-    SYS_INFO_TXT+=" Modell: ${bold_yellow}$MACHINE_MODEL${colors_off}"$'\n'
-  fi
-
-  SYS_INFO_TXT+=" Prozessor:${bold_yellow}"
-  if [ "$CPU_MODEL" != "" ] &&
-     [ "$CPU_MODEL" != "$MACHINE_MODEL" ];
-  then
-    SYS_INFO_TXT+=" $CPU_MODEL"
-  fi
-  if [ "$CPU_CODE" != "" ]; then SYS_INFO_TXT+=" $CPU_CODE"; fi
-  if [ $CPU_CORES -gt 0 ]; then SYS_INFO_TXT+=" ${bold_cyan}($CPU_CORES Kerne)"; fi
-  SYS_INFO_TXT+="${colors_off}"$'\n'
-
-  if [ "$CPU_MIN_CLOCK" != "" ] &&
-     [ "$CPU_MAX_CLOCK" != "" ];
-  then
-    SYS_INFO_TXT+=" Taktfrequenz: ${bold_yellow}$CPU_MIN_CLOCK${colors_off} bis ${bold_yellow}$CPU_MAX_CLOCK${colors_off} MHz"$'\n'
-  fi
-
-  if [ "$CPU_SERIAL" != "" ];
-  then
-    SYS_INFO_TXT+=" Seriennummer: ${bold_yellow}$CPU_SERIAL${colors_off}"$'\n'
-  fi
-
-  if [ "$MEMORY_AVAIL" != "" ] &&
-     [ "$MEMORY_TOTAL" != "" ];
-  then
-    MEMORY_HUMAN_AVAIL=$(show_human_bytes ${MEMORY_AVAIL} "M")
-    MEMORY_HUMAN_TOTAL=$(show_human_bytes ${MEMORY_TOTAL} "M")
-    SYS_INFO_TXT+=" Speicher: ${bold_yellow}$MEMORY_HUMAN_AVAIL${colors_off} verfügbar / ${bold_yellow}$MEMORY_HUMAN_TOTAL${colors_off} total"$'\n'
-  fi
-
-  if [ "$GPU_MODEL" != "" ];
-  then
-    SYS_INFO_TXT+=" Grafik: ${bold_yellow}$GPU_MODEL${colors_off}"$'\n'
-  fi
-
-  if [ "$BOOT_MODE" != "" ];
-  then
-    SYS_INFO_TXT+=" Boot-Modus: ${bold_yellow}$BOOT_MODE${colors_off}"$'\n'
-  fi
-
-  SYS_INFO_TXT+=" Startpartition: ${bold_yellow}${root_partition/\/dev\//}${colors_off}"
-  if [ "$root_partition_name" != "" ] ||
-     [ "$root_partition_label" != "" ];
-  then
-    SYS_INFO_TXT+=" ${bold_cyan}("
-    if [ "$root_partition_name" != "" ];
-    then
-      SYS_INFO_TXT+="$root_partition_name"
-    fi
-    if [ "$root_partition_label" != "" ];
-    then
-      if [ "$root_partition_name" != "" ]; then SYS_INFO_TXT+=", "; fi
-      SYS_INFO_TXT+="$root_partition_label"
-    fi
-    SYS_INFO_TXT+=")${colors_off}"
-  fi
-  SYS_INFO_TXT+=$'\n'
-
-  if [ "$OPERATION_SYSTEM" != "" ];
-  then
-    SYS_INFO_TXT+=" Betriebssystem: ${bold_yellow}$OPERATION_SYSTEM${colors_off}"
-    if [ $(echo -n "$OPERATION_SYSTEM" | grep -c -i -E "ubuntu") -eq 0 ] &&
-       [ "$UBUNTU_VERSION" != "" ];
-    then
-      SYS_INFO_TXT+=" ${dark_gray}[Ubuntu $UBUNTU_VERSION]${colors_off}"
-    fi
-    if [ "$OS_BIT_WIDTH" != "" ];
-    then
-      SYS_INFO_TXT+=" ${bold_cyan}($OS_BIT_WIDTH bit)${colors_off}"
-    fi
-    SYS_INFO_TXT+=$'\n'
-  fi
-
-  if [ "$DEBIAN_VERSION" != "" ];
-  then
-    SYS_INFO_TXT+=" Debian-Version: ${bold_yellow}$DEBIAN_VERSION${colors_off} ${bold_cyan}($DEBIAN_CODE)${colors_off}"$'\n'
-  fi
-
-  SYS_INFO_TXT+=" Kernel-Version: ${bold_yellow}$(uname -r)${colors_off}"$'\n'
-
-  if [ "$ARCHITECTURE_MAIN" != "" ] ||
-     [ "$ARCHITECTURE_OTHER" != "" ];
-  then
-    SYS_INFO_TXT+=" System-Architektur: ${bold_yellow}$ARCHITECTURE_MAIN${colors_off}"
-    SYS_INFO_TXT+=" ${bold_cyan}($(uname -m))${colors_off}"
-    if [ "${ARCHITECTURE_OTHER}" != "" ];
-    then
-      SYS_INFO_TXT+=" ${bold_yellow}[+${ARCHITECTURE_OTHER[@]}]${colors_off}"
-    fi
-    SYS_INFO_TXT+=$'\n'
-  fi
-
-  if [ "$CUR_SYS_LANG" != "" ];
-  then
-    SYS_INFO_TXT+=" Sprachumgebung: ${bold_yellow}$CUR_SYS_LANG${colors_off}"
-    if [ "$CUR_LANG_NAME" != "" ]; then SYS_INFO_TXT+=" ${bold_cyan}($CUR_LANG_NAME)${colors_off}"; fi
-    SYS_INFO_TXT+=$'\n'
-  fi
-
-  if [ "$DISPLAY_MANAGER" != "" ];
-  then
-    SYS_INFO_TXT+=" Display-Manager: ${bold_yellow}$DISPLAY_MANAGER${colors_off}"$'\n'
-  fi
-
-  if [ "$DISPLAY_SERVER" != "" ];
-  then
-    SYS_INFO_TXT+=" Display-Server: ${bold_yellow}$DISPLAY_SERVER${colors_off}"$'\n'
-  fi
-
-  if [ "$DESKTOP_ENVIRONMENT" != "" ];
-  then
-    SYS_INFO_TXT+=" Desktop-Environment: ${bold_yellow}$DESKTOP_ENVIRONMENT $GNOME_VERSION${colors_off}"$'\n'
-  fi
-
-  if [ "$WINDOW_MANAGER" != "" ];
-  then
-    SYS_INFO_TXT+=" Window-Manager: ${bold_yellow}$WINDOW_MANAGER${colors_off}"$'\n'
-  fi
-
-  if [ "$WINDOW_THEME" != "" ];
-  then
-    SYS_INFO_TXT+=" Window-Thema: ${bold_yellow}$WINDOW_THEME${colors_off}"$'\n'
-  fi
-
-  if [ "$SYMBOL_THEME" != "" ];
-  then
-    SYS_INFO_TXT+=" Symbol-Thema: ${bold_yellow}$SYMBOL_THEME${colors_off}"$'\n'
-  fi
-
-  if [ "$FILE_MANAGER" != "" ];
-  then
-    SYS_INFO_TXT+=" Dateimanager: ${bold_yellow}$FILE_MANAGER${colors_off}"$'\n'
-  fi
-
-  if [ "$SHELL_TEXT" != "" ];
-  then
-    SYS_INFO_TXT+=" Shell: ${bold_yellow}$SHELL_TEXT${colors_off}"$'\n'
-  fi
-
-  SYS_INFO_TXT+=" Flatpak-Version: ${bold_yellow}"
-  if [ "$FLATPAK_SYSTEM_VERSION" != "" ];
-  then
-    SYS_INFO_TXT+="$FLATPAK_SYSTEM_VERSION"
-  else
-    SYS_INFO_TXT+="-"
-  fi
-  SYS_INFO_TXT+="${colors_off}"$'\n'
-
-  SYS_INFO_TXT+=" Docker-Version: ${bold_yellow}"
-  if [ "$DOCKER_SYSTEM_VERSION" != "" ];
-  then
-    SYS_INFO_TXT+="$DOCKER_SYSTEM_VERSION"
-  else
-    SYS_INFO_TXT+="-"
-  fi
-  SYS_INFO_TXT+="${colors_off}"$'\n'
-
-  SYS_INFO_TXT+=" Snap-Version: ${bold_yellow}"
-  if [ "$SNAP_SYSTEM_VERSION" != "" ];
-  then
-    SYS_INFO_TXT+="$SNAP_SYSTEM_VERSION"
-  else
-    if [ $SNAP_INSTALLED -gt 0 ] &&
-       [ $SNAP_ACTIVE -eq 0 ];
-    then
-      SYS_INFO_TXT+="deaktiviert"
-    else
-      SYS_INFO_TXT+="-"
-    fi
-  fi
-  SYS_INFO_TXT+="${colors_off}"$'\n'
-
-  SYS_INFO_TXT+=" Wine-Version: ${bold_yellow}"
-  if [ "$WINE_VERSION" != "" ];
-  then
-    SYS_INFO_TXT+="$WINE_VERSION"
-  else
-    SYS_INFO_TXT+="-"
-  fi
-  SYS_INFO_TXT+="${colors_off}"$'\n'
-
-  SYS_INFO_TXT+=" Hostname: ${bold_yellow}$(hostname)${colors_off}"$'\n'
-
-  XTERM_NR="$(who | grep -E "\(\:" | head -n 1 | cut -d'(' -f 2 | cut -d')' -f 1)"
-  if [ "$XTERM_NR" != "" ]; then XTERM_NR="["$XTERM_NR"]"; fi
-  SYS_INFO_TXT+=" Benutzer: ${bold_yellow}$USER_USERNAME${colors_off} ${light_yellow}(id ${USER_UID})${colors_off} at ${bold_cyan}$(tty) $XTERM_NR${colors_off}"
-
   do_log "$FULL_LINE"
-  e_and_l "$SYS_INFO_TXT"
-
+  e_and_l "$(system_info_summary)"
 fi
 
 if [ ${OPTION_FLAG[infoonly]} -eq 1 ];
@@ -19055,7 +19101,13 @@ then
   fi
 
   # ============================================================================
-  # Löschen verwaister Flatpak-Pakete (aktuell nur finden, löschen noch ToDo)
+  # Löschen verwaister Flatpak-Pakete (System-Komponenten)
+  # -------------------------------------------------------
+  # Hinweis: Aktuell werden nur verbliebene System-Komponenten gefunden, wenn
+  # KEINE Anwendungen mehr installiert sind, und es wird auch nichts gelöscht.
+  # -------------------------------------------------------
+  # TODO: Tatsächlich verwaiste System-Komponenten von einzelnen nicht mehr
+  #       installierten Anwendungen finden und diese löschen.
   # ============================================================================
   ACTION_MESSAGE=" Löschen von ${light_cyan}verwaisten Flatpak-Komponenten${colors_off} ... "
   if [ $FLATPAK_ACTIVE -eq 1 ];
@@ -19802,6 +19854,82 @@ then
         fi
       fi
     fi
+  fi
+fi
+
+#===============================================================================
+# Referenzwerte dieses Systems erstellen (Benchmarking)
+#===============================================================================
+if [ ${OPTION_FLAG[listonly]} -eq 0 ];
+   [ ${OPTION_FLAG[sysbench]} -eq 1 ];
+then
+  e_and_l "$FULL_LINE"
+  e_and_l " ${bold_blue}Referenzwerte dieses Systems erstellen (Benchmarks)${colors_off} ${dark_gray}[sysbench]${colors_off}"
+  e_and_l "$FULL_LINE"
+  e_and_l -n " Prüfe Voraussetzungen für das ${bold_white}Benchmarking${colors_off}, bitte warten ... "
+  if ! sysbench --version &>/dev/null;
+  then
+    if [ $(apt list "sysbench" 2>/dev/null | grep -i -c -E "sysbench") -gt 0 ];
+    then
+      apt install sysbench -y &>"$LOG_TEMP"
+      if [ $? -eq 0 ];
+      then
+        e_and_l "$OK_TAG"
+      else
+        e_and_l "$ERROR_TAG"
+      fi
+      add_full_log
+    else
+      e_and_l "$ERROR_TAG"
+    fi
+  else
+    e_and_l "$OK_TAG"
+  fi
+  if sysbench --version &>/dev/null;
+  then
+    e_and_l " Erstelle ${light_cyan}Referenzwerte${colors_off} - jeder einzelne Test dauert etwa 10 Sekunden."
+    # --------------------------------
+    # System-Informationen hinzufügen
+    # --------------------------------
+    BENCHMARK_FILE="$DOWNLOAD_DIR/benchmarks_$(hostname).list"
+    BENCH_FILE_TEXT=$'\n'
+    BENCH_FILE_TEXT+=" $HALF_MINUS_LINE"$'\n'
+    BENCH_FILE_TEXT+=" Benchmarking von $(hostname)"$'\n'
+    BENCH_FILE_TEXT+=" Datum: $(date)"$'\n'
+    BENCH_FILE_TEXT+=" $HALF_MINUS_LINE"$'\n'
+    BENCH_FILE_TEXT+=" System-Informationen"$'\n'
+    BENCH_FILE_TEXT+=" $HALF_MINUS_LINE"$'\n'
+    SYSTEM_INFO="$(system_info_summary)"
+    BENCH_FILE_TEXT+="$SYSTEM_INFO"$'\n'
+    BENCH_FILE_TEXT+=" $HALF_MINUS_LINE"$'\n'
+    BENCH_FILE_TEXT+=" Referenzwerte"$'\n'
+    BENCH_FILE_TEXT+=" $HALF_MINUS_LINE"$'\n'
+    echo -e $(clear_text "$BENCH_FILE_TEXT") > "$BENCHMARK_FILE"
+    # -----------------------
+    # Benchmarks durchführen
+    # -----------------------
+    BENCHMARK_TESTS=(CPU Memory Threads)
+    for benchmark in ${BENCHMARK_TESTS[@]};
+    do
+      e_and_l -n " Benchmarking ${light_cyan}$benchmark${colors_off}, bitte warten ..."
+      ((ANZ_SPACES=7-${#benchmark}))
+      insert_spaces $ANZ_SPACES
+      BENCHMARK_NAME="$(echo -n $benchmark | tr '[:upper:]' '[:lower:]')"
+      RESULT="$(LANG=en sysbench --threads=1 "$BENCHMARK_NAME" run | grep -i -E "(total number)" | sed -E "s/\s+/ /gi" | cut -d':' -f 2 | xargs 2>/dev/null)"
+      e_and_l " ${bold_yellow}$RESULT${colors_off} Punkte"
+      echo -e " $benchmark: $RESULT" >> "$BENCHMARK_FILE"
+    done
+    echo -e -n " " >> "$BENCHMARK_FILE"
+    echo -e $(clear_text "$HALF_MINUS_LINE") >> "$BENCHMARK_FILE"
+    # -----------------------
+    if [ -s "$BENCHMARK_FILE" ];
+    then
+      e_and_l "$HALF_MINUS_LINE"
+      e_and_l " $HINWEIS_TAG: Die Referenzwerte sind als Datei gespeichert in:"
+      e_and_l " ${light_yellow}$BENCHMARK_FILE${colors_off}"
+    fi
+  else
+    e_and_l "$(skip_text " Erstellung von Referenzwerten dieses System" "$NA_TXT")"
   fi
 fi
 
