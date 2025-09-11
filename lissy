@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 22.08.2025
-VERSION="5.4.4"
+# Letzte Änderung: 11.09.2025
+VERSION="5.4.5"
 
 ################################################################################
 #                                                                              #
@@ -10962,7 +10962,8 @@ then
     if [ $TOTAL_PACKS -gt 0 ] ||
        [ $USE_ILIST_FILE -eq 1 ] ||
        [ ${OPTION_FLAG[exupdate]} -eq 1 ] ||
-       [ ${OPTION_FLAG[remove]} -eq 1 ];
+       [ ${OPTION_FLAG[remove]} -eq 1 ] ||
+       [ ${OPTION_FLAG[repair]} -eq 1 ];
     then
       repo_update "$REPO_UPDATE_TEXT, bitte warten ... "
     else
@@ -17711,6 +17712,9 @@ then
     fi
   fi
 
+  # ============================================================================
+  # Prüfung auf fehlerhafte System-Dienste
+  # ============================================================================
   e_and_l "$HALF_LINE"
   e_and_l " ${bold_blue}System-Dienste${colors_off}"
   e_and_l "$HALF_LINE"
@@ -18710,6 +18714,83 @@ then
   remove_file "$ALL_SOURCES_LIST"
   remove_file "$ALL_SOURCE_FILES"
   # remove_file "$SOURCES_URI_LIST"
+
+  # ============================================================================
+  # Aktualisierung des Linux Mint Update Management
+  # ============================================================================
+  e_and_l "$HALF_LINE"
+  e_and_l " ${bold_blue}Linux Mint Update Management${colors_off}"
+  e_and_l "$HALF_LINE"
+  ACTION_MESSAGE=" Aktualisierung des Mint Update Managements"
+  if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ];
+  then
+    CHANGES_MADE=0
+    declare -A MINT_UPDATE_PKG_LIST
+    declare -A MINT_UPDPKG_NAM_LIST
+    MINT_UPDATE_PKG_LIST[0]="mintupdate"
+    MINT_UPDPKG_NAM_LIST[0]="Linux Mint Update Manager"
+    MINT_UPDATE_PKG_LIST[1]="mint-upgrade-info"
+    MINT_UPDPKG_NAM_LIST[1]="Linux Mint Upgrade Info"
+    MINT_UPDATE_PKG_LIST[2]="mintupgrade"
+    MINT_UPDPKG_NAM_LIST[2]="Linux Mint Upgrade Tool"
+    i=0
+    while [ $i -lt ${#MINT_UPDATE_PKG_LIST[@]} ];
+    do
+      MINT_UPDATE_PKG="${MINT_UPDATE_PKG_LIST[$i]}"
+      MINT_UPDPKG_NAM="${MINT_UPDPKG_NAM_LIST[$i]}"
+      if [ $(LANG=en dpkg-query -W -f='${Status}' "$MINT_UPDATE_PKG" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
+      then
+        if [ $(LANG=en apt list "$MINT_UPDATE_PKG" 2>/dev/null | grep -i -c -E "upgradable") -gt 0 ];
+        then
+          e_and_l " Es ist eine neuere Version von ${bold_white}$MINT_UPDPKG_NAM${colors_off} verfügbar."
+          ask_yes_or_no_plus "mint_update" " Jetzt ${light_cyan}$MINT_UPDPKG_NAM${colors_off} aktualisieren" "" "n"
+          if [ $? -eq 1 ];
+          then
+            e_and_l -n " Aktualisiere ${light_yellow}$MINT_UPDPKG_NAM${colors_off} ... "
+            apt install "$MINT_UPDATE_PKG" -y &>"$LOG_TEMP"
+            if [ $? -eq 0 ];
+            then
+              e_and_l "$OK_TAG"
+              CHANGES_MADE=1
+            else
+              e_and_l "$ERROR_TAG"
+            fi
+            add_full_log
+          fi
+        else # Paket ist aktuell
+          e_and_l " ${light_cyan}$MINT_UPDPKG_NAM${colors_off} ist aktuell ... $NC_TAG"
+        fi
+      else # Paket ist nicht installiert
+        if [ $(apt list "$MINT_UPDATE_PKG" 2>/dev/null | grep -i -c -E "$MINT_UPDATE_PKG") -gt 0 ];
+        then
+          e_and_l " $HINWEIS_TAG: ${bold_white}$MINT_UPDPKG_NAM${colors_off} ist nicht installiert."
+          ask_yes_or_no_plus "" " Jetzt ${light_cyan}$MINT_UPDPKG_NAM${colors_off} installieren" "" "n"
+          if [ $? -eq 1 ];
+          then
+            e_and_l -n " Installiere ${light_yellow}$MINT_UPDPKG_NAM${colors_off} ... "
+            apt install "$MINT_UPDATE_PKG" -y &>"$LOG_TEMP"
+            if [ $? -eq 0 ];
+            then
+              e_and_l "$OK_TAG"
+              CHANGES_MADE=1
+            else
+              e_and_l "$ERROR_TAG"
+            fi
+            add_full_log
+          fi
+        else # Paket ist nicht verfügbar
+          e_and_l "$(skip_text " $MINT_UPDPKG_NAM" "$NA_TXT")"
+        fi
+      fi
+      ((i+=1))
+    done
+    if [ $CHANGES_MADE -gt 0 ];
+    then
+      repo_update " Aktualisiere das Repository, bitte warten ... "
+    fi
+  else # Kein Linux Mint
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "kein Linux Mint")"
+  fi
 
   # ============================================================================
   # Löschen veralteter APT-Paket-Listen und APT-Cache-Dateien
