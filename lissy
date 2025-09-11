@@ -18730,9 +18730,7 @@ then
     MINT_UPDATE_PKG_LIST[0]="mintupdate"
     MINT_UPDPKG_NAM_LIST[0]="Linux Mint Update Manager"
     MINT_UPDATE_PKG_LIST[1]="mint-upgrade-info"
-    MINT_UPDPKG_NAM_LIST[1]="Linux Mint Upgrade Info"
-    MINT_UPDATE_PKG_LIST[2]="mintupgrade"
-    MINT_UPDPKG_NAM_LIST[2]="Linux Mint Upgrade Tool"
+    MINT_UPDPKG_NAM_LIST[1]="Linux Mint Upgrade Inform"
     i=0
     while [ $i -lt ${#MINT_UPDATE_PKG_LIST[@]} ];
     do
