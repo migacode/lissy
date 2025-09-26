@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 11.09.2025
-VERSION="5.4.5"
+# Letzte Änderung: 26.09.2025
+VERSION="5.4.6"
 
 ################################################################################
 #                                                                              #
@@ -19966,7 +19966,7 @@ then
   fi
   if sysbench --version &>/dev/null;
   then
-    e_and_l " Erstelle ${light_cyan}Referenzwerte${colors_off} - jeder einzelne Test dauert etwa 10 Sekunden."
+    e_and_l " Erstelle ${light_cyan}Referenzwerte${colors_off} mit sechs Tests, jeder Test dauert etwa 10 Sekunden."
     # --------------------------------
     # System-Informationen hinzufügen
     # --------------------------------
@@ -19988,18 +19988,35 @@ then
     # Benchmarks durchführen
     # -----------------------
     BENCHMARK_TESTS=(CPU Memory Threads)
-    for benchmark in ${BENCHMARK_TESTS[@]};
+    bench_loop=1
+    while [ $bench_loop -lt 3 ];
     do
-      e_and_l -n " Benchmarking ${light_cyan}$benchmark${colors_off}, bitte warten ..."
-      ((ANZ_SPACES=7-${#benchmark}))
-      insert_spaces $ANZ_SPACES
-      BENCHMARK_NAME="$(echo -n $benchmark | tr '[:upper:]' '[:lower:]')"
-      RESULT="$(LANG=en sysbench --threads=1 "$BENCHMARK_NAME" run | grep -i -E "(total number)" | sed -E "s/\s+/ /gi" | cut -d':' -f 2 | xargs 2>/dev/null)"
-      e_and_l " ${bold_yellow}$RESULT${colors_off} Punkte"
-      echo -e " $benchmark: $RESULT" >> "$BENCHMARK_FILE"
+      if [ $bench_loop -eq 1 ];
+      then
+        BENCH_THREADS=1
+        BENCH_THRTEXT="single core"
+      fi
+      if [ $bench_loop -eq 2 ];
+      then
+        BENCH_THREADS=$CPU_CORES
+        BENCH_THRTEXT="$CPU_CORES cores"
+      fi
+      e_and_l "$HALF_MINUS_LINE"
+      for benchmark in ${BENCHMARK_TESTS[@]};
+      do
+        e_and_l -n " Benchmarking ${light_cyan}$benchmark $BENCH_THRTEXT${colors_off}, bitte warten ..."
+        ((ANZ_SPACES=7-${#benchmark}))
+        insert_spaces $ANZ_SPACES
+        BENCHMARK_NAME="$(echo -n $benchmark | tr '[:upper:]' '[:lower:]')"
+        RESULT="$(LANG=en sysbench --threads=${BENCH_THREADS} "$BENCHMARK_NAME" run | grep -i -E "(total number)" | sed -E "s/\s+/ /gi" | cut -d':' -f 2 | xargs 2>/dev/null)"
+        RESULT=$(printf "%'d" "$RESULT")
+        e_and_l " ${bold_yellow}$RESULT${colors_off} Punkte"
+        echo -e " $benchmark $BENCH_THRTEXT: $RESULT" >> "$BENCHMARK_FILE"
+      done
+      ((bench_loop+=1))
+      echo -e -n " " >> "$BENCHMARK_FILE"
+      echo -e $(clear_text "$HALF_MINUS_LINE") >> "$BENCHMARK_FILE"
     done
-    echo -e -n " " >> "$BENCHMARK_FILE"
-    echo -e $(clear_text "$HALF_MINUS_LINE") >> "$BENCHMARK_FILE"
     # -----------------------
     if [ -s "$BENCHMARK_FILE" ];
     then
