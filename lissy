@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 26.09.2025
-VERSION="5.4.6"
+# Letzte Änderung: 27.09.2025
+VERSION="5.4.8"
 
 ################################################################################
 #                                                                              #
@@ -6334,6 +6334,8 @@ FAILED_SERVICES_LIST="$DOWNLOAD_DIR/failed_services.list"
 PKG_BROKEN_LIST="$DOWNLOAD_DIR/pkg_broken.list"
 # Liste nicht mehr benötigter Pakete und Komponenten
 PKG_GARBAGE_LIST="$DOWNLOAD_DIR/pkg_garbage.list"
+# Liste fehlerhafter Netzwerk-Dateisysteme
+FSTAB_NETPATH_LIST="/home/michael/Downloads/lissy_files/fstab_netpath.list"
 
 #===============================================================================
 # Daten für automatische Antworten (autoyorn) einlesen
@@ -7412,7 +7414,7 @@ KATEGORIE_PKGS[xx]="alien apt-file apt-rdepends apt-show-versions arping arp-sca
 # ------------------------------------------------------------------------------
 # Zubehör
 # ------------------------------------------------------------------------------
-KATEGORIE_PKGS[z]="balena-etcher barrier bitwarden clamav copyq doublecmd electrum engrampa file-roller freefilesync galculator gedit gnome-weather gucharmap kdeconnect keepass2 kfind klavaro ksnip ktouch magnus mousepad onboard plank pluma redshift rpi-imager sardu unetbootin usb-creator-common veracrypt xournal"
+KATEGORIE_PKGS[z]="balena-etcher barrier bitwarden clamav copyq doublecmd electrum engrampa file-roller freefilesync galculator gedit gnome-weather gucharmap kdeconnect keepassxc kfind klavaro ksnip ktouch magnus mousepad onboard plank pluma redshift rpi-imager sardu unetbootin usb-creator-common veracrypt xournal"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[z]+=" sticky xed"; fi
 
 # ------------------------------------------------------------------------------
@@ -16672,7 +16674,7 @@ EOF
           # Vollständigen Gerätenamen ermitteln
           # ------------------------------------
           FULL_DEVICE_NAME="${DEVICE_NAME}"
-          if [ $(echo ${DEVICE_NAME} | grep -c -i -E "mmcblk") -gt 0 ];
+          if [ $(echo ${DEVICE_NAME} | grep -c -i -E "(mmcblk|nvme)") -gt 0 ];
           then
             FULL_DEVICE_NAME+="p"
           fi
@@ -17153,7 +17155,7 @@ then
           fi
         fi
       else
-        e_and_l "$ACTION_MESSAGE ... $NF_TAG"
+        e_and_l "$ACTION_MESSAGE ... $OK_TAG"
       fi
     else
       e_and_l "$(skip_text "$ACTION_MESSAGE" "keine fstab!")"
@@ -17766,6 +17768,45 @@ then
   e_and_l "$HALF_LINE"
   e_and_l " ${bold_blue}Dateisysteme${colors_off}"
   e_and_l "$HALF_LINE"
+
+  # ============================================================================
+  # Prüfung der (Zugriffs-)Parameter von Netzwerk-Dateisystemen
+  # ============================================================================
+  ACTION_MESSAGE=" Prüfe Parameter von ${light_cyan}Netzwerk-Dateisystemen${colors_off}"
+  if [ -s "$ETC_FSTAB" ];
+  then
+    if [ $(grep -c -i -E "^\/\/[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\/" "$ETC_FSTAB") -gt 0 ];
+    then
+      grep -i -E "^\/\/[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\/" "$ETC_FSTAB" | grep -v -i -E "noserverino" | awk '{print $1";"$2}' > "$FSTAB_NETPATH_LIST"
+      if [ -s "$FSTAB_NETPATH_LIST" ];
+      then
+        e_and_l " $ACHTUNG_TAG: In der Dateisystem-Tabelle wurden ${light_cyan}Netzwerk-Dateisysteme${colors_off} gefunden, die"
+        e_and_l " automatisch ohne den Parameter ${light_yellow}noserverino${colors_off} eingebunden werden, was in einigen"
+        e_and_l " Anwendungsfällen zu Zugriffs-Problemen führt. Da die Abwesenheit dieser Option"
+        e_and_l " jedoch auch beabsichtigt sein kann, werden hier keine Korrekturen angeboten."
+        e_and_l " Betroffen sind folgende Einträge:"
+        while read fstab_line;
+        do
+          if [ "$fstab_line" != "" ];
+          then
+            e_and_l -n " - ${light_yellow}"
+            e_and_l -n $(echo -e "$fstab_line" | cut -d';' -f 1)
+            e_and_l -n "${colors_off} -> ${light_magenta}"
+            e_and_l -n $(echo -e "$fstab_line" | cut -d';' -f 2)
+            e_and_l "${colors_off}"
+          fi
+        done < "$FSTAB_NETPATH_LIST"
+        e_and_l "$HALF_MINUS_LINE"
+      else
+        e_and_l "$ACTION_MESSAGE ... $NC_TAG"
+        remove_file "$FSTAB_NETPATH_LIST"
+      fi
+    else
+      e_and_l "$ACTION_MESSAGE ... $NF_TAG"
+    fi
+  else
+    e_and_l "$(skip_text " $ACTION_MESSAGE" "keine fstab!")"
+  fi
 
   # ============================================================================
   # Überprüfung der Zugriffsrechte des Wurzelverzeichnis
