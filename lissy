@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 27.09.2025
-VERSION="5.4.8"
+# Letzte Änderung: 16.10.2025
+VERSION="5.5.0"
 
 ################################################################################
 #                                                                              #
@@ -3162,7 +3162,8 @@ function install_pkg {
       then
         if [ $(apt list "$PAKET" -a 2>/dev/null | grep -i -E "$PAKET" | grep -i -v -E "[0-9]snap" | grep -i -c -E "$ARCHITECTURE_ALL") -gt 0 ];
         then
-          APT_PKG_EXTENDED_NAME="$(apt list "$PAKET" -a 2>/dev/null | grep -i -E "$PAKET" | grep -i -v -E "[0-9]snap" | grep -i -E "$ARCHITECTURE_ALL" | head -n 1 | awk '{print $1}')"
+          # APT_PKG_EXTENDED_NAME="$(apt list "$PAKET" -a 2>/dev/null | grep -i -E "$PAKET" | grep -i -v -E "[0-9]snap" | grep -i -E "$ARCHITECTURE_ALL" | head -n 1 | awk '{print $1}')"
+          APT_PKG_EXTENDED_NAME="$PAKET"
           # Zur Sicherheit Triggerung einer Snap-Installation durch "Depends: snapd" nochmals abfangen
           if [ $(LANG=en apt show "$APT_PKG_EXTENDED_NAME" -a 2>/dev/null | grep -i -E "depend.*\:" | grep -c -i -E "\bsnapd\b") -eq 0 ];
           then
@@ -3401,7 +3402,8 @@ function install_pkg {
         then
           if [ $(apt list "$PAKET" -a 2>/dev/null | grep -i -E "$PAKET" | grep -i -v -E "[0-9]snap" | grep -i -c -E "$ARCHITECTURE_ALL") -gt 0 ];
           then
-            APT_PKG_EXTENDED_NAME="$(apt list "$PAKET" -a 2>/dev/null | grep -i -E "$PAKET" | grep -i -v -E "[0-9]snap" | grep -i -E "$ARCHITECTURE_ALL" | head -n 1 | awk '{print $1}')"
+            # APT_PKG_EXTENDED_NAME="$(apt list "$PAKET" -a 2>/dev/null | grep -i -E "$PAKET" | grep -i -v -E "[0-9]snap" | grep -i -E "$ARCHITECTURE_ALL" | head -n 1 | awk '{print $1}')"
+            APT_PKG_EXTENDED_NAME="$PAKET"
             # Zur Sicherheit Triggerung einer Snap-Installation durch "Depends: snapd" nochmals abfangen
             if [ $(LANG=en apt show "$APT_PKG_EXTENDED_NAME" -a 2>/dev/null | grep -i -E "depend.*\:" | grep -c -i -E "\bsnapd\b") -eq 0 ];
             then
@@ -7402,7 +7404,7 @@ KATEGORIE_PKGS[x]="bc btrfs-progs busybox bzip2 console-setup curl dconf-cli dif
 # ---------------------
 # Ergänzungen für alle
 # ---------------------
-KATEGORIE_PKGS[x]+=" apturl arj calc ccd2iso cifs-utils cryptsetup debsums ethtool exfat-fuse fail2ban firejail ftp gddrescue git hashdeep heif-gdk-pixbuf heif-thumbnailer htop hwinfo iat iftop img2pdf info inxi iotop jfsutils lftp lhasa libbluray-bdj libbluray-bin libdvd-pkg lrzip lz4 lzip lzop mtools ncompress neofetch net-tools numlockx openssh-client openssh-server plocate qpdf resolvconf rsync rzip screen sharutils smartmontools smbclient sqlite3 sshguard traceroute tree udftools ufw units usbutils wget whois zenity"
+KATEGORIE_PKGS[x]+=" apturl arj calc ccd2iso cifs-utils cryptsetup debsums ethtool exfat-fuse fail2ban firejail ftp gddrescue git hashdeep heif-gdk-pixbuf heif-thumbnailer htop hwinfo iat iftop img2pdf info inxi iotop jfsutils lftp lhasa libbluray-bdj libbluray-bin libdvd-pkg lrzip lz4 lzip lzop mtools ncompress neofetch net-tools numlockx openssh-client openssh-server plocate qpdf rsync rzip screen sharutils smartmontools smbclient sqlite3 sshguard systemd-resolved traceroute tree udftools ufw units usbutils wget whois zenity"
 # ---------------------
 # Ergänzungen für MINT
 # ---------------------
