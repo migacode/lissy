@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 16.10.2025
-VERSION="5.5.0"
+# Letzte Änderung: 19.10.2025
+VERSION="5.5.1"
 
 ################################################################################
 #                                                                              #
@@ -6322,6 +6322,8 @@ USER_SCRIPT_CONFIG="$SCRIPT_CONFIG_DIR/$SCRIPT_NAME.conf"
 #===============================================================================
 # Sonstige Dateien zur Speicherung von Ergebnislisten
 #===============================================================================
+# Liste mit Diensten, die zu erheblicher Verzögerung des Boot-Vorgangs führen
+BOOT_BLAME_LIST="$DOWNLOAD_DIR/boot_blame.list"
 # Liste ungültiger Verknüpfungen
 BROKEN_LINKS_LIST="$DOWNLOAD_DIR/broken_links.list"
 # Liste verwaister Paket-Konfigurationen
@@ -17714,6 +17716,48 @@ then
         e_and_l " $USER_CHOICE_NO"
       fi
     fi
+  fi
+
+  # ============================================================================
+  # Prüfung auf Verzögerungen im Boot-Vorgang
+  # ============================================================================
+  e_and_l "$HALF_LINE"
+  e_and_l " ${bold_blue}Boot-Vorgang${colors_off}"
+  e_and_l "$HALF_LINE"
+  ACTION_MESSAGE=" Prüfung auf ${light_cyan}Verzögerungen im Boot-Vorgang${colors_off}"
+  if systemd-analyze --version &>/dev/null;
+  then
+    LANG=C systemd-analyze blame | grep -i -E "^\s*[0-9\s]*min" 1>"$BOOT_BLAME_LIST" 2>/dev/null
+    if [ -s "$BOOT_BLAME_LIST" ];
+    then
+      BOOT_BLAME_ENTRIES=()
+      while read blame_entry;
+      do
+        if [ "$blame_entry" != "" ];
+        then
+          BOOT_BLAME_ENTRIES+=("$blame_entry")
+        fi
+      done < "$BOOT_BLAME_LIST"
+      anz_entries=${#BOOT_BLAME_ENTRIES[@]}
+      if [ $anz_entries -gt 0 ];
+      then
+        e_and_l " $HINWEIS_TAG: Es wurden ${bold_yellow}$anz_entries${colors_off} Dienste gefunden, die zu einer ${light_cyan}erheblichen Verzögerung${colors_off}"
+        e_and_l " des Bootvorgangs geführt haben (mit jeweils mehr als einer Minute)."
+        e_and_l "$HALF_MINUS_LINE"
+        i=0
+        while [ $i -lt $anz_entries ];
+        do
+          BLAME_ENRTY_NAME=$(echo -n ${BOOT_BLAME_ENTRIES[$i]} | awk '{print $3}')
+          BLAME_ENRTY_TIME=$(echo -n ${BOOT_BLAME_ENTRIES[$i]} | awk '{print $1 $2}')
+          e_and_l " - ${bold_white}$BLAME_ENRTY_NAME${colors_off} (${bold_yellow}$BLAME_ENRTY_TIME${colors_off})"
+          ((i++))
+        done
+      fi
+    else
+      e_and_l "$ACTION_MESSAGE ,,, $OK_TAG ${dark_gray}(keine > 1 Minute)${colors_off}"
+    fi
+  else
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
   fi
 
   # ============================================================================
