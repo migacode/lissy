@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 19.10.2025
-VERSION="5.5.1"
+# Letzte Änderung: 20.10.2025
+VERSION="5.5.2"
 
 ################################################################################
 #                                                                              #
@@ -2281,7 +2281,7 @@ function get_install_status {
   # ---------------------------------------------------------------------
   # 1. Prüfen ob in der Standard dpkg-Datenbank als installiert vermerkt
   # ---------------------------------------------------------------------
-  if [ $(LANG=en dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
+  if [ $(LANG=C dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
   then
     PKG_INSTALL_STATUS=1
     PKG_VERSION=$(get_pkg_apt_version "$1" 1)
@@ -2291,7 +2291,7 @@ function get_install_status {
   # ----------------------------------------
   if [ $PKG_INSTALL_STATUS -eq 0 ] && [ $SNAP_ACTIVE -gt 0 ];
   then
-    if [ $(LANG=en snap info "$1" 2>/dev/null | grep -i -c -E "installed\:") -ne 0 ];
+    if [ $(LANG=C snap info "$1" 2>/dev/null | grep -i -c -E "installed\:") -ne 0 ];
     then
       PKG_INSTALL_STATUS=2
       PKG_VERSION=$(get_pkg_snap_version "$1" 1)
@@ -2416,11 +2416,11 @@ function get_pkg_apt_version {
     else
       PKG_TO_CHECK="$1"
     fi
-    PKG_APT_VERSION=$(LANG=en apt show "$PKG_TO_CHECK" 2>/dev/null | \
+    PKG_APT_VERSION=$(LANG=C apt show "$PKG_TO_CHECK" 2>/dev/null | \
       grep -i -E "^\s*Version" | \
       sed -E "s/^\s*version\s*:\s*//i")
   else
-    PKG_APT_VERSION=$(LANG=en dpkg-query -W -f='${Version}' "$1" 2>/dev/null)
+    PKG_APT_VERSION=$(LANG=C dpkg-query -W -f='${Version}' "$1" 2>/dev/null)
   fi
   echo -e -n $(clean_pkg_version "$PKG_APT_VERSION")
 }
@@ -2548,7 +2548,7 @@ function get_pkg_snap_version {
   then
     if [ $INFO_TYPE -eq 0 ];
     then
-      FULL_PKG_SNAP_INFO=$(LANG=en snap info "$1" 2>/dev/null | sed -E "s/^\s*(latest)\s*\/\s*//gi")
+      FULL_PKG_SNAP_INFO=$(LANG=C snap info "$1" 2>/dev/null | sed -E "s/^\s*(latest)\s*\/\s*//gi")
       # Zuerst auf stable-Version prüfen
       PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | \
         grep -i -E "^\s*stable" | \
@@ -2583,7 +2583,7 @@ function get_pkg_snap_version {
         fi
       fi
     else
-      FULL_PKG_SNAP_INFO=$(LANG=en snap list "$1" 2>/dev/null | awk 'NR>1' | head -n 1)
+      FULL_PKG_SNAP_INFO=$(LANG=C snap list "$1" 2>/dev/null | awk 'NR>1' | head -n 1)
       PKG_SNAP_VERSION=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $2}' | sed -E "s/\-//g" | xargs)
       # PKG_SNAP_REVISION=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $3}' | sed -E "s/\-//g" | xargs)
       PKG_SNAP_TRACKING=$(echo "$FULL_PKG_SNAP_INFO" | awk '{print $4}' | sed -E "s/\-//g" | xargs)
@@ -3165,7 +3165,7 @@ function install_pkg {
           # APT_PKG_EXTENDED_NAME="$(apt list "$PAKET" -a 2>/dev/null | grep -i -E "$PAKET" | grep -i -v -E "[0-9]snap" | grep -i -E "$ARCHITECTURE_ALL" | head -n 1 | awk '{print $1}')"
           APT_PKG_EXTENDED_NAME="$PAKET"
           # Zur Sicherheit Triggerung einer Snap-Installation durch "Depends: snapd" nochmals abfangen
-          if [ $(LANG=en apt show "$APT_PKG_EXTENDED_NAME" -a 2>/dev/null | grep -i -E "depend.*\:" | grep -c -i -E "\bsnapd\b") -eq 0 ];
+          if [ $(LANG=C apt show "$APT_PKG_EXTENDED_NAME" -a 2>/dev/null | grep -i -E "depend.*\:" | grep -c -i -E "\bsnapd\b") -eq 0 ];
           then
             INST_MODE_LIST+=",1"
             INSTALL_MODE=1
@@ -3405,7 +3405,7 @@ function install_pkg {
             # APT_PKG_EXTENDED_NAME="$(apt list "$PAKET" -a 2>/dev/null | grep -i -E "$PAKET" | grep -i -v -E "[0-9]snap" | grep -i -E "$ARCHITECTURE_ALL" | head -n 1 | awk '{print $1}')"
             APT_PKG_EXTENDED_NAME="$PAKET"
             # Zur Sicherheit Triggerung einer Snap-Installation durch "Depends: snapd" nochmals abfangen
-            if [ $(LANG=en apt show "$APT_PKG_EXTENDED_NAME" -a 2>/dev/null | grep -i -E "depend.*\:" | grep -c -i -E "\bsnapd\b") -eq 0 ];
+            if [ $(LANG=C apt show "$APT_PKG_EXTENDED_NAME" -a 2>/dev/null | grep -i -E "depend.*\:" | grep -c -i -E "\bsnapd\b") -eq 0 ];
             then
               INST_MODE_LIST+=",1"
               INSTALL_MODE=1
@@ -4537,7 +4537,7 @@ function install_snap {
     if [ $? -eq 0 ];
     then
       SNAP_INSTALLED=1
-      SNAP_ACTIVE=$(LANG=en systemctl status snapd 2>/dev/null | grep -c -i -E "\:\s*\bactive\b")
+      SNAP_ACTIVE=$(LANG=C systemctl status snapd 2>/dev/null | grep -c -i -E "\:\s*\bactive\b")
       if [ $SNAP_ACTIVE -gt 0 ];
       then
         SNAP_SYSTEM_VERSION="$(snap --version 2>/dev/null | grep -i -E "^\bsnap(d)*\b" | head -n 1 | awk '{print $2}' | xargs 2>/dev/null)"
@@ -6469,7 +6469,7 @@ done
 # --------
 # Flatpak
 # --------
-FLATPAK_INSTALLED=$(LANG=en dpkg-query -W -f='${Status}' "flatpak" 2>/dev/null | grep -i -c -E "ok installed")
+FLATPAK_INSTALLED=$(LANG=C dpkg-query -W -f='${Status}' "flatpak" 2>/dev/null | grep -i -c -E "ok installed")
 FLATPAK_ACTIVE=0
 FLATPAK_SYSTEM_VERSION="$(flatpak --version 2>/dev/null | awk '{print $2}' | xargs 2>/dev/null)"
 if [ "$FLATPAK_SYSTEM_VERSION" != "" ]; then FLATPAK_ACTIVE=1; fi
@@ -6482,8 +6482,8 @@ FLATPAK_REMOTE_LIST="$DOWNLOAD_DIR/flatpak_remote_list"
 # sein kann, wobei snap --version dann auch trotz Deaktivierung aufrufbar ist
 # -----
 SNAP_SYS_COMPONENTS=('snapd.socket' 'snapd.seeded.service' 'snapd.service' 'snapd')
-SNAP_INSTALLED=$(LANG=en dpkg-query -W -f='${Status}' "snapd" 2>/dev/null | grep -i -c -E "ok installed")
-SNAP_ACTIVE=$(LANG=en systemctl status snapd 2>/dev/null | grep -c -i -E "\:\s*\bactive\b")
+SNAP_INSTALLED=$(LANG=C dpkg-query -W -f='${Status}' "snapd" 2>/dev/null | grep -i -c -E "ok installed")
+SNAP_ACTIVE=$(LANG=C systemctl status snapd 2>/dev/null | grep -c -i -E "\:\s*\bactive\b")
 if [ $SNAP_ACTIVE -gt 0 ];
 then
   SNAP_SYSTEM_VERSION="$(snap --version 2>/dev/null | grep -i -E "^\bsnap(d)*\b" | head -n 1 | awk '{print $2}' | xargs 2>/dev/null)"
@@ -6496,7 +6496,7 @@ SNAP_BLOCKING_FILE="$APT_PREFERENCES_DIR/nosnap.pref"
 # -------
 # Docker
 # -------
-DOCKER_INSTALLED=$(LANG=en dpkg-query -W -f='${Status}' "docker.io" 2>/dev/null | grep -i -c -E "ok installed")
+DOCKER_INSTALLED=$(LANG=C dpkg-query -W -f='${Status}' "docker.io" 2>/dev/null | grep -i -c -E "ok installed")
 DOCKER_ACTIVE=0
 DOCKER_SYSTEM_VERSION="$(docker --version 2>/dev/null | sed -E "s/.*version\s([0-9\.]*).*/\1/gi" | xargs 2>/dev/null)"
 if [ "$DOCKER_SYSTEM_VERSION" != "" ]; then DOCKER_ACTIVE=1; fi
@@ -6560,13 +6560,13 @@ then
   #-----------------------------------------------------------------------------
   # Hardware
   #-----------------------------------------------------------------------------
-  IFS=':' MACHINE_STRING=($(LANG=en dmesg 2>/dev/null | grep -i -E "machine\s*model"))
+  IFS=':' MACHINE_STRING=($(LANG=C dmesg 2>/dev/null | grep -i -E "machine\s*model"))
   ANZ_ARGS=${#MACHINE_STRING[@]}
   if [ $ANZ_ARGS -gt 0 ];
   then
     MACHINE_MODEL="${MACHINE_STRING[((ANZ_ARGS-=1))]}"
   else
-    IFS=':' MACHINE_STRING=($(LANG=en dmesg 2>/dev/null | grep -i -E "DMI:"))
+    IFS=':' MACHINE_STRING=($(LANG=C dmesg 2>/dev/null | grep -i -E "DMI:"))
     MACHINE_MODEL="${MACHINE_STRING[1]}"
   fi
   IFS=' '
@@ -6577,9 +6577,9 @@ then
   # Bezeichnung und Taktfrequenz
   if lscpu --version &>/dev/null;
   then
-    CPU_MODEL="$(LANG=en lscpu 2>/dev/null | grep -i -E "^\s*model\s*name\s*\:" | cut -d':' -f2 | xargs)"
-    CPU_MIN_CLOCK="$(LANG=en lscpu 2>/dev/null | grep -i -E "^\s*CPU min MHz\s*\:" | cut -d':' -f2 | cut -d',' -f1 | cut -d'.' -f1 | xargs)"
-    CPU_MAX_CLOCK="$(LANG=en lscpu 2>/dev/null | grep -i -E "^\s*CPU max MHz\s*\:" | cut -d':' -f2 | cut -d',' -f1 | cut -d'.' -f1 | xargs)"
+    CPU_MODEL="$(LANG=C lscpu 2>/dev/null | grep -i -E "^\s*model\s*name\s*\:" | cut -d':' -f2 | xargs)"
+    CPU_MIN_CLOCK="$(LANG=C lscpu 2>/dev/null | grep -i -E "^\s*CPU min MHz\s*\:" | cut -d':' -f2 | cut -d',' -f1 | cut -d'.' -f1 | xargs)"
+    CPU_MAX_CLOCK="$(LANG=C lscpu 2>/dev/null | grep -i -E "^\s*CPU max MHz\s*\:" | cut -d':' -f2 | cut -d',' -f1 | cut -d'.' -f1 | xargs)"
   else
     CPU_MIN_CLOCK=""
     CPU_MAX_CLOCK=""
@@ -6606,7 +6606,7 @@ then
   # GPU-Infos
   # ----------
   # Alternative A mit lspci - nicht standardisiert
-  # LSPCI_INSTALLED=$(LANG=en dpkg-query -W -f='${Status}' "pciutils" 2>/dev/null | grep -i -c -E "ok installed")
+  # LSPCI_INSTALLED=$(LANG=C dpkg-query -W -f='${Status}' "pciutils" 2>/dev/null | grep -i -c -E "ok installed")
   # if [ $LSPCI_INSTALLED -eq 0 ];
   # then
   #   e_and_l " Installiere ${light_yellow}pciutils${colors_off} ... "
@@ -6616,7 +6616,7 @@ then
   # GPU_MODEL=""
   # if [ $LSPCI_INSTALLED -eq 1 ];
   # then
-  #   GPU_MODEL=$(LANG=en lspci -v 2>/dev/null | grep ' VGA ' | cut -d" " -f 1 | xargs -i lspci -v -s {} | grep -E "Subsystem")
+  #   GPU_MODEL=$(LANG=C lspci -v 2>/dev/null | grep ' VGA ' | cut -d" " -f 1 | xargs -i lspci -v -s {} | grep -E "Subsystem")
   #   # GPU_MODEL=${GPU_MODEL/Subsystem:/}
   #   GPU_MODEL=$(echo -n "${GPU_MODEL/Subsystem:/}" | xargs)
   # fi
@@ -6624,7 +6624,7 @@ then
   # Alternative B mit lshw
   if lshw &>/dev/null;
   then
-    GPU_MODEL=$(LANG=en lshw -short 2>/dev/null | grep display | head -n 1)
+    GPU_MODEL=$(LANG=C lshw -short 2>/dev/null | grep display | head -n 1)
     if [ $(echo ${GPU_MODEL} | grep -c -i "integrated") -gt 0 ];
     then
       GPU_MODEL="$(echo -n ${GPU_MODEL} | sed -E "s/(.*)(integrated\s.*)/\2/i" | xargs)"
@@ -6705,7 +6705,7 @@ then
   #----------------
   # Betriebssystem
   #----------------
-  RASPBERRY=$(LANG=en dmesg 2>/dev/null | grep -i -v -E "hostname" | grep -i -c -E "raspberry")
+  RASPBERRY=$(LANG=C dmesg 2>/dev/null | grep -i -v -E "hostname" | grep -i -c -E "raspberry")
   if [ $RASPBERRY -eq 0 ] &&
      [ -f "/proc/cpuinfo" ];
   then
@@ -6975,7 +6975,7 @@ then
   WINE_VERSION=""
   WINE_VERSION_APT=""
   WINE_VERSION_FLAT=""
-  if [ $(LANG=en dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
+  if [ $(LANG=C dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
   then
     WINE_VERSION_APT="$(wine --version 2>/dev/null | cut -d" " -f 1 | cut -d "-" -f 2 | xargs 2>/dev/null)"
     if [ "$WINE_VERSION_APT" != "" ];
@@ -7175,7 +7175,7 @@ OPTION_MENU[revive]=4
 OPTION_MENU[setutc]=0
 if timedatectl &>/dev/null;
 then
-  if [ $(LANG=en timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -gt 0 ];
+  if [ $(LANG=C timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -gt 0 ];
   then
     OPTION_MENU[setutc]=4
   fi
@@ -7238,7 +7238,7 @@ OPTION_MENU[skipmesg]=5
 # ------------------------------------------------------------------------------
 # Apache und PHP (Webserver)- mit vielen PHP-Modulen in aktueller Version ;)
 # ------------------------------------------------------------------------------
-PHP_VERSION=$(LANG=en apt show "php" 2>/dev/null | grep -i -E "depends\:\s*")
+PHP_VERSION=$(LANG=C apt show "php" 2>/dev/null | grep -i -E "depends\:\s*")
 PHP_VERSION=$(echo -n "${PHP_VERSION##* }" | xargs)
 KATEGORIE_PKGS[a]="apache2 php libapache2-mod-php"
 PHP_MODULES=(bcmath cli curl dev gd imap intl mbstring mysql opcache readline soap sqlite3 xml xmlrpc zip)
@@ -7344,7 +7344,7 @@ fi
 # -------------------------------------------------------------------------
 for filemanager in ${FILEMAN_LIST[@]};
 do
-  if [ $(LANG=en dpkg-query -W -f='${Status}' "$filemanager" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ] ||
+  if [ $(LANG=C dpkg-query -W -f='${Status}' "$filemanager" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ] ||
      [ "$FILE_MANAGER" == "$filemanager" ];
   then
     KATEGORIE_PKGS[v]+=" $filemanager"
@@ -7386,7 +7386,7 @@ KATEGORIE_PKGS[w]="dosbox"
 # HINWEIS: Siehe auch AUTO_ADD_PKGS[wine]
 # -----------------------------------------------------
 if [ $(apt list "wine-installer" 2>/dev/null | grep -i -c -E "wine-installer") -gt 0 ] &&
-   [ $(LANG=en dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+   [ $(LANG=C dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
 then
   KATEGORIE_PKGS[w]+=" wine-installer winetricks"
 else
@@ -7528,7 +7528,7 @@ declare -A AUTO_ADD_PPOS # Wenn "true" zusätzliche Pakete VOR Basispaket einfü
 
 # AUTO_ADD_PKGS[alien-arena]="alien-arena-data" # Derzeit besser als Flatpak
 
-if [ $(LANG=en dpkg-query -W -f='${Status}' "caja" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
+if [ $(LANG=C dpkg-query -W -f='${Status}' "caja" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
 then
   AUTO_ADD_PKGS[caja]=""
   CAJA_ADD_PKGS=(actions admin eiciel extensions-common gtkhash image-converter mediainfo open-terminal rename seahorse sendto share wallpaper xattr-tags)
@@ -7552,7 +7552,7 @@ AUTO_ADD_PKGS[mediainfo]="mediainfo-gui"
 AUTO_ADD_PKGS[mkvtoolnix]="mkvtoolnix-gui"
 AUTO_ADD_PKGS[mp3splt]="mp3splt-gtk"
 
-if [ $(LANG=en dpkg-query -W -f='${Status}' "nemo" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
+if [ $(LANG=C dpkg-query -W -f='${Status}' "nemo" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
 then
   AUTO_ADD_PKGS[nemo]=""
   NEMO_ADD_PKGS=(audio-tab compare emblems filename-repairer fileroller font-manager gtkhash image-converter media-columns pastebin preview share terminal)
@@ -7568,7 +7568,7 @@ AUTO_ADD_PKGS[redshift]="redshift-gtk"
 AUTO_ADD_PKGS[scribus]="scribus-template"
 AUTO_ADD_PKGS[texstudio]="texstudio-l10n"
 
-if [ $(LANG=en dpkg-query -W -f='${Status}' "thunar" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
+if [ $(LANG=C dpkg-query -W -f='${Status}' "thunar" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
 then
   AUTO_ADD_PKGS[thunar]=""
   THUNAR_ADD_PKGS=(archive-plugin font-manager gtkhash volman)
@@ -9636,7 +9636,7 @@ if [ $SHOW_HELP -eq 0 ] &&
    [ $NO_MENU -eq 0 ];
 then
   # "dialog" installieren, wenn es das noch nicht ist
-  if [ $(LANG=en dpkg-query -W -f='${Status}' "dialog" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+  if [ $(LANG=C dpkg-query -W -f='${Status}' "dialog" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
   then
     if [ $(apt list "dialog" 2>/dev/null | grep -i -c -E "dialog") -gt 0 ];
     then
@@ -10783,7 +10783,7 @@ then
   for required_pkg in ${COMPONENTS_REQUIRED[@]};
   do
     ((ANZ_SPACES=12-${#required_pkg}))
-    if [ $(LANG=en dpkg-query -W -f='${Status}' "$required_pkg" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+    if [ $(LANG=C dpkg-query -W -f='${Status}' "$required_pkg" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
     then
       ALL_COMPONENTS_INSTALLED=0
       break
@@ -10807,7 +10807,7 @@ then
     for required_pkg in ${COMPONENTS_REQUIRED[@]};
     do
       ((ANZ_SPACES=11-${#required_pkg}))
-      if [ $(LANG=en dpkg-query -W -f='${Status}' "$required_pkg" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+      if [ $(LANG=C dpkg-query -W -f='${Status}' "$required_pkg" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
       then
         e_and_l -n " Modul ${bold_yellow}$required_pkg${colors_off}"
         insert_spaces $ANZ_SPACES
@@ -10839,7 +10839,7 @@ then
     e_and_l "$HALF_LINE"
     e_and_l " ${bold_blue}Erweiterungen für die Architektur armhf auf arm64${colors_off}"
     e_and_l "$HALF_LINE"
-    if [ $(LANG=en dpkg-query -W -f='${Status}' "crossbuild-essential-armhf" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+    if [ $(LANG=C dpkg-query -W -f='${Status}' "crossbuild-essential-armhf" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
     then
       if [ $(apt list "crossbuild-essential-armhf" 2>/dev/null | grep -i -c -E "crossbuild-essential-armhf") -gt 0 ];
       then
@@ -11181,7 +11181,7 @@ then
         do
           DO_PURGE_SNAP=1
           snap_name="${SNAP_PKG_LIST[$i]}"
-          if [ $(LANG=en snap info "$snap_name" 2>/dev/null | grep -i -c -E "installed\:") -ne 0 ];
+          if [ $(LANG=C snap info "$snap_name" 2>/dev/null | grep -i -c -E "installed\:") -ne 0 ];
           then
             if [ $SNAP_PURGE_ACTION -eq 1 ];
             then
@@ -11476,7 +11476,7 @@ then
         done
         if [ $SNAP_START_RESULT -eq 0 ];
         then
-          SNAP_ACTIVE=$(LANG=en systemctl status snapd 2>/dev/null | grep -c -i -E "\:\s*\bactive\b")
+          SNAP_ACTIVE=$(LANG=C systemctl status snapd 2>/dev/null | grep -c -i -E "\:\s*\bactive\b")
           if [ $SNAP_ACTIVE -gt 0 ];
           then
             SNAP_SYSTEM_VERSION="$(snap --version 2>/dev/null | grep -i -E "^\bsnap(d)*\b" | head -n 1 | awk '{print $2}' | xargs 2>/dev/null)"
@@ -12612,9 +12612,9 @@ then
     # Microcode für Intel-CPUs installieren
     # ==========================================================================
     ACTION_MESSAGE=" Installation des ${light_cyan}Microcode für Intel-CPUs${colors_off}  ..."
-    if [ $(LANG=en lshw -short 2>/dev/null | grep -i processor | grep -c -i intel) -gt 0 ];
+    if [ $(LANG=C lshw -short 2>/dev/null | grep -i processor | grep -c -i intel) -gt 0 ];
     then
-      if [ $(LANG=en dpkg-query -W -f='${Status}' "intel-microcode" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+      if [ $(LANG=C dpkg-query -W -f='${Status}' "intel-microcode" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
       then
         if [ $(apt list "intel-microcode" 2>/dev/null | grep -i -c -E "intel-microcode") -gt 0 ];
         then
@@ -12646,9 +12646,9 @@ then
     # Firmware für WiFi-Chipsatz installieren
     # ==========================================================================
     ACTION_MESSAGE=" Installation d. ${light_cyan}Firmware für WiFi-Chipsatz${colors_off} ..."
-    if [ $(LANG=en lshw -short 2>/dev/null | grep -i network | grep -c -i wifi) -gt 0 ];
+    if [ $(LANG=C lshw -short 2>/dev/null | grep -i network | grep -c -i wifi) -gt 0 ];
     then
-      if [ $(LANG=en dpkg-query -W -f='${Status}' "firmware-iwlwifi" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+      if [ $(LANG=C dpkg-query -W -f='${Status}' "firmware-iwlwifi" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
       then
         if [ $(apt list "firmware-iwlwifi" 2>/dev/null | grep -i -c -E "firmware-iwlwifi") -gt 0 ];
         then
@@ -12687,7 +12687,7 @@ then
       then
         e_and_l -n " Suche zusätzliche ${light_cyan}Geräte-Treiber${colors_off}, bitte warten ... "
         INSTALL_RESULT=0
-        if [ $(LANG=en dpkg-query -W -f='${Status}' "ubuntu-drivers-common" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+        if [ $(LANG=C dpkg-query -W -f='${Status}' "ubuntu-drivers-common" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
         then
           apt install ubuntu-drivers-common -y &>"$LOG_TEMP"
           INSTALL_RESULT=$?
@@ -12764,7 +12764,7 @@ then
     # Zusätzliche Sprachpakete (fehlende Sprachunterstützung) installieren
     # ==========================================================================
     ACTION_MESSAGE=" Zusätzliche ${light_cyan}Sprachpakete${colors_off} installieren"
-    if [ $(LANG=en dpkg-query -W -f='${Status}' "language-selector-common" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+    if [ $(LANG=C dpkg-query -W -f='${Status}' "language-selector-common" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
     then
       if [ $(apt list "language-selector-common" 2>/dev/null | grep -i -c "language-selector-common") -gt 0 ];
       then
@@ -12856,7 +12856,7 @@ then
         e_and_l "$HALF_MINUS_LINE"
       else
         ACTION_MESSAGE=" Schriftarten ${light_cyan}MS Windows Fonts${colors_off} installieren"
-        if [ $(LANG=en dpkg-query -W -f='${Status}' "ttf-mscorefonts-installer" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+        if [ $(LANG=C dpkg-query -W -f='${Status}' "ttf-mscorefonts-installer" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
         then
           if [ $(apt list "ttf-mscorefonts-installer" 2>/dev/null | grep -i -c -E "ttf-mscorefonts-installer") -gt 0 ];
           then
@@ -13051,7 +13051,7 @@ then
     ACTION_MESSAGE=" Desktop-Themen ${light_cyan}Ubuntu MATE${colors_off} installieren"
     if [ $(apt list "ubuntu-mate-themes" 2>/dev/null | grep -i -c "ubuntu-mate-themes") -gt 0 ];
     then
-      if [ $(LANG=en dpkg-query -W -f='${Status}' "ubuntu-mate-themes" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+      if [ $(LANG=C dpkg-query -W -f='${Status}' "ubuntu-mate-themes" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
       then
         ask_yes_or_no_plus "ubuntu-mate-themes" "$ACTION_MESSAGE" "" "n"
         if [ $? -eq 1 ];
@@ -13089,7 +13089,7 @@ then
       if [ $(apt list "yaru$deskpart-theme-$yarupkg" 2>/dev/null | grep -i -c "yaru$deskpart-theme-$yarupkg") -gt 0 ];
       then
         YARU_AVAILS+="$yarupkg"
-        if [ $(LANG=en dpkg-query -W -f='${Status}' "yaru$deskpart-theme-$yarupkg" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+        if [ $(LANG=C dpkg-query -W -f='${Status}' "yaru$deskpart-theme-$yarupkg" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
         then
           YARU_MISSING+="yaru$deskpart-theme-$yarupkg "
         fi
@@ -13169,7 +13169,7 @@ then
                 # ----------------------------------------------
                 # Wenn das Modul noch nicht installiert ist ...
                 # ----------------------------------------------
-                if [ $(LANG=en dpkg-query -W -f='${Status}' "$xs_pkg" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+                if [ $(LANG=C dpkg-query -W -f='${Status}' "$xs_pkg" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
                 then
                   # -------------------------------------------------
                   # ... und verfügbar ist, dann neu installieren ...
@@ -13478,7 +13478,7 @@ then
     # Signaturen der Blu-ray-Datenbank erneuern
     # ==========================================================================
     ACTION_MESSAGE=" Signaturen der ${light_cyan}Blu-ray-Datenbank${colors_off} erneuern "
-    if [ $(LANG=en dpkg-query -W -f='${Status}' "libbluray2" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
+    if [ $(LANG=C dpkg-query -W -f='${Status}' "libbluray2" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
     then
       USER_AACS_DIR="$USER_CONFIG_DIR/aacs"
       # SNAP_AACS_DIR="$USER_HOME_DIR/snap/vlc/current/.config/aacs" # Derzeit nicht verwendet
@@ -13640,7 +13640,7 @@ then
     ACTION_MESSAGE=" Umstellung der ${light_cyan}Systemzeit auf UTC${colors_off}         "
     if timedatectl &>/dev/null;
     then
-      if [ $(LANG=en timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -gt 0 ];
+      if [ $(LANG=C timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -gt 0 ];
       then
         e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
         timedatectl set-local-rtc 0 --adjust-system-clock 2>/dev/null
@@ -13682,7 +13682,7 @@ then
     then
       if timedatectl &>/dev/null;
       then
-        if [ $(LANG=en timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -eq 0 ];
+        if [ $(LANG=C timedatectl show 2>/dev/null | grep -c -i -E "^\s*LocalRTC\s*=\s*yes") -eq 0 ];
         then
           e_and_l " Einige Betriebssysteme wie MS Windows verwenden für Datum und Uhrzeit das"
           e_and_l " RTC-Format (Real Time Clock) statt UTC-Format (Universal Time Coordinated),"
@@ -13770,7 +13770,7 @@ then
   # ============================================================================
   ASKED_UFW_INST_NO=0
   ACTION_MESSAGE=" Einschalten der internen ${light_cyan}Firewall (ufw)${colors_off}"
-  if [ $(LANG=en dpkg-query -W -f='${Status}' "ufw" 2>/dev/null | grep -i -c -E "ok installed") -gt 0 ];
+  if [ $(LANG=C dpkg-query -W -f='${Status}' "ufw" 2>/dev/null | grep -i -c -E "ok installed") -gt 0 ];
   then
     UFW_IS_INSTALLED=1
   else
@@ -13785,7 +13785,7 @@ then
         then
           UFW_IS_INSTALLED=1
           # Wenn das geklappt hat, auch die grafische Oberfläche dazu laden -----
-          if [ $(LANG=en dpkg-query -W -f='${Status}' "gufw" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ] &&
+          if [ $(LANG=C dpkg-query -W -f='${Status}' "gufw" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ] &&
              [ $(apt list "gufw" 2>/dev/null | grep -i -c -E "gufw") -gt 0 ];
           then
             apt install "gufw" -y &>"$LOG_TEMP"
@@ -13809,7 +13809,7 @@ then
     # ---------------------
     # Firewall einschalten
     # ---------------------
-    if [ $(LANG=en ufw status 2>/dev/null | grep -i -c -E "status\s*:\s*a") -eq 0 ];
+    if [ $(LANG=C ufw status 2>/dev/null | grep -i -c -E "status\s*:\s*a") -eq 0 ];
     then
       ask_yes_or_no_plus "ufw_activate" "$ACTION_MESSAGE" "" "n"
       if [ $? -eq 1 ];
@@ -13834,10 +13834,10 @@ then
     # Protokollierung ausschalten
     # ----------------------------
     ACTION_MESSAGE=" Ausschalten der ${light_cyan}Firewall-Protokoll-Logs${colors_off}"
-    if [ $(LANG=en ufw status 2>/dev/null | grep -i -c -E "status\s*:\s*a") -gt 0 ];
+    if [ $(LANG=C ufw status 2>/dev/null | grep -i -c -E "status\s*:\s*a") -gt 0 ];
     then
-      if [ $(LANG=en ufw status verbose 2>/dev/null | grep -i -c -E "Proto.*\:\s*off$") -eq 0 ] &&
-         [ $(LANG=en ufw status verbose 2>/dev/null | grep -i -c -E "Logging\s*\:\s*off$") -eq 0 ];
+      if [ $(LANG=C ufw status verbose 2>/dev/null | grep -i -c -E "Proto.*\:\s*off$") -eq 0 ] &&
+         [ $(LANG=C ufw status verbose 2>/dev/null | grep -i -c -E "Logging\s*\:\s*off$") -eq 0 ];
       then
         ask_yes_or_no_plus "ufw_logging_off" "$ACTION_MESSAGE" "" "n"
         if [ $? -eq 1 ];
@@ -13877,7 +13877,7 @@ then
   if [ $(apt list "openssh-server" 2>/dev/null | grep -i -c -E "openssh-server") -gt 0 ];
   then
     ASKED_SSH_INST_NO=0
-    if [ $(LANG=en dpkg-query -W -f='${Status}' "openssh-server" 2>/dev/null | grep -i -c -E "ok installed") -gt 0 ];
+    if [ $(LANG=C dpkg-query -W -f='${Status}' "openssh-server" 2>/dev/null | grep -i -c -E "ok installed") -gt 0 ];
     then
       OPENSSH_INSTALL_STATUS=0
     else
@@ -13893,7 +13893,7 @@ then
           # ---------------------------------
           # zusätzlich sshguard installieren
           # ---------------------------------
-          if [ $(LANG=en dpkg-query -W -f='${Status}' "sshguard" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ] &&
+          if [ $(LANG=C dpkg-query -W -f='${Status}' "sshguard" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ] &&
              [ $(apt list "sshguard" 2>/dev/null | grep -i -c -E "sshguard") -gt 0 ];
           then
             e_and_l -n " Installiere ${light_yellow}sshguard${colors_off}, bitte warten         ... "
@@ -13923,7 +13923,7 @@ then
       ACTION_MESSAGE=" Aktivierung des ${light_cyan}SSH-Server${colors_off} bei Systemstart"
       if [ $OPENSSH_INSTALL_STATUS -eq 0 ];
       then
-        if [ $(LANG=en systemctl is-enabled ssh 2>/dev/null | grep -i -c -E "enabled") -eq 0 ];
+        if [ $(LANG=C systemctl is-enabled ssh 2>/dev/null | grep -i -c -E "enabled") -eq 0 ];
         then
           ask_yes_or_no_plus "ssh_activate" "$ACTION_MESSAGE" "" "n"
           if [ $? -eq 1 ];
@@ -14446,8 +14446,8 @@ then
   if [ $(apt list "apport" 2>/dev/null | grep -i -c -E "apport") -gt 0 ] ||
      [ $(apt list "whoopsie" 2>/dev/null | grep -i -c -E "whoopsie") -gt 0 ];
   then
-    APPORT_INSTALL_STATUS=$(LANG=en dpkg-query -W -f='${Status}' "apport" 2>/dev/null | grep -i -c -E "ok installed")
-    WHOOPSIE_INSTALL_STATUS=$(LANG=en dpkg-query -W -f='${Status}' "whoopsie" 2>/dev/null | grep -i -c -E "ok installed")
+    APPORT_INSTALL_STATUS=$(LANG=C dpkg-query -W -f='${Status}' "apport" 2>/dev/null | grep -i -c -E "ok installed")
+    WHOOPSIE_INSTALL_STATUS=$(LANG=C dpkg-query -W -f='${Status}' "whoopsie" 2>/dev/null | grep -i -c -E "ok installed")
     # Wenn apport oder whoopsie installiert sind, diese deinstallieren
     if [ $APPORT_INSTALL_STATUS -gt 0 ] ||
        [ $WHOOPSIE_INSTALL_STATUS -gt 0 ];
@@ -14477,7 +14477,7 @@ then
         if [ -s "$APPORT_FILE" ];
         then
           APPORT_FILE_STATUS=$(grep -i -c -E "^\s*enabled\s*=\s*0" "$APPORT_FILE")
-          APPORT_SERVICE_STATUS=$(LANG=en systemctl is-enabled apport 2>/dev/null | grep -i -c -E "^\s*disabled")
+          APPORT_SERVICE_STATUS=$(LANG=C systemctl is-enabled apport 2>/dev/null | grep -i -c -E "^\s*disabled")
           if [ $APPORT_FILE_STATUS -eq 0 ] ||
              [ $APPORT_SERVICE_STATUS -eq 0 ];
           then
@@ -15419,7 +15419,7 @@ EOF
     # --------------------------------------------------------------------------
     if [ $(apt list "numlockx" 2>/dev/null | grep -i -c -E "numlockx") -gt 0 ];
     then
-      if [ $(LANG=en dpkg-query -W -f='${Status}' "numlockx" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+      if [ $(LANG=C dpkg-query -W -f='${Status}' "numlockx" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
       then
         ask_yes_or_no_plus "login_numlock" " Zur Aktivierung des Nummernblocks ${light_cyan}numlockx${colors_off} installieren" "" "n"
         if [ $? -eq 1 ];
@@ -15863,8 +15863,8 @@ EOF
         then
           e_and_l -n " Schalte die Anzeige der ${light_yellow}Tastatur-LEDs${colors_off} ein  ... "
           INSTALL_STATUS=0
-          if [ $(LANG=en dpkg-query -W -f='${Status}' "libmatekbd-common" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ] ||
-             [ $(LANG=en dpkg-query -W -f='${Status}' "libmatekbd4" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+          if [ $(LANG=C dpkg-query -W -f='${Status}' "libmatekbd-common" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ] ||
+             [ $(LANG=C dpkg-query -W -f='${Status}' "libmatekbd4" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
           then
             sudo apt install --reinstall libmatekbd-common libmatekbd4 -y &>/dev/null
             INSTALL_STATUS=$?
@@ -16194,7 +16194,7 @@ EOF
   # ============================================================================
   # if update-alternatives --version &>/dev/null;
   # then
-  #   CURRENT_X_TERM="$(LANG=en update-alternatives --display x-terminal-emulator | grep -i -E "current" | awk '{print $5}')"
+  #   CURRENT_X_TERM="$(LANG=C update-alternatives --display x-terminal-emulator | grep -i -E "current" | awk '{print $5}')"
   #   e_and_l " Der Standard ${light_cyan}X-Terminal-Emulator${colors_off} ist: ${light_blue}$CURRENT_X_TERM${colors_off}"
   #   ask_yes_or_no_plus "change_xterm" " Einen anderen X-Terminal-Emulator als Standard auswählen" "" "n"
   #   if [ $? -eq 1 ];
@@ -16454,7 +16454,7 @@ EOF
   # S.M.A.R.T Tools einrichten
   # ---------------------------
   SMART_TOOLS_AVAILABLE=0
-  if [ $(LANG=en dpkg-query -W -f='${Status}' smartmontools 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+  if [ $(LANG=C dpkg-query -W -f='${Status}' smartmontools 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
   then
     if [ $(apt list "smartmontools" 2>/dev/null | grep -i -c -E "smartmontools") -gt 0 ];
     then
@@ -16496,7 +16496,7 @@ EOF
 
   THE_DISK_LIST="$DOWNLOAD_DIR/disk-list"
   remove_file "$THE_DISK_LIST"
-  LANG=en lsblk -d -o name,rota,type 2>/dev/null | grep -i disk 1>"$THE_DISK_LIST" 2>/dev/null
+  LANG=C lsblk -d -o name,rota,type 2>/dev/null | grep -i disk 1>"$THE_DISK_LIST" 2>/dev/null
   if [ -s "$THE_DISK_LIST" ];
   then
     # --------------------------------------------------------------------------
@@ -16533,16 +16533,16 @@ EOF
       # Hersteller (Family / Vendor)
       # --------------------------------
       # lsblk
-      DISK_FAMILY=$(LANG=en lsblk -d -n -o vendor ${DEVICE_NAME} 2>/dev/null | head -n 1 | sed -E "s/[\"\']//g" | xargs 2>/dev/null)
+      DISK_FAMILY=$(LANG=C lsblk -d -n -o vendor ${DEVICE_NAME} 2>/dev/null | head -n 1 | sed -E "s/[\"\']//g" | xargs 2>/dev/null)
       # smartctl (1)
       if [ "$DISK_FAMILY" == "" ] || [ "$DISK_FAMILY" == "ATA" ] || [ "$DISK_FAMILY" == "USB" ];
       then
-        DISK_FAMILY=$(LANG=en smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i -E "^\s*vendor\s*:" | sed -E "s/[\"\']//g" | cut -d":" -f 2 | xargs 2>/dev/null)
+        DISK_FAMILY=$(LANG=C smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i -E "^\s*vendor\s*:" | sed -E "s/[\"\']//g" | cut -d":" -f 2 | xargs 2>/dev/null)
       fi
       # smartctl (2)
       if [ "$DISK_FAMILY" == "" ] || [ "$DISK_FAMILY" == "ATA" ] || [ "$DISK_FAMILY" == "USB" ];
       then
-        DISK_FAMILY=$(LANG=en smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i -E "^s*model\s*family\s*:" | sed -E "s/[\"\']//g" | cut -d":" -f 2 | xargs 2>/dev/null)
+        DISK_FAMILY=$(LANG=C smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i -E "^s*model\s*family\s*:" | sed -E "s/[\"\']//g" | cut -d":" -f 2 | xargs 2>/dev/null)
       fi
       # Ausgabe bereinigen
       DISK_FAMILY=$(echo ${DISK_FAMILY//_/ } | sed -E "s/^ATA\s*//" | sed -E "s/^USB\s*//" | xargs 2>/dev/null)
@@ -16551,28 +16551,28 @@ EOF
       # Bezeichnung (Model)
       # --------------------------------
       # lsblk
-      DISK_MODEL=$(LANG=en lsblk -d -n -o model ${DEVICE_NAME} 2>/dev/null | head -n 1 | sed -E "s/[\"\']//g" | xargs 2>/dev/null)
+      DISK_MODEL=$(LANG=C lsblk -d -n -o model ${DEVICE_NAME} 2>/dev/null | head -n 1 | sed -E "s/[\"\']//g" | xargs 2>/dev/null)
       # smartctl (1)
       if [ "$DISK_MODEL" == "" ];
       then
-        DISK_MODEL=$(LANG=en smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i -E "^\s*device\s*model\s*:" | sed -E "s/[\"\']//g" | cut -d":" -f 2 | xargs 2>/dev/null)
+        DISK_MODEL=$(LANG=C smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i -E "^\s*device\s*model\s*:" | sed -E "s/[\"\']//g" | cut -d":" -f 2 | xargs 2>/dev/null)
       fi
       # smartctl (2)
       if [ "$DISK_MODEL" == "" ];
       then
-        DISK_MODEL=$(LANG=en smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i -E "^\s*product\s*:" | sed -E "s/[\"\']//g" | cut -d":" -f 2 | xargs 2>/dev/null)
+        DISK_MODEL=$(LANG=C smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i -E "^\s*product\s*:" | sed -E "s/[\"\']//g" | cut -d":" -f 2 | xargs 2>/dev/null)
       fi
       # parted
       if [ "$DISK_MODEL" == "" ];
       then
-        DISK_MODEL=$(LANG=en parted -s ${DEVICE_NAME} print 2>/dev/null | grep -i -E "^\s*model\s*:" | sed -E "s/[\"\']//g" | cut -d":" -f 2 | xargs 2>/dev/null)
+        DISK_MODEL=$(LANG=C parted -s ${DEVICE_NAME} print 2>/dev/null | grep -i -E "^\s*model\s*:" | sed -E "s/[\"\']//g" | cut -d":" -f 2 | xargs 2>/dev/null)
       fi
       # udevadm
       if [ "$DISK_MODEL" == "" ];
       then
         if udevadm --version &>/dev/null;
         then
-          DISK_MODEL=$(LANG=en udevadm info --name=${DEVICE_NAME} 2>/dev/null | grep -i -E ".*id_model=" | sed -E "s/[\"\']//g" | cut -d"=" -f 2 | xargs 2>/dev/null)
+          DISK_MODEL=$(LANG=C udevadm info --name=${DEVICE_NAME} 2>/dev/null | grep -i -E ".*id_model=" | sed -E "s/[\"\']//g" | cut -d"=" -f 2 | xargs 2>/dev/null)
         fi
       fi
       # Ausgabe bereinigen
@@ -16582,18 +16582,18 @@ EOF
       # Seriennummer (Serial)
       # --------------------------------
       # lsblk
-      DISK_SERIAL=$(LANG=en lsblk -d -n -o serial ${DEVICE_NAME} 2>/dev/null | head -n 1 | sed -E "s/[\"\']//g" | xargs 2>/dev/null)
+      DISK_SERIAL=$(LANG=C lsblk -d -n -o serial ${DEVICE_NAME} 2>/dev/null | head -n 1 | sed -E "s/[\"\']//g" | xargs 2>/dev/null)
       # smartctl
       if [ ${#DISK_SERIAL} -lt 5 ];
       then
-        DISK_SERIAL=$(LANG=en smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i -E "^\s*serial\s*number\s*:" | sed -E "s/[\"\']//g" | cut -d":" -f 2| xargs 2>/dev/null)
+        DISK_SERIAL=$(LANG=C smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i -E "^\s*serial\s*number\s*:" | sed -E "s/[\"\']//g" | cut -d":" -f 2| xargs 2>/dev/null)
       fi
       # udevadm
       if [ ${#DISK_SERIAL} -lt 5 ];
       then
         if udevadm --version &>/dev/null;
         then
-          DISK_SERIAL=$(LANG=en udevadm info --name=${DEVICE_NAME} 2>/dev/null | grep -i -E "\s*E:\s*ID_SERIAL_SHORT\s*=" | head -n 1 | sed -E "s/[\"\']//g" | sed -E "s/\s*E:\s*ID_SERIAL_SHORT\s*=//i" | xargs 2>/dev/null)
+          DISK_SERIAL=$(LANG=C udevadm info --name=${DEVICE_NAME} 2>/dev/null | grep -i -E "\s*E:\s*ID_SERIAL_SHORT\s*=" | head -n 1 | sed -E "s/[\"\']//g" | sed -E "s/\s*E:\s*ID_SERIAL_SHORT\s*=//i" | xargs 2>/dev/null)
         fi
       fi
       # Ausgabe bereinigen
@@ -16604,16 +16604,16 @@ EOF
       # --------------------------------
       NUMBER_HAS_FORMAT=0
       # lsblk
-      DISK_CAPACITY=$(LANG=en lsblk -d -n -o size ${DEVICE_NAME} 2>/dev/null | head -n 1 | sed -E "s/[\"\']//g" | xargs 2>/dev/null)
+      DISK_CAPACITY=$(LANG=C lsblk -d -n -o size ${DEVICE_NAME} 2>/dev/null | head -n 1 | sed -E "s/[\"\']//g" | xargs 2>/dev/null)
       # smartctl
       if [ "$DISK_CAPACITY" == "" ];
       then
-        DISK_CAPACITY=$(LANG=en smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i -E "^\s*user\s*capacity\s*:" | sed -E "s/[\"\']//g" | cut -d ":" -f 2 | awk '{print $1}' | sed "s/[^0-9]//g" | xargs 2>/dev/null)
+        DISK_CAPACITY=$(LANG=C smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i -E "^\s*user\s*capacity\s*:" | sed -E "s/[\"\']//g" | cut -d ":" -f 2 | awk '{print $1}' | sed "s/[^0-9]//g" | xargs 2>/dev/null)
       fi
       # parted
       if [ "$DISK_CAPACITY" == "" ];
       then
-        DISK_CAPACITY=$(LANG=en parted -s ${DEVICE_NAME} print 2>/dev/null | grep -i -E "^Disk ${DEVICE_NAME}" | sed -E "s/[\"\']//g" | cut -d":" -f 2 | xargs 2>/dev/null)
+        DISK_CAPACITY=$(LANG=C parted -s ${DEVICE_NAME} print 2>/dev/null | grep -i -E "^Disk ${DEVICE_NAME}" | sed -E "s/[\"\']//g" | cut -d":" -f 2 | xargs 2>/dev/null)
       fi
       # Wenn die Ausgabe schon formatiert ist, diese nicht mehr neu formatieren
       if [ $(echo ${DISK_CAPACITY} | grep -c -i -E "[BKMGT]") -gt 0 ]; then NUMBER_HAS_FORMAT=1; fi
@@ -16789,12 +16789,12 @@ EOF
       # S.M.A.R.T
       # ------------------------------------------------------------------------
       e_and_l -n " Einstellung der ${light_cyan}SMART-Überwachung${colors_off} ... Überwachung "
-      if [ $(LANG=en smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i support | grep -i -c " available") -gt 0 ];
+      if [ $(LANG=C smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i support | grep -i -c " available") -gt 0 ];
       then
         # ---------------------
         # S.M.A.R.T aktivieren
         # ---------------------
-        if [ $(LANG=en smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i support | grep -i -c " enabled") -eq 0 ];
+        if [ $(LANG=C smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i support | grep -i -c " enabled") -eq 0 ];
         then
           smartctl -s on ${DEVICE_NAME} &>"$LOG_TEMP"
           if [ $? -eq 0 ];
@@ -16811,7 +16811,7 @@ EOF
         # S.M.A.R.T Fehler auslesen
         # --------------------------
         e_and_l -n " Status des ${light_cyan}SMART-Fehlerprotokolls${colors_off} ... Fehlerliste "
-        ERROR_LIST=$(LANG=en smartctl -d sat,auto --quietmode=errorsonly --all ${DEVICE_NAME} 2>"$LOG_TEMP")
+        ERROR_LIST=$(LANG=C smartctl -d sat,auto --quietmode=errorsonly --all ${DEVICE_NAME} 2>"$LOG_TEMP")
         if [ "$ERROR_LIST" == "" ];
         then
           e_and_l "${bold_green}leer${colors_off}"
@@ -16842,15 +16842,15 @@ EOF
       POH_FROM_SMART=""
       e_and_l -n " Angabe der ${light_cyan}Summe der Laufzeit${colors_off}     ... "
       # 1. Angabe aus dem GP-Logs auslesen
-      DISK_POWER_ON=$(LANG=en smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -E "0x01\s*0x010\s*4" | awk '{print $4}' | xargs)
+      DISK_POWER_ON=$(LANG=C smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -E "0x01\s*0x010\s*4" | awk '{print $4}' | xargs)
       # Wenn nicht im GP-Log gefunden den SMART-Wert einlesen
       if [ "$DISK_POWER_ON" == "" ];
       then
-        DISK_POWER_ON=$(LANG=en smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i -E "Power_On_Hours" | awk '{print $8}' | xargs)
+        DISK_POWER_ON=$(LANG=C smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i -E "Power_On_Hours" | awk '{print $8}' | xargs)
         POH_FROM_SMART=" (SMART)"
       fi
       # 2. Angabe des Zeitstempels auslesen und formatieren
-      DISK_TIMESTAMP=$(LANG=en smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i timestamp | awk '{print $4}' | xargs)
+      DISK_TIMESTAMP=$(LANG=C smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i timestamp | awk '{print $4}' | xargs)
       if [ "$DISK_TIMESTAMP" != "" ];
       then
         DISK_TIMESTAMP=$((DISK_TIMESTAMP / 1000)) # Timestamp ist in 1000stel Sekunden gespeichert
@@ -16873,7 +16873,7 @@ EOF
       # ------------------------------------------------------------------------
       # Anzahl geschriebene Bytes
       # ------------------------------------------------------------------------
-      DISK_TOTAL_LBA=$(LANG=en smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i lbas_wr | awk '{print $8}' | xargs)
+      DISK_TOTAL_LBA=$(LANG=C smartctl -x -d sat,auto ${DEVICE_NAME} 2>/dev/null | grep -i lbas_wr | awk '{print $8}' | xargs)
       if [ "$DISK_TOTAL_LBA" != "" ];
       then
         e_and_l -n " Anzahl der ${light_cyan}geschriebenen Bytes${colors_off}    ... "
@@ -16937,7 +16937,7 @@ EOF
         # ----------------------------------------------------------------------
         e_and_l "$HALF_LINE"
         e_and_l -n " Prüfe die System-Parameter des ${light_cyan}AHCI-Modus${colors_off} ... "
-        if [ $(LANG=en dmesg | grep -i -E "scsi" | grep -i -c -E "ahci") -gt 0 ];
+        if [ $(LANG=C dmesg | grep -i -E "scsi" | grep -i -c -E "ahci") -gt 0 ];
         then
           e_and_l "$OK_TAG"
           # --------------------------------------------------------------------
@@ -17747,9 +17747,11 @@ then
         i=0
         while [ $i -lt $anz_entries ];
         do
+          e_and_l "$HALF_MINUS_LINE"
           BLAME_ENRTY_NAME=$(echo -n ${BOOT_BLAME_ENTRIES[$i]} | awk '{print $3}')
           BLAME_ENRTY_TIME=$(echo -n ${BOOT_BLAME_ENTRIES[$i]} | awk '{print $1 $2}')
-          e_and_l " - ${bold_white}$BLAME_ENRTY_NAME${colors_off} (${bold_yellow}$BLAME_ENRTY_TIME${colors_off})"
+          e_and_l "- ${bold_white}$BLAME_ENRTY_NAME${colors_off} (${bold_yellow}$BLAME_ENRTY_TIME${colors_off})"
+          systemctl list-dependencies --reverse "$BLAME_ENRTY_NAME"
           ((i++))
         done
       fi
@@ -17766,14 +17768,14 @@ then
   e_and_l "$HALF_LINE"
   e_and_l " ${bold_blue}System-Dienste${colors_off}"
   e_and_l "$HALF_LINE"
-  LANG=en systemctl 2>/dev/null | grep -E "\.service.*\bfailed\b" | awk '{print $2}' 1>"$FAILED_SERVICES_LIST" 2>/dev/null
+  LANG=C systemctl 2>/dev/null | grep -E "\.service.*\bfailed\b" | awk '{print $2}' 1>"$FAILED_SERVICES_LIST" 2>/dev/null
   declare -A FAILED_SERVICE
   FAILED_SERVICE_IDX=0
   while read failed_service;
   do
     if [ "$failed_service" != "" ];
     then
-      if [ $(LANG=en systemctl status $failed_service 2>/dev/null | grep -c -i -E "\bdisabled\b") -eq 0 ];
+      if [ $(LANG=C systemctl status $failed_service 2>/dev/null | grep -c -i -E "\bdisabled\b") -eq 0 ];
       then
         FAILED_SERVICE[$FAILED_SERVICE_IDX]="$failed_service"
         ((FAILED_SERVICE_IDX+=1))
@@ -18110,7 +18112,7 @@ then
   # ACHTUNG: Bei Änderungen auch "wine_post_inst" anpassen!
   # ==========================================================================
   ACTION_MESSAGE=" Fehlende ${light_cyan}Start-Einträge für Wine${colors_off} erstellen"
-  # if [ $(LANG=en dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
+  # if [ $(LANG=C dpkg-query -W -f='${Status}' "wine" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
   if [ "$WINE_VERSION_APT" != "" ] ||
      [ "$WINE_VERSION_FLAT" != "" ];
   then
@@ -18386,7 +18388,7 @@ then
   if [ $? -eq 0 ];
   then
     e_and_l -n "$ACTION_MESSAGE"
-    LANG=en apt-key list 2>/dev/null | grep -A 2 -i -E "(expired|verfallen):" | awk 'NR>1' | \
+    LANG=C apt-key list 2>/dev/null | grep -A 2 -i -E "(expired|verfallen):" | awk 'NR>1' | \
     sed 's/^[[:space:]]*/ /g' | sed 's/[[:space:]]*uid.*\][[:space:]]*/ /gi' > "$EXPIRED_APT_KEYS_LIST"
     if [ -s "$EXPIRED_APT_KEYS_LIST" ];
     then
@@ -18484,7 +18486,7 @@ then
       create_backup_file "$OLD_APT_KEY_FILE"
       TMP_APT_KEY_FILE="old-apt-keys.txt"
       TMP_APT_KEY_LIST="$DOWNLOAD_DIR/$TMP_APT_KEY_FILE"
-      LANG=en apt-key --keyring "$OLD_APT_KEY_FILE" list 2>/dev/null | grep -A 2 -i -E "^pub" | grep -v -i -E "^pub" | grep -v -i -E "^\s*-" | \
+      LANG=C apt-key --keyring "$OLD_APT_KEY_FILE" list 2>/dev/null | grep -A 2 -i -E "^pub" | grep -v -i -E "^pub" | grep -v -i -E "^\s*-" | \
       sed 's/^[[:space:]]*/ /g' | sed 's/[[:space:]]*uid.*\][[:space:]]*/ /gi' > "$TMP_APT_KEY_LIST"
       if [ -s "$TMP_APT_KEY_LIST" ];
       then
@@ -18823,9 +18825,9 @@ then
     do
       MINT_UPDATE_PKG="${MINT_UPDATE_PKG_LIST[$i]}"
       MINT_UPDPKG_NAM="${MINT_UPDPKG_NAM_LIST[$i]}"
-      if [ $(LANG=en dpkg-query -W -f='${Status}' "$MINT_UPDATE_PKG" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
+      if [ $(LANG=C dpkg-query -W -f='${Status}' "$MINT_UPDATE_PKG" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
       then
-        if [ $(LANG=en apt list "$MINT_UPDATE_PKG" 2>/dev/null | grep -i -c -E "upgradable") -gt 0 ];
+        if [ $(LANG=C apt list "$MINT_UPDATE_PKG" 2>/dev/null | grep -i -c -E "upgradable") -gt 0 ];
         then
           e_and_l " Es ist eine neuere Version von ${bold_white}$MINT_UPDPKG_NAM${colors_off} verfügbar."
           ask_yes_or_no_plus "mint_update" " Jetzt ${light_cyan}$MINT_UPDPKG_NAM${colors_off} aktualisieren" "" "n"
@@ -18951,7 +18953,7 @@ then
     if [ "$kernel_base_name" != "" ] &&
        [ "$kernel_base_name" != "$CURRENT_KERNEL_VERSION" ];
     then
-      if [ $(LANG=en dpkg-query -W -f='${Status}' "$old_kernel" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ] ||
+      if [ $(LANG=C dpkg-query -W -f='${Status}' "$old_kernel" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ] ||
          [ $(grep -i -r -l -E "$kernel_base_name" /boot/efi 2>/dev/null | wc -l) -ne 0 ] ||
          [ $(grep -i -r -l -E "$kernel_base_name" /boot/grub 2>/dev/null | wc -l) -ne 0 ] ||
          [ $(ls -la /boot/initrd.img 2>/dev/null | grep -c -E "$kernel_base_name") -ne 0 ] ||
@@ -20095,7 +20097,7 @@ then
         ((ANZ_SPACES=7-${#benchmark}))
         insert_spaces $ANZ_SPACES
         BENCHMARK_NAME="$(echo -n $benchmark | tr '[:upper:]' '[:lower:]')"
-        RESULT="$(LANG=en sysbench --threads=${BENCH_THREADS} "$BENCHMARK_NAME" run | grep -i -E "(total number)" | sed -E "s/\s+/ /gi" | cut -d':' -f 2 | xargs 2>/dev/null)"
+        RESULT="$(LANG=C sysbench --threads=${BENCH_THREADS} "$BENCHMARK_NAME" run | grep -i -E "(total number)" | sed -E "s/\s+/ /gi" | cut -d':' -f 2 | xargs 2>/dev/null)"
         RESULT=$(printf "%'d" "$RESULT")
         e_and_l " ${bold_yellow}$RESULT${colors_off} Punkte"
         echo -e " $benchmark $BENCH_THRTEXT: $RESULT" >> "$BENCHMARK_FILE"
@@ -20146,7 +20148,7 @@ then
     # ----
     # STD
     # ----
-    if [ $(LANG=en dpkg-query -W -f='${Status}' "$REMOVE_PKG_NAME" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
+    if [ $(LANG=C dpkg-query -W -f='${Status}' "$REMOVE_PKG_NAME" 2>/dev/null | grep -i -c -E "ok installed") -ne 0 ];
     then
       INST_MODE_LIST+=",1"
     fi
@@ -20155,7 +20157,7 @@ then
     # -----
     if [ $SNAP_ACTIVE -gt 0 ];
     then
-      if [ $(LANG=en snap info "$REMOVE_PKG_NAME" 2>/dev/null | grep -i -c -E "installed\:") -ne 0 ];
+      if [ $(LANG=C snap info "$REMOVE_PKG_NAME" 2>/dev/null | grep -i -c -E "installed\:") -ne 0 ];
       then
         INST_MODE_LIST+=",2"
       fi
