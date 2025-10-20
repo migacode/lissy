@@ -13,6 +13,7 @@ Umfassende Funktionalität - individuell anpassbar und interaktiv:
 <li>Sinnvolle Optimierungen des Betriebssystems und Desktops</li>
 <li>Einfache Reparaturen von Boot-Loader und Dateisystemen</li>
 <li>Bereinigung und Entfernung veralteter und verwaister Daten</li>
+<li>Referenzwerte des Systems erstellen (Benchmarking)</li>
 <li>u.v.m.</li>
 </ul>
 Dieses Skript ermöglicht die automatisierte <b>Installation von Programmpaketen</b> aus verschiedenen Quellen einschließlich der <b>Konfiguration</b> der Programme und Erstellung von Startern (Programmsymbolen) auf dem Desktop.<br />
