@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 13.11.2025
-VERSION="5.5.3"
+# Letzte Änderung: 30.12.2025
+VERSION="5.5.6"
 
 ################################################################################
 #                                                                              #
@@ -7420,7 +7420,7 @@ KATEGORIE_PKGS[xx]="alien apt-file apt-rdepends apt-show-versions arping arp-sca
 # ------------------------------------------------------------------------------
 # Zubehör
 # ------------------------------------------------------------------------------
-KATEGORIE_PKGS[z]="balena-etcher barrier bitwarden clamav copyq doublecmd electrum engrampa file-roller freefilesync galculator gedit gnome-weather gucharmap kdeconnect keepassxc kfind klavaro ksnip ktouch magnus mousepad onboard plank pluma redshift rpi-imager sardu unetbootin usb-creator-common veracrypt xournal"
+KATEGORIE_PKGS[z]="balena-etcher barrier bitwarden clamav copyq doublecmd electrum engrampa file-roller freefilesync galculator gedit gnome-weather gucharmap kdeconnect keepassxc kfind klavaro ksnip ktouch magnus mousepad onboard plank pluma redshift rpi-imager unetbootin usb-creator-common veracrypt xournal"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[z]+=" sticky xed"; fi
 
 # ------------------------------------------------------------------------------
@@ -8667,21 +8667,22 @@ WEB_PKG_FILE[rustdesk_armhf]="" # NUR für 64-bit (32-bit verfügbar aber nicht 
 WEB_PKG_CSUM[rustdesk_armhf]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
 
 # Download von https://www.sarducd.it/downloads
-WEB_PKG_NAME[sardu]="Sardu"
-WEB_PKG_CATY[sardu]="System;Utility"
-WEB_PKG_OLDV[sardu]=""
-WEB_PKG_OLDF[sardu]=""
-WEB_PKG_VERS[sardu]="4.4.0" # Bei Änderung auch sardu_post_inst anpassen !!!
-WEB_PKG_MESG[sardu]=""
-WEB_PKG_EVAL[sardu]=""
-WEB_PKG_FILE[sardu_amd64]="$RESSOURCE_SERVER_DIR/web/sardu_4.4.0-linux.tar.gz"
-WEB_PKG_CSUM[sardu_amd64]="$RESSOURCE_SERVER_DIR/web/sardu_4.4.0-linux.tar.gz.sha"
- WEB_PKG_FILE[sardu_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
- WEB_PKG_CSUM[sardu_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
-WEB_PKG_FILE[sardu_arm64]="" # NICHT für ARM verfügbar
-WEB_PKG_CSUM[sardu_arm64]="" # NICHT für ARM verfügbar
-WEB_PKG_FILE[sardu_armhf]="" # NICHT für ARM verfügbar
-WEB_PKG_CSUM[sardu_armhf]="" # NICHT für ARM verfügbar
+# Hinweis: Derzeit nicht beinhaltet wegen potentiellem Trojaner in Sardu
+# WEB_PKG_NAME[sardu]="Sardu"
+# WEB_PKG_CATY[sardu]="System;Utility"
+# WEB_PKG_OLDV[sardu]=""
+# WEB_PKG_OLDF[sardu]=""
+# WEB_PKG_VERS[sardu]="4.4.0" # Bei Änderung auch sardu_post_inst anpassen !!!
+# WEB_PKG_MESG[sardu]=""
+# WEB_PKG_EVAL[sardu]=""
+# WEB_PKG_FILE[sardu_amd64]="$RESSOURCE_SERVER_DIR/web/sardu_4.4.0-linux.tar.gz"
+# WEB_PKG_CSUM[sardu_amd64]="$RESSOURCE_SERVER_DIR/web/sardu_4.4.0-linux.tar.gz.sha"
+#  WEB_PKG_FILE[sardu_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
+#  WEB_PKG_CSUM[sardu_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
+# WEB_PKG_FILE[sardu_arm64]="" # NICHT für ARM verfügbar
+# WEB_PKG_CSUM[sardu_arm64]="" # NICHT für ARM verfügbar
+# WEB_PKG_FILE[sardu_armhf]="" # NICHT für ARM verfügbar
+# WEB_PKG_CSUM[sardu_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://www.shotcut.org/download/
 WEB_PKG_NAME[shotcut]="Shotcut"
@@ -8892,7 +8893,7 @@ then
 fi
 POST_INST_CONF[rocksndiamonds]="dpkg-reconfigure rocksndiamonds"
 POST_INST_CONF[samba]="$RESSOURCE_SERVER_DIR/scripts/samba_post_inst"
-POST_INST_CONF[sardu]="$RESSOURCE_SERVER_DIR/scripts/sardu_post_inst"
+# POST_INST_CONF[sardu]="$RESSOURCE_SERVER_DIR/scripts/sardu_post_inst"
 POST_INST_CONF[teamviewer]="$RESSOURCE_SERVER_DIR/scripts/teamviewer_post_inst"
 POST_INST_CONF[tor-browser]="$RESSOURCE_SERVER_DIR/scripts/tor-browser_post_inst"
 POST_INST_CONF[unetbootin]="$RESSOURCE_SERVER_DIR/scripts/unetbootin_post_inst"
@@ -13817,7 +13818,7 @@ then
       if [ $? -eq 1 ];
       then
         e_and_l -n " Schalte die interne ${light_yellow}Firewall (ufw)${colors_off} ein     ... "
-        ufw enable &>/dev/null
+        echo "y" | ufw enable &>/dev/null
         if [ $? -eq 0 ];
         then
           ufw reload &>/dev/null
@@ -13960,26 +13961,25 @@ then
   # ACHTUNG: 0 = kein Swapping => nur verwenden, wenn soviel Hauptspeicher
   # vorhanden ist, dass Swapping durch das System ausgeschlossen werden kann!
   # ============================================================================
-  # Schwellwert (verbleibender freier Hauptspeicher in MB), ab welchem das
-  # Betriebssystem anfängt Hauptspeicher auf Festplatten auszulagern (swappen)
+  # Schwellwert (verbleibender freier Hauptspeicher), ab welchem das
+  # Betriebssystem anfängt Speicher auf Festplatten auszulagern (swappen)
   START_SWAP_FREE=512
   # Kleinster einzugebender neuer Wert (in %)
   MIN_SWAPPING=1
   # Größter einzugebender neuer Wert (in %)
-  MAX_SWAPPING=60 # Standardvorgabe Linux
-  # Datei mit permanenter Einstellung
-  SYSCTL_CONF="/etc/sysctl.conf"
+  MAX_SWAPPING=80 # Standardvorgabe Linux ist 60
+  # Liste der Konfigurations-Dateien
+  declare -A SWAP_CONF_FILE_LIST
+  SWAP_CONF_FILE_LIST[0]="/etc/sysctl.conf" # (bis Debian 12)
+  SWAP_CONF_FILE_LIST[1]="/etc/sysctl.d/10_swappiness.conf" # (ab Debian 13)
   # Optimalen Wert berechnen
   BEST_SWAP_SIZE=$((START_SWAP_FREE * 1024 * 1024))
   BEST_SWAP_SIZE=$((BEST_SWAP_SIZE * 100 / MEMORY_TOTAL))
   # Aktuellen Wert auslesen
   SWAP_VALUE=$(sysctl vm.swappiness)
   SWAP_VALUE=$(echo -n "${SWAP_VALUE##*\=}" | xargs)
-  SEARCH_SWAP_STRING="^vm.swappiness\s*=\s*$BEST_SWAP_SIZE"
   ACTION_MESSAGE=" Einstellung des ${light_cyan}Swapping${colors_off} von Hauptspeicher ... "
-  if [ $SWAP_VALUE -eq $BEST_SWAP_SIZE ] &&
-     [ -s "$SYSCTL_CONF" ] &&
-     [ $(grep -i -c -E "$SEARCH_SWAP_STRING" "$SYSCTL_CONF" 2>/dev/null) -gt 0 ];
+  if [ $SWAP_VALUE -eq $BEST_SWAP_SIZE ];
   then
     e_and_l -n "$ACTION_MESSAGE"
     e_and_l "$OK_TAG ${dark_gray}(Wert: $SWAP_VALUE%)${colors_off}"
@@ -13998,39 +13998,50 @@ then
         if [ "$NEW_SWAPPING" == "" ]; then NEW_SWAPPING=0; fi
       done
       e_and_l -n "$ACTION_MESSAGE"
-      # Sofort
       if [ $SWAP_VALUE -ne $NEW_SWAPPING ];
       then
+        # Änderungen sofort wirksam machen
         sysctl vm.swappiness=${NEW_SWAPPING} &>/dev/null
-      fi
-      # Permanent
-      create_backup_file "$SYSCTL_CONF"
-      # Alle eventuell bestehenden Einträge löschen
-      if [ -s "$SYSCTL_CONF" ];
-      then
-        SEARCH_SWAP_STRING="^\s*vm.swappiness\s*=\s*"
-        OLD_ENTRY_LINE=$(grep -i -m 1 -n -E "$SEARCH_SWAP_STRING" "$SYSCTL_CONF" 2>/dev/null)
-        while [ "$OLD_ENTRY_LINE" != "" ];
+        # Änderungen permanent machen
+        FILE_ERRORS=0
+        for swap_conf_file in "${SWAP_CONF_FILE_LIST[@]}";
         do
-          DELETE_PART=${OLD_ENTRY_LINE##*\:}
-          OLD_ENTRY_LINE=$(echo ${OLD_ENTRY_LINE/:$DELETE_PART/} | xargs)
-          sed -i "${OLD_ENTRY_LINE}d" "$SYSCTL_CONF"
-          OLD_ENTRY_LINE=$(grep -i -m 1 -n -E "$SEARCH_SWAP_STRING" "$SYSCTL_CONF" 2>/dev/null)
+          create_backup_file "$swap_conf_file"
+          # Alle eventuell bestehenden Einträge löschen
+          if [ -s "$swap_conf_file" ];
+          then
+            SEARCH_SWAP_STRING="^\s*vm.swappiness\s*=\s*"
+            OLD_ENTRY_LINE=$(grep -i -m 1 -n -E "$SEARCH_SWAP_STRING" "$swap_conf_file" 2>/dev/null)
+            while [ "$OLD_ENTRY_LINE" != "" ];
+            do
+              DELETE_PART=${OLD_ENTRY_LINE##*\:}
+              OLD_ENTRY_LINE=$(echo ${OLD_ENTRY_LINE/:$DELETE_PART/} | xargs)
+              sed -i "${OLD_ENTRY_LINE}d" "$swap_conf_file"
+              OLD_ENTRY_LINE=$(grep -i -m 1 -n -E "$SEARCH_SWAP_STRING" "$swap_conf_file" 2>/dev/null)
+            done
+          fi
+          # Neuen Eintrag hinzufügen
+          echo -e "vm.swappiness=$NEW_SWAPPING" >> "$swap_conf_file"
+          if [ $? -eq 0 ];
+          then
+            remove_double_empty_lines "$swap_conf_file"
+          else
+            ((FILE_ERRORS+=1))
+          fi
         done
-      fi
-      # Neuen Eintrag hinzufügen
-      echo -e "vm.swappiness=$NEW_SWAPPING" >> "$SYSCTL_CONF"
-      if [ $? -eq 0 ];
-      then
-        e_and_l "$OK_TAG ${light_yellow}(NEU: $NEW_SWAPPING%)${colors_off}"
-        CHANGES_MADE=1
-        remove_double_empty_lines "$SYSCTL_CONF"
+        if [ $FILE_ERRORS -eq 0 ];
+        then
+          e_and_l "$OK_TAG ${light_yellow}(NEU: $NEW_SWAPPING%)${colors_off}"
+          CHANGES_MADE=1
+        else
+          e_and_l "$ERROR_TAG"
+          add_full_log
+        fi
       else
-        e_and_l "$ERROR_TAG"
-        add_full_log
+        e_and_l "$NC_TAG ${dark_gray}($NEW_SWAPPING%)${colors_off}"
       fi
-      e_and_l "$HALF_MINUS_LINE"
     fi
+    e_and_l "$HALF_MINUS_LINE"
   fi
 
   # ============================================================================
@@ -14647,7 +14658,7 @@ then
     then
       if [ $(grep -i -c -E "\[pi4\]" "$PI_CONF_FILE") -eq 0 ];
       then
-        echo -e $'\n'"[pi4]" >> "$PI_CONF_FILE" # 2>/dev/null
+        echo -e $'\n'"[pi4]" >> "$PI_CONF_FILE" 2>/dev/null
       fi
       pi_perfname=('Low'  'Medium' 'High')
       pi_overvolt=('0'    '2'      '6'   )
@@ -14704,9 +14715,9 @@ then
           # 1. Zur Vermeidung und Bereinigung eventuell redundanter Eintragungen
           #    alle bestehenden Einträge deaktivieren (auskommentieren)
           # --------------------------------------------------------------------
-          sed -i -E "s/(^\s*over_voltage\s*=)/\# \1/gi" "$PI_CONF_FILE"
-          sed -i -E "s/(^\s*arm_freq\s*=)/\# \1/gi" "$PI_CONF_FILE"
-          sed -i -E "s/(^\s*gpu_freq\s*=)/\# \1/gi" "$PI_CONF_FILE"
+          sed -i -E "s/(^\s*over_voltage\s*=)/\# \1/gi" "$PI_CONF_FILE" 2>/dev/null
+          sed -i -E "s/(^\s*arm_freq\s*=)/\# \1/gi" "$PI_CONF_FILE" 2>/dev/null
+          sed -i -E "s/(^\s*gpu_freq\s*=)/\# \1/gi" "$PI_CONF_FILE" 2>/dev/null
           # --------------------------------------------------------------------
           # 2. Neue Werte durch die Re-Aktivierung passender (falls vorhanden)
           #    oder das Hinzufügen neuer Eintragungen einstellen
@@ -14718,10 +14729,10 @@ then
           NEW_GPU_FREQ=${pi_gpu_freq[$NEW_PERF_MODE]}
           if [ $(grep -i -c -E "^\s*#\s*gpu_freq\s*=\s*$NEW_GPU_FREQ" "$PI_CONF_FILE") -gt 0 ];
           then
-            sed -i -E "s/^\s*#\s*gpu_freq\s*=\s*$NEW_GPU_FREQ/gpu_freq=$NEW_GPU_FREQ/gi" "$PI_CONF_FILE"
+            sed -i -E "s/^\s*#\s*gpu_freq\s*=\s*$NEW_GPU_FREQ/gpu_freq=$NEW_GPU_FREQ/gi" "$PI_CONF_FILE" 2>/dev/null
             SED_ERROR_CODE_1=$?
           else
-            sed -i -E "s/\[pi4\]/[pi4]\\${PI4_NEWLINE}gpu_freq=$NEW_GPU_FREQ/gi" "$PI_CONF_FILE"
+            sed -i -E "s/\[pi4\]/[pi4]\\${PI4_NEWLINE}gpu_freq=$NEW_GPU_FREQ/gi" "$PI_CONF_FILE" 2>/dev/null
             SED_ERROR_CODE_1=$?
           fi
           # --------
@@ -14730,10 +14741,10 @@ then
           NEW_ARM_FREQ=${pi_arm_freq[$NEW_PERF_MODE]}
           if [ $(grep -i -c -E "^\s*#\s*arm_freq\s*=\s*$NEW_ARM_FREQ" "$PI_CONF_FILE") -gt 0 ];
           then
-            sed -i -E "s/^\s*#\s*arm_freq\s*=\s*$NEW_ARM_FREQ/arm_freq=$NEW_ARM_FREQ/gi" "$PI_CONF_FILE"
+            sed -i -E "s/^\s*#\s*arm_freq\s*=\s*$NEW_ARM_FREQ/arm_freq=$NEW_ARM_FREQ/gi" "$PI_CONF_FILE" 2>/dev/null
             SED_ERROR_CODE_2=$?
           else
-            sed -i -E "s/\[pi4\]/[pi4]\\${PI4_NEWLINE}arm_freq=$NEW_ARM_FREQ/gi" "$PI_CONF_FILE"
+            sed -i -E "s/\[pi4\]/[pi4]\\${PI4_NEWLINE}arm_freq=$NEW_ARM_FREQ/gi" "$PI_CONF_FILE" 2>/dev/null
             SED_ERROR_CODE_2=$?
           fi
           # ---------
@@ -14742,10 +14753,10 @@ then
           NEW_OVERVOLT=${pi_overvolt[$NEW_PERF_MODE]}
           if [ $(grep -i -c -E "^\s*#\s*over_voltage\s*=\s*$NEW_OVERVOLT" "$PI_CONF_FILE") -gt 0 ];
           then
-            sed -i -E "s/^\s*#\s*over_voltage\s*=\s*$NEW_OVERVOLT/over_voltage=$NEW_OVERVOLT/gi" "$PI_CONF_FILE"
+            sed -i -E "s/^\s*#\s*over_voltage\s*=\s*$NEW_OVERVOLT/over_voltage=$NEW_OVERVOLT/gi" "$PI_CONF_FILE" 2>/dev/null
             SED_ERROR_CODE_3=$?
           else
-            sed -i -E "s/\[pi4\]/[pi4]\\${PI4_NEWLINE}over_voltage=$NEW_OVERVOLT/gi" "$PI_CONF_FILE"
+            sed -i -E "s/\[pi4\]/[pi4]\\${PI4_NEWLINE}over_voltage=$NEW_OVERVOLT/gi" "$PI_CONF_FILE" 2>/dev/null
             SED_ERROR_CODE_3=$?
           fi
           # -----------------------------------------------------------------
@@ -14803,7 +14814,7 @@ then
             # Wenn ein Eintrag vorhanden ist, diesen ändern ...
             if [ $(grep -i -c -E "^\s*gpu_mem\s*=\s*" "$PI_CONF_FILE") -gt 0 ];
             then
-              sed -i -E "s/^\s*gpu_mem\s*=\s*[0-9]*/gpu_mem=$NEW_MEM_SIZE/gi" "$PI_CONF_FILE"
+              sed -i -E "s/^\s*gpu_mem\s*=\s*[0-9]*/gpu_mem=$NEW_MEM_SIZE/gi" "$PI_CONF_FILE" 2>/dev/null
               if [ $? -eq 0 ];
               then
                 e_and_l "$OK_TAG ${light_yellow}(NEU: $VALUE_MESSAGE)${colors_off}"
@@ -14857,7 +14868,7 @@ then
           e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
           create_backup_file "$PI_CMD_FILE"
           # Wenn ein aktiver Eintrag vorhanden ist, diesen ändern ...
-          # Achtung: "-" zum Schluss, da sed sonst
+          # Achtung: "-" zum Schluss
           if [ $(grep -i -c -E "\svideo=[A-Z0-9\:\x\@\-]*" "$PI_CMD_FILE" 2>/dev/null) -gt 0 ];
           then
             sed -i -E "s/\svideo=[A-Z0-9\:\x\@\-]*/ $SECURE_VIDEO_PART/gi" "$PI_CMD_FILE" &>/dev/null
@@ -15276,7 +15287,7 @@ EOF
     declare -A AUTO_LOGIN_WRONG_LIST
     AUTO_LOGIN_CFILE_LIST[0]="$LDM_CONF_FILE"
     AUTO_LOGIN_IS_OK_LIST[0]="#autologin-user="
-    AUTO_LOGIN_WRONG_LIST[0]="^\s*autologin-user\s*=\s*[0-9a-z]*"
+    AUTO_LOGIN_WRONG_LIST[0]="^\s*autologin-user\s*=\s*[0-9a-z]+"
     AUTO_LOGIN_CFILE_LIST[1]="$GDM_CCONF_FILE"
     AUTO_LOGIN_IS_OK_LIST[1]="AutomaticLoginEnable=False"
     AUTO_LOGIN_WRONG_LIST[1]="^\s*AutomaticLoginEnable\s*=\s*True"
@@ -16534,8 +16545,12 @@ EOF
       # --------------------------------
       # Hersteller (Family / Vendor)
       # --------------------------------
+      DISK_FAMILY=""
       # lsblk
-      DISK_FAMILY=$(LANG=C lsblk -d -n -o vendor ${DEVICE_NAME} 2>/dev/null | head -n 1 | sed -E "s/[\"\']//g" | xargs 2>/dev/null)
+      if [ -b ${DEVICE_NAME} ];
+      then
+        DISK_FAMILY=$(LANG=C lsblk -d -n -o vendor ${DEVICE_NAME} 2>/dev/null | head -n 1 | sed -E "s/[\"\']//g" | xargs 2>/dev/null)
+      fi
       # smartctl (1)
       if [ "$DISK_FAMILY" == "" ] || [ "$DISK_FAMILY" == "ATA" ] || [ "$DISK_FAMILY" == "USB" ];
       then
@@ -16552,8 +16567,12 @@ EOF
       # --------------------------------
       # Bezeichnung (Model)
       # --------------------------------
+      DISK_MODEL=""
       # lsblk
-      DISK_MODEL=$(LANG=C lsblk -d -n -o model ${DEVICE_NAME} 2>/dev/null | head -n 1 | sed -E "s/[\"\']//g" | xargs 2>/dev/null)
+      if [ -b ${DEVICE_NAME} ];
+      then
+        DISK_MODEL=$(LANG=C lsblk -d -n -o model ${DEVICE_NAME} 2>/dev/null | head -n 1 | sed -E "s/[\"\']//g" | xargs 2>/dev/null)
+      fi
       # smartctl (1)
       if [ "$DISK_MODEL" == "" ];
       then
@@ -16583,8 +16602,12 @@ EOF
       # --------------------------------
       # Seriennummer (Serial)
       # --------------------------------
+      DISK_SERIAL=""
       # lsblk
-      DISK_SERIAL=$(LANG=C lsblk -d -n -o serial ${DEVICE_NAME} 2>/dev/null | head -n 1 | sed -E "s/[\"\']//g" | xargs 2>/dev/null)
+      if [ -b ${DEVICE_NAME} ];
+      then
+        DISK_SERIAL=$(LANG=C lsblk -d -n -o serial ${DEVICE_NAME} 2>/dev/null | head -n 1 | sed -E "s/[\"\']//g" | xargs 2>/dev/null)
+      fi
       # smartctl
       if [ ${#DISK_SERIAL} -lt 5 ];
       then
@@ -16605,8 +16628,12 @@ EOF
       # Kapazität
       # --------------------------------
       NUMBER_HAS_FORMAT=0
+      DISK_CAPACITY=""
       # lsblk
-      DISK_CAPACITY=$(LANG=C lsblk -d -n -o size ${DEVICE_NAME} 2>/dev/null | head -n 1 | sed -E "s/[\"\']//g" | xargs 2>/dev/null)
+      if [ -b ${DEVICE_NAME} ];
+      then
+        DISK_CAPACITY=$(LANG=C lsblk -d -n -o size ${DEVICE_NAME} 2>/dev/null | head -n 1 | sed -E "s/[\"\']//g" | xargs 2>/dev/null)
+      fi
       # smartctl
       if [ "$DISK_CAPACITY" == "" ];
       then
