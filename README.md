@@ -8,9 +8,11 @@ Umfassende Funktionalität - individuell anpassbar und interaktiv:
 <li>Installation von beliebigen Programmpaketen - auswählbar aus verschiedenen Quellen</li>
 <li>Vollständig geführte Konfiguration zahlreicher Programmpakete</li>
 <li>Entfernung von Programmpaketen und dessen Daten</li>
+<li>Installation von grafischen Benutzeroberflächen (Desktops)</li>
 <li>Installation umfangreicher System-Erweiterungen</li>
 <li>Einfache Konfiguration wichtiger System-Komponenten</li>
 <li>Sinnvolle Optimierungen des Betriebssystems und Desktops</li>
+<li>Performance- und weitere Einstellungen für Raspberry Pi 4 und 5</li>
 <li>Einfache Reparaturen von Boot-Loader und Dateisystemen</li>
 <li>Bereinigung und Entfernung veralteter und verwaister Daten</li>
 <li>Referenzwerte des Systems erstellen (Benchmarking)</li>
