@@ -12697,6 +12697,7 @@ then
     if [ $TASKSEL_AVAILABLE -gt 0 ] ||
        [[ "$DESKTOP_ENVIRONMENT" != "MATE" && $MATE_DESKTOP_AVAILABLE -gt 0 ]];
     then
+      INSTALL_DESKTOP_ANSWER=0
       if [ $TASKSEL_AVAILABLE -gt 0 ];
       then
         NEW_DESKTOP_TEXT=""
@@ -12706,7 +12707,8 @@ then
           NEW_DESKTOP_TEXT=" weiteren"
         fi
         ask_yes_or_no_plus "install_desktop" " Jetzt einen${bold_yellow}$NEW_DESKTOP_TEXT Desktop${colors_off} auswählen und installieren" "" "n"
-        if [ $? -eq 1 ];
+        INSTALL_DESKTOP_ANSWER=$?
+        if [ $INSTALL_DESKTOP_ANSWER -eq 1 ];
         then
           DO_THE_TASKSEL=1
           if [ $(LANG=C dpkg-query -W -f='${Status}' "tasksel" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
@@ -12729,7 +12731,8 @@ then
         fi
       else
         ask_yes_or_no_plus "install_mate" " Soll jetzt der ${bold_yellow}MATE-Desktop${colors_off} installiert werden" "" "n"
-        if [ $? -eq 1 ];
+        INSTALL_DESKTOP_ANSWER=$?
+        if [ $INSTALL_DESKTOP_ANSWER -eq 1 ];
         then
           if [ $(LANG=C dpkg-query -W -f='${Status}' "lightdm" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
           then
@@ -12743,8 +12746,11 @@ then
           fi
         fi
       fi
-      e_and_l "$HALF_MINUS_LINE"
-      e_and_l " $HINWEIS_TAG: Weitere Optionen zum Desktop sind erst nach einem Neustart verfügbar."
+      if [ $INSTALL_DESKTOP_ANSWER -eq 1 ];
+      then
+        e_and_l "$HALF_MINUS_LINE"
+        e_and_l " $HINWEIS_TAG: Weitere Optionen zum Desktop sind erst nach einem Neustart verfügbar."
+      fi
     else
       e_and_l " $HINWEIS_TAG: Es kann derzeit leider kein zusätzlicher Desktop installiert werden."
     fi
