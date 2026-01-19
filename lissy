@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 14.01.2026
-VERSION="5.6.7"
+# Letzte Änderung: 19.01.2026
+VERSION="5.7.0"
 
 ################################################################################
 #                                                                              #
@@ -4677,6 +4677,7 @@ function ready_for_action {
   if [[ $TOTAL_PACKS             -eq 0 &&
         $USE_ILIST_FILE          -eq 0 &&
         ${OPTION_FLAG[cleansys]} -eq 0 &&
+        ${OPTION_FLAG[desktop]}  -eq 0 &&
         ${OPTION_FLAG[dload]}    -eq 0 &&
         ${OPTION_FLAG[dsave]}    -eq 0 &&
         ${OPTION_FLAG[extras]}   -eq 0 &&
@@ -6235,7 +6236,7 @@ NA_TAG="$ERROR_TAG - $NA_TXT"
 USER_CHOICE_YES="OK, Du hast es so gewollt ..."
 USER_CHOICE_NO="Sicherheit geht vor!"
 REBOOT_MSG=" $HINWEIS_TAG: Änderungen werden erst nach Neustart des Systems wirksam."
-NO_DESKTOP_INFO=" $HINWEIS_TAG: Es wurde kein geeignetes Desktop gefunden. Folgende Komponenten"$'\n'
+NO_DESKTOP_INFO=" $HINWEIS_TAG: Lissy wurde nicht aus einem Desktop gestartet. Folgende Komponenten"$'\n'
 NO_DESKTOP_INFO+=" werden daher übersprungen und nicht zur Installation/Konfiguration angeboten:"
 
 #===============================================================================
@@ -6261,11 +6262,20 @@ else
   USER_HOME_DIR="/home/$USER_USERNAME"
   DOWNLOAD_DIR="$USER_HOME_DIR/Downloads/$SCRIPT_NAME"
 fi
+
 # ------------------------------------------------
 # Ordner für Konfigurationsdateien dieses Skripts
 # ------------------------------------------------
 USER_CONFIG_DIR="$USER_HOME_DIR/.config"
-if [ ! -d "$USER_CONFIG_DIR" ]; then USER_CONFIG_DIR="$USER_HOME_DIR"; fi
+if [ ! -d "$USER_CONFIG_DIR" ];
+then
+  mkdir -p "$USER_CONFIG_DIR" &>/dev/null
+  if [ $? -eq 0 ];
+  then
+    chown -R "$USER_USERNAME:$USER_USERNAME" "$USER_CONFIG_DIR" &>/dev/null
+    chmod -R 0755 "$USER_CONFIG_DIR" &>/dev/null
+  fi
+fi
 SCRIPT_CONFIG_DIR="$USER_CONFIG_DIR/$SCRIPT_NAME"
 if [ ! -d "$SCRIPT_CONFIG_DIR" ];
 then
@@ -6888,6 +6898,9 @@ then
     DESKTOP_INSTALLED=0
   fi
 
+  TASKSEL_AVAILABLE=$(apt list "tasksel" -a 2>/dev/null | grep -i -E "tasksel" | grep -i -v -E "[0-9]snap" | grep -i -c -E "$ARCHITECTURE_ALL")
+  MATE_DESKTOP_AVAILABLE=$(apt list "mate-desktop-environment" -a 2>/dev/null | grep -i -E "mate-desktop-environment" | grep -i -v -E "[0-9]snap" | grep -i -c -E "$ARCHITECTURE_ALL")
+
   DESKTOP_ENVIRONMENT=""
   WINDOW_MANAGER=""
   WINDOW_THEME=""
@@ -7136,7 +7149,7 @@ declare -A OPTION_MENU # Index des Menüpunktes, in dem die Option erscheint
 
 OPTION_LIST=()
 OPTION_LIST+=(extends addflat addsnap external prioflat priosnap skipsims esamesrc foreign force status listonly addstart csubdirs) # Menu 2
-OPTION_LIST+=(exupdate extras kuplock kunlock setutc optimize snapcont snapkill snapstop revive repair cleansys personal sysbench) # Menu 4
+OPTION_LIST+=(exupdate desktop extras kuplock kunlock setutc optimize snapcont snapkill snapstop revive repair cleansys personal sysbench) # Menu 4
 OPTION_LIST+=(noupdate norepo autoyorn notoall skipmesg exupdall infoonly noinfo log logfull nocolor saveconf reset cleantmp) # Menu 5
 OPTION_LIST+=(dsave dload quiet instonly instlist remove) # Im Menü nicht angezeigt aber zu initialisieren
 
@@ -7147,12 +7160,13 @@ OPTION_TEXT[autoyorn]="Fragen automatisch gemäß letztem Durchlauf beantworten"
 OPTION_TEXT[cleansys]="Bereinigung von veralteten und verwaisten Daten"
 OPTION_TEXT[cleantmp]="Alle temporären Dateien bei Programmende löschen"
 OPTION_TEXT[csubdirs]="Starter für Spiele in Unterordnern kategorisieren"
+OPTION_TEXT[desktop]="Grafische Benutzeroberfläche (Desktop) installieren"
 OPTION_TEXT[dload]="Gespeicherte Desktop-Einstellungen laden (dconf)"
 OPTION_TEXT[dsave]="Aktuelle Desktop-Einstellungen speichern (dconf)"
 OPTION_TEXT[esamesrc]="Erweiterungs-Pakete nur aus gleicher Quelle installieren"
 OPTION_TEXT[extends]="Repository um individuelle Pakete und PPAs erweitern"
 OPTION_TEXT[external]="Programme zum Download aus externen Quellen hinzufügen"
-OPTION_TEXT[extras]="Extras (Treiber und zus. Systemkomponenten) installieren"
+OPTION_TEXT[extras]="Extras (zus. Systemkomponenten und Treiber) installieren"
 OPTION_TEXT[exupdate]="Programmpakete aus externen Quellen aktualisieren"
 OPTION_TEXT[exupdall]="Updates für externe Pakete auch aus anderen Quellen"
 OPTION_TEXT[force]="Ja/Nein-Abfrage vor jeder Installation überspringen"
@@ -7215,6 +7229,15 @@ OPTION_MENU[status]=2
 OPTION_MENU[remove]=3 # Wird nicht tatsächlich verwendet, Prüfung erfolgt auf REMOVE_PKG_NAME
 
 OPTION_MENU[cleansys]=4
+# Die Option Desktop nur auswählbar machen, wenn tasksel zur Verfügung steht,
+# oder der MATE-Desktop noch nicht installiert ist, aber zur Verfügung steht
+if [ $TASKSEL_AVAILABLE -gt 0 ] ||
+   [[ "$DESKTOP_ENVIRONMENT" != "MATE" && $MATE_DESKTOP_AVAILABLE -gt 0 ]];
+then
+  OPTION_MENU[desktop]=4
+else
+  OPTION_MENU[desktop]=0
+fi
 OPTION_MENU[dload]=0 # Derzeit nicht im Menü angeboten
 OPTION_MENU[dsave]=0 # Derzeit nicht im Menü angeboten
 OPTION_MENU[extras]=4
@@ -10233,6 +10256,8 @@ then
   e_and_l ""
   e_and_l "  csubdirs  Starter für Spiele mit Unterordnern weiter kategorisieren."
   e_and_l ""
+  e_and_l "   desktop  Installiert eine grafische Benutzeroberfläche (Desktop)."
+  e_and_l ""
   # e_and_l "     dload  Stellt gespeicherte Desktop- und Anwendungs-Einstellungen"
   # e_and_l "            aus einer Sicherung wieder her (dconf)."
   # e_and_l ""
@@ -10717,6 +10742,7 @@ fi # Ende Neue Einstellungen speichern
 #===============================================================================
 if [ $TOTAL_PACKS -gt 0 ] ||
    [ $USE_ILIST_FILE -eq 1 ] ||
+   [ ${OPTION_FLAG[desktop]} -eq 1 ] ||
    [ ${OPTION_FLAG[extends]} -eq 1 ] ||
    [ ${OPTION_FLAG[external]} -eq 1 ] ||
    [ ${OPTION_FLAG[extras]} -eq 1 ] ||
@@ -11029,6 +11055,8 @@ then
   then
     if [ $TOTAL_PACKS -gt 0 ] ||
        [ $USE_ILIST_FILE -eq 1 ] ||
+       [ ${OPTION_FLAG[desktop]} -eq 1 ] ||
+       [ ${OPTION_FLAG[extras]} -eq 1 ] ||
        [ ${OPTION_FLAG[exupdate]} -eq 1 ] ||
        [ ${OPTION_FLAG[remove]} -eq 1 ] ||
        [ ${OPTION_FLAG[repair]} -eq 1 ];
@@ -12439,7 +12467,7 @@ then
         if [ -d "$SYS_V_DIR" ];
         then
           # ------------------
-          # Für jedes Desktop
+          # Für jeden Desktop
           # ------------------
           for asn in "${!ADDITIONAL_S_NAMES[@]}";
           do
@@ -12654,7 +12682,122 @@ then
 fi # Ende Zusammenfassung
 
 #===============================================================================
-# Installation weiterer System-Komponenten (Treiber und Extras)
+# Installation einer grafischen Benutzeroberfläche (Desktop)
+#===============================================================================
+if [ ${OPTION_FLAG[listonly]} -eq 0 ];
+then
+  if [ ${OPTION_FLAG[desktop]} -eq 1 ];
+  then
+    e_and_l "$FULL_LINE"
+    e_and_l " ${bold_blue}Grafische Benutzeroberfläche (Desktop)${colors_off}"
+    e_and_l "$FULL_LINE"
+    # --------------------------------------------------------------------------
+    # Desktop(s) installieren
+    # --------------------------------------------------------------------------
+    if [ $TASKSEL_AVAILABLE -gt 0 ] ||
+       [[ "$DESKTOP_ENVIRONMENT" != "MATE" && $MATE_DESKTOP_AVAILABLE -gt 0 ]];
+    then
+      if [ $TASKSEL_AVAILABLE -gt 0 ];
+      then
+        NEW_DESKTOP_TEXT=""
+        if [ "$DESKTOP_ENVIRONMENT" != "" ];
+        then
+          e_and_l " Der ${bold_green}$DESKTOP_ENVIRONMENT${colors_off}-Desktop scheint bereits in Verwendung zu sein."
+          NEW_DESKTOP_TEXT=" weiteren"
+        fi
+        ask_yes_or_no_plus "install_desktop" " Jetzt einen${bold_yellow}$NEW_DESKTOP_TEXT Desktop${colors_off} auswählen und installieren" "" "n"
+        if [ $? -eq 1 ];
+        then
+          DO_THE_TASKSEL=1
+          if [ $(LANG=C dpkg-query -W -f='${Status}' "tasksel" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+          then
+            e_and_l -n " Installiere tasksel ... "
+            apt install "tasksel" -y &>/dev/null
+            if [ $? -eq 0 ];
+            then
+              e_and_l "$OK_TAG"
+            else
+              e_and_l "$ERROR_TAG"
+              DO_THE_TASKSEL=0
+            fi
+          fi
+          if [ $DO_THE_TASKSEL -gt 0 ];
+          then
+            do_log " Rufe tasksel auf ..."
+            tasksel
+          fi
+        fi
+      else
+        ask_yes_or_no_plus "install_mate" " Soll jetzt der ${bold_yellow}MATE-Desktop${colors_off} installiert werden" "" "n"
+        if [ $? -eq 1 ];
+        then
+          if [ $(LANG=C dpkg-query -W -f='${Status}' "lightdm" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+          then
+            e_and_l " Installiere Display-Manager ${bold_yellow}lightdm${colors_off} ..."
+            apt install "lightdm" -y &>/dev/null
+          fi
+          if [ $(LANG=C dpkg-query -W -f='${Status}' "mate-desktop-environment" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+          then
+            e_and_l " Installiere das ${bold_yellow}MATE-Desktop-Environment${colors_off} ..."
+            apt install "mate-desktop-environment" -y &>/dev/null
+          fi
+        fi
+      fi
+      e_and_l "$HALF_MINUS_LINE"
+      e_and_l " $HINWEIS_TAG: Weitere Optionen zum Desktop sind erst nach einem Neustart verfügbar."
+    else
+      e_and_l " $HINWEIS_TAG: Es kann derzeit leider kein zusätzlicher Desktop installiert werden."
+    fi
+    # --------------------------------------------------------------------------
+    # Anmeldung über Desktop (GUI) oder Kommandozeile (CLI) einstellen
+    # --------------------------------------------------------------------------
+    declare -A DEFAULT_TARGET_VALUE
+    declare -A DEFAULT_TARGET_TEXT
+    DEFAULT_TARGET_VALUE[0]="multi-user"
+    DEFAULT_TARGET_VALUE[1]="graphical"
+    DEFAULT_TARGET_TEXT[0]="Kommandozeile (CLI)"
+    DEFAULT_TARGET_TEXT[1]="Desktop (GUI)"
+    if [ $(systemctl get-default 2>/dev/null | grep -c -i -E "graphical") -gt 0 ];
+    then
+      OLD_TARGET_IDX=1
+      NEW_TARGET_IDX=0
+    else
+      OLD_TARGET_IDX=0
+      NEW_TARGET_IDX=1
+    fi
+    e_and_l "$HALF_MINUS_LINE"
+    e_and_l " Die ${light_cyan}Anmeldung am System${colors_off} ist aktuell auf ${light_cyan}${DEFAULT_TARGET_TEXT[$OLD_TARGET_IDX]}${colors_off} eingestellt."
+    ask_yes_or_no_plus "change_login_mode" " Die Anmeldung ab jetzt auf ${bold_yellow}${DEFAULT_TARGET_TEXT[$NEW_TARGET_IDX]}${colors_off} umstellen" "" "n"
+    if [ $? -eq 1 ];
+    then
+      e_and_l -n " Stelle die Anmeldung am System auf ${bold_yellow}${DEFAULT_TARGET_TEXT[$NEW_TARGET_IDX]}${colors_off} um ... "
+      # -------------------------------------------------------------
+      # Bei Umstellung auf GUI zusätzlich gldriver-test installieren
+      # -------------------------------------------------------------
+      if [ $NEW_TARGET_IDX -eq 1 ];
+      then
+        if [ $(LANG=C dpkg-query -W -f='${Status}' "gldriver-test" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+        then
+          if [ $(apt list "gldriver-test" 2>/dev/null | grep -i -c -E "gldriver-test") -gt 0 ];
+          then
+            apt install "gldriver-test" -y &>/dev/null
+          fi
+        fi
+      fi
+      # -------------------------------------------------------------
+      systemctl set-default ${DEFAULT_TARGET_VALUE[$NEW_TARGET_IDX]} &>/dev/null
+      if [ $? -eq 0 ];
+      then
+        e_and_l "$OK_TAG"
+      else
+        e_and_l "$ERROR_TAG"
+      fi
+    fi
+  fi
+fi
+
+#===============================================================================
+# Installation zusätzlicher System-Komponenten (Treiber und Extras)
 #===============================================================================
 if [ ${OPTION_FLAG[listonly]} -eq 0 ];
 then
@@ -12665,7 +12808,7 @@ then
   then
 
     e_and_l "$FULL_LINE"
-    e_and_l " ${bold_blue}Treiber und weitere System-Komponenten${colors_off} ${dark_gray}[extras]${colors_off}"
+    e_and_l " ${bold_blue}Zusätzliche System-Komponenten und Treiber ${colors_off} ${dark_gray}[extras]${colors_off}"
     e_and_l "$FULL_LINE"
     e_and_l " ${bold_blue}Firmware und Geräte-Treiber${colors_off}"
     e_and_l "$HALF_LINE"
@@ -12740,60 +12883,61 @@ then
 
     # ==========================================================================
     # Zusätzliche Ubuntu-Geräte-Treiber suchen und installieren
+    # Wird ab Version 5.7.0 nicht mehr angeboten ...
     # ==========================================================================
-    ACTION_MESSAGE=" Zusätzliche ${light_cyan}Ubuntu-Geräte-Treiber${colors_off} suchen"
-    if [ $(apt list "ubuntu-drivers-common" 2>/dev/null | grep -i -c "ubuntu-drivers-common") -gt 0 ];
-    then
-      ask_yes_or_no_plus "ubuntu-drivers" "$ACTION_MESSAGE" "" "j"
-      if [ $? -eq 1 ];
-      then
-        e_and_l -n " Suche zusätzliche ${light_cyan}Geräte-Treiber${colors_off}, bitte warten ... "
-        INSTALL_RESULT=0
-        if [ $(LANG=C dpkg-query -W -f='${Status}' "ubuntu-drivers-common" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
-        then
-          apt install ubuntu-drivers-common -y &>"$LOG_TEMP"
-          INSTALL_RESULT=$?
-        fi
-        if [ $INSTALL_RESULT -eq 0 ];
-        then
-          THE_TEMP_FILE="$DOWNLOAD_DIR/missing-driver-list" # Nur zur Anzeige der Liste
-          MISSING_DRIVER_LIST=$(ubuntu-drivers list 2>/dev/null | grep -v "nvidia" | xargs 2>/dev/null)
-          NVIDIA_DRIVER_LIST=$(ubuntu-drivers list 2>/dev/null | grep -i -E "nvidia" | xargs 2>/dev/null)
-          if [ "$MISSING_DRIVER_LIST" != "" ];
-          then
-            e_and_l "${bold_green}ok, Treiber gefunden${colors_off}"
-            echo -e "$MISSING_DRIVER_LIST" > "$THE_TEMP_FILE" 2>/dev/null
-            e_and_l " $HINWEIS_TAG: Es wird empfohlen vorher eine Sicherung des System zu erstellen."
-            ask_yes_or_no_plus "ubuntu-drivers" " Zusätzliche ${light_cyan}Geräte-Treiber${colors_off} installieren" "$THE_TEMP_FILE" "j"
-            if [ $? -eq 1 ];
-            then
-              e_and_l " Installiere zusätzliche ${light_yellow}Geräte-Treiber${colors_off} ... "
-              ubuntu-drivers install | tee "$LOG_TEMP"
-              CHANGES_MADE=1
-              add_full_log
-              e_and_l ""
-            fi
-            remove_file "$THE_TEMP_FILE"
-          else
-            if [ "$NVIDIA_DRIVER_LIST" == "" ];
-            then
-              e_and_l "$NF_TAG"
-            else
-              e_and_l "$OK_TAG - siehe Hinweis"
-            fi
-          fi
-          if [ "$NVIDIA_DRIVER_LIST" != "" ];
-          then
-            e_and_l " $HINWEIS_TAG: Es stehen ${light_yellow}NVIDIA-Treiber${colors_off} zur Verfügung. Um die Stabilität dieses"
-            e_and_l " Systems nicht zu gefährden, wurden diese jedoch ${bold_white}nicht${colors_off} automatisch installiert."
-          fi
-        else
-          e_and_l "$ERROR_TAG $LINENO"
-        fi
-      fi
-    else
-      e_and_l "$(skip_text "$ACTION_MESSAGE  " "$NU_TXT")"
-    fi
+    # ACTION_MESSAGE=" Zusätzliche ${light_cyan}Ubuntu-Geräte-Treiber${colors_off} suchen"
+    # if [ $(apt list "ubuntu-drivers-common" 2>/dev/null | grep -i -c "ubuntu-drivers-common") -gt 0 ];
+    # then
+    #   ask_yes_or_no_plus "ubuntu-drivers" "$ACTION_MESSAGE" "" "j"
+    #   if [ $? -eq 1 ];
+    #   then
+    #     e_and_l -n " Suche zusätzliche ${light_cyan}Geräte-Treiber${colors_off}, bitte warten ... "
+    #     INSTALL_RESULT=0
+    #     if [ $(LANG=C dpkg-query -W -f='${Status}' "ubuntu-drivers-common" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+    #     then
+    #       apt install ubuntu-drivers-common -y &>"$LOG_TEMP"
+    #       INSTALL_RESULT=$?
+    #     fi
+    #     if [ $INSTALL_RESULT -eq 0 ];
+    #     then
+    #       THE_TEMP_FILE="$DOWNLOAD_DIR/missing-driver-list" # Nur zur Anzeige der Liste
+    #       MISSING_DRIVER_LIST=$(ubuntu-drivers list 2>/dev/null | grep -v "nvidia" | xargs 2>/dev/null)
+    #       NVIDIA_DRIVER_LIST=$(ubuntu-drivers list 2>/dev/null | grep -i -E "nvidia" | xargs 2>/dev/null)
+    #       if [ "$MISSING_DRIVER_LIST" != "" ];
+    #       then
+    #         e_and_l "${bold_green}ok, Treiber gefunden${colors_off}"
+    #         echo -e "$MISSING_DRIVER_LIST" > "$THE_TEMP_FILE" 2>/dev/null
+    #         e_and_l " $HINWEIS_TAG: Es wird empfohlen vorher eine Sicherung des System zu erstellen."
+    #         ask_yes_or_no_plus "ubuntu-drivers" " Zusätzliche ${light_cyan}Geräte-Treiber${colors_off} installieren" "$THE_TEMP_FILE" "j"
+    #         if [ $? -eq 1 ];
+    #         then
+    #           e_and_l " Installiere zusätzliche ${light_yellow}Geräte-Treiber${colors_off} ... "
+    #           ubuntu-drivers install | tee "$LOG_TEMP"
+    #           CHANGES_MADE=1
+    #           add_full_log
+    #           e_and_l ""
+    #         fi
+    #         remove_file "$THE_TEMP_FILE"
+    #       else
+    #         if [ "$NVIDIA_DRIVER_LIST" == "" ];
+    #         then
+    #           e_and_l "$NF_TAG"
+    #         else
+    #           e_and_l "$OK_TAG - siehe Hinweis"
+    #         fi
+    #       fi
+    #       if [ "$NVIDIA_DRIVER_LIST" != "" ];
+    #       then
+    #         e_and_l " $HINWEIS_TAG: Es stehen ${light_yellow}NVIDIA-Treiber${colors_off} zur Verfügung. Um die Stabilität dieses"
+    #         e_and_l " Systems nicht zu gefährden, wurden diese jedoch ${bold_white}nicht${colors_off} automatisch installiert."
+    #       fi
+    #     else
+    #       e_and_l "$ERROR_TAG $LINENO"
+    #     fi
+    #   fi
+    # else
+    #   e_and_l "$(skip_text "$ACTION_MESSAGE  " "$NU_TXT")"
+    # fi
 
     e_and_l "$HALF_LINE"
     e_and_l " ${bold_blue}Weitere System-Komponenten${colors_off}"
@@ -13638,7 +13782,7 @@ then
 
   fi # Ende [extras]
 
-fi # Ende weiterer System-Komponenten (Treiber und Extras) [extras]
+fi # Ende Zusätzliche System-Komponenten und Treiber [extras]
 
 #===============================================================================
 # Blockieren oder freigeben der Kernel-Updates
@@ -14981,7 +15125,7 @@ then
       SECURE_VIDEO_PART="video=HDMI-A-1:1024x768@60D"
       if [ $(grep -i -c -E "$SECURE_VIDEO_PART" "$PI_CMD_FILE" 2>/dev/null) -eq 0 ];
       then
-        ask_yes_or_no_plus "" " Sichere ${light_cyan}Auflösung für Boot-Screen${colors_off} einstellen" "" "n"
+        ask_yes_or_no_plus "" " Sichere ${light_cyan}Auflösung für Boot-Screen${colors_off} (1024x768) aktivieren" "" "n"
         if [ $? -eq 1 ];
         then
           e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
@@ -15008,7 +15152,20 @@ then
           fi
         fi
       else
-        e_and_l "$ACTION_MESSAGE ... $NC_TAG"
+        ask_yes_or_no_plus "" " Sichere ${light_cyan}Auflösung für Boot-Screen${colors_off} (1024x768) entfernen" "" "n"
+        if [ $? -eq 1 ];
+        then
+          e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
+          create_backup_file "$PI_CMD_FILE"
+          sed -i -E "s/\svideo\=HDMI\-A\-1\:1024x768\@60D/ /gi" "$PI_CMD_FILE" &>/dev/null
+          if [ $? -eq 0 ];
+          then
+            e_and_l "$OK_TAG"
+            CHANGES_MADE=1
+          else
+            e_and_l "$ERROR_TAG"
+          fi
+        fi
       fi
     else
       e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
@@ -19061,7 +19218,7 @@ then
      [ $REMOVE_KERNEL_IDX -gt 0 ];
   then
     e_and_l " Es wurden ${bold_yellow}$REMOVE_KERNEL_IDX${colors_off} Einträge von ${light_cyan}nicht verwendeten Kernel-Versionen${colors_off} gefunden."
-    e_and_l " Die aktuell verwendete Version ist: ${bold_white}$CURRENT_KERNEL_VERSION${colors_off}."
+    e_and_l " Die aktuell verwendete Version ist: ${bold_white}$CURRENT_KERNEL_VERSION${colors_off}"
     e_and_l " Was soll ich tun?"
     e_and_l " [${bold_yellow}0${colors_off}] Schritt überspringen, nichts löschen und Liste als Datei speichern"
     e_and_l " [${bold_yellow}1${colors_off}] Jede Komponente einzeln jeweils mit Abfrage löschen"
@@ -19158,14 +19315,22 @@ then
         if [ $kernel_changed -gt 0 ];
         then
           e_and_l " Es wurden ${light_yellow}$kernel_changed${colors_off} Einträge gelöscht."
-          ask_yes_or_no_plus "" " Sollen ${light_cyan}initramfs${colors_off} und ${light_cyan}GRUB-Loader${colors_off} erneuert werden" "" "j"
+          if update-grub --help &>/dev/null;
+          then
+            INIT_GRUB_QUESTION_1="Sollen ${light_cyan}initramfs${colors_off} und ${light_cyan}GRUB-Loader${colors_off}"
+            INIT_GRUB_QUESTION_2=" und ${bold_white}GRUB-Loader${colors_off}"
+          else
+            INIT_GRUB_QUESTION_1="Soll das ${light_cyan}initramfs${colors_off}"
+            INIT_GRUB_QUESTION_2=""
+          fi
+          ask_yes_or_no_plus "" " $INIT_GRUB_QUESTION_1 erneuert werden" "" "j"
           if [ $? -eq 1 ];
           then
             e_and_l " $ACHTUNG_TAG: Dadurch werden Dateien im Boot-Bereich des Systems verändert, was"
             e_and_l " dazu führen kann, dass sich das System nicht mehr starten lässt, bzw. einzelne"
             e_and_l " Dateien nachträglch manuell angepasst werden müssen. Mache daher nur weiter,"
             e_and_l " wenn Du Dich gut auskennst und diese Anpassungen durchführen kannst!"
-            ask_yes_or_no_plus "" " Jetzt wirklich ${bold_white}initramfs${colors_off} und ${bold_white}GRUB-Loader${colors_off} erneuern" "" ""
+            ask_yes_or_no_plus "" " Jetzt wirklich ${bold_white}initramfs${colors_off}$INIT_GRUB_QUESTION_2 erneuern" "" ""
             if [ $? -eq 1 ];
             then
               # ---------------------------------------------------------------
@@ -20833,7 +20998,7 @@ else
 fi
 if [ $anzahl_hinweise -gt 0 ]; then e_and_l "$HALF_LINE"; fi
 echo -e " Aufruf per Kommandozeile:"
-echo -e " ${light_yellow} ${0} $COMMAND_LINE_STRING ${colors_off}"
+echo -e "${light_yellow} ${0} $COMMAND_LINE_STRING ${colors_off}"
 
 show_full_bg_line
 e_and_l ""
