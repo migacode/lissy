@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 19.01.2026
-VERSION="5.7.0"
+# Letzte Änderung: 21.01.2026
+VERSION="5.7.1"
 
 ################################################################################
 #                                                                              #
@@ -7129,12 +7129,12 @@ KATEGORIE_TEXT[z]="Zubehör (Datei-Manager, Packer und diverse Desktop-Tools)"
 # Status des Kernel-Lockings ermitteln
 # ==============================================================================
 IFS=$'\n'
-KERNEL_PACKS=($(apt list "linux-*" 2>/dev/null | grep -i -E "^linux\-(generic|headers|image|signed)" | grep -i -E "nstall" | cut -d'/' -f1))
+KERNEL_PACKS=($(apt list -a "linux-*" 2>/dev/null | grep -i -E "^linux\-(generic|headers|image|signed)" | grep -i -E "nstall" | cut -d'/' -f1))
 IFS=' '
 KERNEL_IS_LOCKED=0
 for kp in "${KERNEL_PACKS[@]}";
 do
-  if [ $(apt-mark showhold 2>/dev/null | grep -c -i -E "$kp") -gt 0 ];
+  if [ $(apt-mark showhold 2>/dev/null | grep -c -i -E "$kp.*") -gt 0 ];
   then
     ((KERNEL_IS_LOCKED+=1))
   fi
