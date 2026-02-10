@@ -6875,7 +6875,7 @@ then
     for desktop_name in ${DESKTOP_NAMES[@]};
     do
       DESKTOP_ENTRIES=$(ps -def | \
-                        sed -E "s/gnome\-(keyring|session)//gi" | \
+                        sed -E "s/gnome\-(keyring|session|software|terminal)//gi" | \
                         sed -E "s/\s$desktop_name$//gi" | \
                         sed -E "s/sed\s\-E.*//gi" | \
                         grep -i -c -E "\/\b$desktop_name")
