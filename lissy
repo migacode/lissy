@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 09.02.2026
-VERSION="5.7.2"
+# Letzte Änderung: 10.02.2026
+VERSION="5.7.3"
 
 ################################################################################
 #                                                                              #
@@ -13116,7 +13116,7 @@ then
       # ========================================================================
       # Themen Ambiant und Radiant installieren
       # ========================================================================
-      ACTION_MESSAGE=" Themen ${light_cyan}Ambiant und Radiant${colors_off} installieren"
+      ACTION_MESSAGE=" Desktop-Themen ${light_cyan}Amb- & Radiant${colors_off} installieren"
       if [ "$DESKTOP_ENVIRONMENT" == "MATE" ];
       then
         THEME_TARGET_HOME="/usr/share"
@@ -13142,7 +13142,7 @@ then
           ask_yes_or_no_plus "ambiant_and_radiant" "$ACTION_MESSAGE" "" "n"
           if [ $? -eq 1 ];
           then
-            e_and_l " Installiere Themen ${light_yellow}Ambiant und Radiant${colors_off}:"
+            e_and_l " Installiere Desktop-Themen ${light_yellow}Ambiant und Radiant${colors_off}:"
             e_and_l -n " - Extrahiere Master-Archiv, bitte warten   ... "
             DOWNLOAD_FILE_URL="$RESSOURCE_SERVER_DIR/Ambiant-MATE-master.zip"
             DOWNLOAD_FILE_NAME="${DOWNLOAD_FILE_URL##*/}"
@@ -13208,10 +13208,40 @@ then
             e_and_l "$HALF_MINUS_LINE"
           fi
         else
-          e_and_l "$ACTION_MESSAGE    ... $NC_TAG"
+          e_and_l "$ACTION_MESSAGE ... $NC_TAG"
         fi
       else # kein MATE
-        e_and_l "$(skip_text "$ACTION_MESSAGE   " "$NM_TXT")"
+        e_and_l "$(skip_text "$ACTION_MESSAGE" "$NM_TXT")"
+      fi
+
+      # ========================================================================
+      # Desktop-Themen MATE (Official) installieren
+      # ========================================================================
+      ACTION_MESSAGE=" Desktop-Themen ${light_cyan}Official MATE${colors_off} installieren"
+      if [ $(apt list "mate-themes" 2>/dev/null | grep -i -c "mate-themes") -gt 0 ];
+      then
+        if [ $(LANG=C dpkg-query -W -f='${Status}' "mate-themes" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+        then
+          ask_yes_or_no_plus "mate-themes" "$ACTION_MESSAGE" "" "n"
+          if [ $? -eq 1 ];
+          then
+            e_and_l -n " Installiere Desktop-Themen ${light_yellow}Official MATE${colors_off}   ... "
+            apt install "mate-themes" -y &>"$LOG_TEMP"
+            if [ $? -eq 0 ];
+            then
+              e_and_l "$OK_TAG"
+              CHANGES_MADE=1
+            else
+              e_and_l "$ERROR_TAG"
+            fi
+            add_full_log
+            e_and_l "$HALF_MINUS_LINE"
+          fi
+        else
+          e_and_l "$ACTION_MESSAGE  ... $NC_TAG"
+        fi
+      else
+        e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
       fi
 
       # ========================================================================
