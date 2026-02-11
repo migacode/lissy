@@ -10223,6 +10223,7 @@ then
   e_and_l "  exupdate  Aktualisiert bestimmte Programmpakete, sofern für diese"
   e_and_l "            eine neuere Version aus einer externen Quelle existiert,"
   e_and_l "            und diese nicht als Flatpak oder Snap installiert sind."
+  e_and_l "            Aktiviert automatisch die Option external."
   e_and_l ""
   e_and_l "  exupdall  Sucht in Verbindung mit der Option exupdate trotzdem auch"
   e_and_l "            nach Aktualisierungen für bestimmte Programmpakete, wenn"
@@ -11597,6 +11598,8 @@ then
   # Relevante Einstellungen des Benutzers zum Skript-Ablauf sichern und für
   # die Dauer der Update-Routine auf dazu erforderliche Werte setzen
   # ----------------------------------------------------------------------------
+  PRESERVED_EXTERNAL_FLAG=${OPTION_FLAG[external]}
+  OPTION_FLAG[external]=1
   PRESERVED_FORCE_FLAG=${OPTION_FLAG[force]}
   OPTION_FLAG[force]=0
   PRESERVED_QUIET_FLAG=${OPTION_FLAG[quiet]}
@@ -11909,6 +11912,7 @@ then
   # ----------------------------------------------------------------------------
   # Einstellungen des Benutzers zu weiterem Skript-Ablauf wieder herstellen
   # ----------------------------------------------------------------------------
+  OPTION_FLAG[external]=$PRESERVED_EXTERNAL_FLAG
   OPTION_FLAG[force]=$PRESERVED_FORCE_FLAG
   OPTION_FLAG[quiet]=$PRESERVED_QUIET_FLAG
   OPTION_FLAG[status]=$PRESERVED_STATUS_FLAG
