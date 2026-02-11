@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 10.02.2026
-VERSION="5.7.3"
+# Letzte Änderung: 11.02.2026
+VERSION="5.7.5"
 
 ################################################################################
 #                                                                              #
@@ -3430,6 +3430,13 @@ function install_pkg {
           AVAIL_TEXT="nur verfügbar für ${bold_magenta}$OTHER_ARCH_TEXT${colors_off}"
         else
           AVAIL_TEXT="$NA_TXT"
+          if [ ${OPTION_FLAG[extends]}  -eq 0 ] ||
+             [ ${OPTION_FLAG[external]} -eq 0 ] ||
+             [ ${OPTION_FLAG[addflat]}  -eq 0 ] ||
+             [ ${OPTION_FLAG[addsnap]}  -eq 0 ];
+          then
+            AVAIL_TEXT+=" (andere Quelle?)"
+          fi
         fi
         e_and_l " ${light_red}$PAKET${colors_off} ist $AVAIL_TEXT"
         # --------------------------------------------------------------
@@ -15256,8 +15263,9 @@ then
 
     e_and_l "$NO_DESKTOP_INFO"
     e_and_l -n "${dark_gray}"
-    e_and_l " - Liste der Benutzer anzeigen"
     e_and_l " - Deaktivierung der automatischen Anmeldung"
+    e_and_l " - Bei Anmeldung Liste der Benutzer anzeigen"
+    e_and_l " - Aktuellen Benutzer als Vorauswahl eintragen"
     e_and_l " - Deaktivierung der Anmeldung mit Gastzugang"
     e_and_l " - Automatisch Nummernblock einschalten"
     e_and_l " - Hintergrundbild des Anmeldebildschirms"
@@ -15315,108 +15323,11 @@ EOF
   fi
 
     # ==========================================================================
-    # Bei Anmeldung Liste der Benutzer anzeigen
-    # ==========================================================================
-    ACTION_MESSAGE=" Bei Anmeldung ${light_cyan}Liste der Benutzer${colors_off} anzeigen"
-    if [ -s "$LDM_CONF_FILE" ] ||
-      [ -s "$GDM_DCONF_FILE" ];
-    then
-      if [ "$DESKTOP_ENVIRONMENT" != "labwc" ];
-      then
-        declare -A SHOW_USER_CFILE_LIST
-        declare -A SHOW_USER_IS_OK_LIST
-        declare -A SHOW_USER_WRONG_LIST
-        SHOW_USER_CFILE_LIST[0]="$LDM_CONF_FILE"
-        SHOW_USER_IS_OK_LIST[0]="greeter-hide-users=false"
-        SHOW_USER_WRONG_LIST[0]="^\s*#*\s*greeter-hide-users\s*=\s*(true|false)*$"
-        SHOW_USER_CFILE_LIST[1]="$GDM_DCONF_FILE"
-        SHOW_USER_IS_OK_LIST[1]="disable-user-list=false"
-        SHOW_USER_WRONG_LIST[1]="^\s*#*\s*disable-user-list\s*=\s*(true|false)*$"
-        # ----------------------------------------------------------------------
-        # Prüfen, welche Eintragungen es zur Anzeige der Benutzerliste gibt
-        # ----------------------------------------------------------------------
-        IS_OK_USER_LIST_FOUND=0
-        TOTAL_USER_LIST_FOUND=0
-        for ((i = 0; i < ${#SHOW_USER_CFILE_LIST[@]}; i++));
-        do
-          SHOW_USER_CFILE=${SHOW_USER_CFILE_LIST[$i]}
-          SHOW_USER_IS_OK=${SHOW_USER_IS_OK_LIST[$i]}
-          SHOW_USER_WRONG=${SHOW_USER_WRONG_LIST[$i]}
-          if [ -s "$SHOW_USER_CFILE" ];
-          then
-            FOUND=$(grep -c -i -E "$SHOW_USER_IS_OK" "$SHOW_USER_CFILE")
-            ((IS_OK_USER_LIST_FOUND+=$FOUND))
-            FOUND=$(grep -c -i -E "$SHOW_USER_WRONG" "$SHOW_USER_CFILE")
-            ((TOTAL_USER_LIST_FOUND+=$FOUND))
-          fi
-        done
-        # ----------------------------------------------------------------------
-        # Falls erforderlich Änderungen durchführen
-        # ----------------------------------------------------------------------
-        if [ $TOTAL_USER_LIST_FOUND -gt 0 ];
-        then
-          if [ $IS_OK_USER_LIST_FOUND -ne $TOTAL_USER_LIST_FOUND ];
-          then
-            ask_yes_or_no_plus "login_user_list" "$ACTION_MESSAGE" "" "n"
-            if [ $? -eq 1 ];
-            then
-              e_and_l -n "${ACTION_MESSAGE//96m/93m}  ... "
-              ENTRIES_CHANGED=0
-              for ((i = 0; i < ${#SHOW_USER_CFILE_LIST[@]}; i++));
-              do
-                SHOW_USER_CFILE=${SHOW_USER_CFILE_LIST[$i]}
-                SHOW_USER_IS_OK=${SHOW_USER_IS_OK_LIST[$i]}
-                SHOW_USER_WRONG=${SHOW_USER_WRONG_LIST[$i]}
-                if [ -s "$SHOW_USER_CFILE" ];
-                then
-                  create_backup_file "$SHOW_USER_CFILE"
-                  # ---------------------------------------
-                  # 1. ALLE betroffenen Einträge maskieren
-                  # ---------------------------------------
-                  sed -i -E "s/$SHOW_USER_WRONG/THIS_IS_A_LISSY_LINE_TO_CHANGE/gi" "$SHOW_USER_CFILE" 2>/dev/null
-                  # --------------------------------------------
-                  # 2. Nur den ersten maskierten Eintrag ändern
-                  # --------------------------------------------
-                  sed -i -z -E "s/THIS_IS_A_LISSY_LINE_TO_CHANGE/$SHOW_USER_IS_OK/" "$SHOW_USER_CFILE" 2>/dev/null
-                  # -------------------------------------------------
-                  # 3. Alle verbliebenen maskierten Einträge löschen
-                  # -------------------------------------------------
-                  sed -i -E "s/THIS_IS_A_LISSY_LINE_TO_CHANGE//g" "$SHOW_USER_CFILE" 2>/dev/null
-                  if [ $? -eq 0 ];
-                  then
-                    ((ENTRIES_CHANGED+=1))
-                    remove_double_empty_lines "$SHOW_USER_CFILE"
-                  fi
-                fi
-              done
-              if [ $ENTRIES_CHANGED -gt 0 ];
-              then
-                e_and_l "$OK_TAG"
-                CHANGES_MADE=1
-              else
-                e_and_l "$ERROR_TAG"
-              fi
-              e_and_l "$HALF_MINUS_LINE"
-            fi
-          else
-            e_and_l "$ACTION_MESSAGE  ... $NC_TAG"
-          fi
-        else
-          e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
-        fi
-      else
-        e_and_l "$(skip_text "$ACTION_MESSAGE " "$NAPIOSDESK_TXT")"
-      fi
-    else
-      e_and_l "$(skip_text "$ACTION_MESSAGE " "nur LDM und GDM")"
-    fi
-
-    # ==========================================================================
-    # Automatische Anmeldung deaktivieren
+    # Deaktivierung der automatischen Anmeldung
     # ==========================================================================
     ACTION_MESSAGE=" Deaktivierung der ${light_cyan}automatischen Anmeldung${colors_off} "
     if [ -s "$LDM_CONF_FILE" ] ||
-      [ -s "$GDM_CCONF_FILE" ];
+       [ -s "$GDM_CCONF_FILE" ];
     then
       if [ "$DESKTOP_ENVIRONMENT" != "labwc" ];
       then
@@ -15515,6 +15426,149 @@ EOF
       fi
     else
       e_and_l "$(skip_text "$ACTION_MESSAGE" "nur LDM und GDM")"
+    fi
+
+    # ==========================================================================
+    # Bei Anmeldung Liste der Benutzer anzeigen
+    # ==========================================================================
+    ACTION_MESSAGE=" Bei Anmeldung ${light_cyan}Liste der Benutzer${colors_off} anzeigen"
+    if [ -s "$LDM_CONF_FILE" ] ||
+       [ -s "$GDM_DCONF_FILE" ];
+    then
+      if [ "$DESKTOP_ENVIRONMENT" != "labwc" ];
+      then
+        declare -A SHOW_USER_CFILE_LIST
+        declare -A SHOW_USER_IS_OK_LIST
+        declare -A SHOW_USER_WRONG_LIST
+        SHOW_USER_CFILE_LIST[0]="$LDM_CONF_FILE"
+        SHOW_USER_IS_OK_LIST[0]="greeter-hide-users=false"
+        SHOW_USER_WRONG_LIST[0]="^\s*#*\s*greeter-hide-users\s*=\s*(true|false)*$"
+        SHOW_USER_CFILE_LIST[1]="$GDM_DCONF_FILE"
+        SHOW_USER_IS_OK_LIST[1]="disable-user-list=false"
+        SHOW_USER_WRONG_LIST[1]="^\s*#*\s*disable-user-list\s*=\s*(true|false)*$"
+        # ----------------------------------------------------------------------
+        # Prüfen, welche Eintragungen es zur Anzeige der Benutzerliste gibt
+        # ----------------------------------------------------------------------
+        IS_OK_USER_LIST_FOUND=0
+        TOTAL_USER_LIST_FOUND=0
+        for ((i = 0; i < ${#SHOW_USER_CFILE_LIST[@]}; i++));
+        do
+          SHOW_USER_CFILE=${SHOW_USER_CFILE_LIST[$i]}
+          SHOW_USER_IS_OK=${SHOW_USER_IS_OK_LIST[$i]}
+          SHOW_USER_WRONG=${SHOW_USER_WRONG_LIST[$i]}
+          if [ -s "$SHOW_USER_CFILE" ];
+          then
+            FOUND=$(grep -c -i -E "$SHOW_USER_IS_OK" "$SHOW_USER_CFILE")
+            ((IS_OK_USER_LIST_FOUND+=$FOUND))
+            FOUND=$(grep -c -i -E "$SHOW_USER_WRONG" "$SHOW_USER_CFILE")
+            ((TOTAL_USER_LIST_FOUND+=$FOUND))
+          fi
+        done
+        # ----------------------------------------------------------------------
+        # Falls erforderlich Änderungen durchführen
+        # ----------------------------------------------------------------------
+        if [ $TOTAL_USER_LIST_FOUND -gt 0 ];
+        then
+          if [ $IS_OK_USER_LIST_FOUND -ne $TOTAL_USER_LIST_FOUND ];
+          then
+            ask_yes_or_no_plus "login_user_list" "$ACTION_MESSAGE" "" "n"
+            if [ $? -eq 1 ];
+            then
+              e_and_l -n "${ACTION_MESSAGE//96m/93m}  ... "
+              ENTRIES_CHANGED=0
+              for ((i = 0; i < ${#SHOW_USER_CFILE_LIST[@]}; i++));
+              do
+                SHOW_USER_CFILE=${SHOW_USER_CFILE_LIST[$i]}
+                SHOW_USER_IS_OK=${SHOW_USER_IS_OK_LIST[$i]}
+                SHOW_USER_WRONG=${SHOW_USER_WRONG_LIST[$i]}
+                if [ -s "$SHOW_USER_CFILE" ];
+                then
+                  create_backup_file "$SHOW_USER_CFILE"
+                  # ---------------------------------------
+                  # 1. ALLE betroffenen Einträge maskieren
+                  # ---------------------------------------
+                  sed -i -E "s/$SHOW_USER_WRONG/THIS_IS_A_LISSY_LINE_TO_CHANGE/gi" "$SHOW_USER_CFILE" 2>/dev/null
+                  # --------------------------------------------
+                  # 2. Nur den ersten maskierten Eintrag ändern
+                  # --------------------------------------------
+                  sed -i -z -E "s/THIS_IS_A_LISSY_LINE_TO_CHANGE/$SHOW_USER_IS_OK/" "$SHOW_USER_CFILE" 2>/dev/null
+                  # -------------------------------------------------
+                  # 3. Alle verbliebenen maskierten Einträge löschen
+                  # -------------------------------------------------
+                  sed -i -E "s/THIS_IS_A_LISSY_LINE_TO_CHANGE//g" "$SHOW_USER_CFILE" 2>/dev/null
+                  if [ $? -eq 0 ];
+                  then
+                    ((ENTRIES_CHANGED+=1))
+                    remove_double_empty_lines "$SHOW_USER_CFILE"
+                  fi
+                fi
+              done
+              if [ $ENTRIES_CHANGED -gt 0 ];
+              then
+                e_and_l "$OK_TAG"
+                CHANGES_MADE=1
+              else
+                e_and_l "$ERROR_TAG"
+              fi
+              e_and_l "$HALF_MINUS_LINE"
+            fi
+          else
+            e_and_l "$ACTION_MESSAGE  ... $NC_TAG"
+          fi
+        else
+          e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
+        fi
+      else
+        e_and_l "$(skip_text "$ACTION_MESSAGE " "$NAPIOSDESK_TXT")"
+      fi
+    else
+      e_and_l "$(skip_text "$ACTION_MESSAGE " "nur LDM und GDM")"
+    fi
+
+    # ==========================================================================
+    # Aktuellen Benutzer in Vorauswahl eintragen
+    # ==========================================================================
+    ACTION_MESSAGE=" Aktuellen ${light_cyan}Benutzer in Vorauswahl${colors_off} eintragen"
+    if [ -s "$LDM_CONF_FILE" ];
+    then
+      if [ "$DESKTOP_ENVIRONMENT" != "labwc" ];
+      then
+        if [ $(grep -i -c -E "^\s*greeter\-hide\-users\s*=\s*false" "$LDM_CONF_FILE" 2>/dev/null) -eq 0 ] ||
+           [ $(grep -i -c -E "^\s*user\-session\s*=\s*$USER_USERNAME" "$LDM_CONF_FILE" 2>/dev/null) -eq 0 ];
+        then
+          e_and_l "$HALF_MINUS_LINE"
+          ask_yes_or_no_plus "login_user_preset" " Soll ${bold_white}$USER_USERNAME${colors_off} als ${light_cyan}Vorauswahl${colors_off} eingetragen werden" "" "n"
+          if [ $? -eq 1 ];
+          then
+            e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
+            create_backup_file "$LDM_CONF_FILE"
+            sed -i -E "s/^\s*\#*\s*greeter\-hide\-users\s*=.*$/greeter-hide-users=false/gi" "$LDM_CONF_FILE"
+            sed -i -E "s/^\s*\#*\s*user\-session\s*=.*$/user-session=$USER_USERNAME/gi" "$LDM_CONF_FILE"
+            if [ $? -eq 0 ];
+            then
+              # ----------------------------------------------------------------
+              # Zur Sicherheit auch automatische Anmeldung als Gast deaktivieren
+              # ----------------------------------------------------------------
+              THE_BAD_LINE=$(grep -i -E "^\s*autologin-guest\s*=\s*true" "$LDM_CONF_FILE" 2>/dev/null)
+              if [ "$THE_BAD_LINE" != "" ];
+              then
+                sed -i -E "s/$THE_BAD_LINE/autologin-guest=false/gi" "$LDM_CONF_FILE"
+              fi
+              e_and_l "$OK_TAG"
+              CHANGES_MADE=1
+            else
+              e_and_l "$ERROR_TAG"
+            fi
+          fi
+          e_and_l "$HALF_MINUS_LINE"
+        else
+          e_and_l "$ACTION_MESSAGE ... $NC_TAG"
+        fi
+      else
+        e_and_l "$(skip_text "$ACTION_MESSAGE" "$NAPIOSDESK_TXT")"
+      fi
+    else
+      e_and_l "$(skip_text "$ACTION_MESSAGE" "nur mit LightDM")"
     fi
 
     # ==========================================================================
