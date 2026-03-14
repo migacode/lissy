@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 11.02.2026
-VERSION="5.7.5"
+# Letzte Änderung: 14.03.2026
+VERSION="5.7.7"
 
 ################################################################################
 #                                                                              #
@@ -3435,7 +3435,7 @@ function install_pkg {
              [ ${OPTION_FLAG[addflat]}  -eq 0 ] ||
              [ ${OPTION_FLAG[addsnap]}  -eq 0 ];
           then
-            AVAIL_TEXT+=" (andere Quelle?)"
+            AVAIL_TEXT+=" ${dark_gray}(andere Quelle?)${colors_off}"
           fi
         fi
         e_and_l " ${light_red}$PAKET${colors_off} ist $AVAIL_TEXT"
@@ -12831,6 +12831,35 @@ then
       fi
     else
       e_and_l "$(skip_text "$ACTION_MESSAGE " "$NA_TXT")"
+    fi
+
+    # ==========================================================================
+    # D-Bus-Proxy für IIO-Sensoren installieren
+    # ==========================================================================
+    ACTION_MESSAGE=" Installation der ${light_cyan}Treiber für IIO-Sensoren${colors_off} "
+    if [ $(LANG=C dpkg-query -W -f='${Status}' "iio-sensor-proxy" 2>/dev/null | grep -i -c -E "ok installed") -eq 0 ];
+    then
+      if [ $(apt list "iio-sensor-proxy" 2>/dev/null | grep -i -c -E "iio-sensor-proxy") -gt 0 ];
+      then
+        ask_yes_or_no_plus "iio-sensor-proxy" " ${bold_yellow}Treiber für IIO-Sensoren${colors_off} installieren" "" "j"
+        if [ $? -eq 1 ];
+        then
+          e_and_l -n " Installiere ${bold_yellow}D-Bus-Proxy für IIO-Sensoren${colors_off}   ... "
+          apt install iio-sensor-proxy -y &>"$LOG_TEMP"
+          if [ $? -eq 0 ];
+          then
+            e_and_l "$OK_TAG"
+            CHANGES_MADE=1
+          else
+            e_and_l "$ERROR_TAG"
+          fi
+          add_full_log
+        fi
+      else
+        e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
+      fi
+    else
+      e_and_l "$ACTION_MESSAGE ... $NC_TAG"
     fi
 
     # ==========================================================================
