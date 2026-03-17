@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 14.03.2026
-VERSION="5.7.7"
+# Letzte Änderung: 17.03.2026
+VERSION="5.7.8"
 
 ################################################################################
 #                                                                              #
@@ -6411,6 +6411,11 @@ export PATH="$PATH:/usr/sbin:/usr/bin:/sbin:/bin"
 ETC_FSTAB="/etc/fstab"
 
 #===============================================================================
+# Datei mit Benutzern auf PI-OS, die kein sudo-Passwort brauchen
+#===============================================================================
+PI_NOPASS_FILE="/etc/sudoers.d/010_pi-nopasswd"
+
+#===============================================================================
 # Dateien mit Konfigurationen des GRUB-Bootloaders
 #===============================================================================
 GRUB_DEFAULT_FILE="/etc/default/grub"    # Standards (Defaults)
@@ -10521,12 +10526,12 @@ then
               adduser "$NEW_USERNAME"
               if [ $? -eq 0 ];
               then
-                SUDOER_FILE="/etc/sudoers.d/010_$NEW_USERNAME-nopasswd"
-                echo "$NEW_USERNAME ALL=(ALL) PASSWD: ALL" >  "$SUDOER_FILE"
+                PI_SUDOER_FILE="/etc/sudoers.d/010_$NEW_USERNAME-nopasswd"
+                echo "$NEW_USERNAME ALL=(ALL) PASSWD: ALL" >  "$PI_SUDOER_FILE"
                 if [ $? -eq 0 ];
                 then
-                  chown root:root "$SUDOER_FILE" &>/dev/null
-                  chmod -R 0440 "$SUDOER_FILE" &>/dev/null
+                  chown root:root "$PI_SUDOER_FILE" &>/dev/null
+                  chmod -R 0440 "$PI_SUDOER_FILE" &>/dev/null
                   usermod -a -G adm,dialout,cdrom,sudo,audio,video,plugdev,games,users,input,netdev,gpio,i2c,spi,pi,lpadmin "$NEW_USERNAME"
                   if [ $? -eq 0 ];
                   then
@@ -10535,7 +10540,6 @@ then
                     e_and_l " angelegt."
                     # Für den Benutzer pi die Passwort-Eingabe für sudo-Aktivitäten reaktivieren
                     e_and_l -n " Reaktiviere jetzt das Passwort für sudo des Benutzers pi ... "
-                    PI_NOPASS_FILE="/etc/sudoers.d/010_pi-nopasswd"
                     create_backup_file "$PI_NOPASS_FILE"
                     echo -e "pi ALL=(ALL) PASSWD: ALL" > "$PI_NOPASS_FILE" 2>"$LOG_TEMP"
                     if [ $? -eq 0 ];
@@ -15285,6 +15289,41 @@ then
     fi
   else
     e_and_l "$(skip_text "$ACTION_MESSAGE " "$NFPI45_TXT")"
+  fi
+
+  # ============================================================================
+  # Aktivierung des Sudo-Passwortes
+  # ============================================================================
+  ACTION_MESSAGE=" Aktivierung des ${light_cyan}Sudo-Passwort${colors_off} für Benutzer"
+  if [ $IS_RASPBERRY_PI -gt 0 ];
+  then
+    if [ -s "$PI_NOPASS_FILE" ];
+    then
+      if [ $(cat "$PI_NOPASS_FILE" | grep -i -c -E "^\s*$USER_USERNAME.*NOPASSWD\:\s*ALL") -gt 0 ];
+      then
+        e_and_l " Das ${light_cyan}Sudo-Passwort${colors_off} für diesen Benutzer ist deaktiviert."
+        ask_yes_or_no_plus "" " Sudo-Passwort für ${bold_white}$USER_USERNAME${colors_off} aktivieren" "" "n"
+        if [ $? -eq 1 ];
+        then
+          e_and_l -n "${ACTION_MESSAGE//96m/93m} ... "
+          create_backup_file "$PI_NOPASS_FILE"
+          sed -i -E "s/^\s*($USER_USERNAME.*NOPASSWD\:\s*ALL)/# \1/gi" "$PI_NOPASS_FILE" 2>/dev/null
+          if [ $? -eq 0 ];
+          then
+            e_and_l "$OK_TAG"
+            e_and_l "$REBOOT_MSG"
+          else
+            e_and_l "$ERROR_TAG"
+          fi
+        fi
+      else
+        e_and_l "$ACTION_MESSAGE ... $NC_TAG"
+      fi
+    else
+      e_and_l "$(skip_text "$ACTION_MESSAGE" "$NA_TXT")"
+    fi
+  else
+    e_and_l "$(skip_text "$ACTION_MESSAGE" "$NFPI45_TXT")"
   fi
 
   e_and_l "$HALF_LINE"
