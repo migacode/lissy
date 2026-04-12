@@ -4633,6 +4633,7 @@ function probe_starter_name {
   # -------------------------------------------------------------
   THE_STARTER_NAME="${THE_STARTER_NAME/gnome-weather/weather}"
   THE_STARTER_NAME="${THE_STARTER_NAME/obs-studio/com.obsproject.studio}"
+  THE_STARTER_NAME="${THE_STARTER_NAME/python3-opensnitch-ui/opensnitch_ui}"
   THE_STARTER_NAME="${THE_STARTER_NAME/realvnc-vnc-server/realvnc-vncserver-service}"
   THE_STARTER_NAME="${THE_STARTER_NAME/realvnc-vnc-viewer/realvnc-vncviewer}"
   THE_STARTER_NAME="${THE_STARTER_NAME/steam-launcher/steam}"
@@ -7707,6 +7708,7 @@ then
 fi
 
 AUTO_ADD_PKGS[onedrive]="onedrivegui"
+AUTO_ADD_PKGS[opensnitch]="python3-opensnitch-ui"
 AUTO_ADD_PKGS[openvpn]="network-manager-openvpn network-manager-openvpn-gnome"
 AUTO_ADD_PKGS[redshift]="redshift-gtk"
 AUTO_ADD_PKGS[scribus]="scribus-template"
@@ -8118,6 +8120,20 @@ DEB_PKG_FILE[opensnitch_arm64]="$RESSOURCE_SERVER_DIR/deb/opensnitch_1.8.0-1_arm
 DEB_PKG_CSUM[opensnitch_arm64]="$RESSOURCE_SERVER_DIR/deb/opensnitch_1.8.0-1_arm64.deb.sha"
 DEB_PKG_FILE[opensnitch_armhf]="" # Wird nicht angeboten
 DEB_PKG_CSUM[opensnitch_armhf]="" # Wird nicht angeboten
+
+# Download von https://github.com/evilsocket/opensnitch
+DEB_PKG_NAME[python3-opensnitch-ui]="OpenSnitch Firewall GUI"
+DEB_PKG_VERS[python3-opensnitch-ui]="1.8.0"
+DEB_PKG_MESG[python3-opensnitch-ui]=""
+DEB_PKG_EVAL[python3-opensnitch-ui]=""
+DEB_PKG_FILE[python3-opensnitch-ui_amd64]="$RESSOURCE_SERVER_DIR/deb/python3-opensnitch-ui_1.8.0-1_all.deb"
+DEB_PKG_CSUM[python3-opensnitch-ui_amd64]="$RESSOURCE_SERVER_DIR/deb/python3-opensnitch-ui_1.8.0-1_all.deb.sha"
+DEB_PKG_FILE[python3-opensnitch-ui_i386]="" # Wird nicht angeboten
+DEB_PKG_CSUM[python3-opensnitch-ui_i386]="" # Wird nicht angeboten
+DEB_PKG_FILE[python3-opensnitch-ui_arm64]="$RESSOURCE_SERVER_DIR/deb/python3-opensnitch-ui_1.8.0-1_all.deb"
+DEB_PKG_CSUM[python3-opensnitch-ui_arm64]="$RESSOURCE_SERVER_DIR/deb/python3-opensnitch-ui_1.8.0-1_all.deb.sha"
+DEB_PKG_FILE[python3-opensnitch-ui_armhf]="" # Wird nicht angeboten
+DEB_PKG_CSUM[python3-opensnitch-ui_armhf]="" # Wird nicht angeboten
 
 # ------------------------------------------------------------------------------
 # Download von https://www.opera.com/de/download
