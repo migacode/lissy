@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 17.03.2026
-VERSION="5.7.8"
+# Letzte Änderung: 12.04.2026
+VERSION="5.7.10"
 
 ################################################################################
 #                                                                              #
@@ -7435,7 +7435,7 @@ KATEGORIE_PKGS[m]="asunder celluloid cheese easytag freetuxtv gnome-sound-record
 # ------------------------------------------------------------------------------
 # Netzwerkmanagement
 # ------------------------------------------------------------------------------
-KATEGORIE_PKGS[n]="gnome-nettool gufw ipscan linssid nmapsi4 packetsender putty wireshark zenmap"
+KATEGORIE_PKGS[n]="gnome-nettool gufw ipscan linssid nmapsi4 opensnitch packetsender putty wireshark zenmap"
 # ------------------------------------------------------------------------------
 # Private Netzwerkverbindungen
 # ------------------------------------------------------------------------------
@@ -7558,7 +7558,7 @@ if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORI
 # ------------------------------------------------------------------------------
 # Systemerweiterungen (CLI-Programme für Administratoren)
 # ------------------------------------------------------------------------------
-KATEGORIE_PKGS[xx]="alien apt-file apt-rdepends apt-show-versions arping arp-scan bash-completion bash-doc chntpw clonezilla cpu-checker debootstrap dpkg-repack efibootmgr elinks extundelete f3 flashrom gpart growisofs hdparm hexedit kpartx memtester menu msr-tools netcat-traditional nfacct nmap nvme-cli partclone partimage pdfcrack pdfresurrect ppa-purge rfkill strace stress stress-ng stressapptest sysbench sysfsutils sysstat tcpdump tcptrack testdisk udpcast xorriso xsltproc"
+KATEGORIE_PKGS[xx]="alien apt-file apt-rdepends apt-show-versions arping arp-scan bash-completion bash-doc chntpw clonezilla cpu-checker debootstrap dpkg-repack efibootmgr elinks extundelete f3 flashrom gpart growisofs hdparm hexedit iwatch kpartx memtester menu msr-tools netcat-traditional nfacct nmap nvme-cli partclone partimage pdfcrack pdfresurrect ppa-purge rfkill strace stress stress-ng stressapptest sysbench sysfsutils sysstat tcpdump tcptrack testdisk udpcast xorriso xsltproc"
 # ------------------------------------------------------------------------------
 # Zubehör
 # ------------------------------------------------------------------------------
@@ -8104,6 +8104,20 @@ DEB_PKG_CSUM[iptvnator_armhf]="" # NUR für 64-bit verfügbar
 # DEB_PKG_FILE[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_armhf.deb"
 # DEB_PKG_CSUM[nomachine_armhf]="$RESSOURCE_SERVER_DIR/deb/nomachine_8.14.2_1_armhf.deb.sha"
 # ------------------------------------------------------------------------------
+
+# Download von https://github.com/evilsocket/opensnitch
+DEB_PKG_NAME[opensnitch]="OpenSnitch"
+DEB_PKG_VERS[opensnitch]=""
+DEB_PKG_MESG[opensnitch]=""
+DEB_PKG_EVAL[opensnitch]=""
+DEB_PKG_FILE[opensnitch_amd64]="$RESSOURCE_SERVER_DIR/deb/opensnitch_1.8.0-1_amd64.deb"
+DEB_PKG_CSUM[opensnitch_amd64]="$RESSOURCE_SERVER_DIR/deb/opensnitch_1.8.0-1_amd64.deb.sha"
+DEB_PKG_FILE[opensnitch_i386]="" # Wird nicht angeboten
+DEB_PKG_CSUM[opensnitch_i386]="" # Wird nicht angeboten
+DEB_PKG_FILE[opensnitch_arm64]="$RESSOURCE_SERVER_DIR/deb/opensnitch_1.8.0-1_arm64.deb"
+DEB_PKG_CSUM[opensnitch_arm64]="$RESSOURCE_SERVER_DIR/deb/opensnitch_1.8.0-1_arm64.deb.sha"
+DEB_PKG_FILE[opensnitch_armhf]="" # Wird nicht angeboten
+DEB_PKG_CSUM[opensnitch_armhf]="" # Wird nicht angeboten
 
 # ------------------------------------------------------------------------------
 # Download von https://www.opera.com/de/download
