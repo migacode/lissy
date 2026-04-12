@@ -8106,8 +8106,8 @@ DEB_PKG_CSUM[iptvnator_armhf]="" # NUR für 64-bit verfügbar
 # ------------------------------------------------------------------------------
 
 # Download von https://github.com/evilsocket/opensnitch
-DEB_PKG_NAME[opensnitch]="OpenSnitch"
-DEB_PKG_VERS[opensnitch]=""
+DEB_PKG_NAME[opensnitch]="OpenSnitch Firewall"
+DEB_PKG_VERS[opensnitch]="1.8.0"
 DEB_PKG_MESG[opensnitch]=""
 DEB_PKG_EVAL[opensnitch]=""
 DEB_PKG_FILE[opensnitch_amd64]="$RESSOURCE_SERVER_DIR/deb/opensnitch_1.8.0-1_amd64.deb"
