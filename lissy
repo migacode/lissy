@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 12.04.2026
-VERSION="5.7.10"
+# Letzte Änderung: 30.04.2026
+VERSION="5.7.11"
 
 ################################################################################
 #                                                                              #
@@ -7422,7 +7422,7 @@ KATEGORIE_PKGS[fo]="forensics-full forensics-samples-all"
 # ------------------------------------------------------------------------------
 # Grafik
 # ------------------------------------------------------------------------------
-KATEGORIE_PKGS[g]="blender darktable digikam drawing eom fraqtive freecad geeqie gimp gpicview gpick gwenview imagemagick inkscape krita mandelbulber2 mtpaint pinta rawtherapee shotwell simple-scan xnview"
+KATEGORIE_PKGS[g]="blender darktable digikam drawing draw.io eom fraqtive freecad geeqie gimp gpicview gpick gwenview imagemagick inkscape krita mandelbulber2 mtpaint pinta rawtherapee shotwell simple-scan xnview"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[g]+=" pix xviewer"; fi
 # ------------------------------------------------------------------------------
 # Internet
@@ -8600,6 +8600,21 @@ WEB_PKG_FILE[czkawka_arm64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_10.0.0_
 WEB_PKG_CSUM[czkawka_arm64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_10.0.0_arm64.AppImage.sha"
 WEB_PKG_FILE[czkawka_armhf]="" # NICHT verfügbar
 WEB_PKG_CSUM[czkawka_armhf]="" # NICHT verfügbar
+
+# Download von https://github.com/jgraph/drawio-desktop/releases
+WEB_PKG_NAME[draw.io]="draw.io"
+WEB_PKG_CATY[draw.io]=""
+WEB_PKG_VERS[draw.io]="29.7.9"
+WEB_PKG_MESG[draw.io]=""
+WEB_PKG_EVAL[draw.io]=""
+WEB_PKG_FILE[draw.io_amd64]="$RESSOURCE_SERVER_DIR/web/drawio-x86_64-29.7.9.AppImage"
+WEB_PKG_CSUM[draw.io_amd64]="$RESSOURCE_SERVER_DIR/web/drawio-x86_64-29.7.9.AppImage.sha"
+ WEB_PKG_FILE[draw.io_i386]="" # NICHT verfügbar
+ WEB_PKG_CSUM[draw.io_i386]="" # NICHT verfügbar
+WEB_PKG_FILE[draw.io_arm64]="$RESSOURCE_SERVER_DIR/web/drawio-arm64-29.7.9.AppImage"
+WEB_PKG_CSUM[draw.io_arm64]="$RESSOURCE_SERVER_DIR/web/drawio-arm64-29.7.9.AppImage.sha"
+WEB_PKG_FILE[draw.io_armhf]="" # NICHT verfügbar
+WEB_PKG_CSUM[draw.io_armhf]="" # NICHT verfügbar
 
 # Download von https://freefilesync.org/download.php
 WEB_PKG_NAME[freefilesync]="FreeFileSync"
