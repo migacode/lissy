@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 30.04.2026
-VERSION="5.7.11"
+# Letzte Änderung: 30.08.2026
+VERSION="5.8.0"
 
 ################################################################################
 #                                                                              #
@@ -8664,6 +8664,21 @@ WEB_PKG_CSUM[fs-uae-launcher_arm64]="$RESSOURCE_SERVER_DIR/web/FS-UAE-Launcher_3
 WEB_PKG_FILE[fs-uae-launcher_armhf]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[fs-uae-launcher_armhf]="" # NICHT für ARM verfügbar
 
+# Download von https://keepassxc.org/download/#linux
+WEB_PKG_NAME[keepassxc]="KeePassXC"
+WEB_PKG_CATY[keepassxc]="System;Utility"
+WEB_PKG_VERS[keepassxc]="2.7.12"
+WEB_PKG_MESG[keepassxc]=""
+WEB_PKG_EVAL[keepassxc]=""
+WEB_PKG_FILE[keepassxc_amd64]="$RESSOURCE_SERVER_DIR/web/KeePassXC-2.7.12-x86_64.AppImage"
+WEB_PKG_CSUM[keepassxc_amd64]="$RESSOURCE_SERVER_DIR/web/KeePassXC-2.7.12-x86_64.AppImage.sha"
+ WEB_PKG_FILE[keepassxc_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
+ WEB_PKG_CSUM[keepassxc_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
+WEB_PKG_FILE[keepassxc_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[keepassxc_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_FILE[keepassxc_armhf]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[keepassxc_armhf]="" # NICHT für ARM verfügbar
+
 # Download von https://github.com/bpozdena/OneDriveGUI (https://github.com/abraunegg/onedrive)
 chk_min_apt_pkg_version "onedrive" "2.5"
 CHK_VERSION=$?
@@ -8721,15 +8736,15 @@ WEB_PKG_CSUM[openshot_armhf]="" # NICHT für ARM verfügbar
 # ACHTUNG: Auch als DEB eingetragen (s.o.)
 WEB_PKG_NAME[rpi-imager]="Raspberry Pi Imager"
 WEB_PKG_CATY[rpi-imager]="System;Utility"
-WEB_PKG_VERS[rpi-imager]="2.0.6"
+WEB_PKG_VERS[rpi-imager]="2.0.11.1"
 WEB_PKG_MESG[rpi-imager]=""
 WEB_PKG_EVAL[rpi-imager]=""
-WEB_PKG_FILE[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/web/Raspberry_Pi_Imager-v2.0.6-desktop-x86_64.AppImage"
-WEB_PKG_CSUM[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/web/Raspberry_Pi_Imager-v2.0.6-desktop-x86_64.AppImage.sha"
+WEB_PKG_FILE[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/web/Raspberry_Pi_Imager_2.0.11.1_amd64.AppImage"
+WEB_PKG_CSUM[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/web/Raspberry_Pi_Imager_2.0.11.1_amd64.AppImage.sha"
  WEB_PKG_FILE[rpi-imager_i386]="" # NUR für 64-bit verfügbar
  WEB_PKG_CSUM[rpi-imager_i386]="" # NUR für 64-bit verfügbar
-WEB_PKG_FILE[rpi-imager_arm64]="$RESSOURCE_SERVER_DIR/web/Raspberry_Pi_Imager-v2.0.6-desktop-aarch64.AppImage"
-WEB_PKG_CSUM[rpi-imager_arm64]="$RESSOURCE_SERVER_DIR/web/Raspberry_Pi_Imager-v2.0.6-desktop-aarch64.AppImage.sha"
+WEB_PKG_FILE[rpi-imager_arm64]="" # NICHT für ARM verfügbar
+WEB_PKG_CSUM[rpi-imager_arm64]="" # NICHT für ARM verfügbar
 WEB_PKG_FILE[rpi-imager_armhf]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[rpi-imager_armhf]="" # NICHT für ARM verfügbar
 
