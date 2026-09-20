@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 30.08.2026
-VERSION="5.8.0"
+# Letzte Änderung: 20.09.2026
+VERSION="5.8.1"
 
 ################################################################################
 #                                                                              #
@@ -7563,7 +7563,7 @@ KATEGORIE_PKGS[xx]="alien apt-file apt-rdepends apt-show-versions arping arp-sca
 # ------------------------------------------------------------------------------
 # Zubehör
 # ------------------------------------------------------------------------------
-KATEGORIE_PKGS[z]="balena-etcher barrier bitwarden clamav copyq doublecmd electrum engrampa file-roller freefilesync galculator gedit gnome-weather gucharmap kdeconnect keepassxc kfind klavaro ksnip ktouch magnus mousepad onboard plank pluma redshift rpi-imager unetbootin usb-creator-common veracrypt xournal"
+KATEGORIE_PKGS[z]="balena-etcher barrier bitwarden clamav copyq doublecmd electrum engrampa file-roller freefilesync galculator gedit gnome-weather gucharmap kdeconnect keepassxc kfind klavaro ksnip ktouch magnus mousepad onboard plank pluma redshift rpi-imager unetbootin usb-creator-common veracrypt xournal yubico-authenticator"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[z]+=" sticky xed"; fi
 
 # ------------------------------------------------------------------------------
@@ -8840,6 +8840,21 @@ WEB_PKG_CSUM[youplay_arm64]="" # NICHT für ARM verfügbar
 WEB_PKG_FILE[youplay_armhf]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[youplay_armhf]="" # NICHT für ARM verfügbar
 
+# Download von https://www.yubico.com/products/yubico-authenticator/
+WEB_PKG_NAME[yubico-authenticator]="Yubico Authenticator"
+WEB_PKG_CATY[yubico-authenticator]="System;Utility"
+WEB_PKG_VERS[yubico-authenticator]="7.4.1"
+WEB_PKG_MESG[yubico-authenticator]=""
+WEB_PKG_EVAL[yubico-authenticator]=""
+WEB_PKG_FILE[yubico-authenticator_amd64]="$RESSOURCE_SERVER_DIR/web/yubico-authenticator-7.4.1-linux.tar.gz"
+WEB_PKG_CSUM[yubico-authenticator_amd64]="$RESSOURCE_SERVER_DIR/web/yubico-authenticator-7.4.1-linux.tar.gz.sha"
+ WEB_PKG_FILE[yubico-authenticator_i386]="" # Für Linux nur als 64-bit verfügbar
+ WEB_PKG_CSUM[yubico-authenticator_i386]="" # Für Linux nur als 64-bit verfügbar
+WEB_PKG_FILE[yubico-authenticator_arm64]="" # Auf ARM nur für Android verfügbar
+WEB_PKG_CSUM[yubico-authenticator_arm64]="" # Auf ARM nur für Android verfügbar
+WEB_PKG_FILE[yubico-authenticator_armhf]="" # Auf ARM nur für Android verfügbar
+WEB_PKG_CSUM[yubico-authenticator_armhf]="" # Auf ARM nur für Android verfügbar
+
 #===============================================================================
 # Liste von Paketen aus externen Quellen (DEB und WEB), welche keinen eigenen
 # Eintrag im Repository haben und somit von apt nicht automatisch aktualisiert
@@ -8992,6 +9007,7 @@ POST_INST_CONF[virtualbox-7.1]="$RESSOURCE_SERVER_DIR/scripts/virtualbox-7.1_pos
 POST_INST_CONF[wine]="$RESSOURCE_SERVER_DIR/scripts/wine_post_inst"
 POST_INST_CONF[wine-installer]="$RESSOURCE_SERVER_DIR/scripts/wine_post_inst"
 POST_INST_CONF[wireguard]="$RESSOURCE_SERVER_DIR/scripts/wireguard_post_inst"
+POST_INST_CONF[yubico-authenticator]="$RESSOURCE_SERVER_DIR/scripts/yubico_authenticator_post_inst"
 
 #===============================================================================
 # Wenn zu Programmpaketen VOR deren Entfernung eine Konfiguration des Systems
