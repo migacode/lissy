@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 25.09.2026
-VERSION="5.8.2"
+# Letzte Änderung: 02.10.2026
+VERSION="5.8.4"
 
 ################################################################################
 #                                                                              #
@@ -7397,7 +7397,7 @@ fi
 # ------------------------------------------------------------------------------
 # Büro
 # ------------------------------------------------------------------------------
-KATEGORIE_PKGS[b]="bookletimposer calibre evolution libreoffice okular pdfarranger pdfchain pdfmod qpdfview scribus texstudio"
+KATEGORIE_PKGS[b]="bookletimposer calibre evolution libreoffice okular onlyoffice pdfarranger pdfchain pdfmod qpdfview scribus texstudio"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[b]+=" thingy xreader"; fi
 # ------------------------------------------------------------------------------
 # Cloud-Clients
@@ -7563,7 +7563,7 @@ KATEGORIE_PKGS[xx]="alien apt-file apt-rdepends apt-show-versions arping arp-sca
 # ------------------------------------------------------------------------------
 # Zubehör
 # ------------------------------------------------------------------------------
-KATEGORIE_PKGS[z]="balena-etcher barrier bitwarden clamav copyq doublecmd electrum engrampa file-roller freefilesync galculator gedit gnome-weather gucharmap kdeconnect keepassxc kfind klavaro ksnip ktouch localsend magnus mousepad onboard plank pluma redshift rpi-imager unetbootin usb-creator-common veracrypt xournal yubico-authenticator"
+KATEGORIE_PKGS[z]="ausweisapp2 balena-etcher barrier bitwarden clamav copyq doublecmd electrum engrampa file-roller freefilesync galculator gedit gnome-weather gucharmap kdeconnect keepassxc kfind klavaro ksnip ktouch localsend magnus mousepad onboard plank pluma redshift rpi-imager unetbootin usb-creator-common veracrypt xournal yubico-authenticator"
 if [ $(echo "$OPERATION_SYSTEM" | grep -i -c -E " mint ") -gt 0 ]; then KATEGORIE_PKGS[z]+=" sticky xed"; fi
 
 # ------------------------------------------------------------------------------
@@ -7849,7 +7849,8 @@ SIMILAR_PACK[k3b]="brasero"
 SIMILAR_PACK[kid3]="exfalso"
 SIMILAR_PACK[lbreakouthd]="lbreakout2"
 SIMILAR_PACK[libreoffice]="libreoffice-common"
-SIMILAR_PACK[libreoffice-common]="libreoffice"
+SIMILAR_PACK[libreoffice-common]="onlyoffice"
+SIMILAR_PACK[onlyoffice]="libreoffice"
 SIMILAR_PACK[magnus]="kmag"
 SIMILAR_PACK[microsoft-edge-stable]="microsoft-edge-dev"
 SIMILAR_PACK[neofetch]="neowofetch"
