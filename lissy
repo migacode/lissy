@@ -39,8 +39,8 @@
 #   über https://migano.de oder per E-Mail an kontakt@migano.de. Danke.        #
 #                                                                              #
 ################################################################################
-# Letzte Änderung: 02.10.2026
-VERSION="5.8.4"
+# Letzte Änderung: 03.10.2026
+VERSION="5.8.5"
 
 ################################################################################
 #                                                                              #
@@ -873,7 +873,10 @@ function check_url_file {
 function chk_min_apt_pkg_version {
   THE_TEST_MAIN_VERSION=$(echo ${2} | cut -d '.' -f 1 | xargs)
   THE_TEST_SUB_VERSION=$(echo ${2} | cut -d '.' -f 2 | xargs)
-  THE_TEST_VALUE=$(((${THE_TEST_MAIN_VERSION:0:2}*100)+${THE_TEST_SUB_VERSION:0:2}))
+  if [ "$THE_TEST_SUB_VERSION" == "" ]; then THE_TEST_SUB_VERSION="0"; fi
+  THE_TEST_TRD_VERSION=$(echo ${2} | cut -d '.' -f 3 | xargs)
+  if [ "$THE_TEST_TRD_VERSION" == "" ]; then THE_TEST_TRD_VERSION="0"; fi
+  THE_TEST_VALUE=$(((${THE_TEST_MAIN_VERSION:0:2}*10000)+(${THE_TEST_SUB_VERSION:0:2}*100)+${THE_TEST_TRD_VERSION:0:2}))
   # ---------------------------------
   # Erst installierte Version prüfen
   # ---------------------------------
@@ -889,7 +892,10 @@ function chk_min_apt_pkg_version {
   then
     THE_PKG_MAIN_VERSION=$(echo $THE_PKG_VERSION | cut -d '.' -f 1 | xargs)
     THE_PKG_SUB_VERSION=$(echo $THE_PKG_VERSION | cut -d '.' -f 2 | xargs)
-    THE_VERSION_VALUE=$(((${THE_PKG_MAIN_VERSION:0:2}*100)+${THE_PKG_SUB_VERSION:0:2}))
+    if [ "$THE_PKG_SUB_VERSION" == "" ]; then THE_PKG_SUB_VERSION="0"; fi
+    THE_PKG_TRD_VERSION=$(echo ${2} | cut -d '.' -f 3 | xargs)
+    if [ "$THE_PKG_TRD_VERSION" == "" ]; then THE_PKG_TRD_VERSION="0"; fi
+    THE_VERSION_VALUE=$(((${THE_PKG_MAIN_VERSION:0:2}*10000)+(${THE_PKG_SUB_VERSION:0:2}*100)+${THE_PKG_TRD_VERSION:0:2}))
     if [ $THE_VERSION_VALUE -lt $THE_TEST_VALUE ];
     then
       # ---------------------------------------------
@@ -7884,17 +7890,12 @@ SIMILAR_PACK[wine-installer]="wine"
 # die zwar nicht im Standard-Repository enthalten sind, aber durch Erweiterung
 # der Quell-Listen (/etc/apt/sources.list.d) mit apt installiert werden können.
 # Diese Pakete erscheinen danach auch mit apt list <PAKETNAME> als installiert.
+# ------------------------------------------------------------------------------
+# ACHTUNG: Diese Option wird für die jeweiligen Pakete sukzessive entfernt,
+# sobald diese permanent als AppImage oder Flatpak verfügbar sind.
 #===============================================================================
 declare -A ERW_AUTH_KEY # URLs der Authentifizierungs-Schlüssel
 declare -A ERW_REPO_TXT # Repository-Einträge
-
-# ------------------------------------------------------------------------------
-# Anydesk derzeit nicht auf diesem Weg anbieten, da dies leider zu
-# Signatur-Fehlern führen kann und das Paket dann nicht mehr updatebar ist
-# ------------------------------------------------------------------------------
-# ERW_AUTH_KEY[anydesk]="https://keys.anydesk.com/repos/DEB-GPG-KEY"
-# ERW_REPO_TXT[anydesk]="deb http://deb.anydesk.com/ all main"
-# ------------------------------------------------------------------------------
 
 if [ $(echo "$OS_V_CODENAME" | grep -i -c -E "noble") -gt 0 ];
 then
@@ -7902,50 +7903,14 @@ then
   ERW_REPO_TXT[boot-repair]="deb [signed-by=$APT_SOURCES_MAIN_DIR/trusted.gpg.d/boot-repair.gpg] https://ppa.launchpadcontent.net/yannubuntu/boot-repair/ubuntu noble main"
 fi
 
-# ------------------------------------------------------------------------------
-# Element(-desktop) derzeit nicht auf diesem Weg anbieten, da dies leider zu
-# Signatur-Fehlern führen kann und das Paket dann nicht mehr updatebar ist
-# ------------------------------------------------------------------------------
-# ERW_AUTH_KEY[element-desktop]="https://packages.element.io/debian/element-io-archive-keyring.gpg"
-# ERW_REPO_TXT[element-desktop]="deb [signed-by=/etc/apt/trusted.gpg.d/element-desktop.gpg] https://packages.element.io/debian/ default main"
-# ------------------------------------------------------------------------------
-
 ERW_AUTH_KEY[firefox]="https://packages.mozilla.org/apt/repo-signing-key.gpg"
 ERW_REPO_TXT[firefox]="deb [signed-by=$APT_SOURCES_MAIN_DIR/trusted.gpg.d/firefox.asc] https://packages.mozilla.org/apt mozilla main"
-
-ERW_AUTH_KEY[gerbera]="https://pkg.gerbera.io/public.asc"
-ERW_REPO_TXT[gerbera]="deb [signed-by=$APT_SOURCES_MAIN_DIR/trusted.gpg.d/gerbera.asc] https://pkg.gerbera.io/debian/ $OS_V_CODENAME main"
-
-# ------------------------------------------------------------------------------
-# Opera-Stable derzeit nicht auf diesem Weg anbieten, da dies leider zu
-# Signatur-Fehlern führen kann und das Paket dann nicht mehr updatebar ist
-# ------------------------------------------------------------------------------
-# ERW_AUTH_KEY[opera-stable]="https://deb.opera.com/archive.key"
-# ERW_REPO_TXT[opera-stable]="deb https://deb.opera.com/opera-stable/ stable non-free"
-# ------------------------------------------------------------------------------
 
 ERW_AUTH_KEY[microsoft-edge-stable]="https://packages.microsoft.com/keys/microsoft.asc"
 ERW_REPO_TXT[microsoft-edge-stable]="deb [arch=amd64] https://packages.microsoft.com/repos/edge/ stable main"
 
 ERW_AUTH_KEY[microsoft-edge-dev]="https://packages.microsoft.com/keys/microsoft.asc"
 ERW_REPO_TXT[microsoft-edge-dev]="deb [arch=amd64] https://packages.microsoft.com/repos/edge/ stable main"
-
-# ------------------------------------------------------------------------------
-# Steam-Launcher besser mit direkten Download (s.u. DEB) installieren, weil
-# Steam-Launcher bei der Installation seine eigenen Repo-Erweiterungen anlegt
-# ------------------------------------------------------------------------------
-# ERW_AUTH_KEY[steam-launcher]="https://repo.steampowered.com/steam/archive/stable/steam.gpg"
-# ERW_REPO_TXT[steam-launcher]="deb [arch=amd64,i386 signed-by=/etc/apt/trusted.gpg.d/steam.gpg] https://repo.steampowered.com/steam/ stable steam"
-# ------------------------------------------------------------------------------
-
-# ------------------------------------------------------------------------------
-# TeamViewer besser mit direkten Download (s.u. DEB) installieren, weil
-# TeamViewer bei der Installation seine eigenen Repo-Erweiterungen anlegt
-# und dadurch Redundanzen mit unserer Erweiterung enstehen würden.
-# ------------------------------------------------------------------------------
-# ERW_AUTH_KEY[teamviewer]="https://download.teamviewer.com/download/linux/signature/TeamViewer2017.asc"
-# ERW_REPO_TXT[teamviewer]="deb https://linux.teamviewer.com/deb stable main"
-# ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
 # In reinen Debian-Systemen ist VirtualBox nicht enthalten,
@@ -8009,35 +7974,17 @@ declare -A DEB_PKG_CSUM # Prüfsumme ODER URL zu Prüfsummen-Datei
 # Download von https://github.com/balena-io/etcher/releases/latest (https://www.balena.io/etcher/)
 # ACHTUNG: Auch als WEB-Version eingetragen (s.u.)!
 DEB_PKG_NAME[balena-etcher]="balenaEtcher"
-DEB_PKG_VERS[balena-etcher]="2.1.4"
+DEB_PKG_VERS[balena-etcher]="2.1.7"
 DEB_PKG_MESG[balena-etcher]=""
 DEB_PKG_EVAL[balena-etcher]=""
-DEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_2.1.4_amd64.deb"
-DEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_2.1.4_amd64.deb.sha"
+DEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_2.1.7_amd64.deb"
+DEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/deb/balena-etcher_2.1.7_amd64.deb.sha"
  DEB_PKG_FILE[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
  DEB_PKG_CSUM[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
 DEB_PKG_FILE[balena-etcher_arm64]="" # NICHT für ARM verfügbar
 DEB_PKG_CSUM[balena-etcher_arm64]="" # NICHT für ARM verfügbar
 DEB_PKG_FILE[balena-etcher_armhf]="" # NICHT für ARM verfügbar
 DEB_PKG_CSUM[balena-etcher_armhf]="" # NICHT für ARM verfügbar
-
-# ------------------------------------------------------------------------------
-# Download von https://github.com/VSCodium/vscodium
-# Nicht mehr angeboten, wenn nicht direkt im Repo dann als Flatpak installieren
-# ------------------------------------------------------------------------------
-# DEB_PKG_NAME[codium]="VSCodium"
-# DEB_PKG_VERS[codium]="1.98.0"
-# DEB_PKG_MESG[codium]=""
-# DEB_PKG_EVAL[codium]=""
-# DEB_PKG_FILE[codium_amd64]="$RESSOURCE_SERVER_DIR/deb/codium_1.98.0.25067_amd64.deb"
-# DEB_PKG_CSUM[codium_amd64]="$RESSOURCE_SERVER_DIR/deb/codium_1.98.0.25067_amd64.deb.sha"
-#  DEB_PKG_FILE[codium_i386]="" # NUR für 64-bit verfügbar
-#  DEB_PKG_CSUM[codium_i386]="" # NUR für 64-bit verfügbar
-# DEB_PKG_FILE[codium_arm64]="$RESSOURCE_SERVER_DIR/deb/codium_1.98.0.25067_arm64.deb"
-# DEB_PKG_CSUM[codium_arm64]="$RESSOURCE_SERVER_DIR/deb/codium_1.98.0.25067_arm64.deb.sha"
-# DEB_PKG_FILE[codium_armhf]="" # NUR für 64-bit verfügbar
-# DEB_PKG_CSUM[codium_armhf]="" # NUR für 64-bit verfügbar
-# ------------------------------------------------------------------------------
 
 # Download von https://ftp5.gwdg.de/pub/linux/debian/mint/packages/pool/main/h/hypnotix
 # oder https://github.com/linuxmint/hypnotix/releases
@@ -8060,29 +8007,29 @@ fi
 
 # Download von https://angryip.org/download/#linux
 DEB_PKG_NAME[ipscan]="Angry IP Scanner"
-DEB_PKG_VERS[ipscan]="3.9.3"
+DEB_PKG_VERS[ipscan]="3.10.0"
 DEB_PKG_MESG[ipscan]=""
 DEB_PKG_EVAL[ipscan]=""
-DEB_PKG_FILE[ipscan_amd64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.3_amd64.deb"
-DEB_PKG_CSUM[ipscan_amd64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.3_amd64.deb.sha"
- DEB_PKG_FILE[ipscan_i386]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.3_all.deb"
- DEB_PKG_CSUM[ipscan_i386]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.3_all.deb.sha"
-DEB_PKG_FILE[ipscan_arm64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.3_all.deb"
-DEB_PKG_CSUM[ipscan_arm64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.3_all.deb.sha"
-DEB_PKG_FILE[ipscan_armhf]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.3_all.deb"
-DEB_PKG_CSUM[ipscan_armhf]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.9.3_all.deb.sha"
+DEB_PKG_FILE[ipscan_amd64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.10.0_amd64.deb"
+DEB_PKG_CSUM[ipscan_amd64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.10.0_amd64.deb.sha"
+ DEB_PKG_FILE[ipscan_i386]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.10.0_all.deb"
+ DEB_PKG_CSUM[ipscan_i386]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.10.0_all.deb.sha"
+DEB_PKG_FILE[ipscan_arm64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.10.0_all.deb"
+DEB_PKG_CSUM[ipscan_arm64]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.10.0_all.deb.sha"
+DEB_PKG_FILE[ipscan_armhf]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.10.0_all.deb"
+DEB_PKG_CSUM[ipscan_armhf]="$RESSOURCE_SERVER_DIR/deb/ipscan_3.10.0_all.deb.sha"
 
 # Download von https://github.com/4gray/iptvnator
 DEB_PKG_NAME[iptvnator]="IPTVnator"
-DEB_PKG_VERS[iptvnator]="0.18.0"
+DEB_PKG_VERS[iptvnator]="0.24.0"
 DEB_PKG_MESG[iptvnator]=""
 DEB_PKG_EVAL[iptvnator]=""
-DEB_PKG_FILE[iptvnator_amd64]="$RESSOURCE_SERVER_DIR/deb/iptvnator-0.18.0-linux-amd64.deb"
-DEB_PKG_CSUM[iptvnator_amd64]="$RESSOURCE_SERVER_DIR/deb/iptvnator-0.18.0-linux-amd64.deb.sha"
+DEB_PKG_FILE[iptvnator_amd64]="$RESSOURCE_SERVER_DIR/deb/iptvnator-0.24.0-linux-amd64.deb"
+DEB_PKG_CSUM[iptvnator_amd64]="$RESSOURCE_SERVER_DIR/deb/iptvnator-0.24.0-linux-amd64.deb.sha"
 DEB_PKG_FILE[iptvnator_i386]="" # NUR für 64-bit verfügbar
 DEB_PKG_CSUM[iptvnator_i386]="" # NUR für 64-bit verfügbar
-DEB_PKG_FILE[iptvnator_arm64]="$RESSOURCE_SERVER_DIR/deb/iptvnator-0.18.0-linux-arm64.deb"
-DEB_PKG_CSUM[iptvnator_arm64]="$RESSOURCE_SERVER_DIR/deb/iptvnator-0.18.0-linux-arm64.deb.sha"
+DEB_PKG_FILE[iptvnator_arm64]="$RESSOURCE_SERVER_DIR/deb/iptvnator-0.24.0-linux-arm64.deb"
+DEB_PKG_CSUM[iptvnator_arm64]="$RESSOURCE_SERVER_DIR/deb/iptvnator-0.24.0-linux-arm64.deb.sha"
 DEB_PKG_FILE[iptvnator_armhf]="" # NUR für 64-bit verfügbar
 DEB_PKG_CSUM[iptvnator_armhf]="" # NUR für 64-bit verfügbar
 
@@ -8156,42 +8103,50 @@ DEB_PKG_CSUM[python3-opensnitch-ui_armhf]="" # Wird nicht angeboten
 # DEB_PKG_CSUM[opera-stable_armhf]="" # NICHT für ARM verfügbar
 # ------------------------------------------------------------------------------
 
+# ------------------------------------------------------------------------------
 # Download von https://www.realvnc.com/de/connect/download/vnc/linux
-DEB_PKG_NAME[realvnc-vnc-server]="RealVNC Server"
-DEB_PKG_VERS[realvnc-vnc-server]="7.16.0"
-DEB_PKG_MESG[realvnc-vnc-server]=""
-DEB_PKG_EVAL[realvnc-vnc-server]=""
-DEB_PKG_FILE[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.16.0-Linux-x64.deb"
-DEB_PKG_CSUM[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.16.0-Linux-x64.deb.sha"
- DEB_PKG_FILE[realvnc-vnc-server_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
- DEB_PKG_CSUM[realvnc-vnc-server_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
-DEB_PKG_FILE[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.16.0-Linux-ARM64.deb"
-DEB_PKG_CSUM[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.16.0-Linux-ARM64.deb.sha"
-DEB_PKG_FILE[realvnc-vnc-server_armhf]="" # Ab Version 7 nicht mehr verfügbar für 32bit
-DEB_PKG_CSUM[realvnc-vnc-server_armhf]="" # Ab Version 7 nicht mehr verfügbar für 32bit
+# RealVNC wird aufgrund deren Produktpolitik nicht mehr unterstützt
+# ------------------------------------------------------------------------------
+# DEB_PKG_NAME[realvnc-vnc-server]="RealVNC Server"
+# DEB_PKG_VERS[realvnc-vnc-server]="7.16.0"
+# DEB_PKG_MESG[realvnc-vnc-server]=""
+# DEB_PKG_EVAL[realvnc-vnc-server]=""
+# DEB_PKG_FILE[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.16.0-Linux-x64.deb"
+# DEB_PKG_CSUM[realvnc-vnc-server_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.16.0-Linux-x64.deb.sha"
+#  DEB_PKG_FILE[realvnc-vnc-server_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
+#  DEB_PKG_CSUM[realvnc-vnc-server_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
+# DEB_PKG_FILE[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.16.0-Linux-ARM64.deb"
+# DEB_PKG_CSUM[realvnc-vnc-server_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Server-7.16.0-Linux-ARM64.deb.sha"
+# DEB_PKG_FILE[realvnc-vnc-server_armhf]="" # Ab Version 7 nicht mehr verfügbar für 32bit
+# DEB_PKG_CSUM[realvnc-vnc-server_armhf]="" # Ab Version 7 nicht mehr verfügbar für 32bit
+# ------------------------------------------------------------------------------
 
+# ------------------------------------------------------------------------------
 # Download von https://www.realvnc.com/de/connect/download/viewer/linux
-DEB_PKG_NAME[realvnc-vnc-viewer]="RealVNC Viewer"
-DEB_PKG_VERS[realvnc-vnc-viewer]="7.15.1"
-DEB_PKG_MESG[realvnc-vnc-viewer]=""
-DEB_PKG_EVAL[realvnc-vnc-viewer]=""
-DEB_PKG_FILE[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.15.1-Linux-x64.deb"
-DEB_PKG_CSUM[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.15.1-Linux-x64.deb.sha"
- DEB_PKG_FILE[realvnc-vnc-viewer_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
- DEB_PKG_CSUM[realvnc-vnc-viewer_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
-DEB_PKG_FILE[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.15.1-Linux-ARM64.deb"
-DEB_PKG_CSUM[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.15.1-Linux-ARM64.deb.sha"
-DEB_PKG_FILE[realvnc-vnc-viewer_armhf]="" # Ab Version 7 nicht mehr verfügbar für 32bit
-DEB_PKG_CSUM[realvnc-vnc-viewer_armhf]="" # Ab Version 7 nicht mehr verfügbar für 32bit
+# RealVNC wird aufgrund deren Produktpolitik nicht mehr unterstützt
+# ------------------------------------------------------------------------------
+# DEB_PKG_NAME[realvnc-vnc-viewer]="RealVNC Viewer"
+# DEB_PKG_VERS[realvnc-vnc-viewer]="7.15.1"
+# DEB_PKG_MESG[realvnc-vnc-viewer]=""
+# DEB_PKG_EVAL[realvnc-vnc-viewer]=""
+# DEB_PKG_FILE[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.15.1-Linux-x64.deb"
+# DEB_PKG_CSUM[realvnc-vnc-viewer_amd64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.15.1-Linux-x64.deb.sha"
+#  DEB_PKG_FILE[realvnc-vnc-viewer_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
+#  DEB_PKG_CSUM[realvnc-vnc-viewer_i386]="" # Ab Version 7 nicht mehr verfügbar für 32bit
+# DEB_PKG_FILE[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.15.1-Linux-ARM64.deb"
+# DEB_PKG_CSUM[realvnc-vnc-viewer_arm64]="$RESSOURCE_SERVER_DIR/deb/VNC-Viewer-7.15.1-Linux-ARM64.deb.sha"
+# DEB_PKG_FILE[realvnc-vnc-viewer_armhf]="" # Ab Version 7 nicht mehr verfügbar für 32bit
+# DEB_PKG_CSUM[realvnc-vnc-viewer_armhf]="" # Ab Version 7 nicht mehr verfügbar für 32bit
+# ------------------------------------------------------------------------------
 
 # Download von https://github.com/rescuezilla/rescuezilla/releases
 # Achtung: Hinweise zur Version auf https://rescuezilla.com beachten
 DEB_PKG_NAME[rescuezilla]="Rescuezilla"
-DEB_PKG_VERS[rescuezilla]="2.6.1"
+DEB_PKG_VERS[rescuezilla]="2.6.2"
 DEB_PKG_MESG[rescuezilla]=""
 DEB_PKG_EVAL[rescuezilla]=""
-DEB_PKG_FILE[rescuezilla_amd64]="$RESSOURCE_SERVER_DIR/deb/rescuezilla_2.6.1-1_all.deb"
-DEB_PKG_CSUM[rescuezilla_amd64]="$RESSOURCE_SERVER_DIR/deb/rescuezilla_2.6.1-1_all.deb.sha"
+DEB_PKG_FILE[rescuezilla_amd64]="$RESSOURCE_SERVER_DIR/deb/rescuezilla_2.6.2-1_all.deb"
+DEB_PKG_CSUM[rescuezilla_amd64]="$RESSOURCE_SERVER_DIR/deb/rescuezilla_2.6.2-1_all.deb.sha"
  DEB_PKG_FILE[rescuezilla_i386]="" # NUR für 64-bit verfügbar
  DEB_PKG_CSUM[rescuezilla_i386]="" # NUR für 64-bit verfügbar
 DEB_PKG_FILE[rescuezilla_arm64]="" # NICHT für ARM verfügbar
@@ -8202,30 +8157,30 @@ DEB_PKG_CSUM[rescuezilla_armhf]="" # NICHT für ARM verfügbar
 # Download von https://github.com/raspberrypi/rpi-imager
 # ACHTUNG: Auch als Appimage verfügbar (s.u.)
 DEB_PKG_NAME[rpi-imager]="Raspberry Pi Imager"
-DEB_PKG_VERS[rpi-imager]="2.0.6"
+DEB_PKG_VERS[rpi-imager]="2.0.11"
 DEB_PKG_MESG[rpi-imager]=""
 DEB_PKG_EVAL[rpi-imager]=""
-DEB_PKG_FILE[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/deb/rpi-imager_2.0.6_amd64.deb"
-DEB_PKG_CSUM[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/deb/rpi-imager_2.0.6_amd64.deb.sha"
+DEB_PKG_FILE[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/deb/rpi-imager_2.0.11.1-1_amd64.deb"
+DEB_PKG_CSUM[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/deb/rpi-imager_2.0.11.1-1_amd64.deb.sha"
  DEB_PKG_FILE[rpi-imager_i386]="" # NUR für 64-bit verfügbar
  DEB_PKG_CSUM[rpi-imager_i386]="" # NUR für 64-bit verfügbar
-DEB_PKG_FILE[rpi-imager_arm64]="$RESSOURCE_SERVER_DIR/deb/rpi-imager_2.0.6_arm64.deb"
-DEB_PKG_CSUM[rpi-imager_arm64]="$RESSOURCE_SERVER_DIR/deb/rpi-imager_2.0.6_arm64.deb.sha"
+DEB_PKG_FILE[rpi-imager_arm64]="$RESSOURCE_SERVER_DIR/deb/rpi-imager_2.0.11.1-1_arm64.deb"
+DEB_PKG_CSUM[rpi-imager_arm64]="$RESSOURCE_SERVER_DIR/deb/rpi-imager_2.0.11.1-1_arm64.deb.sha"
 DEB_PKG_FILE[rpi-imager_armhf]="" # NICHT für ARM verfügbar
 DEB_PKG_CSUM[rpi-imager_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://github.com/rustdesk/rustdesk/releases
 # Hinweis: Auch als AppImage verfügbar (s.u.)
 DEB_PKG_NAME[rustdesk]="RustDesk"
-DEB_PKG_VERS[rustdesk]="1.4.5"
+DEB_PKG_VERS[rustdesk]="1.5.0"
 DEB_PKG_MESG[rustdesk]=""
 DEB_PKG_EVAL[rustdesk]=""
-DEB_PKG_FILE[rustdesk_amd64]="$RESSOURCE_SERVER_DIR/deb/rustdesk-1.4.5-x86_64.deb"
-DEB_PKG_CSUM[rustdesk_amd64]="$RESSOURCE_SERVER_DIR/deb/rustdesk-1.4.5-x86_64.deb.sha"
+DEB_PKG_FILE[rustdesk_amd64]="$RESSOURCE_SERVER_DIR/deb/rustdesk-1.5.0-x86_64.deb"
+DEB_PKG_CSUM[rustdesk_amd64]="$RESSOURCE_SERVER_DIR/deb/rustdesk-1.5.0-x86_64.deb.sha"
  DEB_PKG_FILE[rustdesk_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
  DEB_PKG_CSUM[rustdesk_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
-DEB_PKG_FILE[rustdesk_arm64]="$RESSOURCE_SERVER_DIR/deb/rustdesk-1.4.5-aarch64.deb"
-DEB_PKG_CSUM[rustdesk_arm64]="$RESSOURCE_SERVER_DIR/deb/rustdesk-1.4.5-aarch64.deb.sha"
+DEB_PKG_FILE[rustdesk_arm64]="$RESSOURCE_SERVER_DIR/deb/rustdesk-1.5.0-aarch64.deb"
+DEB_PKG_CSUM[rustdesk_arm64]="$RESSOURCE_SERVER_DIR/deb/rustdesk-1.5.0-aarch64.deb.sha"
 DEB_PKG_FILE[rustdesk_armhf]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
 DEB_PKG_CSUM[rustdesk_armhf]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
 
@@ -8307,27 +8262,27 @@ fi
 if [ "$OPSYS_PART" != "" ];
 then
   DEB_PKG_NAME[veracrypt]="VeraCrypt"
-  DEB_PKG_VERS[veracrypt]="1.26.24"
+  DEB_PKG_VERS[veracrypt]="1.26.29"
   DEB_PKG_MESG[veracrypt]=""
   DEB_PKG_EVAL[veracrypt]=""
-  DEB_PKG_FILE[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.24-$OPSYS_PART-amd64.deb"
-  DEB_PKG_CSUM[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.24-sha256sum.sha" # ACHTUNG: Liste!
+  DEB_PKG_FILE[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.29-$OPSYS_PART-amd64.deb"
+  DEB_PKG_CSUM[veracrypt_amd64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.29-sha256sum.sha" # ACHTUNG: Liste!
    DEB_PKG_FILE[veracrypt_i386]="" # Nur als generischer Installer verfügbar (nicht aufgenommen)
    DEB_PKG_CSUM[veracrypt_i386]="" # Nur als generischer Installer verfügbar (nicht aufgenommen)
-  DEB_PKG_FILE[veracrypt_arm64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.24-$OPSYS_PART-arm64.deb"
-  DEB_PKG_CSUM[veracrypt_arm64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.24-sha256sum.sha" # ACHTUNG: Liste!
+  DEB_PKG_FILE[veracrypt_arm64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.29-$OPSYS_PART-arm64.deb"
+  DEB_PKG_CSUM[veracrypt_arm64]="$RESSOURCE_SERVER_DIR/deb/veracrypt-1.26.29-sha256sum.sha" # ACHTUNG: Liste!
   DEB_PKG_FILE[veracrypt_armhf]="" # Nur als generischer Installer verfügbar (nicht aufgenommen)
   DEB_PKG_CSUM[veracrypt_armhf]="" # Nur als generischer Installer verfügbar (nicht aufgenommen)
 fi
 # ------------------------------------------------------------------------------
 
 # Download von https://www.xnview.com/de/xnviewmp/#downloads
+DEB_PKG_VERS[xnview]="1.12.1"
 DEB_PKG_NAME[xnview]="XnView MP"
-DEB_PKG_VERS[xnview]="1.9.10"
 DEB_PKG_MESG[xnview]=""
 DEB_PKG_EVAL[xnview]=""
-DEB_PKG_FILE[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP-linux-x64.deb"
-DEB_PKG_CSUM[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP-linux-x64.deb.sha"
+DEB_PKG_FILE[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP-linux-1.12.1-x64.deb"
+DEB_PKG_CSUM[xnview_amd64]="$RESSOURCE_SERVER_DIR/deb/XnViewMP-linux-1.12.1-x64.deb.sha"
  DEB_PKG_FILE[xnview_i386]="" # Wird nicht mehr angeboten
  DEB_PKG_CSUM[xnview_i386]="" # Wird nicht mehr angeboten
 DEB_PKG_FILE[xnview_arm64]="" # NICHT für ARM verfügbar
@@ -8557,21 +8512,25 @@ declare -A WEB_PKG_CATY # Kategorie für den Linux-Menü-Eintrag (NICHT unsere K
 #                                                                              #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
+# ------------------------------------------------------------------------------
 # Download von https://github.com/balena-io/etcher/releases/latest (https://www.balena.io/etcher/)
 # ACHTUNG: Auch als DEB eingetragen (s.o.)!
-WEB_PKG_NAME[balena-etcher]="balenaEtcher"
-WEB_PKG_CATY[balena-etcher]="System;Utility"
-WEB_PKG_VERS[balena-etcher]="2.1.0"
-WEB_PKG_MESG[balena-etcher]=""
-WEB_PKG_EVAL[balena-etcher]=""
-WEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-2.1.0-x64.AppImage"
-WEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-2.1.0-x64.AppImage.sha"
- WEB_PKG_FILE[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
- WEB_PKG_CSUM[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
-WEB_PKG_FILE[balena-etcher_arm64]="" # NICHT für ARM verfügbar
-WEB_PKG_CSUM[balena-etcher_arm64]="" # NICHT für ARM verfügbar
-WEB_PKG_FILE[balena-etcher_armhf]="" # NICHT für ARM verfügbar
-WEB_PKG_CSUM[balena-etcher_armhf]="" # NICHT für ARM verfügbar
+# HINWEIS: Wird derzeit nicht als fertiges AppImage angeboten
+# ------------------------------------------------------------------------------
+# WEB_PKG_NAME[balena-etcher]="balenaEtcher"
+# WEB_PKG_CATY[balena-etcher]="System;Utility"
+# WEB_PKG_VERS[balena-etcher]="2.1.0"
+# WEB_PKG_MESG[balena-etcher]=""
+# WEB_PKG_EVAL[balena-etcher]=""
+# WEB_PKG_FILE[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-2.1.0-x64.AppImage"
+# WEB_PKG_CSUM[balena-etcher_amd64]="$RESSOURCE_SERVER_DIR/web/balenaEtcher-2.1.0-x64.AppImage.sha"
+#  WEB_PKG_FILE[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
+#  WEB_PKG_CSUM[balena-etcher_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
+# WEB_PKG_FILE[balena-etcher_arm64]="" # NICHT für ARM verfügbar
+# WEB_PKG_CSUM[balena-etcher_arm64]="" # NICHT für ARM verfügbar
+# WEB_PKG_FILE[balena-etcher_armhf]="" # NICHT für ARM verfügbar
+# WEB_PKG_CSUM[balena-etcher_armhf]="" # NICHT für ARM verfügbar
+# ------------------------------------------------------------------------------
 
 # Eigene Zusammenstellung ;)
 WEB_PKG_NAME[code-the-classics]="Code the Classics"
@@ -8591,15 +8550,15 @@ WEB_PKG_CSUM[code-the-classics_armhf]="$RESSOURCE_SERVER_DIR/web/Code-the-Classi
 # Download von https://github.com/qarmin/czkawka/releases
 WEB_PKG_NAME[czkawka]="Czkawka"
 WEB_PKG_CATY[czkawka]="System;Utility"
-WEB_PKG_VERS[czkawka]="10.0.0"
+WEB_PKG_VERS[czkawka]="12.0.2"
 WEB_PKG_MESG[czkawka]="Benötigt mindestens gtk-4.0!"
 WEB_PKG_EVAL[czkawka]="[ -d /usr/share/gtk-4.0 ]"
-WEB_PKG_FILE[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_10.0.0_x86_64.AppImage"
-WEB_PKG_CSUM[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_10.0.0_x86_64.AppImage.sha"
+WEB_PKG_FILE[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_12.0.2_x86_64.AppImage"
+WEB_PKG_CSUM[czkawka_amd64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_12.0.2_x86_64.AppImage.sha"
  WEB_PKG_FILE[czkawka_i386]="" # NICHT verfügbar
  WEB_PKG_CSUM[czkawka_i386]="" # NICHT verfügbar
-WEB_PKG_FILE[czkawka_arm64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_10.0.0_arm64.AppImage"
-WEB_PKG_CSUM[czkawka_arm64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_10.0.0_arm64.AppImage.sha"
+WEB_PKG_FILE[czkawka_arm64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_12.0.2_arm64.AppImage"
+WEB_PKG_CSUM[czkawka_arm64]="$RESSOURCE_SERVER_DIR/web/linux_czkawka_gui_12.0.2_arm64.AppImage.sha"
 WEB_PKG_FILE[czkawka_armhf]="" # NICHT verfügbar
 WEB_PKG_CSUM[czkawka_armhf]="" # NICHT verfügbar
 
@@ -8621,11 +8580,11 @@ WEB_PKG_CSUM[draw.io_armhf]="" # NICHT verfügbar
 # Download von https://freefilesync.org/download.php
 WEB_PKG_NAME[freefilesync]="FreeFileSync"
 WEB_PKG_CATY[freefilesync]="System;Utility"
-WEB_PKG_VERS[freefilesync]="14.7"
+WEB_PKG_VERS[freefilesync]="14.12"
 WEB_PKG_MESG[freefilesync]=""
 WEB_PKG_EVAL[freefilesync]=""
-WEB_PKG_FILE[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_14.7_Linux_x86_64.tar.gz"
-WEB_PKG_CSUM[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_14.7_Linux_x86_64.tar.gz.sha"
+WEB_PKG_FILE[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_14.12_Linux_x86_64.tar.gz"
+WEB_PKG_CSUM[freefilesync_amd64]="$RESSOURCE_SERVER_DIR/web/FreeFileSync_14.12_Linux_x86_64.tar.gz.sha"
  WEB_PKG_FILE[freefilesync_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
  WEB_PKG_CSUM[freefilesync_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht lauffähig)
 WEB_PKG_FILE[freefilesync_arm64]="" # NICHT für ARM verfügbar
@@ -8682,10 +8641,10 @@ WEB_PKG_FILE[keepassxc_armhf]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[keepassxc_armhf]="" # NICHT für ARM verfügbar
 
 # Download von https://github.com/bpozdena/OneDriveGUI (https://github.com/abraunegg/onedrive)
-chk_min_apt_pkg_version "onedrive" "2.5"
+chk_min_apt_pkg_version "onedrive" "2.5.11"
 CHK_VERSION=$?
 if [ $CHK_VERSION -eq 1 ]; then ONEDRIVE_GUI_VER="1.0.3"; fi # Bis OneDrive 2.4.x
-if [ $CHK_VERSION -eq 0 ]; then ONEDRIVE_GUI_VER="1.3.0"; fi # Ab OneDrive 2.5.0
+if [ $CHK_VERSION -eq 0 ]; then ONEDRIVE_GUI_VER="1.3.2"; fi # Ab OneDrive 2.5.11
 if [ $CHK_VERSION -eq 1 ] ||
    [ $CHK_VERSION -eq 0 ];
 then
@@ -8722,11 +8681,11 @@ WEB_PKG_CSUM[oolite_armhf]="" # NICHT für ARM verfügbar
 # Download von https://www.openshot.org/de/download
 WEB_PKG_NAME[openshot]="OpenShot"
 WEB_PKG_CATY[openshot]="AudioVideo;Video"
-WEB_PKG_VERS[openshot]="3.4.0"
+WEB_PKG_VERS[openshot]="4.0.1"
 WEB_PKG_MESG[openshot]="Mindestens 4GB RAM erforderlich!"
 WEB_PKG_EVAL[openshot]="[ $MEMORY_TOTAL -gt 4000000000 ]"
-WEB_PKG_FILE[openshot_amd64]="$RESSOURCE_SERVER_DIR/web/OpenShot-v3.4.0-x86_64.AppImage"
-WEB_PKG_CSUM[openshot_amd64]="$RESSOURCE_SERVER_DIR/web/OpenShot-v3.4.0-x86_64.AppImage.sha"
+WEB_PKG_FILE[openshot_amd64]="$RESSOURCE_SERVER_DIR/web/OpenShot-v4.0.1-x86_64.AppImage"
+WEB_PKG_CSUM[openshot_amd64]="$RESSOURCE_SERVER_DIR/web/OpenShot-v4.0.1-x86_64.AppImage.sha"
  WEB_PKG_FILE[openshot_i386]="" # Für Linux nur als 64-bit verfügbar
  WEB_PKG_CSUM[openshot_i386]="" # Für Linux nur als 64-bit verfügbar
 WEB_PKG_FILE[openshot_arm64]="" # NICHT für ARM verfügbar
@@ -8734,40 +8693,46 @@ WEB_PKG_CSUM[openshot_arm64]="" # NICHT für ARM verfügbar
 WEB_PKG_FILE[openshot_armhf]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[openshot_armhf]="" # NICHT für ARM verfügbar
 
+# ------------------------------------------------------------------------------
 # Download von https://github.com/raspberrypi/rpi-imager
 # ACHTUNG: Auch als DEB eingetragen (s.o.)
-WEB_PKG_NAME[rpi-imager]="Raspberry Pi Imager"
-WEB_PKG_CATY[rpi-imager]="System;Utility"
-WEB_PKG_VERS[rpi-imager]="2.0.11.1"
-WEB_PKG_MESG[rpi-imager]=""
-WEB_PKG_EVAL[rpi-imager]=""
-WEB_PKG_FILE[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/web/Raspberry_Pi_Imager_2.0.11.1_amd64.AppImage"
-WEB_PKG_CSUM[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/web/Raspberry_Pi_Imager_2.0.11.1_amd64.AppImage.sha"
- WEB_PKG_FILE[rpi-imager_i386]="" # NUR für 64-bit verfügbar
- WEB_PKG_CSUM[rpi-imager_i386]="" # NUR für 64-bit verfügbar
-WEB_PKG_FILE[rpi-imager_arm64]="" # NICHT für ARM verfügbar
-WEB_PKG_CSUM[rpi-imager_arm64]="" # NICHT für ARM verfügbar
-WEB_PKG_FILE[rpi-imager_armhf]="" # NICHT für ARM verfügbar
-WEB_PKG_CSUM[rpi-imager_armhf]="" # NICHT für ARM verfügbar
+# HINWEIS: Wird derzeit nicht als fertiges AppImage angeboten
+# ------------------------------------------------------------------------------
+# WEB_PKG_NAME[rpi-imager]="Raspberry Pi Imager"
+# WEB_PKG_CATY[rpi-imager]="System;Utility"
+# WEB_PKG_VERS[rpi-imager]="2.0.11.1"
+# WEB_PKG_MESG[rpi-imager]=""
+# WEB_PKG_EVAL[rpi-imager]=""
+# WEB_PKG_FILE[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/web/Raspberry_Pi_Imager_2.0.11.1_amd64.AppImage"
+# WEB_PKG_CSUM[rpi-imager_amd64]="$RESSOURCE_SERVER_DIR/web/Raspberry_Pi_Imager_2.0.11.1_amd64.AppImage.sha"
+#  WEB_PKG_FILE[rpi-imager_i386]="" # NUR für 64-bit verfügbar
+#  WEB_PKG_CSUM[rpi-imager_i386]="" # NUR für 64-bit verfügbar
+# WEB_PKG_FILE[rpi-imager_arm64]="" # NICHT für ARM verfügbar
+# WEB_PKG_CSUM[rpi-imager_arm64]="" # NICHT für ARM verfügbar
+# WEB_PKG_FILE[rpi-imager_armhf]="" # NICHT für ARM verfügbar
+# WEB_PKG_CSUM[rpi-imager_armhf]="" # NICHT für ARM verfügbar
+# ------------------------------------------------------------------------------
 
 # Download von https://github.com/rustdesk/rustdesk/releases
 # Hinweis: Auch als .deb verfügbar (s.o.)
 WEB_PKG_NAME[rustdesk]="RustDesk"
 WEB_PKG_CATY[rustdesk]="Network;"
-WEB_PKG_VERS[rustdesk]="1.4.5"
+WEB_PKG_VERS[rustdesk]="1.5.0"
 WEB_PKG_MESG[rustdesk]=""
 WEB_PKG_EVAL[rustdesk]=""
-WEB_PKG_FILE[rustdesk_amd64]="$RESSOURCE_SERVER_DIR/web/rustdesk-1.4.5-x86_64.AppImage"
-WEB_PKG_CSUM[rustdesk_amd64]="$RESSOURCE_SERVER_DIR/web/rustdesk-1.4.5-x86_64.AppImage.sha"
+WEB_PKG_FILE[rustdesk_amd64]="$RESSOURCE_SERVER_DIR/web/rustdesk-1.5.0-x86_64.AppImage"
+WEB_PKG_CSUM[rustdesk_amd64]="$RESSOURCE_SERVER_DIR/web/rustdesk-1.5.0-x86_64.AppImage.sha"
  WEB_PKG_FILE[rustdesk_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
  WEB_PKG_CSUM[rustdesk_i386]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
-WEB_PKG_FILE[rustdesk_arm64]="$RESSOURCE_SERVER_DIR/web/rustdesk-1.4.5-aarch64.AppImage"
-WEB_PKG_CSUM[rustdesk_arm64]="$RESSOURCE_SERVER_DIR/web/rustdesk-1.4.5-aarch64.AppImage.sha"
+WEB_PKG_FILE[rustdesk_arm64]="$RESSOURCE_SERVER_DIR/web/rustdesk-1.5.0-aarch64.AppImage"
+WEB_PKG_CSUM[rustdesk_arm64]="$RESSOURCE_SERVER_DIR/web/rustdesk-1.5.0-aarch64.AppImage.sha"
 WEB_PKG_FILE[rustdesk_armhf]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
 WEB_PKG_CSUM[rustdesk_armhf]="" # NUR für 64-bit (32-bit verfügbar aber nicht aufgenommen)
 
+# ------------------------------------------------------------------------------
 # Download von https://www.sarducd.it/downloads
 # Hinweis: Derzeit nicht beinhaltet wegen potentiellem Trojaner in Sardu
+# ------------------------------------------------------------------------------
 # WEB_PKG_NAME[sardu]="Sardu"
 # WEB_PKG_CATY[sardu]="System;Utility"
 # WEB_PKG_VERS[sardu]="4.4.0" # Bei Änderung auch sardu_post_inst anpassen !!!
@@ -8781,15 +8746,16 @@ WEB_PKG_CSUM[rustdesk_armhf]="" # NUR für 64-bit (32-bit verfügbar aber nicht 
 # WEB_PKG_CSUM[sardu_arm64]="" # NICHT für ARM verfügbar
 # WEB_PKG_FILE[sardu_armhf]="" # NICHT für ARM verfügbar
 # WEB_PKG_CSUM[sardu_armhf]="" # NICHT für ARM verfügbar
+# ------------------------------------------------------------------------------
 
 # Download von https://www.shotcut.org/download/
 WEB_PKG_NAME[shotcut]="Shotcut"
 WEB_PKG_CATY[shotcut]="AudioVideo;Video"
-WEB_PKG_VERS[shotcut]="26.1.30"
+WEB_PKG_VERS[shotcut]="26.9.27"
 WEB_PKG_MESG[shotcut]="Mindestens 4GB RAM erforderlich!"
 WEB_PKG_EVAL[shotcut]="[ $MEMORY_TOTAL -gt 4000000000 ]"
-WEB_PKG_FILE[shotcut_amd64]="$RESSOURCE_SERVER_DIR/web/shotcut-linux-x86_64-26.1.30.AppImage"
-WEB_PKG_CSUM[shotcut_amd64]="$RESSOURCE_SERVER_DIR/web/shotcut-linux-x86_64-26.1.30.AppImage.sha"
+WEB_PKG_FILE[shotcut_amd64]="$RESSOURCE_SERVER_DIR/web/shotcut-linux-x86_64-26.9.27.AppImage"
+WEB_PKG_CSUM[shotcut_amd64]="$RESSOURCE_SERVER_DIR/web/shotcut-linux-x86_64-26.9.27.AppImage.sha"
  WEB_PKG_FILE[shotcut_i386]="" # Für Linux nur als 64-bit verfügbar
  WEB_PKG_CSUM[shotcut_i386]="" # Für Linux nur als 64-bit verfügbar
 WEB_PKG_FILE[shotcut_arm64]="" # NICHT für ARM verfügbar
@@ -8797,14 +8763,14 @@ WEB_PKG_CSUM[shotcut_arm64]="" # NICHT für ARM verfügbar
 WEB_PKG_FILE[shotcut_armhf]="" # NICHT für ARM verfügbar
 WEB_PKG_CSUM[shotcut_armhf]="" # NICHT für ARM verfügbar
 
-# Download von https://www.torproject.org/de/download/
+# Download von https://download.torproject.org/tor-browser-for-desktop/
 WEB_PKG_NAME[tor-browser]="Tor Browser"
 WEB_PKG_CATY[tor-browser]="Network;WebBrowser"
-WEB_PKG_VERS[tor-browser]="15.0.5"
+WEB_PKG_VERS[tor-browser]="15.0.24"
 WEB_PKG_MESG[tor-browser]=""
 WEB_PKG_EVAL[tor-browser]=""
-WEB_PKG_FILE[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux-x86_64-15.0.5.tar.xz"
-WEB_PKG_CSUM[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux-x86_64-15.0.5.tar.xz.sha"
+WEB_PKG_FILE[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux-x86_64-15.0.24.tar.xz"
+WEB_PKG_CSUM[tor-browser_amd64]="$RESSOURCE_SERVER_DIR/web/tor-browser-linux-x86_64-15.0.24.tar.xz.sha"
  WEB_PKG_FILE[tor-browser_i386]="" # Für Linux nur als 64-bit verfügbar
  WEB_PKG_CSUM[tor-browser_i386]="" # Für Linux nur als 64-bit verfügbar
 WEB_PKG_FILE[tor-browser_arm64]="" # Auf ARM nur für Android verfügbar (Raspberry Pi hat kein SSE2)
